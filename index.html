@@ -11,7 +11,6 @@
   <div id="background" style="background-image: url('backgrounds/landscape postapoc.jpg');"></div>
   <div id="top-bar"></div>
   <div id="top-settings-holder">
-    <!-- background selection menu -->
     <div id="ai-config-button" class="drawer">
       <div class="drawer-toggle drawer-header">
         <div id="leftNavDrawerIcon" class="drawer-icon fa-solid fa-sliders fa-fw closed-icon"
@@ -27,9 +26,16 @@
     <div class="form-sheld">
       <div class="send-form">
         <div class="form-items">
-          <div class="left-send-form"></div>
+          <div class="left-send-form">
+            <div id="options-button" class="fa-solid fa-bars"></div>
+            <div id="extensions-menu-button" style="display: flex;" class="fa-solid fa-magic-wand-sparkles"
+              title="Extensions"></div>
+          </div>
           <textarea id="send-textarea" placeholder="Type a message, or /? for help" autocomplete="off"></textarea>
-          <div class="right-send-form"></div>
+          <div class="right-send-form">
+            <div id="mes_continue" class="fa-fw fa-solid fa-arrow-right" title="Continue the last message"></div>
+            <div id="send_but" class="fa-solid fa-paper-plane" title="Send a message"></div>
+          </div>
         </div>
       </div>
     </div>

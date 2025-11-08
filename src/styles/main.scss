@@ -337,7 +337,37 @@ textarea {
         column-gap: 5px;
         font-size: var(--font-size-main);
 
+        .left-send-form {
+          padding-left: 2px;
+          order: 1;
+        }
+        .right-send-form {
+          padding-right: 2px;
+          order: 3;
+        }
+
+        .left-send-form, .right-send-form {
+          display: flex;
+          flex-wrap: wrap;
+          align-content: center;
+          div {
+            width: var(--send-form-height);
+            height: var(--send-form-height);
+            margin: 0;
+            cursor: pointer;
+            opacity: 0.7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity var(--animation-duration-2x);
+            &:hover {
+              opacity: 1;
+            }
+          }
+        }
+
         #send-textarea {
+          order: 2;
           min-height: calc(var(--send-form-height) + 2px);
           height: calc(var(--send-form-height) + 2px);
           word-wrap: break-word;
