@@ -280,38 +280,97 @@ select.text-pole {
   padding-right: 20px;
 }
 
-body>#toast-container {
-    margin-top: var(--top-bar-height);
+// =============================================================================
+// Toast Notifications
+// =============================================================================
+#toast-container {
+  position: fixed;
+  z-index: 999999;
+  pointer-events: none;
+  width: 300px;
+  max-width: 100%;
+
+  &.toast-top-left { top: 12px; left: 12px; }
+  &.toast-top-center { top: var(--top-bar-height); left: 50%; transform: translateX(-50%); }
+  &.toast-top-right { top: 12px; right: 12px; }
+  &.toast-bottom-left { bottom: 12px; left: 12px; }
+  &.toast-bottom-center { bottom: 12px; left: 50%; transform: translateX(-50%); }
+  &.toast-bottom-right { bottom: 12px; right: 12px; }
+
+  /* When inside a dialog, it's no longer fixed, and we need to adjust position */
+  dialog[open] > & {
+    position: absolute;
+    // top-center for dialogs
+    &.toast-top-center {
+      top: 12px;
+    }
+  }
 }
 
-body #toast-container>div {
-    opacity: 1;
-    filter: unset;
-    -ms-filter: unset;
-    padding: 10px 10px 10px 50px;
-    font-size: calc(var(--font-size-main) * 0.95);
-    width: 300px;
-}
+.toast {
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  margin: 0 0 6px;
+  padding: 10px 10px 10px 50px;
+  width: 100%;
+  border-radius: 3px;
+  box-shadow: 0 0 12px #000;
+  color: #fff;
+  opacity: 0;
+  background-position: 15px center;
+  background-repeat: no-repeat;
+  text-shadow: none;
+  font-size: calc(var(--font-size-main) * 0.95);
+  transition: opacity 250ms ease-in-out;
 
-body #toast-container .toast-success {
-    background-color: #5d9e5d;
-}
-
-body #toast-container .toast-error {
-    background-color: #a83c36;
-}
-
-body #toast-container .toast-info {
-    background-color: #4092aa;
-}
-
-body #toast-container .toast-warning {
-    background-color: #e29325;
+  &.show {
+    opacity: 0.9;
+  }
 }
 
 button.toast-close-button {
-    padding-right: 5px;
-    padding-top: 3px;
+  position: absolute;
+  right: 0.5em;
+  top: 0.5em;
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #fff;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0 5px 0 0;
+  text-shadow: 0 1px 0 #fff;
+  opacity: 0.8;
+  padding-top: 3px;
+
+  &:hover, &:focus {
+    opacity: 1;
+  }
+}
+
+.toast-title {
+  font-weight: bold;
+}
+
+.toast-message {
+  word-wrap: break-word;
+}
+
+.toast-success {
+    background-color: #5d9e5d;
+}
+
+.toast-error {
+    background-color: #a83c36;
+}
+
+.toast-info {
+    background-color: #4092aa;
+}
+
+.toast-warning {
+    background-color: #e29325;
 }
 
 #top-bar {
