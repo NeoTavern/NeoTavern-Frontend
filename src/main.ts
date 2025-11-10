@@ -1,6 +1,6 @@
 import { RightMenu } from './components/RightMenu';
 import { Toast } from './components/Toast';
-import { token } from './state/Store';
+import { token } from './stores/auth.store';
 import './styles/main.scss';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
@@ -15,18 +15,6 @@ Toast.options({
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const topBar = document.getElementById('top-settings-holder');
-  if (!topBar) throw new Error('Top settings holder not found');
-
-  topBar.querySelectorAll('.drawer-toggle').forEach((toggle) => {
-    toggle.addEventListener('click', () => {
-      toggle.nextElementSibling?.classList.toggle('active');
-      toggle.querySelector('.drawer-icon')?.classList.toggle('active');
-    });
-  });
-
-  new RightMenu();
-
   try {
     const tokenResponse = await fetch('/csrf-token');
     const tokenData = await tokenResponse.json();
@@ -39,4 +27,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     throw new Error('Initialization failed');
   }
+
+  const topBar = document.getElementById('top-settings-holder');
+  if (!topBar) throw new Error('Top settings holder not found');
+
+  topBar.querySelectorAll('.drawer-toggle').forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+      toggle.nextElementSibling?.classList.toggle('active');
+      toggle.querySelector('.drawer-icon')?.classList.toggle('active');
+    });
+  });
+
+  const rightMenu = new RightMenu();
+  await rightMenu.init();
 });

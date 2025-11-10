@@ -1,6 +1,8 @@
 import Cropper, { CropperImage, CropperSelection } from 'cropperjs';
-import { shouldSendOnEnter } from '../state/Store';
-import { removeFromArray, runAfterAnimation, uuidv4 } from '../utils';
+import { shouldSendOnEnter } from '../stores/settings.store';
+import { removeFromArray } from '../utils/array';
+import { runAfterAnimation } from '../utils/dom';
+import { uuidv4 } from '../utils/common';
 
 // Note for developer: The 'fixToastrForDialogs' function was removed.
 // It was a fragile hack that moved the toastr container around the DOM.
@@ -123,9 +125,8 @@ export class Popup {
   public inputResults?: Map<string, string | boolean>;
   private cropper?: Cropper;
   private lastFocus?: HTMLElement;
-  // @ts-ignore
 
-  #promise: Promise<PopupShowResult | null>;
+  #promise!: Promise<PopupShowResult | null>;
   #resolver!: (result: PopupShowResult | null) => void;
   #isClosingPrevented = false;
 

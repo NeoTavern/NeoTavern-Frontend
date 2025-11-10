@@ -1,58 +1,34 @@
-import { delay, getBase64Async, getRequestHeaders, humanizedDateTime, onlyUnique } from '../../utils';
+import { delay } from '../../utils/common';
+import { humanizedDateTime } from '../../utils/date';
+import { onlyUnique } from '../../utils/array';
 import DOMPurify from 'dompurify';
 import { Toast } from '../Toast';
+import { activeCharacterIndex, characters, favoriteCharacterChecked } from '../../stores/character.store';
+import { chat, chatMetadata } from '../../stores/chat.store';
+import { createSave } from '../../stores/creation.store';
+import { activeGroupId, groups, isGroupGenerating } from '../../stores/group.store';
+import { isChatSaving, isSendPress, menuType, selectedButton, cropData } from '../../stores/ui.store';
+import { worldNames } from '../../stores/world.store';
+import type { MenuType, ThumbnailType } from '../../types';
 import {
-  activeCharacterIndex,
-  activeGroupId,
-  activeMessageEditIndex,
   animation_duration,
   animation_easing,
-  characters,
-  chat,
-  chatMetadata,
-  createSave,
-  cropData,
-  default_avatar,
   DEFAULT_SAVE_EDIT_TIMEOUT,
+  default_avatar,
   depth_prompt_depth_default,
   depth_prompt_role_default,
-  favoriteCharacterChecked,
-  groups,
-  isChatSaving,
-  isGroupGenerating,
-  isSendPress,
-  menuType,
-  powerUser,
-  selectedButton,
-  TAG_FOLDER_TYPES,
   talkativeness_default,
-  worldNames,
-  type Character,
-  type Entity,
-  type Group,
-  type MenuType,
-  type Tag,
-  type ThumbnailType,
-} from '../../state/Store';
+} from '../../constants';
 import { clearChat, refreshChat, resetSelectedGroup } from '../Chat';
 import { Popup, POPUP_RESULT, POPUP_TYPE } from '../Popup';
-import showdown from 'showdown';
 import { accountStorage } from '../../AccountStorage';
-import css, {} from '@adobe/css-tools';
+import { fetchAllCharacters, fetchCharacterByAvatar } from '../../api/characters';
+import { fetchAllGroups } from '../../api/groups';
+import { getBase64Async } from '../../utils/file';
+import { powerUser } from '../../stores/settings.store';
 
-const converter = new showdown.Converter({
-  emoji: true,
-  literalMidWordUnderscores: true,
-  parseImgDimensions: true,
-  tables: true,
-  underline: true,
-  simpleLineBreaks: true,
-  strikethrough: true,
-  disableForced4SpacesIndentedSublists: true,
-  // extensions: [markdownUnderscoreExt()],
-});
-
-// converter.addExtension(markdownExclusionExt(), 'exclusion'); // TODO: Implement
+// TODO: These need to be moved to a proper service/store
+let saveCharactersPage = 0;
 
 export class CharactersBlock {
   readonly searchButton = document.getElementById('rm-button-search') as HTMLDivElement;
@@ -62,55 +38,53 @@ export class CharactersBlock {
       this.searchForm.classList.toggle('active');
     });
   }
+
+  async init() {
+    await refreshCharacters();
+  }
 }
 
 export async function refreshCharacters() {
-  const response = await fetch('/api/characters/all', {
-    method: 'POST',
-    headers: getRequestHeaders(),
-    body: JSON.stringify({}),
-  });
-  if (!response.ok) {
-    console.error('Failed to fetch characters:', response.statusText);
-    const errorData = await response.json();
-    if (errorData?.overflow) {
+  try {
+    const newCharacters = await fetchAllCharacters();
+
+    const resolvedActiveIndex = activeCharacterIndex.get();
+    const resolvedCharacters = characters.get();
+    const previousAvatar = resolvedActiveIndex !== null ? resolvedCharacters[resolvedActiveIndex]?.avatar : null;
+
+    for (let i = 0; i < newCharacters.length; i++) {
+      newCharacters[i].name = DOMPurify.sanitize(newCharacters[i].name);
+
+      // For dropped-in cards
+      if (!newCharacters[i].chat) {
+        newCharacters[i].chat = `${newCharacters[i].name} - ${humanizedDateTime()}`;
+      }
+
+      newCharacters[i].chat = String(newCharacters[i].chat);
+    }
+    characters.set(newCharacters);
+
+    if (previousAvatar) {
+      const newCharacterId = characters.get().findIndex((x) => x.avatar === previousAvatar);
+      if (newCharacterId >= 0) {
+        activeCharacterIndex.set(newCharacterId);
+        await selectCharacterById(newCharacterId, { switchMenu: false });
+      } else {
+        Toast.error('The active character is no longer available. The page will be refreshed to prevent data loss.'); // TODO: Add callback on toast hidden, so that we can wait for user to see the message
+        return location.reload();
+      }
+    }
+
+    await refreshGroups();
+    await printCharacters(true);
+  } catch (error: any) {
+    console.error('Failed to fetch characters:', error);
+    if (error.message === 'overflow') {
       Toast.warning(
         'Character data length limit reached. To resolve this, set "performance.lazyLoadCharacters" to "true" in config.yaml and restart the server.',
       );
     }
   }
-
-  const resolvedActiveIndex = activeCharacterIndex.get();
-  const resolvedCharacters = characters.get();
-  const previousAvatar = resolvedActiveIndex !== null ? resolvedCharacters[resolvedActiveIndex]?.avatar : null;
-  resolvedCharacters.splice(0, resolvedCharacters.length);
-
-  const newCharacters = (await response.json()) as Character[];
-  for (let i = 0; i < newCharacters.length; i++) {
-    newCharacters[i].name = DOMPurify.sanitize(newCharacters[i].name);
-
-    // For dropped-in cards
-    if (!newCharacters[i].chat) {
-      newCharacters[i].chat = `${newCharacters[i].name} - ${humanizedDateTime()}`;
-    }
-
-    newCharacters[i].chat = String(newCharacters[i].chat);
-    resolvedCharacters.push(newCharacters[i]);
-  }
-
-  if (previousAvatar) {
-    const newCharacterId = resolvedCharacters.findIndex((x) => x.avatar === previousAvatar);
-    if (newCharacterId >= 0) {
-      activeCharacterIndex.set(newCharacterId);
-      await selectCharacterById(newCharacterId, { switchMenu: false });
-    } else {
-      Toast.error('The active character is no longer available. The page will be refreshed to prevent data loss.'); // TODO: Add callback on toast hidden, so that we can wait for user to see the message
-      return location.reload();
-    }
-  }
-
-  await refreshGroups();
-  await printCharacters(true);
 }
 
 /**
@@ -145,7 +119,7 @@ export async function selectCharacterById(index: number, { switchMenu = true } =
       await clearChat();
       // cancelTtsPlay();
       resetSelectedGroup();
-      activeMessageEditIndex.set(null);
+      // activeMessageEditIndex.set(null); // This should be handled by clearChat or a dedicated chat reset function
       selectedButton.set('character_edit');
       activeCharacterIndex.set(index);
       chat.set([]);
@@ -190,28 +164,23 @@ export async function unshallowCharacter(characterIndex: number | null) {
 }
 
 export async function loadOneCharacter(avatar: string) {
-  const response = await fetch('/api/characters/get', {
-    method: 'POST',
-    headers: getRequestHeaders(),
-    body: JSON.stringify({
-      avatar_url: avatar,
-    }),
-  });
-
-  const resolvedCharacters = characters.get();
-
-  if (response.ok) {
-    const getData = await response.json();
+  try {
+    const getData = await fetchCharacterByAvatar(avatar);
     getData['name'] = DOMPurify.sanitize(getData['name']);
     getData['chat'] = String(getData['chat']);
 
+    const resolvedCharacters = characters.get();
     const indexOf = resolvedCharacters.findIndex((x) => x.avatar === avatar);
 
     if (indexOf !== -1) {
       resolvedCharacters[indexOf] = getData;
+      characters.set([...resolvedCharacters]);
     } else {
       Toast.error(`Character ${avatar} not found in the list`, undefined, { timeOut: 5000 });
     }
+  } catch (error) {
+    console.error(error);
+    Toast.error('Failed to load character details.');
   }
 }
 
@@ -253,10 +222,12 @@ export function select_selected_character(index: number, { switchMenu = true } =
     resolvedCharacters[index].data?.extensions?.world || '';
   (document.getElementById('creator_notes_textarea') as HTMLTextAreaElement).value =
     resolvedCharacters[index].data?.creator_notes || resolvedCharacters[index].creatorcomment || '';
-  (document.getElementById('creator_notes_spoiler') as HTMLDivElement).innerHTML = formatCreatorNotes(
-    resolvedCharacters[index].data?.creator_notes || resolvedCharacters[index].creatorcomment || '',
-    resolvedCharacters[index].avatar,
-  );
+  // (document.getElementById('creator_notes_spoiler') as HTMLDivElement).innerHTML = formatCreatorNotes(
+  //   resolvedCharacters[index].data?.creator_notes || resolvedCharacters[index].creatorcomment || '',
+  //   resolvedCharacters[index].avatar,
+  // ); // TODO: Implement formatCreatorNotes
+  (document.getElementById('creator_notes_spoiler') as HTMLDivElement).innerHTML =
+    resolvedCharacters[index].creatorcomment || '';
   (document.getElementById('character_version_textarea') as HTMLTextAreaElement).value =
     resolvedCharacters[index].data?.character_version || '';
   (document.getElementById('system_prompt_textarea') as HTMLTextAreaElement).value =
@@ -365,10 +336,11 @@ function select_rm_create({ switchMenu = true } = {}) {
   (document.getElementById('description_textarea') as HTMLTextAreaElement).value = resolvedCreateSave.description;
   (document.getElementById('character_world') as HTMLInputElement).value = resolvedCreateSave.world;
   (document.getElementById('creator_notes_textarea') as HTMLTextAreaElement).value = resolvedCreateSave.creator_notes;
-  document.getElementById('creator_notes_spoiler')!.innerHTML = formatCreatorNotes(
-    resolvedCreateSave.creator_notes,
-    '',
-  );
+  // document.getElementById('creator_notes_spoiler')!.innerHTML = formatCreatorNotes(
+  //   resolvedCreateSave.creator_notes,
+  //   '',
+  // ); // TODO: Implement formatCreatorNotes
+  document.getElementById('creator_notes_spoiler')!.innerHTML = resolvedCreateSave.creator_notes;
   (document.getElementById('post_history_instructions_textarea') as HTMLTextAreaElement).value =
     resolvedCreateSave.post_history_instructions;
   (document.getElementById('system_prompt_textarea') as HTMLTextAreaElement).value = resolvedCreateSave.system_prompt;
@@ -435,7 +407,7 @@ async function read_avatar_load(input: HTMLInputElement): Promise<void> {
       }
 
       cropData.set(dlg.value);
-      document.getElementById('avatar_load_preview')!.setAttribute('src', String(croppedImage));
+      document.getElementById('avatar_load_preview')!.setAttribute('src', String(croppedImage.value));
     } else {
       document.getElementById('avatar_load_preview')!.setAttribute('src', fileData);
     }
@@ -508,183 +480,6 @@ export function selectRightMenuWithAnimation(selectedMenuId: string) {
       });
     }
   });
-}
-
-/**
- * Formats creator notes in the message text.
- * @param {string} text Raw Markdown text
- * @param {string} avatarId Avatar ID
- * @returns {string} Formatted HTML text
- */
-export function formatCreatorNotes(text: string, avatarId: string) {
-  const preference = new StylesPreference(avatarId);
-  const sanitizeStyles = !preference.get();
-  const decodeStyleParam = { prefix: sanitizeStyles ? '#creator_notes_spoiler ' : '' };
-  /** @type {import('dompurify').Config & { MESSAGE_SANITIZE: boolean }} */
-  const config = {
-    RETURN_DOM: false,
-    RETURN_DOM_FRAGMENT: false,
-    RETURN_TRUSTED_TYPE: false,
-    MESSAGE_SANITIZE: true,
-    ADD_TAGS: ['custom-style'],
-  };
-
-  // let html = converter.makeHtml(substituteParams(text)); // TODO: Implement substituteParams
-  let html = converter.makeHtml(text);
-  html = encodeStyleTags(html);
-  html = DOMPurify.sanitize(html, config);
-  html = decodeStyleTags(html, decodeStyleParam);
-
-  return html;
-}
-
-/**
- * Replaces style tags in the message text with custom tags with encoded content.
- * @param {string} text
- * @returns {string} Encoded message text
- * @copyright https://github.com/kwaroran/risuAI
- */
-export function encodeStyleTags(text: string) {
-  const styleRegex = /<style>(.+?)<\/style>/gims;
-  return text.replaceAll(styleRegex, (_, match) => {
-    return `<custom-style>${encodeURIComponent(match)}</custom-style>`;
-  });
-}
-
-/**
- * Sanitizes custom style tags in the message text to prevent DOM pollution.
- * @param {string} text Message text
- * @param {object} options Options object
- * @param {string} options.prefix Prefix the selectors with this value
- * @returns {string} Sanitized message text
- * @copyright https://github.com/kwaroran/risuAI
- */
-export function decodeStyleTags(text: string, { prefix } = { prefix: '.mes_text ' }) {
-  const styleDecodeRegex = /<custom-style>(.+?)<\/custom-style>/gms;
-  const mediaAllowed = isExternalMediaAllowed();
-
-  function sanitizeRule(rule) {
-    if (Array.isArray(rule.selectors)) {
-      for (let i = 0; i < rule.selectors.length; i++) {
-        const selector = rule.selectors[i];
-        if (selector) {
-          rule.selectors[i] = prefix + sanitizeSelector(selector);
-        }
-      }
-    }
-    if (!mediaAllowed && Array.isArray(rule.declarations) && rule.declarations.length > 0) {
-      rule.declarations = rule.declarations.filter((declaration) => !declaration.value.includes('://'));
-    }
-  }
-
-  function sanitizeSelector(selector) {
-    // Handle pseudo-classes that can contain nested selectors
-    const pseudoClasses = ['has', 'not', 'where', 'is', 'matches', 'any'];
-    const pseudoRegex = new RegExp(`:(${pseudoClasses.join('|')})\\(([^)]+)\\)`, 'g');
-
-    // First, sanitize any nested selectors within pseudo-classes
-    selector = selector.replace(pseudoRegex, (match, pseudoClass, content) => {
-      // Recursively sanitize the content within the pseudo-class
-      const sanitizedContent = sanitizeSimpleSelector(content);
-      return `:${pseudoClass}(${sanitizedContent})`;
-    });
-
-    // Then sanitize the main selector parts
-    return sanitizeSimpleSelector(selector);
-  }
-
-  function sanitizeSimpleSelector(selector) {
-    // Split by spaces but preserve complex selectors
-    return selector
-      .split(/\s+/)
-      .map((part) => {
-        // Handle class selectors, but preserve pseudo-classes and other complex parts
-        return part.replace(/\.([\w-]+)/g, (match, className) => {
-          // Don't modify if it's already prefixed with 'custom-'
-          if (className.startsWith('custom-')) {
-            return match;
-          }
-          return `.custom-${className}`;
-        });
-      })
-      .join(' ');
-  }
-
-  function sanitizeRuleSet(ruleSet) {
-    if (Array.isArray(ruleSet.selectors) || Array.isArray(ruleSet.declarations)) {
-      sanitizeRule(ruleSet);
-    }
-
-    if (Array.isArray(ruleSet.rules)) {
-      ruleSet.rules = ruleSet.rules.filter((rule) => rule.type !== 'import');
-
-      for (const mediaRule of ruleSet.rules) {
-        sanitizeRuleSet(mediaRule);
-      }
-    }
-  }
-
-  return text.replaceAll(styleDecodeRegex, (_, style) => {
-    try {
-      let styleCleaned = decodeURIComponent(style).replaceAll(/<br\/>/g, '');
-      const ast = css.parse(styleCleaned);
-      const sheet = ast?.stylesheet;
-      if (sheet) {
-        sanitizeRuleSet(ast.stylesheet);
-      }
-      return `<style>${css.stringify(ast)}</style>`;
-    } catch (error) {
-      return `CSS ERROR: ${error}`;
-    }
-  });
-}
-
-/**
- * Class to manage style preferences for characters.
- */
-class StylesPreference {
-  private avatarId: string | null;
-
-  /**
-   * Creates a new StylesPreference instance.
-   * @param {string|null} avatarId - The avatar ID of the character
-   */
-  constructor(avatarId: string | null) {
-    this.avatarId = avatarId;
-  }
-
-  /**
-   * Gets the account storage key for the style preference.
-   */
-  get key() {
-    return `AllowGlobalStyles-${this.avatarId}`;
-  }
-
-  /**
-   * Checks if a preference exists for this character.
-   * @returns {boolean} True if preference exists, false otherwise
-   */
-  exists() {
-    return this.avatarId ? accountStorage.getItem(this.key) !== null : true; // No character == assume preference is set
-  }
-
-  /**
-   * Gets the current style preference.
-   * @returns {boolean} True if global styles are allowed, false otherwise
-   */
-  get() {
-    return this.avatarId ? accountStorage.getItem(this.key) === 'true' : false; // Always disabled when creating a new character
-  }
-
-  /**
-   * Sets the global styles preference.
-   * @param {boolean} allowed - Whether global styles are allowed
-   */
-  set(allowed: boolean) {
-    if (this.avatarId) {
-      accountStorage.setItem(this.key, String(allowed));
-    }
-  }
 }
 
 export function isExternalMediaAllowed() {
@@ -894,18 +689,14 @@ function getCharacterSource(index: number) {
 }
 
 async function refreshGroups() {
-  const response = await fetch('/api/groups/all', {
-    method: 'POST',
-    headers: getRequestHeaders(),
-  });
-
-  if (response.ok) {
-    const data = (await response.json()) as Group[];
+  try {
+    const data = await fetchAllGroups();
     // @ts-ignore
-    groups.set(data.sort((a, b) => a.id - b.id));
+    const sortedGroups = data.sort((a, b) => a.id - b.id);
 
+    const resolvedCharacters = characters.get();
     // Convert groups to new format
-    for (const group of groups.get()) {
+    for (const group of sortedGroups) {
       if (typeof group.id === 'number') {
         group.id = String(group.id);
       }
@@ -916,8 +707,8 @@ async function refreshGroups() {
         group.chat_id = group.id;
         group.chats = [group.id];
         group.members = group.members
-          .map((x) => characters.get().find((y) => y.name == x)?.avatar)
-          .filter((x) => x !== undefined)
+          .map((x) => resolvedCharacters.find((y) => y.name == x)?.avatar)
+          .filter((x): x is string => x !== undefined)
           .filter(onlyUnique);
       }
       if (group.past_metadata == undefined) {
@@ -930,6 +721,9 @@ async function refreshGroups() {
         group.chats = group.chats.map((x) => String(x));
       }
     }
+    groups.set(sortedGroups);
+  } catch (error) {
+    console.error('Failed to refresh groups:', error);
   }
 }
 
@@ -965,280 +759,71 @@ export async function printCharacters(fullRefresh = false) {
   // applyTagsOnCharacterSelect(); // TODO: Implement
   // applyTagsOnGroupSelect(); // TODO: Implement
 
-  const entities = getEntitiesList({ doFilter: true });
+  // const entities = getEntitiesList({ doFilter: true }); // TODO: Port this
+  const entities: any[] = []; // Placeholder
 
-  const pageSize = Number(accountStorage.getItem(storageKey)) || per_page_default;
+  const pageSize = Number(accountStorage.getItem(storageKey)) || 25; // TODO: Replace per_page_default with a constant
   const sizeChangerOptions = [10, 25, 50, 100, 250, 500, 1000];
-  $('#rm_print_characters_pagination').pagination({
-    dataSource: entities,
-    pageSize,
-    pageRange: 1,
-    pageNumber: saveCharactersPage || 1,
-    position: 'top',
-    showPageNumbers: false,
-    showSizeChanger: true,
-    prevText: '<',
-    nextText: '>',
-    formatNavigator: PAGINATION_TEMPLATE,
-    formatSizeChanger: renderPaginationDropdown(pageSize, sizeChangerOptions),
-    showNavigator: true,
-    callback: async function (/** @type {Entity[]} */ data) {
-      $(listId).empty();
-      if (powerUser.get().bogus_folders && isBogusFolderOpen()) {
-        $(listId).append(getBackBlock());
-      }
-      if (!data.length) {
-        const emptyBlock = await getEmptyBlock();
-        $(listId).append(emptyBlock);
-      }
-      let displayCount = 0;
-      for (const i of data) {
-        switch (i.type) {
-          case 'character':
-            $(listId).append(getCharacterBlock(i.item, i.id));
-            displayCount++;
-            break;
-          case 'group':
-            $(listId).append(getGroupBlock(i.item));
-            displayCount++;
-            break;
-          case 'tag':
-            $(listId).append(getTagBlock(i.item, i.entities, i.hidden, i.isUseless));
-            break;
-        }
-      }
+  // $('#rm_print_characters_pagination').pagination({ // TODO: Port pagination
+  //   dataSource: entities,
+  //   pageSize,
+  //   pageRange: 1,
+  //   pageNumber: saveCharactersPage || 1,
+  //   position: 'top',
+  //   showPageNumbers: false,
+  //   showSizeChanger: true,
+  //   prevText: '<',
+  //   nextText: '>',
+  //   formatNavigator: PAGINATION_TEMPLATE,
+  //   formatSizeChanger: renderPaginationDropdown(pageSize, sizeChangerOptions),
+  //   showNavigator: true,
+  //   callback: async function (/** @type {Entity[]} */ data) {
+  //     $(listId).empty();
+  //     if (powerUser.get().bogus_folders && isBogusFolderOpen()) {
+  //       $(listId).append(getBackBlock());
+  //     }
+  //     if (!data.length) {
+  //       const emptyBlock = await getEmptyBlock();
+  //       $(listId).append(emptyBlock);
+  //     }
+  //     let displayCount = 0;
+  //     for (const i of data) {
+  //       switch (i.type) {
+  //         case 'character':
+  //           $(listId).append(getCharacterBlock(i.item, i.id));
+  //           displayCount++;
+  //           break;
+  //         case 'group':
+  //           $(listId).append(getGroupBlock(i.item));
+  //           displayCount++;
+  //           break;
+  //         case 'tag':
+  //           $(listId).append(getTagBlock(i.item, i.entities, i.hidden, i.isUseless));
+  //           break;
+  //       }
+  //     }
 
-      const hidden = characters.length + groups.length - displayCount;
-      if (hidden > 0 && entitiesFilter.hasAnyFilter()) {
-        const hiddenBlock = await getHiddenBlock(hidden);
-        $(listId).append(hiddenBlock);
-      }
-      localizePagination($('#rm_print_characters_pagination'));
+  //     const hidden = characters.length + groups.length - displayCount;
+  //     if (hidden > 0 && entitiesFilter.hasAnyFilter()) {
+  //       const hiddenBlock = await getHiddenBlock(hidden);
+  //       $(listId).append(hiddenBlock);
+  //     }
+  //     localizePagination($('#rm_print_characters_pagination'));
 
-      // eventSource.emit(event_types.CHARACTER_PAGE_LOADED); // TODO: Implement
-    },
-    afterSizeSelectorChange: function (e, size) {
-      accountStorage.setItem(storageKey, e.target.value);
-      paginationDropdownChangeHandler(e, size);
-    },
-    afterPaging: function (e) {
-      saveCharactersPage = e;
-    },
-    afterRender: function () {
-      $(listId).scrollTop(currentScrollTop);
-    },
-  });
+  //     // eventSource.emit(event_types.CHARACTER_PAGE_LOADED); // TODO: Implement
+  //   },
+  //   afterSizeSelectorChange: function (e, size) {
+  //     accountStorage.setItem(storageKey, e.target.value);
+  //     paginationDropdownChangeHandler(e, size);
+  //   },
+  //   afterPaging: function (e) {
+  //     saveCharactersPage = e;
+  //   },
+  //   afterRender: function () {
+  //     $(listId).scrollTop(currentScrollTop);
+  //   },
+  // });
 
-  favsToHotswap();
-  updatePersonaConnectionsAvatarList();
-}
-
-/**
- * Builds the full list of all entities available
- *
- * They will be correctly marked and filtered.
- *
- * @param {object} param0 - Optional parameters
- * @param {boolean} [param0.doFilter] - Whether this entity list should already be filtered based on the global filters
- * @param {boolean} [param0.doSort] - Whether the entity list should be sorted when returned
- * @returns {Entity[]} All entities
- */
-export function getEntitiesList({ doFilter = false, doSort = true } = {}) {
-  const resolvedCharacters = characters.get();
-  const resolvedGroups = groups.get();
-
-  let entities = [
-    ...resolvedCharacters.map((item, index) => characterToEntity(item, index)),
-    ...resolvedGroups.map((item) => groupToEntity(item)),
-    // ...(power_user.bogus_folders ? tags.filter(isBogusFolder).sort(compareTagsForSort).map(item => tagToEntity(item)) : []), // TODO: Implement
-  ];
-
-  // We need to do multiple filter runs in a specific order, otherwise different settings might override each other
-  // and screw up tags and search filter, sub lists or similar.
-  // The specific filters are written inside the "filterByTagState" method and its different parameters.
-  // Generally what we do is the following:
-  //   1. First swipe over the list to remove the most obvious things
-  //   2. Build sub entity lists for all folders, filtering them similarly to the second swipe
-  //   3. We do the last run, where global filters are applied, and the search filters last
-
-  // First run filters, that will hide what should never be displayed
-  if (doFilter) {
-    entities = filterByTagState(entities);
-  }
-
-  // Run over all entities between first and second filter to save some states
-  for (const entity of entities) {
-    // For folders, we remember the sub entities so they can be displayed later, even if they might be filtered
-    // Those sub entities should be filtered and have the search filters applied too
-    if (entity.type === 'tag') {
-      let subEntities = filterByTagState(entities, { subForEntity: entity, filterHidden: false });
-      const subCount = subEntities.length;
-      subEntities = filterByTagState(entities, { subForEntity: entity });
-      if (doFilter) {
-        // sub entities filter "hacked" because folder filter should not be applied there, so even in "only folders" mode characters show up
-        subEntities = entitiesFilter.applyFilters(subEntities, {
-          clearScoreCache: false,
-          tempOverrides: { [FILTER_TYPES.FOLDER]: FILTER_STATES.UNDEFINED },
-          clearFuzzySearchCaches: false,
-        });
-      }
-      if (doSort) {
-        sortEntitiesList(subEntities, false);
-      }
-      entity.entities = subEntities;
-      entity.hidden = subCount - subEntities.length;
-    }
-  }
-
-  // Second run filters, hiding whatever should be filtered later
-  if (doFilter) {
-    const beforeFinalEntities = filterByTagState(entities, { globalDisplayFilters: true });
-    entities = entitiesFilter.applyFilters(beforeFinalEntities, { clearFuzzySearchCaches: false });
-
-    // Magic for folder filter. If that one is enabled, and no folders are display anymore, we remove that filter to actually show the characters.
-    if (
-      isFilterState(entitiesFilter.getFilterData(FILTER_TYPES.FOLDER), FILTER_STATES.SELECTED) &&
-      entities.filter((x) => x.type == 'tag').length == 0
-    ) {
-      entities = entitiesFilter.applyFilters(beforeFinalEntities, {
-        tempOverrides: { [FILTER_TYPES.FOLDER]: FILTER_STATES.UNDEFINED },
-        clearFuzzySearchCaches: false,
-      });
-    }
-  }
-
-  // Final step, updating some properties after the last filter run
-  const nonTagEntitiesCount = entities.filter((entity) => entity.type !== 'tag').length;
-  for (const entity of entities) {
-    if (entity.type === 'tag') {
-      if (entity.entities?.length == nonTagEntitiesCount) entity.isUseless = true;
-    }
-  }
-
-  // Sort before returning if requested
-  if (doSort) {
-    sortEntitiesList(entities, false);
-  }
-  entitiesFilter.clearFuzzySearchCaches();
-  return entities;
-}
-
-/**
- * Converts the given character to its entity representation
- *
- * @param {Character} character - The character
- * @param {string|number} index - The id of this character
- * @returns {Entity} The entity for this character
- */
-export function characterToEntity(character: Character, index: number): Entity {
-  return { item: character, id: index, type: 'character' };
-}
-
-/**
- * Converts the given group to its entity representation
- *
- * @param {Group} group - The group
- * @returns {Entity} The entity for this group
- */
-export function groupToEntity(group: Group): Entity {
-  return { item: group, id: group.id, type: 'group' };
-}
-
-/**
- * Converts the given tag to its entity representation
- */
-export function tagToEntity(tag: Tag): Entity {
-  return { item: structuredClone(tag), id: tag.id, type: 'tag', entities: [] };
-}
-
-/**
- * Applies the basic filter for the current state of the tags and their selection on an entity list.
- * @param {Array<Object>} entities List of entities for display, consisting of tags, characters and groups.
- * @param {Object} param1 Optional parameters, explained below.
- * @param {Boolean} [param1.globalDisplayFilters] When enabled, applies the final filter for the global list. Icludes filtering out entities in closed/hidden folders and empty folders.
- * @param {Object} [param1.subForEntity] When given an entity, the list of entities gets filtered specifically for that one as a "sub list", filtering out other tags, elements not tagged for this and hidden elements.
- * @param {Boolean} [param1.filterHidden] Optional switch with which filtering out hidden items (from closed folders) can be disabled.
- * @returns The filtered list of entities
- */
-function filterByTagState(
-  entities: Entity[],
-  { globalDisplayFilters = false, subForEntity = undefined, filterHidden = true } = {},
-) {
-  const filterData = structuredClone(entitiesFilter.getFilterData(FILTER_TYPES.TAG));
-
-  entities = entities.filter((entity) => {
-    if (entity.type === 'tag') {
-      // Remove folders that are already filtered on
-      if (filterData.selected.includes(entity.id) || filterData.excluded.includes(entity.id)) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  if (globalDisplayFilters) {
-    // Prepare some data for caching and performance
-    const closedFolders = entities.filter(
-      (x) => x.type === 'tag' && TAG_FOLDER_TYPES[x.item.folder_type] === TAG_FOLDER_TYPES.CLOSED,
-    );
-
-    entities = entities.filter((entity) => {
-      // Hide entities that are in a closed folder, unless that one is opened
-      if (
-        filterHidden &&
-        entity.type !== 'tag' &&
-        closedFolders.some((f) => entitiesFilter.isElementTagged(entity, f.id) && !filterData.selected.includes(f.id))
-      ) {
-        return false;
-      }
-
-      // Hide folders that have 0 visible sub entities after the first filtering round, unless we are inside a search via search term.
-      // Then we want to display folders that mach too, even if the chars inside don't match the search.
-      if (entity.type === 'tag') {
-        return entity.entities.length > 0 || entitiesFilter.getFilterData(FILTER_TYPES.SEARCH);
-      }
-
-      return true;
-    });
-  }
-
-  if (subForEntity !== undefined && subForEntity.type === 'tag') {
-    entities = filterTagSubEntities(subForEntity.item, entities, { filterHidden: filterHidden });
-  }
-
-  return entities;
-}
-
-/**
- * Filter a a list of entities based on a given tag, returning all entities that represent "sub entities"
- */
-function filterTagSubEntities(tag: Tag, entities: Entity[], { filterHidden = true } = {}) {
-  const filterData = structuredClone(entitiesFilter.getFilterData(FILTER_TYPES.TAG));
-
-  // @ts-ignore
-  const closedFolders = entities.filter(
-    (x) => x.type === 'tag' && TAG_FOLDER_TYPES[x.item.folder_type] === TAG_FOLDER_TYPES.CLOSED,
-  );
-
-  entities = entities.filter((sub) => {
-    // Filter out all tags and and all who isn't tagged for this item
-    if (sub.type === 'tag' || !entitiesFilter.isElementTagged(sub, tag.id)) {
-      return false;
-    }
-
-    // Hide entities that are in a closed folder, unless the closed folder is opened or we display a closed folder
-    if (
-      filterHidden &&
-      sub.type !== 'tag' &&
-      TAG_FOLDER_TYPES[tag.folder_type] !== TAG_FOLDER_TYPES.CLOSED &&
-      closedFolders.some((f) => entitiesFilter.isElementTagged(sub, f.id) && !filterData.selected.includes(f.id))
-    ) {
-      return false;
-    }
-
-    return true;
-  });
-
-  return entities;
+  // favsToHotswap(); // TODO: Implement
+  // updatePersonaConnectionsAvatarList(); // TODO: Implement
 }

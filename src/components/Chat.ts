@@ -1,25 +1,20 @@
+import { activeCharacterIndex, activeCharacterName, characters } from '../stores/character.store';
 import {
-  activeCharacterIndex,
-  activeCharacterName,
-  activeGroupId,
-  activeMessageEditIndex,
-  characters,
   chat,
   chatCreateDate,
   chatMetadata,
+  activeMessageEditIndex,
   chatSaveTimeout,
-  extensionPrompts,
-  groups,
-  isDeleteMode,
-  isGroupGenerating,
-  itemizedPrompts,
-  loadItemizedPrompts,
-  saveItemizedPrompts,
   saveMetadataTimeout,
-  type ChatMessage,
-} from '../state/Store';
-import { getMessageTimeStamp, humanizedDateTime, uuidv4 } from '../utils';
+} from '../stores/chat.store';
+import { activeGroupId, groups, isGroupGenerating } from '../stores/group.store';
+import { isDeleteMode } from '../stores/ui.store';
+import { extensionPrompts, itemizedPrompts, loadItemizedPrompts, saveItemizedPrompts } from '../stores/prompt.store';
+import { getMessageTimeStamp, humanizedDateTime } from '../utils/date';
 import { select_selected_character, unshallowCharacter } from './RightMenu/CharactersBlock';
+import { fetchChat } from '../api/chat';
+import type { ChatMessage } from '../types';
+import { uuidv4 } from '../utils/common';
 
 /**
  * Cancels the debounced chat save if it is currently pending.
@@ -114,32 +109,22 @@ export async function refreshChat() {
       throw new Error('No active character selected');
     }
 
-    const activeChat = chat.get();
-    const activeChatMetadata = chatMetadata.get();
-
+    const activeCharacter = resolvedCharacters[resolvedActiveCharacterIndex];
     await unshallowCharacter(resolvedActiveCharacterIndex);
 
-    const response = await fetch('/api/chats/get', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ch_name: resolvedCharacters[resolvedActiveCharacterIndex].name,
-        file_name: resolvedCharacters[resolvedActiveCharacterIndex].chat,
-        avatar_url: resolvedCharacters[resolvedActiveCharacterIndex].avatar,
-        chat_metadata: activeChatMetadata,
-      }),
-    }).then((res) => res.json());
-    if (response[0] !== undefined) {
-      activeChat.splice(0, activeChat.length, ...response);
-      // @ts-ignore
-      chatCreateDate.set(activeChat[0]['create_date'] ?? null);
-      // @ts-ignore
-      chatMetadata.set(activeChat[0]['chat_metadata'] ?? {});
+    const response = await fetchChat(activeCharacter, chatMetadata.get());
 
-      activeChat.shift();
-      // activeChat.forEach(ensureMessageMediaIsArray); // TODO: Implement
+    const currentChat = chat.get();
+    if (response[0] !== undefined) {
+      currentChat.splice(0, currentChat.length, ...response);
+      // @ts-ignore
+      chatCreateDate.set(currentChat[0]['create_date'] ?? null);
+      // @ts-ignore
+      chatMetadata.set(currentChat[0]['chat_metadata'] ?? {});
+
+      currentChat.shift();
+      chat.set(currentChat);
+      // currentChat.forEach(ensureMessageMediaIsArray); // TODO: Implement
     } else {
       chatCreateDate.set(humanizedDateTime());
     }
