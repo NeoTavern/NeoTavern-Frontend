@@ -113,7 +113,7 @@ onMounted(() => {
               <i class="character-item__fav-icon fa-solid fa-star" v-if="(entity.item as Character).fav"></i>
             </div>
             <div class="character-item__description">
-              {{ (entity.item as Character).description }}
+              {{ (entity.item as Character).data?.creator_notes || '' }}
             </div>
             <div class="character-item__tags" v-if="(entity.item as Character).tags?.length">
               <span v-for="tag in (entity.item as Character).tags" :key="tag" class="tag">{{ tag }}</span>

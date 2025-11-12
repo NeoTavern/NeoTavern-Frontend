@@ -14,7 +14,10 @@ export interface Character {
   json_data?: string;
   chat?: string;
   shallow?: boolean;
-  data?: { alternate_greetings?: string[] } & Record<string, any>;
+  data?: {
+    alternate_greetings?: string[];
+    creator_notes?: string;
+  } & Record<string, any>;
 }
 
 export interface Group {
