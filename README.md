@@ -42,20 +42,20 @@ pnpm build
 Node usage:
 
 ```ts
-import { add, greet, getSecureRandomId } from "@bgub/ts-base";
+import { add, greet, getSecureRandomId } from '@bgub/ts-base';
 
 console.log(add(2, 3));
-console.log(greet("Ada"));
+console.log(greet('Ada'));
 console.log(getSecureRandomId());
 ```
 
 Browser usage (bundled or via import maps):
 
 ```ts
-import { add, greet, getSecureRandomId } from "@bgub/ts-base/browser";
+import { add, greet, getSecureRandomId } from '@bgub/ts-base/browser';
 
 add(1, 2);
-greet("Linus");
+greet('Linus');
 getSecureRandomId();
 ```
 

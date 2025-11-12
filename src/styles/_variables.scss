@@ -86,10 +86,26 @@ $base-border-radius-rounded: 10px;
   --theme-checkbox-bg-b: 210;
 
   // Calculates a contrasting tick color (black/white) based on luminance.
-  --theme-checkbox-tick-color-value: calc((((((var(--theme-checkbox-bg-r) * 299) + (var(--theme-checkbox-bg-g) * 587) + (var(--theme-checkbox-bg-b) * 114)) / 1000) - 128) * -1000));
-  --theme-checkbox-tick-color: rgb(var(--theme-checkbox-tick-color-value),
-      var(--theme-checkbox-tick-color-value),
-      var(--theme-checkbox-tick-color-value));
+  --theme-checkbox-tick-color-value: calc(
+    (
+      (
+          (
+              (
+                  (var(--theme-checkbox-bg-r) * 299) + (var(--theme-checkbox-bg-g) * 587) +
+                    (var(--theme-checkbox-bg-b) * 114)
+                ) /
+                1000
+            ) -
+            128
+        ) *
+        -1000
+    )
+  );
+  --theme-checkbox-tick-color: rgb(
+    var(--theme-checkbox-tick-color-value),
+    var(--theme-checkbox-tick-color-value),
+    var(--theme-checkbox-tick-color-value)
+  );
 
   // --- Layout & Sizing ---
   --layout-panel-width: 50vw;

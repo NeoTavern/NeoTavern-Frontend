@@ -4,7 +4,7 @@ import ChatInterface from './components/Chat/ChatInterface.vue';
 </script>
 
 <template>
-  <div id="background" style="background-image: url('backgrounds/landscape postapoc.jpg');"></div>
+  <div id="background" style="background-image: url('backgrounds/landscape postapoc.jpg')"></div>
   <TopBar />
   <ChatInterface />
 </template>

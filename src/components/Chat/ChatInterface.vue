@@ -10,11 +10,7 @@
         <div class="chat-form__inner">
           <div class="chat-form__actions-left">
             <button type="button" class="chat-form__button fa-solid fa-bars" title="Options"></button>
-            <button
-              type="button"
-              class="chat-form__button fa-solid fa-magic-wand-sparkles"
-              title="Extensions"
-            ></button>
+            <button type="button" class="chat-form__button fa-solid fa-magic-wand-sparkles" title="Extensions"></button>
           </div>
           <textarea id="chat-input" placeholder="Type a message, or /? for help" autocomplete="off"></textarea>
           <div class="chat-form__actions-right">

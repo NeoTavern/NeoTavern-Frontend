@@ -7,9 +7,9 @@
   height: var(--top-bar-height);
   position: absolute;
   box-shadow: 0 2px 20px 0 var(--black-70a);
-  backdrop-filter: blur(var(--blur-strength)px);
+  backdrop-filter: blur(var(--blur-strength) px);
   background-color: var(--theme-background-tint);
-  -webkit-backdrop-filter: blur(var(--blur-strength)px);
+  -webkit-backdrop-filter: blur(var(--blur-strength) px);
   z-index: 3005;
 }
 

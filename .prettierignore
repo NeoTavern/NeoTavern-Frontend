@@ -1,0 +1,22 @@
+# From .gitignore
+node_modules
+coverage
+.nyc_output
+.DS_Store
+*.log
+.vscode
+.idea
+compiled
+.awcache
+.rpt2_cache
+docs
+dist
+package-lock.json
+yarn.lock
+repomix-output.xml
+
+# Build output
+dist
+
+# Coverage
+coverage

@@ -26,14 +26,14 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "pnpm"
+          node-version: '20'
+          cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
 
-      # Biome
-      - uses: biomejs/setup-biome@v2
-      - run: biome ci .
+      # Lint & Format
+      - run: pnpm format:check
+      - run: pnpm lint
 
       # Build
       - run: pnpm build

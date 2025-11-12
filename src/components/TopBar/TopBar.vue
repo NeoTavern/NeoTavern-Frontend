@@ -20,7 +20,11 @@ function toggleDrawer(drawerName: string) {
     <div class="top-bar__nav">
       <div class="nav-item">
         <button type="button" class="nav-item__toggle" @click="toggleDrawer('ai-config')">
-          <div class="nav-item__icon fa-solid fa-sliders fa-fw" :class="{ active: activeDrawer === 'ai-config' }" title="AI Response Configuration"></div>
+          <div
+            class="nav-item__icon fa-solid fa-sliders fa-fw"
+            :class="{ active: activeDrawer === 'ai-config' }"
+            title="AI Response Configuration"
+          ></div>
         </button>
         <div class="nav-item__content drawer-pane--fill-left" :class="{ active: activeDrawer === 'ai-config' }">
           <!-- AI Config Content -->
@@ -28,7 +32,11 @@ function toggleDrawer(drawerName: string) {
       </div>
       <div class="nav-item">
         <button type="button" class="nav-item__toggle" @click="toggleDrawer('api-status')">
-          <div class="nav-item__icon fa-solid fa-plug fa-fw" :class="{ active: activeDrawer === 'api-status' }" title="API Connections"></div>
+          <div
+            class="nav-item__icon fa-solid fa-plug fa-fw"
+            :class="{ active: activeDrawer === 'api-status' }"
+            title="API Connections"
+          ></div>
         </button>
         <div class="nav-item__content" :class="{ active: activeDrawer === 'api-status' }">
           <!-- API Status Content -->
@@ -36,7 +44,11 @@ function toggleDrawer(drawerName: string) {
       </div>
       <div class="nav-item">
         <button type="button" class="nav-item__toggle" @click="toggleDrawer('formatting')">
-          <div class="nav-item__icon fa-solid fa-font fa-fw" :class="{ active: activeDrawer === 'formatting' }" title="AI Response Formatting"></div>
+          <div
+            class="nav-item__icon fa-solid fa-font fa-fw"
+            :class="{ active: activeDrawer === 'formatting' }"
+            title="AI Response Formatting"
+          ></div>
         </button>
         <div class="nav-item__content" :class="{ active: activeDrawer === 'formatting' }">
           <!-- Formatting Content -->
@@ -44,7 +56,11 @@ function toggleDrawer(drawerName: string) {
       </div>
       <div class="nav-item">
         <button type="button" class="nav-item__toggle" @click="toggleDrawer('world-info')">
-          <div class="nav-item__icon fa-solid fa-book-atlas fa-fw" :class="{ active: activeDrawer === 'world-info' }" title="World Info"></div>
+          <div
+            class="nav-item__icon fa-solid fa-book-atlas fa-fw"
+            :class="{ active: activeDrawer === 'world-info' }"
+            title="World Info"
+          ></div>
         </button>
         <div class="nav-item__content" :class="{ active: activeDrawer === 'world-info' }">
           <!-- World Info Content -->
@@ -52,7 +68,11 @@ function toggleDrawer(drawerName: string) {
       </div>
       <div class="nav-item">
         <button type="button" class="nav-item__toggle" @click="toggleDrawer('user-settings')">
-          <div class="nav-item__icon fa-solid fa-user-cog fa-fw" :class="{ active: activeDrawer === 'user-settings' }" title="User Settings"></div>
+          <div
+            class="nav-item__icon fa-solid fa-user-cog fa-fw"
+            :class="{ active: activeDrawer === 'user-settings' }"
+            title="User Settings"
+          ></div>
         </button>
         <div class="nav-item__content" :class="{ active: activeDrawer === 'user-settings' }">
           <!-- User Settings Content -->
@@ -60,7 +80,11 @@ function toggleDrawer(drawerName: string) {
       </div>
       <div class="nav-item">
         <button type="button" class="nav-item__toggle" @click="toggleDrawer('backgrounds')">
-          <div class="nav-item__icon fa-solid fa-panorama fa-fw" :class="{ active: activeDrawer === 'backgrounds' }" title="Change Background Image"></div>
+          <div
+            class="nav-item__icon fa-solid fa-panorama fa-fw"
+            :class="{ active: activeDrawer === 'backgrounds' }"
+            title="Change Background Image"
+          ></div>
         </button>
         <div class="nav-item__content" :class="{ active: activeDrawer === 'backgrounds' }">
           <!-- Backgrounds Content -->
@@ -68,7 +92,11 @@ function toggleDrawer(drawerName: string) {
       </div>
       <div class="nav-item">
         <button type="button" class="nav-item__toggle" @click="toggleDrawer('extensions')">
-          <div class="nav-item__icon fa-solid fa-cubes fa-fw" :class="{ active: activeDrawer === 'extensions' }" title="Extensions"></div>
+          <div
+            class="nav-item__icon fa-solid fa-cubes fa-fw"
+            :class="{ active: activeDrawer === 'extensions' }"
+            title="Extensions"
+          ></div>
         </button>
         <div class="nav-item__content" :class="{ active: activeDrawer === 'extensions' }">
           <!-- Extensions Content -->
@@ -76,7 +104,11 @@ function toggleDrawer(drawerName: string) {
       </div>
       <div class="nav-item">
         <button type="button" class="nav-item__toggle" @click="toggleDrawer('persona')">
-          <div class="nav-item__icon fa-solid fa-face-smile fa-fw" :class="{ active: activeDrawer === 'persona' }" title="Persona Management"></div>
+          <div
+            class="nav-item__icon fa-solid fa-face-smile fa-fw"
+            :class="{ active: activeDrawer === 'persona' }"
+            title="Persona Management"
+          ></div>
         </button>
         <div class="nav-item__content" :class="{ active: activeDrawer === 'persona' }">
           <!-- Persona Management Content -->
@@ -84,7 +116,11 @@ function toggleDrawer(drawerName: string) {
       </div>
       <div class="nav-item">
         <button type="button" class="nav-item__toggle" @click="toggleDrawer('character')">
-          <div class="nav-item__icon fa-solid fa-address-card fa-fw" :class="{ active: activeDrawer === 'character' }" title="Character Management"></div>
+          <div
+            class="nav-item__icon fa-solid fa-address-card fa-fw"
+            :class="{ active: activeDrawer === 'character' }"
+            title="Character Management"
+          ></div>
         </button>
         <div class="nav-item__content drawer-pane--fill-right" :class="{ active: activeDrawer === 'character' }">
           <RightMenu />
