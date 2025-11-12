@@ -46,14 +46,14 @@ onMounted(() => {
     </div>
   </div>
   <div id="right-menu-panel" class="right-menu-panel">
-    <template v-if="showCharacterList">
+    <div v-show="showCharacterList" class="u-flex-col u-w-full" style="height: 100%">
       <div class="right-menu-panel__header">
         <div class="right-menu-panel__actions">
           <div title="Create New Character" class="menu-button fa-solid fa-user-plus"></div>
           <div title="Import Character from File" class="menu-button fa-solid fa-file-import"></div>
           <div title="Import content from external URL" class="menu-button fa-solid fa-cloud-arrow-down"></div>
           <div title="Create New Chat Group" class="menu-button fa-solid fa-users-gear"></div>
-          <div>
+          <div id="extension-buttons-container">
             <!-- Container for additional buttons added by extensions -->
           </div>
           <select id="character-sort-order" class="text-pole" title="Characters sorting order">
@@ -136,7 +136,7 @@ onMounted(() => {
           </div>
         </template>
       </div>
-    </template>
-    <CharacterEditForm v-else />
+    </div>
+    <CharacterEditForm v-show="!showCharacterList" />
   </div>
 </template>

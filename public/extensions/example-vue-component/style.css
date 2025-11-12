@@ -1,0 +1,12 @@
+.example-vue-component {
+  border: 1px dashed #ccc;
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+.example-vue-component:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}

@@ -3,9 +3,13 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import { useAuthStore } from './stores/auth.store';
 import { toast } from './composables/useToast';
+import * as Vue from 'vue';
 
 import './styles/main.scss';
 import '@fortawesome/fontawesome-free/css/all.min.css';
+
+// Expose Vue for extensions that might need to mount their own components
+(window as any).Vue = Vue;
 
 async function initializeApp() {
   const app = createApp(App);

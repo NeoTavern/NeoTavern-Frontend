@@ -2,7 +2,7 @@ import { sanitizeSelector } from './dom';
 
 export function loadScript(name: string, jsFile: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const url = `/scripts/extensions/${name}/${jsFile}`;
+    const url = `/extensions/${name}/${jsFile}`;
     const id = sanitizeSelector(`${name}-js`);
     if (document.getElementById(id)) {
       resolve();
@@ -30,7 +30,7 @@ export function unloadScript(name: string) {
 
 export function loadStyle(name: string, cssFile: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const url = `/scripts/extensions/${name}/${cssFile}`;
+    const url = `/extensions/${name}/${cssFile}`;
     const id = sanitizeSelector(`${name}-css`);
     if (document.getElementById(id)) {
       resolve();

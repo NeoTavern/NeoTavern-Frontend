@@ -1,0 +1,7 @@
+{
+  "name": "example-vue-component",
+  "display_name": "Example Vue Component",
+  "description": "Mounts a Vue component in the right menu.",
+  "js": "script.js",
+  "css": "style.css"
+}
