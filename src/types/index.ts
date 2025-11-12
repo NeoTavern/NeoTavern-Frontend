@@ -114,3 +114,44 @@ export interface CreateSave {
 
 export type MenuType = 'character_edit' | 'characters' | 'settings' | 'create' | 'group_chats';
 export type ThumbnailType = 'bg' | 'avatar' | 'persona';
+
+// --- Popup Types ---
+export enum POPUP_TYPE {
+  TEXT = 1,
+  CONFIRM = 2,
+  INPUT = 3,
+  DISPLAY = 4,
+  CROP = 5,
+}
+
+export enum POPUP_RESULT {
+  AFFIRMATIVE = 1,
+  NEGATIVE = 0,
+  CANCELLED = -1,
+}
+
+export interface CustomPopupButton {
+  text: string;
+  result?: number;
+  classes?: string[] | string;
+  action?: () => void;
+}
+
+export interface CustomPopupInput {
+  id: string;
+  label: string;
+  tooltip?: string;
+  defaultState?: boolean | string;
+  type?: 'checkbox' | 'text';
+}
+
+export interface PopupOptions {
+  okButton?: string | boolean;
+  cancelButton?: string | boolean;
+  rows?: number;
+  wide?: boolean;
+  large?: boolean;
+  customButtons?: CustomPopupButton[];
+  customInputs?: CustomPopupInput[];
+  defaultResult?: number;
+}

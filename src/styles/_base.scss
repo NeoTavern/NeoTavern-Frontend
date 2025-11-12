@@ -138,20 +138,18 @@ select.text-pole {
   background-color: var(--theme-background-tint);
   border: 1px solid var(--theme-border-color);
   border-radius: 5px;
-  padding: 8px 15px;
+  padding: 3px 5px;
   cursor: pointer;
   transition: background-color var(--animation-duration-2x);
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
+  filter: grayscale(0.5);
+  width: min-content;
 
   &:not(.disabled):not([disabled]):hover,
   &:not(.disabled):not([disabled]).active {
     background-color: var(--white-30a);
-  }
-
-  &.default {
-    background-color: var(--color-active);
   }
 }

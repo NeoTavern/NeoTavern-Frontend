@@ -2,46 +2,7 @@
 import { ref, onMounted, watch } from 'vue';
 import type { PropType } from 'vue';
 import { useSettingsStore } from '../../stores/settings.store';
-
-// Mirrored types from the old Popup.ts for compatibility
-export enum POPUP_TYPE {
-  TEXT = 1,
-  CONFIRM = 2,
-  INPUT = 3,
-  DISPLAY = 4,
-  CROP = 5,
-}
-
-export enum POPUP_RESULT {
-  AFFIRMATIVE = 1,
-  NEGATIVE = 0,
-  CANCELLED = -1,
-}
-
-export interface CustomPopupButton {
-  text: string;
-  result?: number;
-  classes?: string[] | string;
-  action?: () => void;
-}
-
-export interface CustomPopupInput {
-  id: string;
-  label: string;
-  tooltip?: string;
-  defaultState?: boolean | string;
-  type?: 'checkbox' | 'text';
-}
-
-export interface PopupOptions {
-  okButton?: string | boolean;
-  cancelButton?: string | boolean;
-  rows?: number;
-  wide?: boolean;
-  customButtons?: CustomPopupButton[];
-  customInputs?: CustomPopupInput[];
-  defaultResult?: number;
-}
+import { POPUP_TYPE, POPUP_RESULT, type PopupOptions } from '../../types';
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -91,6 +52,7 @@ watch(
   () => props.visible,
   (isVisible) => {
     if (isVisible) {
+      internalInputValue.value = props.inputValue;
       resolveOptions();
       dialog.value?.showModal();
       // Auto-focus logic
@@ -98,7 +60,7 @@ watch(
         if (props.type === POPUP_TYPE.INPUT && mainInput.value) {
           mainInput.value.focus();
         } else {
-          (dialog.value?.querySelector('.menu-button.default') as HTMLElement)?.focus();
+          (dialog.value?.querySelector('.menu-button') as HTMLElement)?.focus();
         }
       }, 100); // Delay to allow dialog to render
     } else {
@@ -109,6 +71,7 @@ watch(
 
 onMounted(() => {
   if (props.visible) {
+    internalInputValue.value = props.inputValue;
     resolveOptions();
     dialog.value?.showModal();
   }
@@ -143,18 +106,25 @@ function handleEnter(evt: KeyboardEvent) {
 </script>
 
 <template>
-  <dialog ref="dialog" class="popup" @cancel="onCancel" @keydown="handleEnter">
+  <dialog
+    ref="dialog"
+    class="popup"
+    :class="{ wide: options.wide, large: options.large }"
+    @cancel="onCancel"
+    @keydown="handleEnter"
+  >
     <div class="popup-body">
       <h3 v-if="title" v-html="title"></h3>
-      <div v-if="content" class="popup-content" v-html="content"></div>
-
-      <textarea
-        v-if="type === POPUP_TYPE.INPUT"
-        ref="mainInput"
-        class="popup-input"
-        :rows="options.rows ?? 1"
-        v-model="internalInputValue"
-      ></textarea>
+      <div class="popup-content" :class="{ 'is-input': type === POPUP_TYPE.INPUT }">
+        <div v-if="content" v-html="content"></div>
+        <textarea
+          v-if="type === POPUP_TYPE.INPUT"
+          ref="mainInput"
+          class="popup-input"
+          :rows="options.rows"
+          v-model="internalInputValue"
+        ></textarea>
+      </div>
 
       <!-- TODO: Implement CROP and custom inputs if needed -->
 
@@ -167,7 +137,12 @@ function handleEnter(evt: KeyboardEvent) {
         >
           {{ cancelText }}
         </button>
-        <button v-if="showOk" type="button" class="menu-button default" @click="handleResult(POPUP_RESULT.AFFIRMATIVE)">
+        <button
+          v-if="showOk"
+          type="button"
+          class="menu-button default ok"
+          @click="handleResult(POPUP_RESULT.AFFIRMATIVE)"
+        >
           {{ okText }}
         </button>
       </div>

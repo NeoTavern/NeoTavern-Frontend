@@ -96,6 +96,7 @@ export const useCharacterStore = defineStore('character', () => {
 
         // TODO: resetSelectedGroup();
         uiStore.selectedButton = 'character_edit';
+        uiStore.menuType = 'character_edit';
         activeCharacterIndex.value = index;
 
         await chatStore.refreshChat();
@@ -104,6 +105,7 @@ export const useCharacterStore = defineStore('character', () => {
       // Clicked on already selected character
       if (switchMenu) {
         uiStore.selectedButton = 'character_edit';
+        uiStore.menuType = 'character_edit';
       }
       // TODO: Unshallow character logic
       // TODO: select_selected_character logic to populate editor form

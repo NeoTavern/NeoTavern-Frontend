@@ -11,6 +11,7 @@ export const useSettingsStore = defineStore('settings', () => {
     world_import_dialog: boolean;
     send_on_enter: number;
     never_resize_avatars: boolean;
+    spoiler_free_mode: boolean;
   }>({
     world_import_dialog: true,
     send_on_enter: SendOnEnterOptions.AUTO,
@@ -18,6 +19,7 @@ export const useSettingsStore = defineStore('settings', () => {
     external_media_forbidden_overrides: [],
     external_media_allowed_overrides: [],
     forbid_external_media: false,
+    spoiler_free_mode: false,
   });
 
   const shouldSendOnEnter = computed(() => {

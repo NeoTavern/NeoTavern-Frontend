@@ -1,0 +1,173 @@
+.character-edit-form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  padding: 0 5px;
+
+  form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 15px;
+  }
+
+  &__avatar-name-block {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 5px;
+  }
+
+  &__avatar-area {
+    flex-shrink: 0;
+  }
+
+  &__avatar-label {
+    cursor: pointer;
+    display: block;
+    width: 100px;
+    height: 100px;
+  }
+
+  &__avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--avatar-border-radius-round);
+    border: 1px solid var(--theme-border-color);
+    box-shadow: 0 0 5px var(--black-50a);
+  }
+
+  &__controls {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0; // Prevent flex item from overflowing
+  }
+
+  &__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+
+    .menu-button {
+      padding: 5px;
+      aspect-ratio: 1;
+      font-size: 1.1em;
+      flex-grow: 1;
+
+      &.red_button {
+        color: var(--color-warning);
+        &:hover {
+          background-color: var(--color-accent-crimson-hover);
+        }
+      }
+
+      &.fav_on {
+        color: var(--color-golden);
+        filter: drop-shadow(0 0 3px var(--color-golden));
+      }
+    }
+  }
+
+  &__tags-block {
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 5px;
+
+      // Reusing tag style from character list
+      .tag {
+        background-color: var(--grey-7070a);
+        color: var(--theme-text-color);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        white-space: nowrap;
+      }
+    }
+  }
+
+  .form-section {
+    display: flex;
+    flex-direction: column;
+
+    label {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    textarea {
+      min-height: 120px;
+    }
+  }
+
+  .inline-drawer-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    padding: 5px;
+    background-color: var(--black-30a);
+    border-radius: 5px;
+    margin-bottom: 2px;
+
+    .menu-button {
+      margin: 0;
+      padding: 3px 5px;
+    }
+
+    &__title {
+      flex-grow: 1;
+    }
+
+    &__icon {
+      transition: transform var(--animation-duration-2x);
+      &.is-open {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  .inline-drawer-content {
+    border: 1px solid var(--theme-border-color);
+    padding: 10px;
+    border-radius: 10px;
+    background-color: var(--black-30a);
+  }
+
+  .editor-maximize-icon {
+    margin-left: auto;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity var(--animation-duration-2x);
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition:
+    grid-template-rows 0.3s ease-in-out,
+    opacity 0.2s ease-in-out;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.slide-fade-enter-to,
+.slide-fade-leave-from {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
