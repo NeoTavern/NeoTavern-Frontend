@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import RightMenu from '../RightMenu/RightMenu.vue';
+import ExtensionsDrawer from './ExtensionsDrawer.vue';
 
 // Reactive state to control which drawer is open
 const activeDrawer = ref<string | null>(null);
@@ -99,7 +100,7 @@ function toggleDrawer(drawerName: string) {
           ></div>
         </button>
         <div class="nav-item__content" :class="{ active: activeDrawer === 'extensions' }">
-          <!-- Extensions Content -->
+          <ExtensionsDrawer />
         </div>
       </div>
       <div class="nav-item">

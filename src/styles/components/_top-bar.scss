@@ -66,6 +66,14 @@
     transition-duration: var(--animation-duration-2x);
     transition-timing-function: ease-in-out;
     transition-behavior: allow-discrete;
+    min-width: 450px;
+    width: var(--layout-panel-width);
+    max-height: calc(100dvh - calc(var(--top-bar-height) + var(--send-form-height)));
+    position: absolute;
+    top: calc(var(--top-bar-height));
+    left: 0;
+    right: 0;
+    margin: 0 auto;
 
     select {
       width: 100%;
@@ -103,12 +111,13 @@
 
 .drawer-pane--fill-left {
   left: 0;
-  right: auto;
+  right: unset;
 }
 
 .drawer-pane--fill-right {
   right: 0;
   z-index: 3000;
+  left: unset;
 }
 
 .drawer-pane--fill-left.active,

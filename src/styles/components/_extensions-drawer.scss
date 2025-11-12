@@ -1,0 +1,55 @@
+.extensions-drawer {
+  overflow-y: auto;
+  height: 100%;
+  width: 100%;
+  padding: 10px;
+
+  &__wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+
+    h3 {
+      margin: 0;
+      flex: 1;
+    }
+
+    .menu-button {
+      padding: 5px 8px;
+    }
+  }
+
+  &__checkbox-label {
+    display: flex;
+    flex-direction: row;
+    column-gap: 5px;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.9em;
+  }
+
+  &__content {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  &__column {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+}

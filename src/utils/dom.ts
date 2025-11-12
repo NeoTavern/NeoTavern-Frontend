@@ -27,3 +27,16 @@ export function runAfterAnimation(control: HTMLElement, callback: (control: HTML
     callback(control);
   }
 }
+
+/**
+ * Sanitizes a string to be used as a DOM selector.
+ * Replaces characters that are not alphanumeric, underscore, or hyphen with an underscore.
+ * @param {string} selector - The string to sanitize.
+ * @returns {string} - The sanitized selector.
+ */
+export function sanitizeSelector(selector: string): string {
+  if (!selector) {
+    return '';
+  }
+  return selector.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
