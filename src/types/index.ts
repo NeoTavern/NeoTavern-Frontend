@@ -1,3 +1,5 @@
+import type { SendOnEnterOptions } from '../constants';
+
 export type MessageRole = 'user' | 'assistant' | 'system';
 
 export interface Character {
@@ -190,7 +192,7 @@ export type Settings = {
     external_media_allowed_overrides: Array<string>;
     forbid_external_media: boolean;
     world_import_dialog: boolean;
-    send_on_enter: number;
+    send_on_enter: SendOnEnterOptions;
     never_resize_avatars: boolean;
     spoiler_free_mode: boolean;
     auto_fix_generated_markdown: boolean;
