@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
-import type { OaiSettings } from '../types';
+import type { OaiPrompt, OaiPromptOrderConfig, OaiSettings } from '../types';
 import { chat_completion_sources } from '../types';
 import { fetchChatCompletionStatus } from '../api/connection';
 import { toast } from '../composables/useToast';
@@ -22,6 +22,38 @@ export const useApiStore = defineStore('api', () => {
     api_key_claude: '',
     model_openai_select: 'gpt-4o',
     model_claude_select: 'claude-3-5-sonnet-20240620',
+    temp_openai: 1.0,
+    openai_max_tokens: 300,
+    stream_openai: true,
+    prompts: [
+      {
+        name: 'Main Prompt',
+        system_prompt: true,
+        role: 'system',
+        content: "Write {{char}}'s next reply in a fictional chat between {{char}} and {{user}}.",
+        identifier: 'main',
+      },
+      { name: 'Post-History Instructions', system_prompt: true, role: 'system', content: '', identifier: 'jailbreak' },
+      { identifier: 'chatHistory', name: 'Chat History', system_prompt: true, marker: true },
+      { identifier: 'charDescription', name: 'Char Description', system_prompt: true, marker: true },
+      { identifier: 'charPersonality', name: 'Char Personality', system_prompt: true, marker: true },
+      { identifier: 'scenario', name: 'Scenario', system_prompt: true, marker: true },
+      { identifier: 'dialogueExamples', name: 'Chat Examples', system_prompt: true, marker: true },
+    ] as OaiPrompt[],
+    prompt_order: [
+      {
+        character_id: 100000,
+        order: [
+          { identifier: 'main', enabled: true },
+          { identifier: 'charDescription', enabled: true },
+          { identifier: 'charPersonality', enabled: true },
+          { identifier: 'scenario', enabled: true },
+          { identifier: 'dialogueExamples', enabled: true },
+          { identifier: 'chatHistory', enabled: true },
+          { identifier: 'jailbreak', enabled: true },
+        ],
+      },
+    ] as OaiPromptOrderConfig[],
   };
 
   // When settings are loaded or changed from the backend, update our local API state.

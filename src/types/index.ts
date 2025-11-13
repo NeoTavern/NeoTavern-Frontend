@@ -214,6 +214,23 @@ export const chat_completion_sources = {
 
 export type ChatCompletionSource = (typeof chat_completion_sources)[keyof typeof chat_completion_sources];
 
+export interface OaiPrompt {
+  name: string;
+  system_prompt: boolean;
+  role?: MessageRole;
+  content?: string;
+  identifier: string;
+  marker?: boolean;
+}
+
+export interface OaiPromptOrderConfig {
+  character_id: number;
+  order: {
+    identifier: string;
+    enabled: boolean;
+  }[];
+}
+
 export interface OaiSettings {
   chat_completion_source: ChatCompletionSource;
   api_key_openai: string;
@@ -222,6 +239,19 @@ export interface OaiSettings {
   model_claude_select: string;
   reverse_proxy: string;
   proxy_password: string;
+
+  // For generation
+  preset_settings_openai?: string;
+  temp_openai?: number;
+  freq_pen_openai?: number;
+  pres_pen_openai?: number;
+  top_p_openai?: number;
+  top_k_openai?: number;
+  stream_openai?: boolean;
+  openai_max_context?: number;
+  openai_max_tokens?: number;
+  prompts?: OaiPrompt[];
+  prompt_order?: OaiPromptOrderConfig[];
 }
 
 // --- Settings Types ---

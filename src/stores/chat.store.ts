@@ -4,12 +4,15 @@ import type { ChatMessage } from '../types';
 import { usePromptStore } from './prompt.store';
 import { useCharacterStore } from './character.store';
 import { useUiStore } from './ui.store';
+import { useApiStore } from './api.store';
 import { fetchChat, saveChat as apiSaveChat } from '../api/chat';
-import { humanizedDateTime } from '../utils/date';
+import { getMessageTimeStamp, humanizedDateTime } from '../utils/date';
 import { uuidv4 } from '../utils/common';
 import { getFirstMessage } from '../utils/chat';
 import { toast } from '../composables/useToast';
 import i18n from '../i18n';
+import { PromptBuilder } from '../utils/prompt-builder';
+import { ChatCompletionService } from '../api/generation';
 
 export const useChatStore = defineStore('chat', () => {
   const { t } = i18n.global;
@@ -19,6 +22,7 @@ export const useChatStore = defineStore('chat', () => {
   const activeMessageEditIndex = ref<number | null>(null);
   const chatSaveTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
   const saveMetadataTimeout = ref<ReturnType<typeof setTimeout> | null>(null);
+  const isGenerating = ref(false);
 
   function getCurrentChatId() {
     // TODO: Integrate group store later
@@ -93,38 +97,6 @@ export const useChatStore = defineStore('chat', () => {
 
     try {
       const response = await fetchChat(activeCharacter, chatMetadata.value);
-      // console.log('Using mocked chat data');
-      // const mockResponse = [
-      //   {
-      //     create_date: 'November 13, 2025 3:16 AM',
-      //     chat_metadata: { integrity: 'mock-integrity-uuid' },
-      //   },
-      //   {
-      //     name: activeCharacter?.name ?? 'Character',
-      //     mes: `*Oh, uh- ahem Hi there, I am ${activeCharacter?.name ?? 'Character'}.*`,
-      //     send_date: 'November 13, 2025 3:16 AM',
-      //     is_user: false,
-      //     swipes: ['swipe1', 'swipe2', 'swipe3'],
-      //     swipe_id: 0,
-      //   },
-      //   {
-      //     name: 'User',
-      //     mes: '"Hey"',
-      //     send_date: 'November 13, 2025 3:16 AM',
-      //     is_user: true,
-      //     extra: { token_count: 5 },
-      //   },
-      //   {
-      //     name: activeCharacter?.name ?? 'Character',
-      //     mes: `He swallowed hard. Should’ve brought headphones—the clatter of plates and murmur of strangers itched under his skin. A bassline from the diner’s speakers throbbed in time with his pulse, some throwback track he’d heard his dad play years ago. His thumb tapped a silent rhythm against his thigh, counting beats. <q>"Just, uh. Waiting."</q> The lie tasted bitter. He wasn’t early; they were late. Again.`,
-      //     send_date: 'November 13, 2025 3:16 AM',
-      //     is_user: false,
-      //     swipes: ['swipeA', 'swipeB'],
-      //     swipe_id: 1,
-      //     extra: { token_count: 188 },
-      //   },
-      // ];
-
       if (response.length > 0) {
         // Chat exists, load it
         const metadataItem = response.shift();
@@ -159,6 +131,73 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  async function generateResponse() {
+    if (isGenerating.value) return;
+    const characterStore = useCharacterStore();
+    const apiStore = useApiStore();
+    const activeCharacter = characterStore.activeCharacter;
+    if (!activeCharacter) {
+      console.error('generateResponse called without an active character.');
+      return;
+    }
+
+    try {
+      isGenerating.value = true;
+      // TODO: Show typing indicator
+
+      const promptBuilder = new PromptBuilder(activeCharacter, chat.value);
+      const messages = promptBuilder.build();
+
+      const payload = {
+        messages,
+        model: apiStore.oaiSettings.model_openai_select, // TODO: Make model selection dynamic, like per-provider
+        chat_completion_source: apiStore.oaiSettings.chat_completion_source,
+        max_tokens: apiStore.oaiSettings.openai_max_tokens,
+        temperature: apiStore.oaiSettings.temp_openai,
+        stream: false, //TODO: Support streaming
+      };
+
+      const response = await ChatCompletionService.generate(payload);
+
+      const botMessage: ChatMessage = {
+        name: activeCharacter.name,
+        is_user: false,
+        mes: response.content,
+        send_date: getMessageTimeStamp(),
+        extra: {}, // TODO: Add token counts, etc. here later
+      };
+
+      chat.value.push(botMessage);
+      await saveChat();
+    } catch (error: any) {
+      console.error('Failed to generate response:', error);
+      toast.error(error.message || 'Failed to get a response from the AI.');
+    } finally {
+      isGenerating.value = false;
+      // TODO: Hide typing indicator
+    }
+  }
+
+  async function sendMessage(messageText: string) {
+    if (!messageText.trim() || isGenerating.value) {
+      return;
+    }
+
+    const uiStore = useUiStore();
+    const userMessage: ChatMessage = {
+      name: uiStore.activePlayerName || 'User',
+      is_user: true,
+      mes: messageText.trim(),
+      send_date: getMessageTimeStamp(),
+      extra: {},
+    };
+
+    chat.value.push(userMessage);
+    await saveChat();
+
+    generateResponse();
+  }
+
   return {
     chat,
     chatMetadata,
@@ -166,8 +205,11 @@ export const useChatStore = defineStore('chat', () => {
     activeMessageEditIndex,
     chatSaveTimeout,
     saveMetadataTimeout,
+    isGenerating,
     clearChat,
     refreshChat,
     saveChat,
+    sendMessage,
+    generateResponse,
   };
 });
