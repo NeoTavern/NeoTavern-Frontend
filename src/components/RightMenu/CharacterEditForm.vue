@@ -112,6 +112,9 @@ watch(
           if (typeof newData.data[key] !== 'undefined') {
             newData.data[key] = newData[key as keyof typeof newData];
           }
+          if (newData.data.extensions && typeof newData.data.extensions[key] !== 'undefined') {
+            newData.data.extensions[key] = newData[key as keyof typeof newData];
+          }
         }
       }
     }

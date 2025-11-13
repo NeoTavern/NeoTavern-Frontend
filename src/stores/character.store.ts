@@ -206,6 +206,25 @@ export const useCharacterStore = defineStore('character', () => {
           const newSubValue = newData[subKey];
           const oldSubValue = oldData[subKey];
 
+          // Special handling for 'extensions' objects, which is similar to 'data'
+          if (subKey === 'extensions') {
+            const newExt = (newSubValue || {}) as Record<string, any>;
+            const oldExt = (oldSubValue || {}) as Record<string, any>;
+
+            const allExtKeys = new Set([...Object.keys(newExt), ...Object.keys(oldExt)]);
+
+            for (const extKey of allExtKeys) {
+              const newExtValue = newExt[extKey];
+              const oldExtValue = oldExt[extKey];
+
+              if (JSON.stringify(newExtValue) !== JSON.stringify(oldExtValue)) {
+                dataChanges[subKey] = dataChanges[subKey] || {};
+                dataChanges[subKey][extKey] = newExtValue;
+              }
+            }
+            continue;
+          }
+
           // A robust stringify comparison handles primitives, arrays, and nested objects within 'data'.
           if (JSON.stringify(newSubValue) !== JSON.stringify(oldSubValue)) {
             dataChanges[subKey] = newSubValue;
