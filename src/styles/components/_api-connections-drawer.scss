@@ -1,0 +1,69 @@
+.api-connections-drawer {
+  overflow-y: auto;
+  height: 100%;
+  width: 100%;
+  padding: 10px;
+
+  &__wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  h3 {
+    margin: 0;
+  }
+
+  h4 {
+    margin: 5px 0;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--theme-border-color);
+    width: 100%;
+    margin: 0;
+  }
+
+  .online_status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .online_status_indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--grey-50);
+    transition: background-color var(--animation-duration-2x);
+
+    &.success {
+      background-color: #5d9e5d; // Using success color from toast
+    }
+  }
+}
+
+.reverse_proxy_warning:not(small) {
+  color: var(--color-warning);
+  background-color: var(--black-70a);
+  text-shadow: none !important;
+  margin-top: 5px !important;
+  border-radius: 5px;
+  padding: 3px;
+  border: 1px solid var(--theme-border-color);
+}
+
+.neutral_warning {
+  color: var(--color-warning);
+  font-weight: 800;
+  font-size: 0.8em;
+  opacity: 0.9;
+}

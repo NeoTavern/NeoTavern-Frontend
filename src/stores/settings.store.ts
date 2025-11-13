@@ -79,6 +79,7 @@ export const useSettingsStore = defineStore('settings', () => {
     shouldSendOnEnter,
     saveSettingsDebounced,
     initializeSettings,
+    settingsInitializing,
     getSetting,
     setSetting,
   };

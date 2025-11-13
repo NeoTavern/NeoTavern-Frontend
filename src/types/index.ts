@@ -186,6 +186,44 @@ export interface PopupOptions {
   defaultResult?: number;
 }
 
+// --- API Connection Types ---
+export const chat_completion_sources = {
+  OPENAI: 'openai',
+  CLAUDE: 'claude',
+  OPENROUTER: 'openrouter',
+  AI21: 'ai21',
+  MAKERSUITE: 'makersuite',
+  VERTEXAI: 'vertexai',
+  MISTRALAI: 'mistralai',
+  CUSTOM: 'custom',
+  COHERE: 'cohere',
+  PERPLEXITY: 'perplexity',
+  GROQ: 'groq',
+  ELECTRONHUB: 'electronhub',
+  NANOGPT: 'nanogpt',
+  DEEPSEEK: 'deepseek',
+  AIMLAPI: 'aimlapi',
+  XAI: 'xai',
+  POLLINATIONS: 'pollinations',
+  MOONSHOT: 'moonshot',
+  FIREWORKS: 'fireworks',
+  COMETAPI: 'cometapi',
+  AZURE_OPENAI: 'azure_openai',
+  ZAI: 'zai',
+} as const;
+
+export type ChatCompletionSource = (typeof chat_completion_sources)[keyof typeof chat_completion_sources];
+
+export interface OaiSettings {
+  chat_completion_source: ChatCompletionSource;
+  api_key_openai: string;
+  api_key_claude: string;
+  model_openai_select: string;
+  model_claude_select: string;
+  reverse_proxy: string;
+  proxy_password: string;
+}
+
 // --- Settings Types ---
 export type SettingType = 'boolean' | 'number' | 'string' | 'enum';
 export type SettingWidget = 'checkbox' | 'slider' | 'select' | 'text' | 'textarea';
@@ -221,5 +259,7 @@ export type Settings = {
     auto_fix_generated_markdown: boolean;
     tag_import_setting: TagImportSetting;
   };
+  oai_settings: OaiSettings;
   username?: string;
+  main_api?: string;
 } & Record<string, any>;
