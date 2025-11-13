@@ -9,7 +9,7 @@ export const useUiStore = defineStore('ui', () => {
   const selectedButton = ref<MenuType | null>(null);
   const menuType = ref<MenuType | null>(null);
   const cropData = ref<any>(null);
-  const activePlayerName = ref<string>('User');
+  const activePlayerName = ref<string | null>(null);
 
   return {
     isChatSaving,

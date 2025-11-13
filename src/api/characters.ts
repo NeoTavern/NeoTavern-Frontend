@@ -1,5 +1,6 @@
 import { getRequestHeaders } from '../utils/api';
 import type { Character } from '../types';
+import { useUiStore } from '../stores/ui.store';
 
 export async function fetchAllCharacters(): Promise<Character[]> {
   const response = await fetch('/api/characters/all', {
@@ -41,4 +42,32 @@ export async function saveCharacter(character: Partial<Character> & { avatar: st
     body: JSON.stringify(character),
     cache: 'no-cache',
   });
+}
+
+export async function importCharacter(file: File): Promise<{ file_name: string }> {
+  const uiStore = useUiStore();
+  const format = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const formData = new FormData();
+  formData.append('avatar', file);
+  formData.append('file_type', format);
+  formData.append('user_name', uiStore.activePlayerName || '');
+
+  const response = await fetch('/api/characters/import', {
+    method: 'POST',
+    body: formData,
+    headers: getRequestHeaders({ omitContentType: true }),
+    cache: 'no-cache',
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to import character: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+
+  if (data.error) {
+    throw new Error(`Server returned an error: ${data.error}`);
+  }
+
+  return data;
 }

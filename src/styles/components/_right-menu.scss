@@ -224,14 +224,4 @@
     width: 100%;
     margin-top: -5px;
   }
-
-  &__tags {
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    gap: 0.2rem;
-    margin-top: 3px;
-    opacity: 0.6;
-    overflow: hidden;
-  }
 }

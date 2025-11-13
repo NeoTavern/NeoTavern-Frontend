@@ -10,6 +10,7 @@ const characterStore = useCharacterStore();
 const uiStore = useUiStore();
 const isSearchActive = ref(false);
 const isPanelPinned = ref(false);
+const fileInput = ref<HTMLInputElement | null>(null);
 
 const showCharacterList = computed(() => {
   return uiStore.menuType !== 'character_edit' && uiStore.menuType !== 'create';
@@ -25,6 +26,42 @@ const showTokenWarning = computed(() => {
   const tokenLimit = Math.max(maxContext.value / 2, 1024);
   return totalTokens.value > tokenLimit;
 });
+
+function triggerImport() {
+  fileInput.value?.click();
+}
+
+async function handleFileImport(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (!target.files || target.files.length === 0) {
+    return;
+  }
+
+  const files = Array.from(target.files);
+  const importedAvatars: string[] = [];
+
+  for (const file of files) {
+    try {
+      const avatarFileName = await characterStore.importCharacter(file);
+      if (avatarFileName) {
+        importedAvatars.push(avatarFileName);
+      }
+    } catch (error: any) {
+      // Toast is handled in the store action
+    }
+  }
+
+  if (importedAvatars.length > 0) {
+    await characterStore.refreshCharacters();
+    await characterStore.importTagsForCharacters(importedAvatars);
+    const lastAvatar = importedAvatars[importedAvatars.length - 1];
+    characterStore.highlightCharacter(lastAvatar);
+  }
+
+  if (target) {
+    target.value = '';
+  }
+}
 
 onMounted(() => {
   characterStore.refreshCharacters();
@@ -89,7 +126,12 @@ onMounted(() => {
       <div class="right-menu-panel__header">
         <div class="right-menu-panel__actions">
           <div title="Create New Character" class="menu-button fa-solid fa-user-plus"></div>
-          <div title="Import Character from File" class="menu-button fa-solid fa-file-import"></div>
+          <div
+            @click="triggerImport"
+            title="Import Character from File"
+            class="menu-button fa-solid fa-file-import"
+          ></div>
+          <input ref="fileInput" type="file" @change="handleFileImport" accept=".json,.png" multiple hidden />
           <div title="Import content from external URL" class="menu-button fa-solid fa-cloud-arrow-down"></div>
           <div title="Create New Chat Group" class="menu-button fa-solid fa-users-gear"></div>
           <div id="extension-buttons-container">
@@ -142,6 +184,7 @@ onMounted(() => {
           <div
             v-if="entity.type === 'character'"
             class="character-item"
+            :data-avatar="(entity.item as Character).avatar"
             @click="characterStore.selectCharacterById(entity.id as number)"
             tabindex="0"
             role="listitem"

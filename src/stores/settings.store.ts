@@ -5,6 +5,8 @@ import { isMobile } from '../utils/browser';
 import { debounce } from '../utils/common';
 import type { Settings } from '../types';
 import { fetchUserSettings, saveUserSettings } from '../api/settings';
+import { TagImportSetting } from '../types';
+import { useUiStore } from './ui.store';
 
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<Settings | undefined>(undefined);
@@ -19,6 +21,7 @@ export const useSettingsStore = defineStore('settings', () => {
     forbid_external_media: false,
     spoiler_free_mode: false,
     auto_fix_generated_markdown: false,
+    tag_import_setting: TagImportSetting.ASK,
   });
 
   const shouldSendOnEnter = computed(() => {
@@ -40,6 +43,8 @@ export const useSettingsStore = defineStore('settings', () => {
       settingsInitializing.value = true;
       settings.value = await fetchUserSettings();
       powerUser.value = { ...powerUser.value, ...settings.value.power_user };
+      const uiStore = useUiStore();
+      uiStore.activePlayerName = settings.value.username || null;
     } finally {
       Promise.resolve().then(() => {
         settingsInitializing.value = false;
@@ -49,9 +54,11 @@ export const useSettingsStore = defineStore('settings', () => {
 
   const saveSettingsDebounced = debounce(() => {
     if (settings.value === undefined) return;
+    const uiStore = useUiStore();
     saveUserSettings({
       ...settings.value,
       power_user: powerUser.value,
+      username: uiStore.activePlayerName || undefined,
     });
   }, DEFAULT_SAVE_EDIT_TIMEOUT);
 

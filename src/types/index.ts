@@ -186,6 +186,13 @@ export interface PopupOptions {
   defaultResult?: number;
 }
 
+export enum TagImportSetting {
+  NONE = 'none',
+  ALL = 'all',
+  ONLY_EXISTING = 'only_existing',
+  ASK = 'ask',
+}
+
 export type Settings = {
   power_user: {
     external_media_forbidden_overrides: Array<string>;
@@ -196,5 +203,7 @@ export type Settings = {
     never_resize_avatars: boolean;
     spoiler_free_mode: boolean;
     auto_fix_generated_markdown: boolean;
+    tag_import_setting: TagImportSetting;
   };
+  username?: string;
 } & Record<string, any>;

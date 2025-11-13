@@ -154,6 +154,16 @@ select.text-pole {
   }
 }
 
+.tags {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  margin-top: 3px;
+  opacity: 0.6;
+  overflow: hidden;
+}
+
 .tag {
   border: 1px solid var(--white-50a);
   color: var(--theme-text-color);
@@ -211,5 +221,33 @@ select.text-pole {
 
   &:hover {
     opacity: 1;
+  }
+}
+
+// =============================================================================
+// Animations
+// =============================================================================
+.animated {
+  -webkit-animation-duration: var(--animation-duration, 3s);
+  animation-duration: var(--animation-duration, 3s);
+  -webkit-animation-fill-mode: both;
+  animation-fill-mode: both;
+  box-shadow: inset 0 0 5px var(--theme-quote-color);
+}
+
+.flash {
+  animation-name: flash;
+}
+
+@keyframes flash {
+  0%,
+  50%,
+  100% {
+    opacity: 1;
+  }
+
+  25%,
+  75% {
+    opacity: 0.2;
   }
 }
