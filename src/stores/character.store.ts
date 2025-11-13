@@ -18,6 +18,7 @@ import { DEFAULT_PRINT_TIMEOUT, DEFAULT_SAVE_EDIT_TIMEOUT, DebounceTimeout } fro
 import { useSettingsStore } from './settings.store';
 import { onlyUnique } from '../utils/array';
 import i18n from '../i18n';
+import { getFirstMessage } from '../utils/chat';
 
 // TODO: Replace with a real API call to the backend for accurate tokenization
 async function getTokenCount(text: string): Promise<number> {
@@ -278,6 +279,26 @@ export const useCharacterStore = defineStore('character', () => {
 
     if (Object.keys(changes).length > 0) {
       await updateAndSaveCharacter(avatar, changes);
+
+      if ('first_mes' in changes && changes.first_mes !== undefined) {
+        const chatStore = useChatStore();
+
+        if (chatStore.chat.length === 1 && chatStore.chat[0] && !chatStore.chat[0].is_user) {
+          const currentMessage = chatStore.chat[0];
+          // Use a fresh copy of the character with the latest changes applied
+          const updatedCharacterForGreeting = { ...activeCharacter.value, ...changes } as Character;
+
+          // Re-evaluate the first message details, including swipes
+          const newFirstMessageDetails = getFirstMessage(updatedCharacterForGreeting);
+
+          currentMessage.mes = newFirstMessageDetails.mes;
+          currentMessage.swipes = newFirstMessageDetails.swipes;
+          currentMessage.swipe_id = newFirstMessageDetails.swipe_id;
+          currentMessage.swipe_info = newFirstMessageDetails.swipe_info;
+
+          await chatStore.saveChat();
+        }
+      }
     }
   }
 
