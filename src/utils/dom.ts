@@ -40,3 +40,42 @@ export function sanitizeSelector(selector: string): string {
   }
   return selector.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
+
+export const slideTransitionHooks = {
+  beforeEnter(el: Element) {
+    if (!(el instanceof HTMLElement)) return;
+    el.style.height = '0';
+    el.style.opacity = '0';
+    el.style.overflow = 'hidden';
+  },
+  enter(el: Element) {
+    if (!(el instanceof HTMLElement)) return;
+    el.getBoundingClientRect(); // Force repaint
+    requestAnimationFrame(() => {
+      el.style.height = `${el.scrollHeight}px`;
+      el.style.opacity = '1';
+    });
+  },
+  afterEnter(el: Element) {
+    if (!(el instanceof HTMLElement)) return;
+    el.style.height = '';
+  },
+  beforeLeave(el: Element) {
+    if (!(el instanceof HTMLElement)) return;
+    el.style.height = `${el.scrollHeight}px`;
+    el.style.overflow = 'hidden';
+  },
+  leave(el: Element) {
+    if (!(el instanceof HTMLElement)) return;
+    el.getBoundingClientRect(); // Force repaint
+    requestAnimationFrame(() => {
+      el.style.height = '0';
+      el.style.opacity = '0';
+    });
+  },
+  afterLeave(el: Element) {
+    if (!(el instanceof HTMLElement)) return;
+    el.style.height = '';
+    el.style.opacity = '0';
+  },
+};

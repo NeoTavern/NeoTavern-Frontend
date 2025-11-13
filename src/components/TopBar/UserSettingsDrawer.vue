@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { SettingDefinition } from '../../types';
 import { useI18n } from 'vue-i18n';
+import { slideTransitionHooks } from '../../utils/dom';
 
 const { t } = useI18n();
 const settingsStore = useSettingsStore();
@@ -69,43 +70,7 @@ function toggleCategoryCollapse(category: string) {
 }
 
 // --- Transition Hooks for Drawers ---
-// Re-using the robust JS-driven height transition from other components
-function beforeEnter(el: Element) {
-  if (!(el instanceof HTMLElement)) return;
-  el.style.height = '0';
-  el.style.opacity = '0';
-  el.style.overflow = 'hidden';
-}
-function enter(el: Element) {
-  if (!(el instanceof HTMLElement)) return;
-  el.getBoundingClientRect(); // Force repaint
-  requestAnimationFrame(() => {
-    el.style.height = `${el.scrollHeight}px`;
-    el.style.opacity = '1';
-  });
-}
-function afterEnter(el: Element) {
-  if (!(el instanceof HTMLElement)) return;
-  el.style.height = '';
-}
-function beforeLeave(el: Element) {
-  if (!(el instanceof HTMLElement)) return;
-  el.style.height = `${el.scrollHeight}px`;
-  el.style.overflow = 'hidden';
-}
-function leave(el: Element) {
-  if (!(el instanceof HTMLElement)) return;
-  el.getBoundingClientRect(); // Force repaint
-  requestAnimationFrame(() => {
-    el.style.height = '0';
-    el.style.opacity = '0';
-  });
-}
-function afterLeave(el: Element) {
-  if (!(el instanceof HTMLElement)) return;
-  el.style.height = '';
-  el.style.opacity = '0';
-}
+const { beforeEnter, enter, afterEnter, beforeLeave, leave, afterLeave } = slideTransitionHooks;
 </script>
 
 <template>

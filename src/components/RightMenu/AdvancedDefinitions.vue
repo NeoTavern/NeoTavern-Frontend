@@ -7,6 +7,7 @@ import type { Character, PopupOptions } from '../../types';
 import { POPUP_TYPE } from '../../types';
 import Popup from '../Popup/Popup.vue';
 import { useCharacterStore } from '../../stores/character.store';
+import { slideTransitionHooks } from '../../utils/dom';
 
 const props = defineProps({
   modelValue: { type: Object as PropType<Partial<Character>>, required: true },
@@ -89,42 +90,7 @@ const editorPopupOptions = ref<PopupOptions>({});
 const editorPopupTitle = ref('');
 
 // --- Transition Hooks for Drawers ---
-function beforeEnter(el: Element) {
-  if (!(el instanceof HTMLElement)) return;
-  el.style.height = '0';
-  el.style.opacity = '0';
-  el.style.overflow = 'hidden';
-}
-function enter(el: Element) {
-  if (!(el instanceof HTMLElement)) return;
-  el.getBoundingClientRect(); // Force repaint
-  requestAnimationFrame(() => {
-    el.style.height = `${el.scrollHeight}px`;
-    el.style.opacity = '1';
-  });
-}
-function afterEnter(el: Element) {
-  if (!(el instanceof HTMLElement)) return;
-  el.style.height = '';
-}
-function beforeLeave(el: Element) {
-  if (!(el instanceof HTMLElement)) return;
-  el.style.height = `${el.scrollHeight}px`;
-  el.style.overflow = 'hidden';
-}
-function leave(el: Element) {
-  if (!(el instanceof HTMLElement)) return;
-  el.getBoundingClientRect(); // Force repaint
-  requestAnimationFrame(() => {
-    el.style.height = '0';
-    el.style.opacity = '0';
-  });
-}
-function afterLeave(el: Element) {
-  if (!(el instanceof HTMLElement)) return;
-  el.style.height = '';
-  el.style.opacity = '0';
-}
+const { beforeEnter, enter, afterEnter, beforeLeave, leave, afterLeave } = slideTransitionHooks;
 
 const characterName = computed(() => props.modelValue.name);
 const joinedTags = computed({
