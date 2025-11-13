@@ -7,8 +7,7 @@ import type { Settings } from '../types';
 import { fetchUserSettings, saveUserSettings } from '../api/settings';
 
 export const useSettingsStore = defineStore('settings', () => {
-  const settings = ref<Settings>({} as Settings);
-  const settingsInitialized = ref(false);
+  const settings = ref<Settings | undefined>(undefined);
   const settingsInitializing = ref(false);
 
   const powerUser = ref<Settings['power_user']>({
@@ -37,20 +36,19 @@ export const useSettingsStore = defineStore('settings', () => {
 
   async function initializeSettings() {
     try {
-      if (settingsInitialized.value || settingsInitializing.value) return;
+      if (settings.value !== undefined || settingsInitializing.value) return;
       settingsInitializing.value = true;
       settings.value = await fetchUserSettings();
       powerUser.value = { ...powerUser.value, ...settings.value.power_user };
     } finally {
       Promise.resolve().then(() => {
-        settingsInitialized.value = true;
         settingsInitializing.value = false;
       });
     }
   }
 
   const saveSettingsDebounced = debounce(() => {
-    if (!settingsInitialized.value) return;
+    if (settings.value === undefined) return;
     saveUserSettings({
       ...settings.value,
       power_user: powerUser.value,
@@ -61,11 +59,11 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(
     powerUser,
     () => {
-      if (!settingsInitialized.value || settingsInitializing.value) return;
+      if (settings.value === undefined || settingsInitializing.value) return;
       saveSettingsDebounced();
     },
     { deep: true },
   );
 
-  return { powerUser, shouldSendOnEnter, saveSettingsDebounced, initializeSettings, settingsInitialized };
+  return { powerUser, shouldSendOnEnter, saveSettingsDebounced, initializeSettings };
 });
