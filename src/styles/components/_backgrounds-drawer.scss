@@ -1,0 +1,219 @@
+.backgrounds-drawer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+
+  &__header {
+    flex-shrink: 0;
+    padding: 5px;
+    background-color: var(--theme-background-tint);
+    border-bottom: 1px solid var(--theme-border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  &__header-row {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+
+    .expander {
+      flex-grow: 1;
+    }
+
+    .menu-button,
+    .text_pole {
+      margin: 0;
+    }
+  }
+
+  &__scrollable-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 0 5px 15px;
+    position: relative;
+  }
+
+  .heading-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0;
+
+    h3 {
+      margin: 0;
+    }
+
+    .heading-controls {
+      position: absolute;
+      right: 0;
+      display: flex;
+      gap: 5px;
+
+      .menu_button {
+        padding: 3px 5px;
+      }
+    }
+  }
+
+  &__grid {
+    display: grid;
+    gap: 5px;
+    width: 100%;
+    grid-template-columns: repeat(var(--bg-thumb-columns, 5), 1fr);
+  }
+
+  &__scroll-top {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 42px;
+    height: 42px;
+    background: var(--theme-background-tint);
+    color: var(--theme-text-color);
+    border: 1px solid var(--theme-border-color);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10;
+    font-size: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity var(--animation-duration) ease;
+    pointer-events: none;
+
+    &.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    &:hover {
+      filter: brightness(150%);
+    }
+  }
+}
+
+.background-item {
+  cursor: pointer;
+  box-shadow: 0 0 7px var(--black-50a);
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  outline: 2px solid var(--theme-border-color);
+  outline-offset: -1px;
+  aspect-ratio: 16 / 9;
+
+  &:hover {
+    .background-item__menu,
+    .background-item__title {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+    }
+  }
+
+  &.is-locked {
+    outline: 2px solid var(--color-golden);
+    outline-offset: 0;
+    &::after {
+      content: '\f023';
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      z-index: 4;
+      color: var(--color-golden);
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+      font-size: calc(var(--font-size-main) * 0.8);
+      pointer-events: none;
+    }
+  }
+
+  &.is-selected {
+    outline: 2px solid white;
+    outline-offset: 0;
+    &::before {
+      content: '\f00c';
+      font-family: 'Font Awesome 6 Free';
+      font-weight: 900;
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      z-index: 4;
+      color: var(--white-100);
+      filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
+      font-size: calc(var(--font-size-main) * 0.9);
+      pointer-events: none;
+    }
+  }
+
+  &__thumbnail {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    background-size: cover;
+    background-position: center;
+  }
+
+  &__title {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+    color: var(--theme-text-color);
+    font-size: 0.9em;
+    font-weight: 600;
+    padding: 0px 6px 2px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    transition: opacity var(--animation-duration) ease-in-out;
+    pointer-events: none;
+    border-radius: 0 0 8px 8px;
+  }
+
+  &__menu {
+    display: flex;
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background-color: var(--black-60a);
+    backdrop-filter: blur(4px);
+    border-radius: 5px;
+    padding: 3px;
+    z-index: 3;
+    border: 1px solid var(--theme-border-color);
+    gap: 2px;
+
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.9);
+    transform-origin: top right;
+    transition: all var(--animation-duration) ease-out;
+
+    .menu-button {
+      width: 24px;
+      height: 24px;
+      font-size: 0.9em;
+      margin: 0;
+      padding: 0;
+
+      &:hover {
+        background-color: var(--white-20a);
+      }
+    }
+  }
+}

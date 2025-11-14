@@ -5,6 +5,7 @@ import ExtensionsDrawer from './ExtensionsDrawer.vue';
 import UserSettingsDrawer from './UserSettingsDrawer.vue';
 import ApiConnectionsDrawer from './ApiConnectionsDrawer.vue';
 import AiConfigDrawer from './AiConfigDrawer.vue';
+import BackgroundsDrawer from './BackgroundsDrawer.vue';
 
 // Reactive state to control which drawer is open
 const activeDrawer = ref<string | null>(null);
@@ -91,7 +92,7 @@ function toggleDrawer(drawerName: string) {
           ></div>
         </button>
         <div class="nav-item__content" :class="{ active: activeDrawer === 'backgrounds' }">
-          <!-- Backgrounds Content -->
+          <BackgroundsDrawer />
         </div>
       </div>
       <div class="nav-item">

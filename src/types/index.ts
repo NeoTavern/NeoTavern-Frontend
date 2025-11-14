@@ -337,6 +337,8 @@ export interface SettingDefinition {
   options?: SettingOption[];
 }
 
+export type BackgroundFitting = 'classic' | 'cover' | 'contain' | 'stretch' | 'center';
+
 export type Settings = {
   power_user: {
     external_media_forbidden_overrides: Array<string>;
@@ -351,6 +353,13 @@ export type Settings = {
     tag_import_setting: TagImportSetting;
     movingUI: boolean;
     zoomed_avatar_magnification: boolean;
+  };
+  background: {
+    name: string;
+    url: string;
+    fitting: BackgroundFitting;
+    thumbnailColumns: number;
+    animation: boolean;
   };
   oai_settings: OaiSettings;
   username?: string;

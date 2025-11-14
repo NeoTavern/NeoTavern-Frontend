@@ -364,5 +364,6 @@ export const useChatStore = defineStore('chat', () => {
     deleteMessage,
     deleteSwipe,
     moveMessage,
+    getCurrentChatId,
   };
 });

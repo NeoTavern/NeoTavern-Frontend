@@ -10,6 +10,42 @@
     "personaManagement": "Persona Management",
     "characterManagement": "Character Management"
   },
+  "backgrounds": {
+    "add": "Add Background",
+    "fitting": "Background Fitting",
+    "fittingOptions": {
+      "classic": "Classic",
+      "cover": "Cover",
+      "contain": "Contain",
+      "stretch": "Stretch",
+      "center": "Center"
+    },
+    "autoSelect": "Auto-select",
+    "autoSelectTooltip": "Automatically select a background based on the chat context",
+    "searchPlaceholder": "Search...",
+    "systemBackgrounds": "System Backgrounds",
+    "chatBackgrounds": "Chat Backgrounds",
+    "zoomIn": "Make thumbnails smaller",
+    "zoomOut": "Make thumbnails larger",
+    "confirmDelete": "Are you sure you want to delete {fileName}?",
+    "renameTitle": "Enter new background name:",
+    "renameSuccess": "Renamed {oldName} to {newName}",
+    "deleteSuccess": "Deleted {fileName}",
+    "actions": {
+      "lock": "Lock background for this chat",
+      "unlock": "Unlock background",
+      "copy": "Copy to system backgrounds",
+      "rename": "Rename Background",
+      "delete": "Delete Background"
+    },
+    "errors": {
+      "fetch": "Failed to load backgrounds.",
+      "noChatLock": "Select a chat to lock the background for it.",
+      "upload": "Failed to upload background.",
+      "delete": "Failed to delete background.",
+      "rename": "Failed to rename background."
+    }
+  },
   "aiConfig": {
     "manualInputNote": "Click slider numbers to input manually.",
     "docsLinkTooltip": "Documentation on sampling parameters.",
@@ -342,6 +378,16 @@
       "zoomed_avatar_magnification": {
         "label": "Magnify Zoomed Avatars",
         "description": "Enable magnification effect when hovering over a zoomed-in avatar."
+      }
+    },
+    "background": {
+      "thumbnailColumns": {
+        "label": "Background Thumbnail Columns",
+        "description": "Number of columns for background thumbnails in the selector."
+      },
+      "animation": {
+        "label": "Animated Backgrounds",
+        "description": "Enable animation for supported background formats (e.g., video, animated webp)."
       }
     }
   }

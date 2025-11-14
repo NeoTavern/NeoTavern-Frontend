@@ -82,4 +82,27 @@ export const settingsDefinition: SettingDefinition[] = [
     widget: 'checkbox',
     defaultValue: true,
   },
+
+  // --- Appearance ---
+  {
+    id: 'background.thumbnailColumns',
+    label: 'settings.background.thumbnailColumns.label',
+    description: 'settings.background.thumbnailColumns.description',
+    category: 'Appearance',
+    type: 'number',
+    widget: 'slider',
+    defaultValue: 5,
+    min: 2,
+    max: 8,
+    step: 1,
+  },
+  {
+    id: 'background.animation',
+    label: 'settings.background.animation.label',
+    description: 'settings.background.animation.description',
+    category: 'Appearance',
+    type: 'boolean',
+    widget: 'checkbox',
+    defaultValue: false,
+  },
 ];
