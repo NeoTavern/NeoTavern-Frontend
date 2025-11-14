@@ -67,7 +67,9 @@ export const useSettingsStore = defineStore('settings', () => {
       toast.error('Could not load user settings. Using defaults.');
       // The store already has defaults, so we can just continue safely.
     } finally {
-      settingsInitializing.value = false;
+      Promise.resolve().then(() => {
+        settingsInitializing.value = false;
+      });
     }
   }
 
