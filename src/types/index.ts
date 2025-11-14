@@ -86,10 +86,6 @@ export interface ChatMessage {
     reasoning_type?: string;
     display_text?: string;
     reasoning_display_text?: string;
-    tool_invocations?: any[];
-    append_title?: boolean;
-    title?: string;
-    isSmallSys?: boolean;
     token_count?: number;
   } & Record<string, any>;
 }
@@ -267,16 +263,16 @@ export interface AiConfigItem {
   unlockTooltip?: string;
 
   // for select
-  options?: { value: string | number; label: string }[];
+  options?: { value: string | number; label: string }[]; // TODO: Implement
 
   // for custom components
-  component?: any;
+  component?: any; // TODO: Implement
 
   // For layout
-  cssClass?: string;
+  cssClass?: string; // TODO: Implement
 
   // For info-display
-  valueGetter?: (apiStore: any) => string;
+  valueGetter?: (apiStore: any) => string; // TODO: Implement
 }
 
 export interface AiConfigSection {
@@ -309,9 +305,6 @@ export interface OaiSettings {
   openai_max_tokens?: number;
   prompts?: OaiPrompt[];
   prompt_order?: OaiPromptOrderConfig[];
-  wrap_in_quotes?: boolean;
-  continue_prefill?: boolean;
-  squash_system_messages?: boolean;
 }
 
 // --- Settings Types ---
