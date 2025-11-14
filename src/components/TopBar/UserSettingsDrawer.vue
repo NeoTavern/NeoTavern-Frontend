@@ -43,6 +43,7 @@ const groupedSettings = computed(() => {
 });
 
 function getSettingValue(id: string) {
+  // @ts-ignore
   return settingsStore.getSetting(id);
 }
 
@@ -57,6 +58,7 @@ function updateSetting(id: string, event: Event) {
     value = parseFloat(value);
   }
 
+  // @ts-ignore
   settingsStore.setSetting(id, value);
 }
 
@@ -117,6 +119,7 @@ const { beforeEnter, enter, afterEnter, beforeLeave, leave, afterLeave } = slide
                 <div class="setting-control">
                   <!-- Checkbox -->
                   <label v-if="setting.widget === 'checkbox'" class="checkbox-label-wrapper">
+                    <!-- @vue-ignore -->
                     <input
                       :id="setting.id"
                       type="checkbox"

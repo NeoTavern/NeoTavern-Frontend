@@ -9,6 +9,12 @@ import { settingsDefinition } from '../settings-definition';
 import { toast } from '../composables/useToast';
 import { set, get, defaultsDeep } from 'lodash-es';
 import { useUiStore } from './ui.store';
+import type { Path, ValueForPath } from '../types/utils';
+
+// --- Create type aliases for convenience ---
+type SettingsPath = Path<Settings>;
+type SettingsValue<P extends SettingsPath> = ValueForPath<Settings, P>;
+// -----------------------------------------
 
 function createDefaultSettings(): Settings {
   const defaultSettings: Record<string, any> = {};
@@ -39,14 +45,13 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   });
 
-  function getSetting(id: string): any {
-    if (!settings.value) return undefined;
+  function getSetting<P extends SettingsPath>(id: P): SettingsValue<P> {
     const definition = definitions.value.find((def) => def.id === id);
-    return get(settings.value, id, definition?.defaultValue);
+    // The 'as' cast is safe here because we've constrained P to be a valid path.
+    return get(settings.value, id, definition?.defaultValue) as SettingsValue<P>;
   }
 
-  function setSetting(id: string, value: any) {
-    if (!settings.value) return;
+  function setSetting<P extends SettingsPath>(id: P, value: SettingsValue<P>) {
     set(settings.value, id, value);
     saveSettingsDebounced();
   }

@@ -365,7 +365,7 @@ export type Settings = {
   username?: string;
   user_avatar?: string;
   main_api?: string;
-} & Record<string, any>;
+};
 
 export interface ZoomedAvatar {
   id: string; // Unique ID, can be character name or a UUID

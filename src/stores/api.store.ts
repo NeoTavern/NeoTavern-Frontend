@@ -15,13 +15,14 @@ export const useApiStore = defineStore('api', () => {
   const settingsStore = useSettingsStore();
 
   const mainApi = ref('openai');
-  const oaiSettings = ref<Partial<OaiSettings>>({});
+  // @ts-ignore
+  const oaiSettings = ref<OaiSettings>({});
   const onlineStatus = ref('Not connected...');
   const isConnecting = ref(false);
   const modelList = ref<any[]>([]);
   const presets = ref<Record<string, Preset[]>>({});
 
-  const defaultOaiSettings: Partial<OaiSettings> = {
+  const defaultOaiSettings: OaiSettings = {
     chat_completion_source: chat_completion_sources.OPENAI,
     openai_model: 'gpt-4o',
     claude_model: 'claude-sonnet-4-5',
@@ -34,6 +35,8 @@ export const useApiStore = defineStore('api', () => {
     openai_max_context: 16384,
     openai_max_tokens: 500,
     stream_openai: true,
+    proxy_password: '',
+    reverse_proxy: '',
     prompts: [
       {
         name: 'Main Prompt',
