@@ -151,6 +151,12 @@ export interface MessageSchema {
       delayUntilRecursionHint: string;
       ignoreBudget: string;
       ignoreBudgetHint: string;
+      entryState: string;
+      entryStates: {
+        constant: string;
+        normal: string;
+        vectorized: string;
+      };
     };
   };
   backgrounds: {
@@ -265,6 +271,14 @@ export interface MessageSchema {
     confirm: string;
     copy: string;
     delete: string;
+    of: string;
+  };
+  pagination: {
+    first: string;
+    previous: string;
+    next: string;
+    last: string;
+    perPage: string;
   };
   chat: {
     inputPlaceholder: string;
@@ -519,6 +533,10 @@ export interface MessageSchema {
         description: string;
       };
       zoomed_avatar_magnification: {
+        label: string;
+        description: string;
+      };
+      characters_per_page: {
         label: string;
         description: string;
       };

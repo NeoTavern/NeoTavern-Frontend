@@ -36,6 +36,8 @@ export const useCharacterStore = defineStore('character', () => {
   const characters = ref<Array<Character>>([]);
   const activeCharacterIndex = ref<number | null>(null);
   const favoriteCharacterChecked = ref<boolean>(false);
+  const currentPage = ref(1);
+  const itemsPerPage = ref(25);
   const tokenCounts = ref<{ total: number; permanent: number; fields: Record<string, number> }>({
     total: 0,
     permanent: 0,
@@ -71,6 +73,19 @@ export const useCharacterStore = defineStore('character', () => {
 
     // TODO: Add sorting and filtering logic here
     return [...characterEntities, ...groupEntities];
+  });
+
+  const paginatedEntities = computed<Entity[]>(() => {
+    const totalItems = displayableEntities.value.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage.value);
+
+    if (currentPage.value > totalPages && totalPages > 0) {
+      currentPage.value = totalPages;
+    }
+
+    const start = (currentPage.value - 1) * itemsPerPage.value;
+    const end = start + itemsPerPage.value;
+    return displayableEntities.value.slice(start, end);
   });
 
   const refreshCharactersDebounced = debounce(() => {
@@ -416,6 +431,9 @@ export const useCharacterStore = defineStore('character', () => {
     activeCharacter,
     activeCharacterName,
     displayableEntities,
+    paginatedEntities,
+    currentPage,
+    itemsPerPage,
     refreshCharacters,
     selectCharacterById,
     saveActiveCharacter,

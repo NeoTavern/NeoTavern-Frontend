@@ -48,7 +48,12 @@
       flex-grow: 1;
     }
 
-    .header-fields {
+    &__state-selector {
+      flex-grow: 0;
+      width: auto;
+    }
+
+    &__header-fields {
       display: flex;
       gap: 5px;
 

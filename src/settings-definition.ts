@@ -21,6 +21,15 @@ export const settingsDefinition: SettingDefinition[] = [
     widget: 'checkbox',
     defaultValue: false,
   },
+  {
+    id: 'power_user.world_import_dialog',
+    label: 'settings.power_user.world_import_dialog.label',
+    description: 'settings.power_user.world_import_dialog.description',
+    category: 'Character Handling',
+    type: 'boolean',
+    widget: 'checkbox',
+    defaultValue: true,
+  },
 
   // --- Chat/Message Handling ---
   {
@@ -47,15 +56,6 @@ export const settingsDefinition: SettingDefinition[] = [
     defaultValue: false,
   },
   {
-    id: 'power_user.world_import_dialog',
-    label: 'settings.power_user.world_import_dialog.label',
-    description: 'settings.power_user.world_import_dialog.description',
-    category: 'Chat/Message Handling',
-    type: 'boolean',
-    widget: 'checkbox',
-    defaultValue: true,
-  },
-  {
     id: 'power_user.confirm_message_delete',
     label: 'settings.power_user.confirm_message_delete.label',
     description: 'settings.power_user.confirm_message_delete.description',
@@ -68,7 +68,7 @@ export const settingsDefinition: SettingDefinition[] = [
     id: 'power_user.movingUI',
     label: 'settings.power_user.movingUI.label',
     description: 'settings.power_user.movingUI.description',
-    category: 'Chat/Message Handling',
+    category: 'UI & Display',
     type: 'boolean',
     widget: 'checkbox',
     defaultValue: false,
@@ -77,7 +77,7 @@ export const settingsDefinition: SettingDefinition[] = [
     id: 'power_user.zoomed_avatar_magnification',
     label: 'settings.power_user.zoomed_avatar_magnification.label',
     description: 'settings.power_user.zoomed_avatar_magnification.description',
-    category: 'Chat/Message Handling',
+    category: 'UI & Display',
     type: 'boolean',
     widget: 'checkbox',
     defaultValue: true,

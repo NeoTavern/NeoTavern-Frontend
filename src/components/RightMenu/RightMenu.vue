@@ -5,6 +5,7 @@ import { useUiStore } from '../../stores/ui.store';
 import { useApiStore } from '../../stores/api.store';
 import type { Character, Group } from '../../types';
 import CharacterEditForm from './CharacterEditForm.vue';
+import Pagination from '../common/Pagination.vue';
 import { getThumbnailUrl } from '../../utils/image';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 
@@ -178,13 +179,19 @@ onMounted(() => {
       <div class="right-menu-panel__pagination">
         <i class="fa-solid fa-table-cells-large menu-button" :title="t('rightMenu.gridView')"></i>
         <i class="fa-solid fa-edit menu-button" :title="t('rightMenu.bulkEdit')"></i>
-        <div></div>
+        <Pagination
+          v-if="characterStore.displayableEntities.length > 0"
+          :total-items="characterStore.displayableEntities.length"
+          v-model:current-page="characterStore.currentPage"
+          v-model:items-per-page="characterStore.itemsPerPage"
+          :items-per-page-options="[10, 25, 50, 100]"
+        />
         <i class="fa-solid fa-check-double menu-button" :title="t('rightMenu.bulkSelectAll')" style="display: none"></i>
         <i class="fa-solid fa-trash menu-button" :title="t('rightMenu.bulkDelete')" style="display: none"></i>
       </div>
       <div id="character-list" class="u-flex-col">
-        <div v-if="characterStore.displayableEntities.length === 0">{{ t('common.loading') }}</div>
-        <template v-for="entity in characterStore.displayableEntities" :key="entity.id">
+        <div v-if="characterStore.paginatedEntities.length === 0">{{ t('common.loading') }}</div>
+        <template v-for="entity in characterStore.paginatedEntities" :key="entity.id">
           <!-- Character Block -->
           <div
             v-if="entity.type === 'character'"

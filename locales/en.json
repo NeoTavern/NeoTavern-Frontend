@@ -147,7 +147,13 @@
       "delayUntilRecursion": "Delay until recursion",
       "delayUntilRecursionHint": "This entry can only be activated on recursive checking.",
       "ignoreBudget": "Ignore budget",
-      "ignoreBudgetHint": "This entry will be included ignoring budget constraints, assuming all other checks pass."
+      "ignoreBudgetHint": "This entry will be included ignoring budget constraints, assuming all other checks pass.",
+      "entryState": "Entry State",
+      "entryStates": {
+        "constant": "🔵 Constant",
+        "normal": "🟢 Normal",
+        "vectorized": "🔗 Vectorized"
+      }
     }
   },
   "backgrounds": {
@@ -261,7 +267,15 @@
     "permanent": "Permanent",
     "confirm": "Confirm",
     "copy": "Copy",
-    "delete": "Delete"
+    "delete": "Delete",
+    "of": "of"
+  },
+  "pagination": {
+    "first": "First Page",
+    "previous": "Previous Page",
+    "next": "Next Page",
+    "last": "Last Page",
+    "perPage": "{count} / page"
   },
   "chat": {
     "inputPlaceholder": "Type a message, or /? for help",
@@ -518,6 +532,10 @@
       "zoomed_avatar_magnification": {
         "label": "Magnify Zoomed Avatars",
         "description": "Enable magnification effect when hovering over a zoomed-in avatar."
+      },
+      "characters_per_page": {
+        "label": "Characters Per Page",
+        "description": "The number of characters to show on each page in the character list."
       }
     },
     "background": {

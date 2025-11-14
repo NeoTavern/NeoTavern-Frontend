@@ -49,6 +49,10 @@ export const useWorldInfoStore = defineStore('world-info', () => {
   const searchTerm = ref('');
   const sortOrder = ref('priority');
 
+  // Pagination state
+  const currentPage = ref(1);
+  const itemsPerPage = ref(25);
+
   const settings = computed({
     get: () => settingsStore.settings.world_info_settings,
     set: (value) => {
@@ -80,6 +84,11 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     },
     { deep: true },
   );
+
+  // Reset to page 1 when filters or book change to avoid invalid page states
+  watch([editingBookName, searchTerm, sortOrder], () => {
+    currentPage.value = 1;
+  });
 
   function getBookFromCache(name: string): WorldInfoBook | undefined {
     return worldInfoCache.value[name];
@@ -283,6 +292,19 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     return entries.sort(sortFn);
   });
 
+  const paginatedEntries = computed(() => {
+    const totalItems = filteredEntries.value.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage.value);
+
+    if (currentPage.value > totalPages && totalPages > 0) {
+      currentPage.value = totalPages;
+    }
+
+    const start = (currentPage.value - 1) * itemsPerPage.value;
+    const end = start + itemsPerPage.value;
+    return filteredEntries.value.slice(start, end);
+  });
+
   return {
     isPanelPinned,
     settings,
@@ -293,10 +315,13 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     editingBook,
     searchTerm,
     sortOrder,
+    currentPage,
+    itemsPerPage,
     initialize,
     selectBookForEditing,
     saveEditingBookDebounced,
     filteredEntries,
+    paginatedEntries,
     createNewBook,
     deleteEditingBook,
     renameEditingBook,

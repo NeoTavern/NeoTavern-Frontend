@@ -23,6 +23,31 @@ const isAtDepth = computed(() => props.modelValue.position === WorldInfoPosition
 function updateValue<K extends keyof WorldInfoEntry>(key: K, value: WorldInfoEntry[K]) {
   emit('update:modelValue', { ...props.modelValue, [key]: value });
 }
+
+const entryState = computed({
+  get() {
+    if (props.modelValue.constant) return 'constant';
+    if (props.modelValue.vectorized) return 'vectorized';
+    return 'normal';
+  },
+  set(value: 'constant' | 'normal' | 'vectorized') {
+    switch (value) {
+      case 'constant':
+        updateValue('constant', true);
+        updateValue('vectorized', false);
+        break;
+      case 'vectorized':
+        updateValue('constant', false);
+        updateValue('vectorized', true);
+        break;
+      case 'normal':
+      default:
+        updateValue('constant', false);
+        updateValue('vectorized', false);
+        break;
+    }
+  },
+});
 </script>
 
 <template>
@@ -49,7 +74,15 @@ function updateValue<K extends keyof WorldInfoEntry>(key: K, value: WorldInfoEnt
               @input="updateValue('comment', ($event.target as HTMLTextAreaElement).value)"
               :placeholder="t('worldInfo.entry.titlePlaceholder')"
             ></textarea>
-            <!-- TODO: Add Entry State Selector (Constant, Normal, Vectorized) -->
+            <select
+              class="text-pole world-entry__state-selector"
+              :title="t('worldInfo.entry.entryState')"
+              v-model="entryState"
+            >
+              <option value="constant">{{ t('worldInfo.entry.entryStates.constant') }}</option>
+              <option value="normal">{{ t('worldInfo.entry.entryStates.normal') }}</option>
+              <option value="vectorized">{{ t('worldInfo.entry.entryStates.vectorized') }}</option>
+            </select>
             <div class="world-entry__header-controls__header-fields">
               <select
                 class="text-pole"

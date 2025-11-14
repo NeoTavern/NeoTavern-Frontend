@@ -4,6 +4,7 @@ import { useWorldInfoStore } from '../../stores/world-info.store';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { slideTransitionHooks } from '../../utils/dom';
 import WorldInfoEntry from './WorldInfoEntry.vue';
+import Pagination from '../common/Pagination.vue';
 import type { WorldInfoEntry as WorldInfoEntryType } from '../../types';
 import { WorldInfoInsertionStrategy } from '../../types';
 
@@ -29,10 +30,15 @@ function handleFileImport(event: Event) {
   }
 }
 
-function updateEntry(index: number, newEntry: WorldInfoEntryType) {
+function updateEntry(newEntry: WorldInfoEntryType) {
   if (worldInfoStore.editingBook && worldInfoStore.editingBook.entries) {
-    worldInfoStore.editingBook.entries[index] = newEntry;
-    worldInfoStore.saveEditingBookDebounced();
+    // Find the original entry by UID and update it to ensure reactivity works
+    // correctly regardless of filtering, sorting, or pagination.
+    const index = worldInfoStore.editingBook.entries.findIndex((e) => e.uid === newEntry.uid);
+    if (index !== -1) {
+      worldInfoStore.editingBook.entries[index] = newEntry;
+      worldInfoStore.saveEditingBookDebounced();
+    }
   }
 }
 </script>
@@ -142,8 +148,8 @@ function updateEntry(index: number, newEntry: WorldInfoEntryType) {
                         />
                       </div>
                     </div>
-                    <div class="range-block">
-                      <div class="range-block-title" :title="t('worldInfo.budgetCapHint')">
+                    <div class="range-block" :title="t('worldInfo.budgetCapHint')">
+                      <div class="range-block-title">
                         {{ t('worldInfo.budgetCap') }}
                       </div>
                       <div class="range-block-range-and-counter">
@@ -327,10 +333,12 @@ function updateEntry(index: number, newEntry: WorldInfoEntryType) {
         <!-- Entry Editor (if a book is selected) -->
         <div v-if="worldInfoStore.editingBook" class="world-editor__entries">
           <div class="world-editor__entries-controls">
-            <!-- TODO: New Entry, Open/Close all, Search, Sort, Pagination -->
+            <!-- TODO: Implement click handlers -->
             <div class="menu-button fa-solid fa-plus" :title="t('worldInfo.newEntry')"></div>
             <div class="menu-button fa-solid fa-expand" :title="t('worldInfo.openAllEntries')"></div>
             <div class="menu-button fa-solid fa-compress" :title="t('worldInfo.closeAllEntries')"></div>
+            <div class="menu-button fa-solid fa-notes-medical" :title="t('worldInfo.fillEmptyMemos')"></div>
+            <div class="menu-button fa-solid fa-arrow-down-9-1" :title="t('worldInfo.applySorting')"></div>
             <input
               type="search"
               class="text-pole world-editor__entry-search"
@@ -354,12 +362,19 @@ function updateEntry(index: number, newEntry: WorldInfoEntryType) {
             </select>
             <div class="menu-button fa-solid fa-arrows-rotate" :title="t('worldInfo.refresh')"></div>
           </div>
+          <Pagination
+            v-if="worldInfoStore.filteredEntries.length > 0"
+            :total-items="worldInfoStore.filteredEntries.length"
+            v-model:current-page="worldInfoStore.currentPage"
+            v-model:items-per-page="worldInfoStore.itemsPerPage"
+            :items-per-page-options="[10, 25, 50, 100]"
+          />
           <div class="world-editor__entries-list">
             <WorldInfoEntry
-              v-for="(entry, index) in worldInfoStore.filteredEntries"
+              v-for="entry in worldInfoStore.paginatedEntries"
               :key="entry.uid"
               :model-value="entry"
-              @update:model-value="(newEntry) => updateEntry(index, newEntry)"
+              @update:model-value="updateEntry"
             />
           </div>
         </div>
