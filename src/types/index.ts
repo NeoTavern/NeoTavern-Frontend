@@ -187,6 +187,7 @@ export interface PopupOptions {
   customButtons?: CustomPopupButton[];
   customInputs?: CustomPopupInput[];
   defaultResult?: number;
+  cropImage?: string;
 }
 
 // --- API Connection Types ---
@@ -413,6 +414,27 @@ export interface WorldInfoSettings {
   world_info_max_recursion_steps: number;
 }
 
+// --- Persona Types ---
+export interface PersonaConnection {
+  type: 'character' | 'group';
+  id: string; // character avatar or group id
+}
+
+export interface PersonaDescription {
+  description: string;
+  position: number;
+  depth: number;
+  role: MessageRole;
+  lorebook: string;
+  connections: PersonaConnection[];
+  title: string;
+}
+
+export interface Persona extends PersonaDescription {
+  avatarId: string;
+  name: string;
+}
+
 // --- Settings Types ---
 export type SettingType = 'boolean' | 'number' | 'string' | 'enum';
 export type SettingWidget = 'checkbox' | 'slider' | 'select' | 'text' | 'textarea';
@@ -452,6 +474,12 @@ export type Settings = {
     tag_import_setting: TagImportSetting;
     movingUI: boolean;
     zoomed_avatar_magnification: boolean;
+    personas: Record<string, string>; // avatarId -> name
+    default_persona: string | null;
+    persona_descriptions: Record<string, PersonaDescription>;
+    persona_show_notifications: boolean;
+    persona_allow_multi_connections: boolean;
+    persona_auto_lock: boolean;
   };
   background: {
     name: string;

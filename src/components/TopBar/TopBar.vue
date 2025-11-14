@@ -7,6 +7,7 @@ import ApiConnectionsDrawer from './ApiConnectionsDrawer.vue';
 import AiConfigDrawer from './AiConfigDrawer.vue';
 import BackgroundsDrawer from './BackgroundsDrawer.vue';
 import WorldInfoDrawer from './WorldInfoDrawer.vue';
+import PersonaManagementDrawer from './PersonaManagementDrawer.vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 
 const { t } = useStrictI18n();
@@ -120,7 +121,7 @@ function toggleDrawer(drawerName: string) {
           ></div>
         </button>
         <div class="nav-item__content" :class="{ active: activeDrawer === 'persona' }">
-          <!-- Persona Management Content -->
+          <PersonaManagementDrawer />
         </div>
       </div>
       <div class="nav-item">

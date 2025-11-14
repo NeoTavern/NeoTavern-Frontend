@@ -1,0 +1,164 @@
+.persona-drawer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  padding: 10px;
+  gap: 15px;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+
+    h3 {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-grow: 1;
+    }
+
+    .note-link-span {
+      font-size: 1em;
+      opacity: 0.7;
+      color: var(--theme-text-color);
+      &:hover {
+        opacity: 1;
+      }
+    }
+  }
+
+  &__header-actions {
+    display: flex;
+    gap: 5px;
+  }
+
+  &__content {
+    flex-grow: 1;
+    display: flex;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  &__column--left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  &__column--right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__list-controls {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+
+    .text-pole {
+      margin: 0;
+      flex-grow: 1;
+    }
+  }
+}
+
+.persona-list {
+  overflow-y: auto;
+  flex-grow: 1;
+
+  .persona-item {
+    display: flex;
+    gap: 10px;
+    padding: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 1px solid transparent;
+
+    &:hover {
+      background-color: var(--white-20a);
+    }
+
+    &.selected {
+      border-color: var(--theme-quote-color);
+      background-color: var(--color-accent-cobalt-30a);
+    }
+
+    &__avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    &__details {
+      overflow: hidden;
+    }
+
+    &__name {
+      font-weight: bold;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    &__description {
+      font-size: 0.9em;
+      opacity: 0.7;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+  }
+}
+
+.persona-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .standoutHeader {
+    margin-bottom: 0;
+  }
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__name {
+    font-size: 1.25em;
+    opacity: 0.8;
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .buttons_block {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  &__connections {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+
+  &__global-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+}

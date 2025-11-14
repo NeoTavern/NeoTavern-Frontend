@@ -4,6 +4,14 @@ import type { PropType } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
 import { POPUP_TYPE, POPUP_RESULT, type PopupOptions } from '../../types';
+import 'cropperjs';
+
+interface CropperSelectionElement extends HTMLElement {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -21,6 +29,7 @@ const { t } = useStrictI18n();
 const settings = useSettingsStore();
 const dialog = ref<HTMLDialogElement | null>(null);
 const mainInput = ref<HTMLTextAreaElement | null>(null);
+const cropperSelection = ref<CropperSelectionElement | null>(null);
 const internalInputValue = ref(props.inputValue);
 
 const okText = ref('OK');
@@ -38,6 +47,7 @@ function resolveOptions() {
       showCancel.value = cancelButton !== false;
       break;
     case POPUP_TYPE.INPUT:
+    case POPUP_TYPE.CROP:
       okText.value = typeof okButton === 'string' ? okButton : t('common.save');
       cancelText.value = typeof cancelButton === 'string' ? cancelButton : t('common.cancel');
       showOk.value = okButton !== false;
@@ -60,14 +70,13 @@ watch(
       if (!dialog.value?.open) {
         dialog.value?.showModal();
       }
-      // Auto-focus logic
       setTimeout(() => {
         if (props.type === POPUP_TYPE.INPUT && mainInput.value) {
           mainInput.value.focus();
-        } else {
+        } else if (props.type !== POPUP_TYPE.CROP) {
           (dialog.value?.querySelector('.menu-button') as HTMLElement)?.focus();
         }
-      }, 100); // Delay to allow dialog to render
+      }, 100);
     } else {
       dialog.value?.close();
     }
@@ -87,6 +96,14 @@ function handleResult(result: number) {
   if (result === POPUP_RESULT.AFFIRMATIVE) {
     if (props.type === POPUP_TYPE.INPUT) {
       payload.value = internalInputValue.value;
+    } else if (props.type === POPUP_TYPE.CROP && cropperSelection.value) {
+      const { x, y, width, height } = cropperSelection.value;
+      payload.value = {
+        x: Math.round(x),
+        y: Math.round(y),
+        width: Math.round(width),
+        height: Math.round(height),
+      };
     }
   }
   emit('submit', payload);
@@ -120,7 +137,10 @@ function handleEnter(evt: KeyboardEvent) {
   >
     <div class="popup-body">
       <h3 v-if="title" v-html="title"></h3>
-      <div class="popup-content" :class="{ 'is-input': type === POPUP_TYPE.INPUT }">
+      <div
+        class="popup-content"
+        :class="{ 'is-input': type === POPUP_TYPE.INPUT, 'is-crop': type === POPUP_TYPE.CROP }"
+      >
         <div v-if="content" v-html="content"></div>
         <textarea
           v-if="type === POPUP_TYPE.INPUT"
@@ -129,19 +149,25 @@ function handleEnter(evt: KeyboardEvent) {
           :rows="options.rows"
           v-model="internalInputValue"
         ></textarea>
+        <div v-if="type === POPUP_TYPE.CROP" class="crop-container">
+          <cropper-canvas>
+            <cropper-image :src="options.cropImage" alt="Image to crop" translatable></cropper-image>
+            <cropper-shade hidden></cropper-shade>
+            <cropper-handle action="move" plain></cropper-handle>
+            <cropper-selection
+              ref="cropperSelection"
+              :initial-coverage="0.8"
+              :aspect-ratio="1"
+              :movable="false"
+              :resizable="false"
+            >
+              <cropper-grid hidden></cropper-grid>
+            </cropper-selection>
+          </cropper-canvas>
+        </div>
       </div>
 
-      <!-- TODO: Implement CROP and custom inputs if needed -->
-
       <div class="popup-controls">
-        <button
-          v-if="showCancel"
-          type="button"
-          class="menu-button popup-button-cancel"
-          @click="handleResult(POPUP_RESULT.NEGATIVE)"
-        >
-          {{ cancelText }}
-        </button>
         <button
           v-if="showOk"
           type="button"
@@ -150,7 +176,26 @@ function handleEnter(evt: KeyboardEvent) {
         >
           {{ okText }}
         </button>
+        <button
+          v-if="showCancel"
+          type="button"
+          class="menu-button popup-button-cancel"
+          @click="handleResult(POPUP_RESULT.NEGATIVE)"
+        >
+          {{ cancelText }}
+        </button>
       </div>
     </div>
   </dialog>
 </template>
+
+<style scoped>
+.crop-container {
+  max-width: 100%;
+  max-height: 70vh;
+}
+.is-crop {
+  display: flex;
+  justify-content: center;
+}
+</style>

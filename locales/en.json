@@ -10,6 +10,49 @@
     "personaManagement": "Persona Management",
     "characterManagement": "Character Management"
   },
+  "personaManagement": {
+    "title": "Persona Management",
+    "usageStats": "Usage Stats",
+    "backup": "Backup",
+    "restore": "Restore",
+    "create": "Create",
+    "noDescription": "[No description]",
+    "currentPersona": "Current Persona",
+    "description": {
+      "label": "Persona Description",
+      "placeholder": "Example:\n[{'{{user}}'} is a 28-year-old Romanian cat girl.]"
+    },
+    "connections": {
+      "title": "Connections",
+      "default": "Default",
+      "character": "Character",
+      "chat": "Chat"
+    },
+    "globalSettings": {
+      "title": "Global Settings",
+      "showNotifications": "Show notifications on switching personas",
+      "allowMultiConnections": "Allow multiple persona connections per character",
+      "autoLock": "Auto-lock a chosen persona to the chat"
+    },
+    "actions": {
+      "rename": "Rename Persona",
+      "syncName": "Click to set user name for all messages",
+      "lore": "Persona Lore",
+      "changeImage": "Change Persona Image",
+      "duplicate": "Duplicate Persona",
+      "delete": "Delete Persona"
+    },
+    "rename": {
+      "title": "Rename Persona",
+      "prompt": "Enter the new name for this persona:"
+    },
+    "delete": {
+      "confirmTitle": "Delete Persona",
+      "confirmMessage": "Are you sure you want to delete the persona \"{name}\"? All associated information will be lost.",
+      "success": "Persona deleted.",
+      "error": "Failed to delete persona."
+    }
+  },
   "worldInfo": {
     "title": "Worlds/Lorebooks",
     "pinToggle": "Locked = World Editor will stay open",
@@ -268,7 +311,8 @@
     "confirm": "Confirm",
     "copy": "Copy",
     "delete": "Delete",
-    "of": "of"
+    "of": "of",
+    "search": "Search"
   },
   "pagination": {
     "first": "First Page",

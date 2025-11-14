@@ -13,6 +13,49 @@ export interface MessageSchema {
     personaManagement: string;
     characterManagement: string;
   };
+  personaManagement: {
+    title: string;
+    usageStats: string;
+    backup: string;
+    restore: string;
+    create: string;
+    noDescription: string;
+    currentPersona: string;
+    description: {
+      label: string;
+      placeholder: string;
+    };
+    connections: {
+      title: string;
+      default: string;
+      character: string;
+      chat: string;
+    };
+    globalSettings: {
+      title: string;
+      showNotifications: string;
+      allowMultiConnections: string;
+      autoLock: string;
+    };
+    actions: {
+      rename: string;
+      syncName: string;
+      lore: string;
+      changeImage: string;
+      duplicate: string;
+      delete: string;
+    };
+    rename: {
+      title: string;
+      prompt: string;
+    };
+    delete: {
+      confirmTitle: string;
+      confirmMessage: string;
+      success: string;
+      error: string;
+    };
+  };
   worldInfo: {
     title: string;
     pinToggle: string;
@@ -272,6 +315,7 @@ export interface MessageSchema {
     copy: string;
     delete: string;
     of: string;
+    search: string;
   };
   pagination: {
     first: string;
