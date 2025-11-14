@@ -8,6 +8,7 @@ import { POPUP_TYPE } from '../../types';
 import Popup from '../Popup/Popup.vue';
 import { useCharacterStore } from '../../stores/character.store';
 import { slideTransitionHooks } from '../../utils/dom';
+import { get } from 'lodash-es';
 
 const props = defineProps({
   modelValue: { type: Object as PropType<Partial<Character>>, required: true },
@@ -38,20 +39,6 @@ function updateValue(path: string, value: any) {
 
   // The parent's v-model will handle this event
   emit('update:modelValue', newModelValue);
-}
-
-// Helper function to safely get nested values from the prop
-function getValue(path: string): any {
-  const fields = path.split('.');
-  let current: any = props.modelValue;
-  for (const field of fields) {
-    if (current && typeof current === 'object' && field in current) {
-      current = current[field];
-    } else {
-      return undefined; // Return undefined if path is not found
-    }
-  }
-  return current;
 }
 
 // Initialize missing data structures on the prop if they don't exist
@@ -106,7 +93,7 @@ const joinedTags = computed({
 function openMaximizeEditor(fieldName: EditableField, title: string) {
   editingFieldName.value = fieldName;
   editorPopupTitle.value = t('advancedDefinitions.editingTitle', { title });
-  editorPopupValue.value = getValue(fieldName) ?? '';
+  editorPopupValue.value = get(props.modelValue, fieldName) ?? '';
   editorPopupOptions.value = { wide: true, large: true, okButton: 'OK', cancelButton: false };
   isEditorPopupVisible.value = true;
 }

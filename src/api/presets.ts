@@ -6,6 +6,7 @@ export interface Preset {
   preset: Partial<OaiSettings>;
 }
 
+// TODO: apiId should be a type
 export async function fetchAllPresets(apiId: string): Promise<Preset[]> {
   if (apiId === 'openai') {
     const response = await fetch('/api/settings/get', {

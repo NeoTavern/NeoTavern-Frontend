@@ -10,13 +10,6 @@ export function uuidv4() {
 }
 
 /**
- * Returns a promise that resolves after the specified number of milliseconds.
- */
-export function delay(ms: number): Promise<void> {
-  return new Promise((res) => setTimeout(res, ms));
-}
-
-/**
  * Creates a debounced function that delays invoking `func` until after `wait` milliseconds
  * have elapsed since the last time the debounced function was invoked.
  * @param func The function to debounce.

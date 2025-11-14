@@ -14,7 +14,7 @@ export interface ChatCompletionPayload {
   chat_completion_source?: string;
   max_tokens?: number;
   temperature?: number;
-  // We can add other OpenAI params here as needed
+  // TODO: Add other parameters
 }
 
 export interface GenerationResponse {

@@ -19,6 +19,7 @@ import { useSettingsStore } from './settings.store';
 import { onlyUnique } from '../utils/array';
 import i18n from '../i18n';
 import { getFirstMessage } from '../utils/chat';
+import { get } from 'lodash-es';
 
 // TODO: Replace with a real API call to the backend for accurate tokenization
 async function getTokenCount(text: string): Promise<number> {
@@ -76,13 +77,6 @@ export const useCharacterStore = defineStore('character', () => {
     refreshCharacters();
   }, DEFAULT_PRINT_TIMEOUT);
 
-  // Helper to safely get a nested property
-  function getNestedValue(obj: any, path: string): string {
-    if (!obj) return '';
-    const value = path.split('.').reduce((o, p) => (o ? o[p] : undefined), obj);
-    return typeof value === 'string' ? value : '';
-  }
-
   const calculateAllTokens = debounce(async (characterData: Partial<Character>) => {
     if (!characterData) {
       tokenCounts.value = { total: 0, permanent: 0, fields: {} };
@@ -102,7 +96,7 @@ export const useCharacterStore = defineStore('character', () => {
 
     const newFieldCounts: Record<string, number> = {};
     const promises = fieldPaths.map((path) =>
-      getTokenCount(getNestedValue(characterData, path)).then((count) => {
+      getTokenCount(get(characterData, path)).then((count) => {
         newFieldCounts[path] = count;
       }),
     );

@@ -20,6 +20,7 @@ export function loadScript(name: string, jsFile: string): Promise<void> {
   });
 }
 
+// TODO: Use it in extension unloading
 export function unloadScript(name: string) {
   const id = sanitizeSelector(`${name}-js`);
   const script = document.getElementById(id);
@@ -47,6 +48,7 @@ export function loadStyle(name: string, cssFile: string): Promise<void> {
   });
 }
 
+// TODO: Use it in extension unloading
 export function unloadStyle(name: string) {
   const id = sanitizeSelector(`${name}-css`);
   const link = document.getElementById(id);

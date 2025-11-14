@@ -215,7 +215,7 @@ export interface OaiPrompt {
   system_prompt: boolean;
   role?: MessageRole;
   content?: string;
-  identifier: string;
+  identifier: string; // TODO: This should be a type.
   marker?: boolean;
 }
 

@@ -1,6 +1,7 @@
 import { getRequestHeaders } from '../utils/api';
 import type { Group } from '../types';
 
+// TODO: Implement groups
 export async function fetchAllGroups(): Promise<Group[]> {
   const response = await fetch('/api/groups/all', {
     method: 'POST',
