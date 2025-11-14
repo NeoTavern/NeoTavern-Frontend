@@ -1,5 +1,5 @@
 import { getRequestHeaders } from '../utils/api';
-import type { WorldInfoBook } from '../types';
+import type { WorldInfoBook, WorldInfoEntry } from '../types';
 
 export async function fetchAllWorldInfoNames(): Promise<string[]> {
   const response = await fetch('/api/settings/get', {
@@ -25,8 +25,15 @@ export async function fetchWorldInfoBook(name: string): Promise<WorldInfoBook> {
     throw new Error(`Failed to fetch world info book: ${name}`);
   }
   const bookData = await response.json();
-  // The backend might return just the entries, so we wrap it.
-  return { name, entries: bookData.entries || [] };
+
+  let entriesArray: WorldInfoEntry[] = [];
+  if (Array.isArray(bookData.entries)) {
+    entriesArray = bookData.entries;
+  } else if (typeof bookData.entries === 'object' && bookData.entries !== null) {
+    entriesArray = Object.values(bookData.entries);
+  }
+
+  return { name, entries: entriesArray };
 }
 
 export async function saveWorldInfoBook(name: string, data: WorldInfoBook): Promise<void> {

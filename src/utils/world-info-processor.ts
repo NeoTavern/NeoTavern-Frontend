@@ -6,7 +6,15 @@ import {
   type WorldInfoSettings,
   WorldInfoLogic,
   WorldInfoPosition,
+  type MessageRole,
 } from '../types';
+
+// TODO: Replace with a real API call to the backend for accurate tokenization
+async function getTokenCount(text: string): Promise<number> {
+  if (!text || typeof text !== 'string') return 0;
+  // This is a very rough approximation. The backend will have a proper tokenizer.
+  return Math.round(text.length / 4);
+}
 
 // TODO: These should be sourced from a central place or settings
 const MAX_SCAN_DEPTH = 1000;
@@ -84,6 +92,17 @@ class WorldInfoBuffer {
   }
 }
 
+export interface ProcessedWorldInfo {
+  worldInfoBefore: string;
+  worldInfoAfter: string;
+  anBefore: string[];
+  anAfter: string[];
+  emBefore: string[];
+  emAfter: string[];
+  depthEntries: { depth: number; role: MessageRole; entries: string[] }[];
+  outletEntries: Record<string, string[]>;
+}
+
 // --- Main Processor ---
 export class WorldInfoProcessor {
   private chat: ChatMessage[];
@@ -91,6 +110,7 @@ export class WorldInfoProcessor {
   private settings: WorldInfoSettings;
   private books: WorldInfoBook[];
   private playerName: string;
+  private maxContext: number;
 
   constructor(
     chat: ChatMessage[],
@@ -98,31 +118,39 @@ export class WorldInfoProcessor {
     settings: WorldInfoSettings,
     books: WorldInfoBook[],
     playerName: string,
+    maxContext: number,
   ) {
     this.chat = chat;
     this.character = character;
     this.settings = settings;
     this.books = books;
     this.playerName = playerName;
+    this.maxContext = maxContext;
   }
 
-  public process(): { worldInfoBefore: string; worldInfoAfter: string } {
+  public async process(): Promise<ProcessedWorldInfo> {
     const buffer = new WorldInfoBuffer(this.chat, this.settings, this.character);
     let allActivatedEntries = new Set<WorldInfoEntry>();
     let continueScanning = true;
     let loopCount = 0;
+    let tokenBudgetOverflowed = false;
+
+    let budget = Math.round((this.settings.world_info_budget * this.maxContext) / 100) || 1;
+    if (this.settings.world_info_budget_cap > 0 && budget > this.settings.world_info_budget_cap) {
+      budget = this.settings.world_info_budget_cap;
+    }
 
     const allEntries = this.books.flatMap((book) => book.entries.map((entry) => ({ ...entry, world: book.name })));
-    // TODO: Implement proper sorting based on order, priority etc.
     const sortedEntries = allEntries.sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
 
     // TODO: Implement TimedEffects for sticky/cooldown
-    // TODO: Implement Min Activations logic
+    // TODO: Implement Min Activations logic more fully with skew
 
     while (continueScanning && loopCount < (this.settings.world_info_max_recursion_steps || 10)) {
       loopCount++;
       let activatedInThisLoop = new Set<WorldInfoEntry>();
       let newContentForRecursion = '';
+      let currentContentForBudget = '';
 
       for (const entry of sortedEntries) {
         if (allActivatedEntries.has(entry) || entry.disable) continue;
@@ -189,10 +217,29 @@ export class WorldInfoProcessor {
 
       if (activatedInThisLoop.size > 0) {
         for (const entry of activatedInThisLoop) {
-          // TODO: Probability checks and budget checks
+          if (tokenBudgetOverflowed && !entry.ignoreBudget) continue;
+
+          // Probability Check
+          const roll = Math.random() * 100;
+          if (entry.useProbability && roll > entry.probability) {
+            continue;
+          }
+
+          const substitutedContent = substituteParams(entry.content, this.character, this.playerName);
+          const contentForBudget = `\n${substitutedContent}`;
+          const currentTokens = await getTokenCount(currentContentForBudget);
+          const entryTokens = await getTokenCount(contentForBudget);
+
+          if (!entry.ignoreBudget && currentTokens + entryTokens > budget) {
+            tokenBudgetOverflowed = true;
+            continue;
+          }
+
+          currentContentForBudget += contentForBudget;
           allActivatedEntries.add(entry);
+
           if (this.settings.world_info_recursive && !entry.preventRecursion) {
-            newContentForRecursion += `\n${substituteParams(entry.content, this.character, this.playerName)}`;
+            newContentForRecursion += `\n${substitutedContent}`;
           }
         }
 
@@ -208,24 +255,60 @@ export class WorldInfoProcessor {
     }
 
     // Build the final prompt strings
-    let worldInfoBefore = '';
-    let worldInfoAfter = '';
+    const result: ProcessedWorldInfo = {
+      worldInfoBefore: '',
+      worldInfoAfter: '',
+      anBefore: [],
+      anAfter: [],
+      emBefore: [],
+      emAfter: [],
+      depthEntries: [],
+      outletEntries: {},
+    };
 
     const finalEntries = Array.from(allActivatedEntries).sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
 
     for (const entry of finalEntries) {
       const content = substituteParams(entry.content, this.character, this.playerName);
-      if (entry.position === WorldInfoPosition.BEFORE_CHAR) {
-        worldInfoBefore += `${content}\n`;
-      } else {
-        worldInfoAfter += `${content}\n`;
+      if (!content) continue;
+
+      switch (entry.position) {
+        case WorldInfoPosition.BEFORE_CHAR:
+          result.worldInfoBefore += `${content}\n`;
+          break;
+        case WorldInfoPosition.AFTER_CHAR:
+          result.worldInfoAfter += `${content}\n`;
+          break;
+        case WorldInfoPosition.BEFORE_AN:
+          result.anBefore.push(content);
+          break;
+        case WorldInfoPosition.AFTER_AN:
+          result.anAfter.push(content);
+          break;
+        case WorldInfoPosition.BEFORE_EM:
+          result.emBefore.push(content);
+          break;
+        case WorldInfoPosition.AFTER_EM:
+          result.emAfter.push(content);
+          break;
+        case WorldInfoPosition.AT_DEPTH:
+          // TODO: Implement role mapping
+          result.depthEntries.push({ depth: entry.depth, role: 'system', entries: [content] });
+          break;
+        case WorldInfoPosition.OUTLET:
+          if (entry.outletName) {
+            if (!result.outletEntries[entry.outletName]) {
+              result.outletEntries[entry.outletName] = [];
+            }
+            result.outletEntries[entry.outletName].push(content);
+          }
+          break;
       }
-      // TODO: Handle other positions (AN, EM, at Depth, Outlet)
     }
 
-    return {
-      worldInfoBefore: worldInfoBefore.trim(),
-      worldInfoAfter: worldInfoAfter.trim(),
-    };
+    result.worldInfoBefore = result.worldInfoBefore.trim();
+    result.worldInfoAfter = result.worldInfoAfter.trim();
+
+    return result;
   }
 }

@@ -16,6 +16,7 @@ export class PromptBuilder {
   private chatHistory: ChatMessage[];
   private settings: ReturnType<typeof useApiStore>['oaiSettings'];
   private playerName: string;
+  private maxContext: number;
 
   constructor(character: Character, chatHistory: ChatMessage[]) {
     this.character = character;
@@ -27,24 +28,27 @@ export class PromptBuilder {
 
     this.settings = apiStore.oaiSettings;
     this.playerName = uiStore.activePlayerName || 'User';
+    this.maxContext = apiStore.oaiSettings.openai_max_context ?? 4096;
   }
 
-  public build(): ApiChatMessage[] {
+  public async build(): Promise<ApiChatMessage[]> {
     const messages: ApiChatMessage[] = [];
     const worldInfoStore = useWorldInfoStore();
 
     // Process World Info first
     const activeBooks = worldInfoStore.bookNames
       .filter((name) => worldInfoStore.activeBookNames.includes(name))
-      .map((name) => worldInfoStore.editingBook); // TODO: Get from loaded cache
+      .map((name) => worldInfoStore.getBookFromCache(name));
+
     const processor = new WorldInfoProcessor(
       this.chatHistory,
       this.character,
       worldInfoStore.settings,
       activeBooks.filter((book): book is NonNullable<typeof book> => book !== null),
       this.playerName,
+      this.maxContext,
     );
-    const { worldInfoBefore, worldInfoAfter } = processor.process();
+    const { worldInfoBefore, worldInfoAfter } = await processor.process();
 
     const promptOrderConfig = this.settings.prompt_order?.[0]; // Not using character_id
     if (!promptOrderConfig) {
@@ -102,13 +106,14 @@ export class PromptBuilder {
       } else {
         if (promptDefinition.content && promptDefinition.role) {
           const content = substitute(promptDefinition.content, this.character, this.playerName);
+
           if (content) {
             messages.push({ role: promptDefinition.role, content });
           }
         }
       }
     }
-
+    // TODO: Handle other WI positions like AT_DEPTH, EM, etc.
     return messages;
   }
 

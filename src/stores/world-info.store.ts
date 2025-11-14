@@ -7,6 +7,7 @@ import {
   WorldInfoInsertionStrategy,
   POPUP_TYPE,
   POPUP_RESULT,
+  type WorldInfoEntry,
 } from '../types';
 import * as api from '../api/world-info';
 import { toast } from '../composables/useToast';
@@ -41,6 +42,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
   const activeBookNames = ref<string[]>([]);
   const isSettingsExpanded = ref(false);
 
+  const worldInfoCache = ref<Record<string, WorldInfoBook>>({});
   const editingBookName = ref<string | null>(null);
   const editingBook = ref<WorldInfoBook | null>(null);
 
@@ -79,10 +81,20 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     { deep: true },
   );
 
-  // TODO: We shouldn't call this for every WI action because `/settings/get` is expensive
+  function getBookFromCache(name: string): WorldInfoBook | undefined {
+    return worldInfoCache.value[name];
+  }
+
   async function initialize() {
     try {
       bookNames.value = await api.fetchAllWorldInfoNames();
+      // Pre-load active books into cache
+      for (const name of activeBookNames.value) {
+        if (!worldInfoCache.value[name]) {
+          const book = await api.fetchWorldInfoBook(name);
+          worldInfoCache.value[name] = book;
+        }
+      }
     } catch (error) {
       console.error('Failed to load world info list:', error);
       toast.error('Could not load lorebooks.');
@@ -95,8 +107,17 @@ export const useWorldInfoStore = defineStore('world-info', () => {
       editingBook.value = null;
       return;
     }
+
+    if (worldInfoCache.value[name]) {
+      editingBook.value = JSON.parse(JSON.stringify(worldInfoCache.value[name])); // Deep copy for editing
+      editingBookName.value = name;
+      return;
+    }
+
     try {
-      editingBook.value = await api.fetchWorldInfoBook(name);
+      const book = await api.fetchWorldInfoBook(name);
+      worldInfoCache.value[name] = book;
+      editingBook.value = JSON.parse(JSON.stringify(book)); // Deep copy for editing
       editingBookName.value = name;
     } catch (error) {
       console.error(`Failed to load book ${name} for editing:`, error);
@@ -110,6 +131,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     if (editingBook.value) {
       try {
         await api.saveWorldInfoBook(editingBook.value.name, editingBook.value);
+        worldInfoCache.value[editingBook.value.name] = JSON.parse(JSON.stringify(editingBook.value)); // Update cache
         toast.success(`Saved lorebook: ${editingBook.value.name}`);
       } catch (error) {
         console.error('Failed to save lorebook:', error);
@@ -150,6 +172,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     if (result === POPUP_RESULT.AFFIRMATIVE) {
       try {
         await api.deleteWorldInfoBook(name);
+        delete worldInfoCache.value[name];
         await initialize();
         if (editingBookName.value === name) {
           selectBookForEditing(null);
@@ -174,6 +197,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     if (result === POPUP_RESULT.AFFIRMATIVE && newName && newName !== oldName) {
       try {
         await api.renameWorldInfoBook(oldName, newName); // This needs a backend endpoint
+        delete worldInfoCache.value[oldName];
         await initialize();
         await selectBookForEditing(newName);
         toast.success(`Renamed to ${newName}`);
@@ -212,8 +236,51 @@ export const useWorldInfoStore = defineStore('world-info', () => {
 
   const filteredEntries = computed(() => {
     if (!editingBook.value?.entries) return [];
-    // TODO: Add filtering and sorting logic here
-    return editingBook.value.entries;
+
+    // Defensive check: backend might return an object instead of an array for entries
+    const entriesSource = Array.isArray(editingBook.value.entries)
+      ? editingBook.value.entries
+      : Object.values(editingBook.value.entries as Record<string, WorldInfoEntry>);
+
+    let entries: WorldInfoEntry[] = [...entriesSource];
+
+    // Filter
+    const lowerSearchTerm = searchTerm.value.toLowerCase();
+    if (lowerSearchTerm) {
+      entries = entries.filter(
+        (entry) =>
+          entry.comment.toLowerCase().includes(lowerSearchTerm) ||
+          entry.content.toLowerCase().includes(lowerSearchTerm) ||
+          entry.key.join(',').toLowerCase().includes(lowerSearchTerm),
+      );
+    }
+
+    // Sort
+    const [field, direction] = sortOrder.value.split(':');
+    const dir = direction === 'desc' ? -1 : 1;
+
+    const sortFn = (a: WorldInfoEntry, b: WorldInfoEntry): number => {
+      switch (field) {
+        case 'priority':
+          return (a.order ?? 100) - (b.order ?? 100);
+        case 'title':
+          return a.comment.localeCompare(b.comment) * dir;
+        case 'tokens':
+          return (a.content.length - b.content.length) * dir;
+        case 'depth':
+          return (a.depth - b.depth) * dir;
+        case 'order':
+          return (a.order - b.order) * dir;
+        case 'uid':
+          return (a.uid - b.uid) * dir;
+        case 'trigger':
+          return (a.probability - b.probability) * dir;
+        default:
+          return 0;
+      }
+    };
+
+    return entries.sort(sortFn);
   });
 
   return {
@@ -236,5 +303,6 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     duplicateEditingBook,
     importBook,
     exportEditingBook,
+    getBookFromCache,
   };
 });

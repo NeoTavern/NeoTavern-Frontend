@@ -157,7 +157,7 @@ export const useChatStore = defineStore('chat', () => {
       // TODO: Show typing indicator
 
       const promptBuilder = new PromptBuilder(activeCharacter, chat.value);
-      const messages = promptBuilder.build();
+      const messages = await promptBuilder.build();
       if (messages.length === 0) {
         throw new Error(t('chat.generate.noPrompts'));
       }

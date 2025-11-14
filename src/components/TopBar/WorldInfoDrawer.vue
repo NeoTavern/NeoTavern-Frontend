@@ -5,6 +5,7 @@ import { useStrictI18n } from '../../composables/useStrictI18n';
 import { slideTransitionHooks } from '../../utils/dom';
 import WorldInfoEntry from './WorldInfoEntry.vue';
 import type { WorldInfoEntry as WorldInfoEntryType } from '../../types';
+import { WorldInfoInsertionStrategy } from '../../types';
 
 const { t } = useStrictI18n();
 const worldInfoStore = useWorldInfoStore();
@@ -227,6 +228,20 @@ function updateEntry(index: number, newEntry: WorldInfoEntryType) {
                         />
                       </div>
                     </div>
+                    <div class="range-block">
+                      <div class="range-block-title">{{ t('worldInfo.insertionStrategy') }}</div>
+                      <select class="text-pole" v-model="worldInfoStore.settings.world_info_character_strategy">
+                        <option :value="WorldInfoInsertionStrategy.EVENLY">
+                          {{ t('worldInfo.insertionStrategies.sortedEvenly') }}
+                        </option>
+                        <option :value="WorldInfoInsertionStrategy.CHARACTER_FIRST">
+                          {{ t('worldInfo.insertionStrategies.characterLoreFirst') }}
+                        </option>
+                        <option :value="WorldInfoInsertionStrategy.GLOBAL_FIRST">
+                          {{ t('worldInfo.insertionStrategies.globalLoreFirst') }}
+                        </option>
+                      </select>
+                    </div>
                   </div>
                   <div class="wi-settings-grid__checkboxes">
                     <!-- Checkboxes -->
@@ -325,7 +340,17 @@ function updateEntry(index: number, newEntry: WorldInfoEntryType) {
             <select class="text-pole" v-model="worldInfoStore.sortOrder">
               <option value="priority">{{ t('worldInfo.sorting.priority') }}</option>
               <option value="title:asc">{{ t('worldInfo.sorting.titleAsc') }}</option>
-              <!-- ... TODO: more sort options -->
+              <option value="title:desc">{{ t('worldInfo.sorting.titleDesc') }}</option>
+              <option value="tokens:asc">{{ t('worldInfo.sorting.tokensAsc') }}</option>
+              <option value="tokens:desc">{{ t('worldInfo.sorting.tokensDesc') }}</option>
+              <option value="depth:asc">{{ t('worldInfo.sorting.depthAsc') }}</option>
+              <option value="depth:desc">{{ t('worldInfo.sorting.depthDesc') }}</option>
+              <option value="order:asc">{{ t('worldInfo.sorting.orderAsc') }}</option>
+              <option value="order:desc">{{ t('worldInfo.sorting.orderDesc') }}</option>
+              <option value="uid:asc">{{ t('worldInfo.sorting.uidAsc') }}</option>
+              <option value="uid:desc">{{ t('worldInfo.sorting.uidDesc') }}</option>
+              <option value="trigger:asc">{{ t('worldInfo.sorting.triggerAsc') }}</option>
+              <option value="trigger:desc">{{ t('worldInfo.sorting.triggerDesc') }}</option>
             </select>
             <div class="menu-button fa-solid fa-arrows-rotate" :title="t('worldInfo.refresh')"></div>
           </div>
