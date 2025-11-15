@@ -147,7 +147,7 @@ export const useCharacterStore = defineStore('character', () => {
         const newIndex = characters.value.findIndex((c) => c.avatar === previousAvatar);
         if (newIndex !== -1) {
           if (activeCharacterIndex.value !== newIndex) {
-            await selectCharacterById(newIndex, { switchMenu: false });
+            await selectCharacterById(newIndex);
           }
         } else {
           toast.error(t('character.fetch.error'));
@@ -163,38 +163,23 @@ export const useCharacterStore = defineStore('character', () => {
     }
   }
 
-  async function selectCharacterById(index: number, { switchMenu = true } = {}) {
+  async function selectCharacterById(index: number) {
     if (characters.value[index] === undefined) return;
-
     const uiStore = useUiStore();
     if (uiStore.isChatSaving) {
       toast.info(t('character.switch.wait'));
       return;
     }
-
     // TODO: Add group logic checks
-
     if (activeCharacterIndex.value !== index) {
-      if (!uiStore.isSendPress) {
-        const chatStore = useChatStore();
-        await chatStore.clearChat();
-
-        // TODO: resetSelectedGroup();
-        uiStore.selectedButton = 'character_edit';
-        uiStore.menuType = 'character_edit';
-        activeCharacterIndex.value = index;
-
-        await chatStore.refreshChat();
-      }
-    } else {
-      // Clicked on already selected character
-      if (switchMenu) {
-        uiStore.selectedButton = 'character_edit';
-        uiStore.menuType = 'character_edit';
-      }
-      // TODO: Unshallow character logic
-      // TODO: select_selected_character logic to populate editor form
+      const chatStore = useChatStore();
+      await chatStore.clearChat();
+      // TODO: resetSelectedGroup();
+      activeCharacterIndex.value = index;
+      await chatStore.refreshChat();
     }
+    // If the same character is clicked, do nothing.
+    // The UI is now persistent, so no need to switch views.
   }
 
   async function updateAndSaveCharacter(avatar: string, changes: Partial<Character>) {
@@ -404,15 +389,17 @@ export const useCharacterStore = defineStore('character', () => {
   }
 
   async function highlightCharacter(avatarFileName: string) {
-    const uiStore = useUiStore();
-    uiStore.menuType = 'characters';
     await nextTick();
-
     const charIndex = characters.value.findIndex((c) => c.avatar === avatarFileName);
     if (charIndex === -1) {
       console.warn(`Could not find imported character ${avatarFileName} in the list.`);
       return;
     }
+
+    // select the character to show it in the editor
+    await selectCharacterById(charIndex);
+
+    await nextTick();
 
     const element = document.querySelector(`.character-item[data-avatar="${avatarFileName}"]`);
     if (element) {

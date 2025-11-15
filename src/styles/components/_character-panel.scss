@@ -1,84 +1,51 @@
-.menu-button-icon {
-  display: block;
-  cursor: pointer;
-  text-align: center;
-  margin-top: 0;
-  padding: 1px;
-  filter: brightness(75%);
-  transition: all var(--animation-duration-3x) ease-in-out;
-
-  &.active,
-  &:hover {
-    filter: brightness(150%);
-  }
-}
-
-.name-block {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 0 5px;
-
-  &__inner {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    overflow: hidden;
-    width: 100%;
-  }
-
-  &__name {
-    flex: 1;
-    overflow: hidden;
-    opacity: 0.5;
-    padding: 1px;
-    white-space: nowrap;
-
-    h2 {
-      margin: 0;
-      font-size: 1.2em;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      cursor: pointer;
-    }
-  }
-
-  &__info {
-    font-size: calc(var(--font-size-main) * 0.9);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 1px 3px;
-    flex-shrink: 0;
-
-    .menu-button {
-      padding: 4px; // Override for smaller buttons
-    }
-  }
-
-  &__token-text {
-    display: flex;
-    flex-direction: column;
-    line-height: 0.9;
-    text-align: right;
-    cursor: default;
-
-    .neutral-warning {
-      color: var(--color-warning);
-    }
-  }
-}
-
 .character-panel {
   display: flex;
-  overflow-y: hidden;
   height: 100%;
-  flex-direction: column;
-  width: 100%; // Fill its container
+  width: 100%;
+  position: relative;
+  overflow: hidden;
 
-  &__header {
+  // Left Pane: Character Browser
+  &__browser {
+    width: 350px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border-right: 1px solid var(--theme-border-color);
     padding: 5px;
+    gap: 5px;
+
+    // Only apply transitions when NOT actively resizing
+    body:not(.is-resizing) & {
+      transition:
+        width var(--animation-duration-3x) ease-in-out,
+        padding var(--animation-duration-3x) ease-in-out,
+        opacity var(--animation-duration-2x) ease-in-out;
+    }
+  }
+
+  // Right Pane: Character Editor
+  &__editor {
+    flex-grow: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; // Prevents flex item from overflowing
+  }
+
+  // Collapsed State for Browser
+  &.is-collapsed .character-panel__browser {
+    width: 0 !important; // Use !important to override inline style from resizer
+    padding: 5px 0;
+    opacity: 0;
+    overflow: hidden;
+  }
+
+  &__browser-header {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
   }
 
   &__actions {
@@ -86,13 +53,6 @@
     gap: 5px;
     align-items: center;
     flex-wrap: wrap;
-
-    .menu-button {
-      width: calc(var(--font-size-main) * 1.7);
-      aspect-ratio: 1;
-      margin: 0;
-      padding: 3px 5px; // Specific override
-    }
 
     .character-sort-order {
       flex: 1;
@@ -109,55 +69,84 @@
   }
 
   &__search-form {
-    display: none;
-    flex-direction: row;
-    align-items: stretch;
-    column-gap: 5px;
-
-    &.active {
-      display: flex;
-    }
+    display: flex;
+    gap: 5px;
   }
 
-  .tag-controls {
-    display: flex;
-    column-gap: 10px;
-    row-gap: 5px;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    margin-top: 5px;
-    max-height: 40dvh;
+  &__character-list {
+    flex-grow: 1;
     overflow-y: auto;
+    height: 100%;
+    padding: 1px;
   }
 
   &__pagination {
     display: flex;
-    flex-direction: row;
-    gap: 5px;
     justify-content: center;
     align-items: center;
     flex-wrap: wrap;
     padding: 1px;
+  }
 
-    .menu-button {
-      padding: 3px 5px; // Specific override
+  // Divider and Collapse Button
+  &__divider {
+    width: 12px;
+    flex-shrink: 0;
+    cursor: ew-resize;
+    position: relative;
+    background-color: transparent; // Make it a hover target
+  }
+
+  &__collapse-toggle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 48px;
+    background-color: var(--theme-background-tint);
+    border: 1px solid var(--theme-border-color);
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2em;
+    z-index: 10;
+    transition: background-color var(--animation-duration-2x);
+
+    &:hover {
+      background-color: var(--white-20a);
     }
   }
 
-  &__character-list {
+  // Editor Placeholder
+  &__editor-placeholder {
     display: flex;
-    overflow-y: auto;
-    flex-grow: 1;
-    height: 100%;
-    padding: 1px;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 20px;
+    text-align: center;
+    opacity: 0.5;
+    padding: 20px;
+
+    .placeholder-icon {
+      font-size: 4em;
+    }
+    .placeholder-title {
+      font-size: 1.5em;
+      font-weight: bold;
+    }
+    .placeholder-text {
+      max-width: 300px;
+    }
   }
 }
 
 .character-item {
   display: flex;
-  flex-direction: row;
   align-items: center;
   padding: 5px;
   cursor: pointer;
@@ -165,8 +154,12 @@
   margin-bottom: 1px;
   gap: 10px;
 
-  &:hover {
+  &:hover,
+  &.is-active {
     background-color: var(--white-20a);
+  }
+  &.is-active {
+    outline: 1px solid var(--theme-quote-color);
   }
 
   &__avatar {
@@ -186,18 +179,14 @@
   }
 
   &__content {
-    display: flex;
-    flex-direction: column;
     flex-grow: 1;
     overflow: hidden;
-    position: relative;
   }
 
   &__header {
     display: flex;
     align-items: baseline;
     gap: 5px;
-    margin-bottom: 6px;
   }
 
   &__name {
@@ -220,6 +209,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     width: 100%;
-    margin-top: -5px;
+    margin-top: -2px;
   }
 }

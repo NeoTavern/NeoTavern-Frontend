@@ -113,31 +113,34 @@ function toggleDrawer(drawerName: string) {
     </div>
 
     <!-- Drawers -->
-    <div class="nav-item__content nav-item__content" :class="{ active: activeDrawer === 'ai-config' }">
+    <div class="nav-item__content" :class="{ active: activeDrawer === 'ai-config' }">
       <AiConfigDrawer />
     </div>
-    <div class="nav-item__content nav-item__content" :class="{ active: activeDrawer === 'api-status' }">
+    <div class="nav-item__content" :class="{ active: activeDrawer === 'api-status' }">
       <ApiConnectionsDrawer />
     </div>
-    <div class="nav-item__content nav-item__content" :class="{ active: activeDrawer === 'formatting' }">
+    <div class="nav-item__content" :class="{ active: activeDrawer === 'formatting' }">
       <!-- TODO: Formatting Content -->
     </div>
-    <div class="nav-item__content nav-item__content" :class="{ active: activeDrawer === 'world-info' }">
+    <div class="nav-item__content" :class="{ active: activeDrawer === 'world-info' }">
       <WorldInfoDrawer />
     </div>
-    <div class="nav-item__content nav-item__content" :class="{ active: activeDrawer === 'user-settings' }">
+    <div class="nav-item__content" :class="{ active: activeDrawer === 'user-settings' }">
       <UserSettingsDrawer />
     </div>
-    <div class="nav-item__content nav-item__content" :class="{ active: activeDrawer === 'backgrounds' }">
+    <div class="nav-item__content" :class="{ active: activeDrawer === 'backgrounds' }">
       <BackgroundsDrawer />
     </div>
-    <div class="nav-item__content nav-item__content" :class="{ active: activeDrawer === 'extensions' }">
+    <div class="nav-item__content" :class="{ active: activeDrawer === 'extensions' }">
       <ExtensionsDrawer />
     </div>
-    <div class="nav-item__content nav-item__content" :class="{ active: activeDrawer === 'persona' }">
+    <div class="nav-item__content" :class="{ active: activeDrawer === 'persona' }">
       <PersonaManagementDrawer />
     </div>
-    <div class="nav-item__content nav-item__content" :class="{ active: activeDrawer === 'character' }">
+    <div
+      class="nav-item__content"
+      :class="{ active: activeDrawer === 'character', wide: activeDrawer === 'character' }"
+    >
       <CharacterPanel />
     </div>
   </div>

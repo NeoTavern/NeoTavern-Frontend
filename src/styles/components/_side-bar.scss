@@ -71,6 +71,10 @@
       display: flex;
     }
 
+    &.wide {
+      width: var(--layout-panel-width-wide);
+    }
+
     &--from-left {
       left: var(--side-bar-width);
       border-left: none;

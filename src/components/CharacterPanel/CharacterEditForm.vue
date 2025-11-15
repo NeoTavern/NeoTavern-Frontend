@@ -99,10 +99,6 @@ watch(
   { deep: true },
 );
 
-function goBack() {
-  uiStore.menuType = 'characters';
-}
-
 function toggleFavorite() {
   formData.value.fav = !formData.value.fav;
 }
@@ -153,7 +149,6 @@ function handleEditorSubmit({ value }: { value: string }) {
         </div>
         <div class="character-edit-form__controls">
           <div class="character-edit-form__buttons">
-            <div @click="goBack" class="menu-button fa-solid fa-left-long" :title="t('characterEditor.back')"></div>
             <div
               @click="toggleFavorite"
               class="menu-button fa-solid fa-star"

@@ -419,6 +419,13 @@ export interface MessageSchema {
       leastTokens: string;
       random: string;
     };
+    editor: {
+      placeholderTitle: string;
+      placeholderText: string;
+      placeholderButton: string;
+    };
+    collapseBrowser: string;
+    expandBrowser: string;
   };
   characterEditor: {
     avatar: string;
