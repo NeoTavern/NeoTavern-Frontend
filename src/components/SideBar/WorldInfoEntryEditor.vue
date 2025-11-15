@@ -70,7 +70,11 @@ const entryState = computed({
       </div>
       <div class="editor-header__actions">
         <i class="menu-button fa-solid fa-right-left" :title="t('worldInfo.entry.move')"></i>
-        <i class="menu-button fa-solid fa-paste" :title="t('worldInfo.entry.duplicate')"></i>
+        <i
+          class="menu-button fa-solid fa-paste"
+          :title="t('worldInfo.entry.duplicate')"
+          @click="worldInfoStore.duplicateSelectedEntry"
+        ></i>
         <i
           class="menu-button fa-solid fa-trash-can"
           :title="t('worldInfo.entry.delete')"

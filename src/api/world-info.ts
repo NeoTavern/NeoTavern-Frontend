@@ -53,15 +53,18 @@ export async function deleteWorldInfoBook(name: string): Promise<void> {
 }
 
 export async function renameWorldInfoBook(oldName: string, newName: string): Promise<void> {
-  // TODO: Implement backend endpoint for this
+  // TODO: Implement backend endpoint for this. It should handle renaming the file and updating any references.
   console.warn(`renameWorldInfoBook API call not implemented. Simulating for now.`);
-  return Promise.resolve();
+  const book = await fetchWorldInfoBook(oldName);
+  await saveWorldInfoBook(newName, { ...book, name: newName });
+  await deleteWorldInfoBook(oldName);
 }
 
 export async function duplicateWorldInfoBook(sourceName: string, newName: string): Promise<void> {
-  // TODO: Implement backend endpoint for this
+  // TODO: Implement backend endpoint for this.
   console.warn(`duplicateWorldInfoBook API call not implemented. Simulating for now.`);
-  return Promise.resolve();
+  const book = await fetchWorldInfoBook(sourceName);
+  await saveWorldInfoBook(newName, { ...book, name: newName });
 }
 
 export async function exportWorldInfoBook(name: string): Promise<WorldInfoBook> {

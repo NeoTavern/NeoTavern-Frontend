@@ -7,10 +7,13 @@
 // 3. Base: Global resets, typography, and base element styles.
 @use 'base';
 
-// 4. Components: Styles for specific Vue components.
+// 4. Transitions: Reusable animation classes.
+@use 'transitions';
+
+// 5. Components: Styles for specific Vue components.
 @use 'components';
 
-// 5. Toast notifications (high z-index).
+// 6. Toast notifications (high z-index).
 @use 'toast';
 
 #background {

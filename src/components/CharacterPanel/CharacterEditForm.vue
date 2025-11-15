@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue';
 import { useCharacterStore } from '../../stores/character.store';
-import { useUiStore } from '../../stores/ui.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { Character } from '../../types';
 import Popup from '../Popup/Popup.vue';
@@ -13,7 +12,6 @@ import { slideTransitionHooks } from '../../utils/dom';
 
 const { t } = useStrictI18n();
 const characterStore = useCharacterStore();
-const uiStore = useUiStore();
 const settingsStore = useSettingsStore();
 const activeCharacter = computed(() => characterStore.activeCharacter);
 

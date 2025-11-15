@@ -117,6 +117,7 @@ export interface MessageSchema {
     selectEntryPlaceholderTitle: string;
     selectEntryPlaceholderText: string;
     sorting: {
+      title: string;
       search: string;
       priority: string;
       custom: string;

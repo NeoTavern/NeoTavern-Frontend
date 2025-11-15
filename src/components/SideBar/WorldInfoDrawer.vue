@@ -3,18 +3,17 @@ import { onMounted, ref, computed } from 'vue';
 import { useWorldInfoStore } from '../../stores/world-info.store';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useResizable } from '../../composables/useResizable';
-import { slideTransitionHooks } from '../../utils/dom';
 import WorldInfoEntryEditor from './WorldInfoEntryEditor.vue';
 import WorldInfoGlobalSettings from './WorldInfoGlobalSettings.vue';
 import type { WorldInfoEntry as WorldInfoEntryType } from '../../types';
 
 const { t } = useStrictI18n();
 const worldInfoStore = useWorldInfoStore();
-const { beforeEnter, enter, leave } = slideTransitionHooks;
 
 const browserPane = ref<HTMLElement | null>(null);
 const dividerEl = ref<HTMLElement | null>(null);
 const isBrowserCollapsed = ref(false);
+const fileInput = ref<HTMLInputElement | null>(null);
 
 useResizable(browserPane, dividerEl, { storageKey: 'worldinfo_browser_width', initialWidth: 350 });
 
@@ -28,44 +27,67 @@ function updateEntry(newEntry: WorldInfoEntryType) {
   worldInfoStore.updateSelectedEntry(newEntry);
 }
 
+function triggerImport() {
+  fileInput.value?.click();
+}
+
+async function handleFileImport(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (target.files?.[0]) {
+    await worldInfoStore.importBook(target.files[0]);
+  }
+  if (target) target.value = '';
+}
+
 const filteredBookNames = computed(() => {
   if (!worldInfoStore.browserSearchTerm) {
     return worldInfoStore.bookNames;
   }
   const lowerSearch = worldInfoStore.browserSearchTerm.toLowerCase();
   return worldInfoStore.bookNames.filter((name) => {
-    const book = worldInfoStore.getBookFromCache(name);
+    // Show book if its name matches
     if (name.toLowerCase().includes(lowerSearch)) {
       return true;
     }
-    if (book) {
-      return book.entries.some(
-        (entry) =>
-          entry.comment.toLowerCase().includes(lowerSearch) || entry.key.join(',').toLowerCase().includes(lowerSearch),
-      );
-    }
-    return false;
+    // Or if it has any entries that match
+    return worldInfoStore.filteredAndSortedEntries(name).length > 0;
   });
 });
 </script>
 
 <template>
-  <div class="character-panel" :class="{ 'is-collapsed': isBrowserCollapsed }">
+  <div class="character-panel world-info-drawer" :class="{ 'is-collapsed': isBrowserCollapsed }">
     <!-- Left Pane: Lorebook Browser -->
     <div ref="browserPane" class="character-panel__browser">
-      <div class="character-panel__browser-header">
-        <div class="u-flex u-items-center">
+      <div class="character-panel__browser-header world-info-controls">
+        <div class="world-info-controls__row">
           <div
             @click="worldInfoStore.createNewBook"
             class="menu-button fa-solid fa-plus"
             :title="t('worldInfo.newWorld')"
           ></div>
+          <div @click="triggerImport" class="menu-button fa-solid fa-file-import" :title="t('worldInfo.import')"></div>
+          <input ref="fileInput" type="file" @change="handleFileImport" accept=".json" hidden />
+          <div
+            @click="worldInfoStore.refresh"
+            class="menu-button fa-solid fa-sync"
+            :title="t('worldInfo.refresh')"
+          ></div>
+        </div>
+        <div class="world-info-controls__row">
           <input
             class="text-pole u-w-full"
             type="search"
             :placeholder="t('worldInfo.searchPlaceholder')"
             v-model="worldInfoStore.browserSearchTerm"
           />
+          <select class="text-pole" :title="t('worldInfo.sorting.title')" v-model="worldInfoStore.sortOrder">
+            <option value="order:asc">{{ t('worldInfo.sorting.orderAsc') }}</option>
+            <option value="comment:asc">{{ t('worldInfo.sorting.titleAsc') }}</option>
+            <option value="comment:desc">{{ t('worldInfo.sorting.titleDesc') }}</option>
+            <option value="uid:asc">{{ t('worldInfo.sorting.uidAsc') }}</option>
+            <option value="uid:desc">{{ t('worldInfo.sorting.uidDesc') }}</option>
+          </select>
         </div>
       </div>
 
@@ -99,6 +121,21 @@ const filteredBookNames = computed(() => {
                 @click.stop="worldInfoStore.createNewEntry(bookName)"
               ></i>
               <i
+                class="fa-solid fa-file-export"
+                :title="t('worldInfo.export')"
+                @click.stop="worldInfoStore.exportBook(bookName)"
+              ></i>
+              <i
+                class="fa-solid fa-clone"
+                :title="t('worldInfo.duplicate')"
+                @click.stop="worldInfoStore.duplicateBook(bookName)"
+              ></i>
+              <i
+                class="fa-solid fa-pencil"
+                :title="t('worldInfo.rename')"
+                @click.stop="worldInfoStore.renameBook(bookName)"
+              ></i>
+              <i
                 class="fa-solid fa-trash-can"
                 :title="t('worldInfo.deleteBook', { bookName })"
                 @click.stop="worldInfoStore.deleteBook(bookName)"
@@ -106,17 +143,24 @@ const filteredBookNames = computed(() => {
             </div>
           </div>
 
-          <Transition name="slide-js" @before-enter="beforeEnter" @enter="enter" @leave="leave">
+          <Transition name="grid-slide">
             <div v-if="worldInfoStore.expandedBooks.has(bookName)" class="lorebook-group__entries">
-              <div
-                v-for="(entry, index) in worldInfoStore.getBookFromCache(bookName)?.entries"
-                :key="`${entry.uid}-${index}`"
-                class="browser-item is-entry"
-                :class="{ 'is-active': worldInfoStore.selectedItemId === `${bookName}/${entry.uid}` }"
-                @click="worldInfoStore.selectItem(`${bookName}/${entry.uid}`)"
-              >
-                <div class="browser-item__content">
-                  <span class="browser-item__name">{{ entry.comment || '[Untitled Entry]' }}</span>
+              <div>
+                <div v-if="worldInfoStore.loadingBooks.has(bookName)" class="lorebook-group__loading">
+                  <i class="fa-solid fa-spinner fa-spin"></i>
+                </div>
+                <div v-else>
+                  <div
+                    v-for="entry in worldInfoStore.filteredAndSortedEntries(bookName)"
+                    :key="entry.uid"
+                    class="browser-item is-entry"
+                    :class="{ 'is-active': worldInfoStore.selectedItemId === `${bookName}/${entry.uid}` }"
+                    @click="worldInfoStore.selectItem(`${bookName}/${entry.uid}`)"
+                  >
+                    <div class="browser-item__content">
+                      <span class="browser-item__name">{{ entry.comment || '[Untitled Entry]' }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -148,87 +192,3 @@ const filteredBookNames = computed(() => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.panel-divider {
-  border: none;
-  border-top: 1px solid var(--theme-border-color);
-  margin: 5px 0;
-}
-
-.browser-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
-  cursor: pointer;
-  border-radius: 5px;
-  margin-bottom: 1px;
-  gap: 10px;
-}
-
-.browser-item:hover,
-.browser-item.is-active {
-  background-color: var(--white-20a);
-}
-
-.browser-item.is-active {
-  outline: 1px solid var(--theme-quote-color);
-}
-
-.browser-item__content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow: hidden;
-}
-
-.browser-item__icon {
-  flex-shrink: 0;
-}
-
-.browser-item__name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.browser-item__chevron {
-  transition: transform var(--animation-duration-2x);
-}
-
-.browser-item__chevron.is-open {
-  transform: rotate(90deg);
-}
-
-.browser-item.is-book {
-  font-weight: bold;
-}
-
-.browser-item.is-entry {
-  padding-left: 24px;
-  font-weight: normal;
-  font-size: 0.95em;
-}
-
-.browser-item__actions {
-  display: flex;
-  gap: 8px;
-  opacity: 0;
-  transition: opacity var(--animation-duration-2x);
-}
-
-.browser-item__actions i:hover {
-  color: var(--color-warning);
-}
-
-.browser-item:hover .browser-item__actions {
-  opacity: 0.7;
-}
-
-.lorebook-group__entries {
-  padding-left: 10px;
-  border-left: 1px solid var(--black-50a);
-  margin-left: 12px;
-}
-</style>

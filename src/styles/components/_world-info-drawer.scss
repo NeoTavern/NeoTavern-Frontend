@@ -1,0 +1,103 @@
+.world-info-drawer {
+  .panel-divider {
+    border: none;
+    border-top: 1px solid var(--theme-border-color);
+    margin: 5px 0;
+  }
+
+  .browser-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    cursor: pointer;
+    border-radius: 5px;
+    margin-bottom: 1px;
+    gap: 10px;
+
+    &:hover,
+    &.is-active {
+      background-color: var(--white-20a);
+    }
+
+    &.is-active {
+      outline: 1px solid var(--theme-quote-color);
+    }
+  }
+
+  .browser-item__content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .browser-item__icon {
+    flex-shrink: 0;
+  }
+
+  .browser-item__name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .browser-item__chevron {
+    transition: transform var(--animation-duration-2x);
+  }
+
+  .browser-item__chevron.is-open {
+    transform: rotate(90deg);
+  }
+
+  .browser-item.is-book {
+    font-weight: bold;
+  }
+
+  .browser-item.is-entry {
+    padding-left: 24px;
+    font-weight: normal;
+    font-size: 0.95em;
+  }
+
+  .browser-item__actions {
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    transition: opacity var(--animation-duration-2x);
+
+    i:hover {
+      color: var(--color-warning);
+    }
+  }
+
+  .browser-item:hover .browser-item__actions {
+    opacity: 0.7;
+  }
+
+  .lorebook-group__entries {
+    padding-left: 10px;
+    border-left: 1px solid var(--black-50a);
+    margin-left: 12px;
+    display: grid;
+  }
+
+  .lorebook-group__loading {
+    text-align: center;
+    padding: 10px;
+    opacity: 0.7;
+    font-size: 0.9em;
+  }
+
+  .world-info-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    &__row {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+  }
+}

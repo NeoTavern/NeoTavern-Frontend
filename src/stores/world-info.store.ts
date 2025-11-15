@@ -17,6 +17,7 @@ import { debounce } from '../utils/common';
 import { defaultsDeep } from 'lodash-es';
 import { usePopupStore } from './popup.store';
 import { downloadFile } from '../utils/file';
+import { accountStorage } from '../AccountStorage';
 
 export const defaultWorldInfoSettings: WorldInfoSettings = {
   world_info: {},
@@ -35,6 +36,8 @@ export const defaultWorldInfoSettings: WorldInfoSettings = {
   world_info_max_recursion_steps: 0,
 };
 
+const WI_SORT_ORDER_KEY = 'world_info_sort_order';
+
 export const useWorldInfoStore = defineStore('world-info', () => {
   const settingsStore = useSettingsStore();
   const popupStore = usePopupStore();
@@ -47,6 +50,12 @@ export const useWorldInfoStore = defineStore('world-info', () => {
   const selectedItemId = ref<'global-settings' | string | null>('global-settings');
   const expandedBooks = ref<Set<string>>(new Set());
   const browserSearchTerm = ref('');
+  const sortOrder = ref(accountStorage.getItem(WI_SORT_ORDER_KEY) ?? 'order:asc');
+  const loadingBooks = ref<Set<string>>(new Set());
+
+  watch(sortOrder, (newOrder) => {
+    accountStorage.setItem(WI_SORT_ORDER_KEY, newOrder);
+  });
 
   const settings = computed({
     get: () => settingsStore.settings.world_info_settings,
@@ -68,6 +77,40 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     const [bookName] = selectedItemId.value.split('/');
     return worldInfoCache.value[bookName] ?? null;
   });
+
+  function filteredAndSortedEntries(bookName: string): WorldInfoEntry[] {
+    const book = worldInfoCache.value[bookName];
+    if (!book) return [];
+
+    let entries = [...book.entries];
+
+    // Filter based on search term
+    if (browserSearchTerm.value) {
+      const lowerSearch = browserSearchTerm.value.toLowerCase();
+      entries = entries.filter(
+        (entry) =>
+          entry.comment.toLowerCase().includes(lowerSearch) ||
+          entry.key.join(',').toLowerCase().includes(lowerSearch) ||
+          entry.content.toLowerCase().includes(lowerSearch) ||
+          String(entry.uid).includes(lowerSearch),
+      );
+    }
+
+    // Sort the (potentially filtered) entries
+    const [field, direction] = sortOrder.value.split(':');
+    entries.sort((a, b) => {
+      let valA = (a as any)[field];
+      let valB = (b as any)[field];
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return entries;
+  }
 
   watch(
     () => settingsStore.settings.world_info_settings,
@@ -108,6 +151,12 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     }
   }
 
+  async function refresh() {
+    worldInfoCache.value = {};
+    await initialize();
+    toast.success('Lorebooks refreshed.');
+  }
+
   async function selectItem(id: 'global-settings' | string | null) {
     if (id && id !== 'global-settings') {
       const [bookName] = id.split('/');
@@ -119,12 +168,16 @@ export const useWorldInfoStore = defineStore('world-info', () => {
   }
 
   async function fetchBook(bookName: string) {
+    if (loadingBooks.value.has(bookName)) return; // Already fetching
     try {
+      loadingBooks.value.add(bookName);
       const book = await api.fetchWorldInfoBook(bookName);
       worldInfoCache.value[bookName] = book;
     } catch (error) {
       console.error(`Failed to load book ${bookName}:`, error);
       toast.error(`Could not load lorebook: ${bookName}`);
+    } finally {
+      loadingBooks.value.delete(bookName);
     }
   }
 
@@ -132,10 +185,10 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     if (expandedBooks.value.has(bookName)) {
       expandedBooks.value.delete(bookName);
     } else {
+      expandedBooks.value.add(bookName);
       if (!worldInfoCache.value[bookName]) {
         fetchBook(bookName);
       }
-      expandedBooks.value.add(bookName);
     }
   }
 
@@ -144,7 +197,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
       try {
         await api.saveWorldInfoBook(book.name, book);
         worldInfoCache.value[book.name] = JSON.parse(JSON.stringify(book));
-        toast.success(`Saved lorebook: ${book.name}`);
+        // Do not toast on every auto-save, it's too noisy.
       } catch (error) {
         console.error('Failed to save lorebook:', error);
         toast.error('Failed to save lorebook.');
@@ -184,11 +237,15 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     }
   }
 
+  function getNewUid(book: WorldInfoBook): number {
+    return book.entries.length > 0 ? Math.max(...book.entries.map((e) => e.uid)) + 1 : 1;
+  }
+
   async function createNewEntry(bookName: string) {
     const book = worldInfoCache.value[bookName];
     if (!book) return;
 
-    const newUid = book.entries.length > 0 ? Math.max(...book.entries.map((e) => e.uid)) + 1 : 1;
+    const newUid = getNewUid(book);
     const newEntry: WorldInfoEntry = {
       uid: newUid,
       key: [],
@@ -236,7 +293,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     };
 
     book.entries.unshift(newEntry);
-    await saveBookDebounced(book);
+    saveBookDebounced(book);
     selectItem(`${bookName}/${newUid}`);
   }
 
@@ -261,6 +318,45 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     }
   }
 
+  async function renameBook(oldName: string) {
+    const { result, value: newName } = await popupStore.show({
+      title: 'Rename Lorebook',
+      type: POPUP_TYPE.INPUT,
+      inputValue: oldName,
+    });
+
+    if (result === POPUP_RESULT.AFFIRMATIVE && newName && newName.trim() && newName !== oldName) {
+      try {
+        await api.renameWorldInfoBook(oldName, newName);
+        toast.success(`Lorebook renamed to "${newName}".`);
+        delete worldInfoCache.value[oldName];
+        if (selectedItemId.value?.startsWith(`${oldName}/`)) {
+          selectedItemId.value = selectedItemId.value.replace(oldName, newName);
+        }
+        await initialize();
+      } catch (error) {
+        toast.error('Failed to rename lorebook.');
+      }
+    }
+  }
+
+  async function duplicateBook(sourceName: string) {
+    const { result, value: newName } = await popupStore.show({
+      title: 'Duplicate Lorebook',
+      type: POPUP_TYPE.INPUT,
+      inputValue: `${sourceName} (copy)`,
+    });
+    if (result === POPUP_RESULT.AFFIRMATIVE && newName && newName.trim()) {
+      try {
+        await api.duplicateWorldInfoBook(sourceName, newName);
+        toast.success(`Lorebook "${sourceName}" duplicated as "${newName}".`);
+        await initialize();
+      } catch (error) {
+        toast.error('Failed to duplicate lorebook.');
+      }
+    }
+  }
+
   async function deleteSelectedEntry() {
     if (!selectedEntry.value || !selectedBookForEntry.value) return;
     const book = selectedBookForEntry.value;
@@ -279,6 +375,22 @@ export const useWorldInfoStore = defineStore('world-info', () => {
         selectItem('global-settings');
       }
     }
+  }
+
+  async function duplicateSelectedEntry() {
+    if (!selectedEntry.value || !selectedBookForEntry.value) return;
+    const book = selectedBookForEntry.value;
+    const entryToCopy = selectedEntry.value;
+
+    const newEntry = {
+      ...entryToCopy,
+      uid: getNewUid(book),
+      comment: `${entryToCopy.comment} (copy)`,
+    };
+    book.entries.unshift(newEntry);
+    saveBookDebounced(book);
+    selectItem(`${book.name}/${newEntry.uid}`);
+    toast.success(`Entry duplicated.`);
   }
 
   async function importBook(file: File) {
@@ -312,16 +424,23 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     selectedItemId,
     expandedBooks,
     browserSearchTerm,
+    sortOrder,
+    loadingBooks,
     selectedEntry,
     selectedBookForEntry,
+    filteredAndSortedEntries,
     initialize,
+    refresh,
     selectItem,
     toggleBookExpansion,
     updateSelectedEntry,
     createNewBook,
     createNewEntry,
     deleteBook,
+    renameBook,
+    duplicateBook,
     deleteSelectedEntry,
+    duplicateSelectedEntry,
     getBookFromCache,
     importBook,
     exportBook,

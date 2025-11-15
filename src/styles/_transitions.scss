@@ -1,0 +1,24 @@
+// A modern, CSS-only approach to vertical slide transitions that correctly
+// handles dynamic content (e.g., lazy-loading or filtering).
+.grid-slide-enter-active,
+.grid-slide-leave-active {
+  transition: grid-template-rows 0.3s ease-in-out;
+  display: grid; // Must be a grid container for the animation to work
+}
+
+.grid-slide-enter-from,
+.grid-slide-leave-to {
+  grid-template-rows: 0fr;
+}
+
+.grid-slide-enter-to,
+.grid-slide-leave-from {
+  grid-template-rows: 1fr;
+}
+
+// The direct child of the grid container needs `overflow: hidden`
+// to prevent content from spilling out during the animation.
+.grid-slide-enter-active > *,
+.grid-slide-leave-active > * {
+  overflow: hidden;
+}
