@@ -1,8 +1,9 @@
 import { onMounted, onUnmounted, type Ref } from 'vue';
-import { accountStorage } from '../AccountStorage';
+import { useSettingsStore } from '../stores/settings.store';
+import type { AccountStorageKey } from '../types';
 
 interface UseResizableOptions {
-  storageKey?: string;
+  storageKey?: AccountStorageKey;
   initialWidth?: number;
   minWidth?: number;
 }
@@ -14,7 +15,8 @@ export function useResizable(
   divider: Ref<HTMLElement | null>,
   options: UseResizableOptions = {},
 ) {
-  const { storageKey = 'resizable-width', initialWidth = 350, minWidth = 200 } = options;
+  const { storageKey, initialWidth = 350, minWidth = 200 } = options;
+  const settingsStore = useSettingsStore();
 
   let isResizing = false;
 
@@ -58,14 +60,14 @@ export function useResizable(
     document.removeEventListener('mouseup', onMouseUp);
 
     // Save the final width to account storage
-    if (leftPane.value) {
-      accountStorage.setItem(storageKey, leftPane.value.style.width);
+    if (leftPane.value && storageKey) {
+      settingsStore.setAccountItem(storageKey, leftPane.value.style.width);
     }
   };
 
   onMounted(() => {
     // Restore saved width on mount
-    const savedWidth = accountStorage.getItem(storageKey);
+    const savedWidth = storageKey ? settingsStore.getAccountItem(storageKey) : null;
     if (leftPane.value) {
       leftPane.value.style.width = savedWidth || `${initialWidth}px`;
     }

@@ -177,6 +177,20 @@ select.text-pole {
   &:not(.disabled):not([disabled]).active {
     background-color: var(--white-30a);
   }
+
+  &--danger {
+    color: var(--color-warning);
+    &:hover {
+      background-color: var(--color-accent-crimson-hover);
+    }
+  }
+
+  &--confirm {
+    background-color: var(--color-accent-green-70a);
+    &:hover {
+      filter: brightness(120%);
+    }
+  }
 }
 
 .tags {

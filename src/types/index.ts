@@ -74,6 +74,13 @@ export interface Entity {
   isUseless?: boolean;
 }
 
+export interface ChatMetadata {
+  integrity?: string;
+  custom_background?: string;
+  chat_backgrounds?: string[];
+  [key: string]: any;
+}
+
 export interface ChatMessage {
   send_date?: string;
   name: string;
@@ -217,6 +224,12 @@ export const chat_completion_sources = {
 } as const;
 
 export type ChatCompletionSource = (typeof chat_completion_sources)[keyof typeof chat_completion_sources];
+
+export interface ApiModel {
+  id: string;
+  name?: string;
+  [key: string]: any;
+}
 
 export interface OaiPrompt {
   name: string;
@@ -460,6 +473,14 @@ export interface SettingDefinition {
 
 export type BackgroundFitting = 'classic' | 'cover' | 'contain' | 'stretch' | 'center';
 
+export type AccountStorageKey =
+  | 'character_browser_collapsed'
+  | 'character_browser_width'
+  | 'worldinfo_browser_width'
+  | 'world_info_sort_order';
+
+export type AccountStorageState = Partial<Record<AccountStorageKey, string>>;
+
 export type Settings = {
   power_user: {
     external_media_forbidden_overrides: Array<string>;
@@ -490,6 +511,7 @@ export type Settings = {
   };
   oai_settings: OaiSettings;
   world_info_settings: WorldInfoSettings;
+  account_storage: AccountStorageState;
   username?: string;
   user_avatar?: string;
   main_api?: string;

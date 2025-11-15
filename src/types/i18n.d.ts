@@ -318,7 +318,6 @@ export interface MessageSchema {
     back: string;
     loading: string;
     tokens: string;
-    permanent: string;
     confirm: string;
     copy: string;
     delete: string;
@@ -397,9 +396,6 @@ export interface MessageSchema {
     pinToggle: string;
     selectCharacter: string;
     hotSwaps: string;
-    tokenInfo: string;
-    totalTokens: string;
-    permanentTokens: string;
     aboutTokens: string;
     togglePanel: string;
     createNew: string;

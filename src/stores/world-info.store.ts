@@ -17,7 +17,6 @@ import { debounce } from '../utils/common';
 import { defaultsDeep } from 'lodash-es';
 import { usePopupStore } from './popup.store';
 import { downloadFile } from '../utils/file';
-import { accountStorage } from '../AccountStorage';
 
 export const defaultWorldInfoSettings: WorldInfoSettings = {
   world_info: {},
@@ -50,11 +49,11 @@ export const useWorldInfoStore = defineStore('world-info', () => {
   const selectedItemId = ref<'global-settings' | string | null>('global-settings');
   const expandedBooks = ref<Set<string>>(new Set());
   const browserSearchTerm = ref('');
-  const sortOrder = ref(accountStorage.getItem(WI_SORT_ORDER_KEY) ?? 'order:asc');
+  const sortOrder = ref(settingsStore.getAccountItem(WI_SORT_ORDER_KEY) ?? 'order:asc');
   const loadingBooks = ref<Set<string>>(new Set());
 
   watch(sortOrder, (newOrder) => {
-    accountStorage.setItem(WI_SORT_ORDER_KEY, newOrder);
+    settingsStore.setAccountItem(WI_SORT_ORDER_KEY, newOrder);
   });
 
   const settings = computed({
@@ -78,6 +77,8 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     return worldInfoCache.value[bookName] ?? null;
   });
 
+  // TODO: Potential performance bottleneck for very large lorebooks, but acceptable for now.
+  // Can be optimized with debouncing or memoization if it becomes a problem.
   function filteredAndSortedEntries(bookName: string): WorldInfoEntry[] {
     const book = worldInfoCache.value[bookName];
     if (!book) return [];

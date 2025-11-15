@@ -7,11 +7,12 @@ import Pagination from '../common/Pagination.vue';
 import { getThumbnailUrl } from '../../utils/image';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useResizable } from '../../composables/useResizable';
-import { accountStorage } from '../../AccountStorage';
+import { useSettingsStore } from '../../stores/settings.store';
 
 const { t } = useStrictI18n();
 
 const characterStore = useCharacterStore();
+const settingsStore = useSettingsStore();
 
 const isSearchActive = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -20,14 +21,14 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const BROWSER_COLLAPSED_KEY = 'character_browser_collapsed';
 const BROWSER_WIDTH_KEY = 'character_browser_width';
 
-const isBrowserCollapsed = ref(accountStorage.getItem(BROWSER_COLLAPSED_KEY) === 'true');
+const isBrowserCollapsed = ref(settingsStore.getAccountItem(BROWSER_COLLAPSED_KEY) === 'true');
 const browserPane = ref<HTMLElement | null>(null);
 const dividerEl = ref<HTMLElement | null>(null);
 
 useResizable(browserPane, dividerEl, { storageKey: BROWSER_WIDTH_KEY });
 
 watch(isBrowserCollapsed, (newValue) => {
-  accountStorage.setItem(BROWSER_COLLAPSED_KEY, String(newValue));
+  settingsStore.setAccountItem(BROWSER_COLLAPSED_KEY, String(newValue));
 });
 
 const activeCharacter = computed(() => characterStore.activeCharacter);

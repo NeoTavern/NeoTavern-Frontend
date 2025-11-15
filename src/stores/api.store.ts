@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
-import type { OaiPrompt, OaiPromptOrderConfig, OaiSettings } from '../types';
+import type { ApiModel, OaiPrompt, OaiPromptOrderConfig, OaiSettings } from '../types';
 import { POPUP_RESULT, POPUP_TYPE, chat_completion_sources } from '../types';
 import { fetchChatCompletionStatus } from '../api/connection';
 import { toast } from '../composables/useToast';
@@ -17,11 +17,10 @@ export const useApiStore = defineStore('api', () => {
   const settingsStore = useSettingsStore();
 
   const mainApi = ref('openai');
-  // @ts-ignore
-  const oaiSettings = ref<OaiSettings>({});
+  const oaiSettings = ref<OaiSettings>({} as OaiSettings);
   const onlineStatus = ref('Not connected...');
   const isConnecting = ref(false);
-  const modelList = ref<any[]>([]);
+  const modelList = ref<ApiModel[]>([]);
   const presets = ref<Record<string, Preset[]>>({});
 
   const defaultOaiSettings: OaiSettings = {
@@ -87,8 +86,7 @@ export const useApiStore = defineStore('api', () => {
     }
   });
 
-  // @ts-ignore
-  const groupedOpenRouterModels: Record<string, any[]> | null = computed(() => {
+  const groupedOpenRouterModels = computed<Record<string, ApiModel[]> | null>(() => {
     if (
       oaiSettings.value.chat_completion_source !== chat_completion_sources.OPENROUTER ||
       modelList.value.length === 0
@@ -108,7 +106,7 @@ export const useApiStore = defineStore('api', () => {
         acc[vendor].push(model);
         return acc;
       },
-      {} as Record<string, any[]>,
+      {} as Record<string, ApiModel[]>,
     );
 
     return vendors;

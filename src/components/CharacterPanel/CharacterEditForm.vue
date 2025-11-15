@@ -138,10 +138,7 @@ watch(
 );
 
 // --- Methods ---
-type ValueFor<P extends CharacterFormDataPath> =
-  P extends Path<CharacterFormData> ? ValueForPath<CharacterFormData, P> : never;
-
-function updateValue<P extends CharacterFormDataPath>(path: P, value: ValueFor<P>) {
+function updateValue<P extends CharacterFormDataPath>(path: P, value: ValueForPath<CharacterFormData, P>) {
   set(formData.value, path, value);
 }
 
@@ -187,7 +184,7 @@ function handleEditorSubmit({ value }: { value: string }) {
             <div
               @click="toggleFavorite"
               class="menu-button fa-solid fa-star"
-              :class="{ fav_on: formData.fav }"
+              :class="{ 'is-favorite': formData.fav }"
               :title="t('characterEditor.favorite')"
             ></div>
             <div class="menu-button fa-solid fa-globe" :title="t('characterEditor.lore')"></div>
@@ -195,7 +192,7 @@ function handleEditorSubmit({ value }: { value: string }) {
             <div class="menu-button fa-solid fa-face-smile" :title="t('characterEditor.personas')"></div>
             <div class="menu-button fa-solid fa-file-export" :title="t('characterEditor.export')"></div>
             <div class="menu-button fa-solid fa-clone" :title="t('characterEditor.duplicate')"></div>
-            <div class="menu-button fa-solid fa-skull red_button" :title="t('characterEditor.delete')"></div>
+            <div class="menu-button fa-solid fa-skull menu-button--danger" :title="t('characterEditor.delete')"></div>
           </div>
           <label class="u-w-full">
             <select class="text-pole u-w-full">

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { ChatMessage } from '../types';
+import type { ChatMessage, ChatMetadata } from '../types';
 import { usePromptStore } from './prompt.store';
 import { useCharacterStore } from './character.store';
 import { useUiStore } from './ui.store';
@@ -26,7 +26,7 @@ async function getTokenCount(text: string): Promise<number> {
 export const useChatStore = defineStore('chat', () => {
   const { t } = useStrictI18n();
   const chat = ref<Array<ChatMessage>>([]);
-  const chatMetadata = ref<Record<string, any>>({});
+  const chatMetadata = ref<ChatMetadata>({});
   const chatCreateDate = ref<string | null>(null);
   const activeMessageEditIndex = ref<number | null>(null);
   const originalMessageContent = ref<string | null>(null);

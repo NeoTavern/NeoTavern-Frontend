@@ -61,15 +61,7 @@
       aspect-ratio: 1;
       font-size: 1.1em;
 
-      &.red_button {
-        color: var(--color-warning);
-
-        &:hover {
-          background-color: var(--color-accent-crimson-hover);
-        }
-      }
-
-      &.fav_on {
+      &.is-favorite {
         color: var(--color-golden);
         filter: drop-shadow(0 0 3px var(--color-golden));
       }

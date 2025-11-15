@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { SendOnEnterOptions, DEFAULT_SAVE_EDIT_TIMEOUT } from '../constants';
 import { isMobile } from '../utils/browser';
 import { debounce } from '../utils/common';
-import { type Settings, type SettingDefinition, type SettingsPath } from '../types';
+import { type Settings, type SettingDefinition, type SettingsPath, type AccountStorageKey } from '../types';
 import { fetchUserSettings, saveUserSettings } from '../api/settings';
 import { settingsDefinition } from '../settings-definition';
 import { toast } from '../composables/useToast';
@@ -22,6 +22,7 @@ function createDefaultSettings(): Settings {
     set(defaultSettings, def.id, def.defaultValue);
   }
   defaultSettings.world_info_settings = defaultWorldInfoSettings;
+  defaultSettings.account_storage = {};
   return defaultSettings as Settings;
 }
 
@@ -54,6 +55,18 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function setSetting<P extends SettingsPath>(id: P, value: SettingsValue<P>) {
     set(settings.value, id, value);
+    saveSettingsDebounced();
+  }
+
+  function getAccountItem(key: AccountStorageKey): string | null {
+    return settings.value.account_storage?.[key] ?? null;
+  }
+
+  function setAccountItem(key: AccountStorageKey, value: string) {
+    if (!settings.value.account_storage) {
+      settings.value.account_storage = {};
+    }
+    settings.value.account_storage[key] = value;
     saveSettingsDebounced();
   }
 
@@ -94,5 +107,7 @@ export const useSettingsStore = defineStore('settings', () => {
     settingsInitializing,
     getSetting,
     setSetting,
+    getAccountItem,
+    setAccountItem,
   };
 });
