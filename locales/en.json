@@ -1,5 +1,5 @@
 {
-  "topbar": {
+  "sidebar": {
     "aiConfig": "AI Response Configuration",
     "apiConnections": "API Connections",
     "formatting": "AI Response Formatting",
@@ -381,7 +381,7 @@
       "wait": "Please wait until the chat is saved before switching characters."
     }
   },
-  "rightMenu": {
+  "characterPanel": {
     "pinToggle": "Locked = Character Management panel will stay open",
     "selectCharacter": "Select/Create Characters",
     "hotSwaps": "Favorite characters to add them to HotSwaps",

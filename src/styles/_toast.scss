@@ -6,7 +6,7 @@
   max-width: 100%;
 
   &.toast-top-center {
-    top: var(--top-bar-height);
+    top: var(--side-bar-height);
     left: 50%;
     transform: translateX(-50%);
   }

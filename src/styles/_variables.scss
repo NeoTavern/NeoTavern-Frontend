@@ -121,10 +121,10 @@ $base-border-radius-rounded: 10px;
   --send-form-icon-size: calc(var(--font-size-main) * 1.9);
   --send-form-height: calc(var(--send-form-icon-size) + var(--send-form-padding));
 
-  // Top Bar
-  --top-bar-padding: calc(var(--font-size-main) / 3);
-  --top-bar-icon-size: calc(var(--font-size-main) * 2);
-  --top-bar-height: calc(var(--top-bar-icon-size) + var(--top-bar-padding));
+  // Side Bar
+  --side-bar-padding: calc(var(--font-size-main) / 3);
+  --side-bar-icon-size: calc(var(--font-size-main) * 2);
+  --side-bar-width: calc(var(--side-bar-icon-size) + var(--side-bar-padding) * 2);
 
   // Avatars
   --avatar-height: 50px;

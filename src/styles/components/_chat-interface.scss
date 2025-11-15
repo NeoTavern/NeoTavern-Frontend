@@ -1,11 +1,11 @@
 .chat-interface {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--top-bar-height));
+  height: 100vh;
   overflow-x: hidden;
   position: absolute;
-  top: var(--top-bar-height);
-  left: 0;
+  top: 0;
+  left: var(--side-bar-width);
   right: 0;
   margin: 0 auto;
   min-width: 100px;
@@ -18,7 +18,7 @@
     flex-grow: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    max-height: calc(100vh - var(--top-bar-height) - var(--send-form-height));
+    max-height: calc(100vh - var(--send-form-height));
     background-color: var(--theme-chat-tint);
     padding: 10px;
     gap: 15px;

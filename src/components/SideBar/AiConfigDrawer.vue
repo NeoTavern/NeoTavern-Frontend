@@ -67,7 +67,7 @@ onMounted(() => {
   <div class="ai-config-drawer">
     <div class="ai-config-drawer__header">
       <div
-        :title="t('rightMenu.pinToggle')"
+        :title="t('characterPanel.pinToggle')"
         class="menu-button-icon"
         :class="isPanelPinned ? 'fa-lock' : 'fa-unlock'"
         @click="isPanelPinned = !isPanelPinned"
