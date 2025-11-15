@@ -87,20 +87,53 @@
   .form-section {
     display: flex;
     flex-direction: column;
-    flex-grow: 1;
-    min-height: 0;
+    gap: 5px;
+
+    &--text-area {
+      flex-grow: 1;
+      min-height: 0;
+      textarea {
+        height: 100%;
+      }
+    }
+
+    &.character-note {
+      flex-direction: row;
+      gap: 10px;
+    }
 
     label {
       display: flex;
       align-items: center;
+      gap: 5px;
       margin-bottom: 5px;
       font-weight: bold;
     }
 
-    textarea {
-      height: 100%;
-      resize: none;
+    small {
+      opacity: 0.7;
     }
+
+    .slider-hint {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8em;
+      opacity: 0.7;
+    }
+
+    .token-counter {
+      font-size: 0.8em;
+      text-align: right;
+      opacity: 0.7;
+      margin-top: 2px;
+    }
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--theme-border-color);
+    width: 100%;
+    margin: 0;
   }
 }
 

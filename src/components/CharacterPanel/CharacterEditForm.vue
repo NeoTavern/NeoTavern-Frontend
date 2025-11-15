@@ -5,14 +5,18 @@ import { useSettingsStore } from '../../stores/settings.store';
 import type { Character } from '../../types';
 import Popup from '../Popup/Popup.vue';
 import { POPUP_TYPE, type PopupOptions } from '../../types';
-import AdvancedDefinitions from './AdvancedDefinitions.vue';
 import { getThumbnailUrl } from '../../utils/image';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { slideTransitionHooks } from '../../utils/dom';
+import { get, set } from 'lodash-es';
+import { depth_prompt_depth_default, depth_prompt_role_default, talkativeness_default } from '../../constants';
+
+// TODO: Add token count for description and first message
 
 const { t } = useStrictI18n();
 const characterStore = useCharacterStore();
 const settingsStore = useSettingsStore();
+const tokenCounts = computed(() => characterStore.tokenCounts.fields);
 const activeCharacter = computed(() => characterStore.activeCharacter);
 
 const formData = ref<Partial<Character> & { data?: any }>({});
@@ -23,11 +27,22 @@ const isPeeking = ref(false);
 const isSpoilerModeActive = computed(() => settingsStore.powerUser.spoiler_free_mode);
 const areDetailsHidden = computed(() => isSpoilerModeActive.value && !isPeeking.value);
 
+// --- Drawer States ---
 const isCreatorNotesOpen = ref(false);
-const isAdvancedDefinitionsVisible = ref(false);
+const isPromptOverridesOpen = ref(false);
+const isMetadataOpen = ref(false);
 
-// Popup state for maximizing editors
-type EditableField = 'description' | 'first_mes' | 'data.creator_notes';
+// --- Popup state for maximizing editors ---
+type EditableField =
+  | 'description'
+  | 'first_mes'
+  | 'data.creator_notes'
+  | 'personality'
+  | 'scenario'
+  | 'mes_example'
+  | 'data.system_prompt'
+  | 'data.post_history_instructions'
+  | 'data.depth_prompt.prompt';
 const isEditorPopupVisible = ref(false);
 const editorPopupValue = ref('');
 const editingFieldName = ref<EditableField | null>(null);
@@ -37,6 +52,18 @@ const editorPopupTitle = ref('');
 // --- Transition Hooks ---
 const { beforeEnter, enter, afterEnter, beforeLeave, leave, afterLeave } = slideTransitionHooks;
 
+// --- Computed properties for form fields ---
+const joinedTags = computed({
+  get: () => formData.value.tags?.join(', ') || '',
+  set: (value) => {
+    updateValue(
+      'tags',
+      value.split(',').map((t) => t.trim()),
+    );
+  },
+});
+
+// --- Watchers to sync form data with store ---
 watch(
   activeCharacter,
   (newChar) => {
@@ -45,12 +72,19 @@ watch(
         isUpdatingFromStore.value = true;
 
         const charCopy = JSON.parse(JSON.stringify(newChar));
-        if (!charCopy.data) {
-          charCopy.data = {};
+
+        // Ensure data structures exist for the template
+        if (!charCopy.data) charCopy.data = {};
+        if (!charCopy.data.creator_notes) charCopy.data.creator_notes = charCopy.creatorcomment || '';
+        if (!charCopy.data.depth_prompt) {
+          charCopy.data.depth_prompt = {
+            prompt: '',
+            depth: depth_prompt_depth_default,
+            role: depth_prompt_role_default,
+          };
         }
-        if (!charCopy.data.creator_notes) {
-          charCopy.data.creator_notes = charCopy.creatorcomment || '';
-        }
+        if (charCopy.talkativeness === undefined) charCopy.talkativeness = talkativeness_default;
+
         formData.value = charCopy;
         characterStore.calculateAllTokens(charCopy);
         isPeeking.value = false;
@@ -69,18 +103,14 @@ watch(
 watch(
   formData,
   (newData, oldData) => {
-    if (isUpdatingFromStore.value) {
-      return;
-    }
+    if (isUpdatingFromStore.value) return;
+    if (oldData && Object.keys(oldData).length === 0) return; // Prevent saving on initial hydration
 
-    if (oldData && newData.data) {
-      // Dynamically sync any changed root field with its counterpart in `data` if it exists.
+    // Legacy sync: sync root fields with their counterparts in `data` if they exist.
+    if (newData.data) {
       for (const key in newData) {
         if (key !== 'data' && Object.prototype.hasOwnProperty.call(newData, key)) {
-          // If the corresponding key exists in the 'data' object, sync it.
-          if (typeof newData.data[key] !== 'undefined') {
-            newData.data[key] = newData[key as keyof typeof newData];
-          }
+          if (typeof newData.data[key] !== 'undefined') newData.data[key] = newData[key as keyof typeof newData];
           if (newData.data.extensions && typeof newData.data.extensions[key] !== 'undefined') {
             newData.data.extensions[key] = newData[key as keyof typeof newData];
           }
@@ -88,14 +118,18 @@ watch(
       }
     }
 
-    // Don't save on initial load when populating from activeCharacter
-    if (oldData && Object.keys(oldData).length > 1 && newData.avatar === oldData.avatar) {
+    if (newData.avatar === oldData?.avatar) {
       characterStore.saveCharacterDebounced(newData);
       characterStore.calculateAllTokens(newData);
     }
   },
   { deep: true },
 );
+
+// --- Methods ---
+function updateValue(path: string, value: any) {
+  set(formData.value, path, value);
+}
 
 function toggleFavorite() {
   formData.value.fav = !formData.value.fav;
@@ -108,25 +142,14 @@ function peekSpoilerMode() {
 function openMaximizeEditor(fieldName: EditableField, title: string) {
   editingFieldName.value = fieldName;
   editorPopupTitle.value = t('advancedDefinitions.editingTitle', { title });
-  // A simple way to handle nested properties for v-model
-  if (fieldName === 'data.creator_notes') {
-    editorPopupValue.value = formData.value.data?.creator_notes ?? '';
-  } else {
-    editorPopupValue.value = formData.value[fieldName] ?? '';
-  }
+  editorPopupValue.value = get(formData.value, fieldName) ?? '';
   editorPopupOptions.value = { wide: true, large: true, okButton: 'OK', cancelButton: false };
   isEditorPopupVisible.value = true;
 }
 
 function handleEditorSubmit({ value }: { value: string }) {
   if (editingFieldName.value) {
-    if (editingFieldName.value === 'data.creator_notes') {
-      if (formData.value.data) {
-        formData.value.data.creator_notes = value;
-      }
-    } else {
-      formData.value[editingFieldName.value] = value;
-    }
+    set(formData.value, editingFieldName.value, value);
   }
 }
 </script>
@@ -152,11 +175,6 @@ function handleEditorSubmit({ value }: { value: string }) {
               class="menu-button fa-solid fa-star"
               :class="{ fav_on: formData.fav }"
               :title="t('characterEditor.favorite')"
-            ></div>
-            <div
-              @click="isAdvancedDefinitionsVisible = true"
-              class="menu-button fa-solid fa-book"
-              :title="t('characterEditor.advancedDefinitions')"
             ></div>
             <div class="menu-button fa-solid fa-globe" :title="t('characterEditor.lore')"></div>
             <div class="menu-button fa-solid fa-passport" :title="t('characterEditor.chatLore')"></div>
@@ -231,38 +249,314 @@ function handleEditorSubmit({ value }: { value: string }) {
 
       <small v-show="areDetailsHidden">{{ t('characterEditor.detailsHidden') }}</small>
 
-      <div v-show="!areDetailsHidden" class="form-section">
-        <label for="description_textarea">
-          <span>{{ t('characterEditor.description') }}</span>
-          <i
-            class="editor-maximize-icon fa-solid fa-maximize"
-            :title="t('characterEditor.expandEditor')"
-            @click="openMaximizeEditor('description', t('characterEditor.description'))"
-          ></i>
-        </label>
-        <textarea
-          id="description_textarea"
-          class="text-pole"
-          v-model="formData.description"
-          :placeholder="t('characterEditor.descriptionPlaceholder')"
-        ></textarea>
-      </div>
+      <div v-show="!areDetailsHidden" class="u-flex-col" style="gap: 15px; flex-grow: 1; min-height: 0">
+        <div class="form-section form-section--text-area">
+          <label for="description_textarea">
+            <span>{{ t('characterEditor.description') }}</span>
+            <i
+              class="editor-maximize-icon fa-solid fa-maximize"
+              :title="t('characterEditor.expandEditor')"
+              @click="openMaximizeEditor('description', t('characterEditor.description'))"
+            ></i>
+          </label>
+          <textarea
+            id="description_textarea"
+            class="text-pole"
+            rows="12"
+            :value="formData.description"
+            @input="updateValue('description', ($event.target as HTMLTextAreaElement).value)"
+            :placeholder="t('characterEditor.descriptionPlaceholder')"
+          ></textarea>
+        </div>
 
-      <div v-show="!areDetailsHidden" class="form-section">
-        <label for="firstmessage_textarea">
-          <span>{{ t('characterEditor.firstMessage') }}</span>
-          <i
-            class="editor-maximize-icon fa-solid fa-maximize"
-            :title="t('characterEditor.expandEditor')"
-            @click="openMaximizeEditor('first_mes', t('characterEditor.firstMessage'))"
-          ></i>
-        </label>
-        <textarea
-          id="firstmessage_textarea"
-          class="text-pole"
-          v-model="formData.first_mes"
-          :placeholder="t('characterEditor.firstMessagePlaceholder')"
-        ></textarea>
+        <div class="form-section form-section--text-area">
+          <label for="firstmessage_textarea">
+            <span>{{ t('characterEditor.firstMessage') }}</span>
+            <i
+              class="editor-maximize-icon fa-solid fa-maximize"
+              :title="t('characterEditor.expandEditor')"
+              @click="openMaximizeEditor('first_mes', t('characterEditor.firstMessage'))"
+            ></i>
+          </label>
+          <textarea
+            id="firstmessage_textarea"
+            class="text-pole"
+            rows="10"
+            :value="formData.first_mes"
+            @input="updateValue('first_mes', ($event.target as HTMLTextAreaElement).value)"
+            :placeholder="t('characterEditor.firstMessagePlaceholder')"
+          ></textarea>
+        </div>
+        <hr />
+        <div class="form-section">
+          <label>
+            <span>{{ t('advancedDefinitions.personality') }}</span>
+            <i
+              class="editor-maximize-icon fa-solid fa-maximize"
+              :title="t('characterEditor.expandEditor')"
+              @click="openMaximizeEditor('personality', t('advancedDefinitions.personality'))"
+            ></i>
+          </label>
+          <textarea
+            :value="formData.personality"
+            @input="updateValue('personality', ($event.target as HTMLTextAreaElement).value)"
+            class="text-pole"
+            rows="4"
+            :placeholder="t('advancedDefinitions.personalityPlaceholder')"
+          ></textarea>
+          <div class="token-counter">
+            {{ t('common.tokens') }}: <span>{{ tokenCounts['personality'] || 0 }}</span>
+          </div>
+        </div>
+        <div class="form-section">
+          <label>
+            <span>{{ t('advancedDefinitions.scenario') }}</span>
+            <i
+              class="editor-maximize-icon fa-solid fa-maximize"
+              :title="t('characterEditor.expandEditor')"
+              @click="openMaximizeEditor('scenario', t('advancedDefinitions.scenario'))"
+            ></i>
+          </label>
+          <textarea
+            :value="formData.scenario"
+            @input="updateValue('scenario', ($event.target as HTMLTextAreaElement).value)"
+            class="text-pole"
+            rows="4"
+            :placeholder="t('advancedDefinitions.scenarioPlaceholder')"
+          ></textarea>
+          <div class="token-counter">
+            {{ t('common.tokens') }}: <span>{{ tokenCounts['scenario'] || 0 }}</span>
+          </div>
+        </div>
+        <div class="form-section character-note">
+          <div class="u-w-full">
+            <label>
+              <span>{{ t('advancedDefinitions.characterNote') }}</span>
+              <i
+                class="editor-maximize-icon fa-solid fa-maximize"
+                :title="t('characterEditor.expandEditor')"
+                @click="openMaximizeEditor('data.depth_prompt.prompt', t('advancedDefinitions.characterNote'))"
+              ></i>
+            </label>
+            <textarea
+              :value="formData.data.depth_prompt.prompt"
+              @input="updateValue('data.depth_prompt.prompt', ($event.target as HTMLTextAreaElement).value)"
+              class="text-pole"
+              rows="5"
+              :placeholder="t('advancedDefinitions.characterNotePlaceholder')"
+            ></textarea>
+          </div>
+          <div>
+            <label>{{ t('advancedDefinitions.depth') }}</label>
+            <input
+              :value="formData.data.depth_prompt.depth"
+              @input="updateValue('data.depth_prompt.depth', ($event.target as HTMLInputElement).valueAsNumber)"
+              type="number"
+              min="0"
+              max="9999"
+              class="text-pole"
+            />
+            <label>{{ t('advancedDefinitions.role') }}</label>
+            <select
+              :value="formData.data.depth_prompt.role"
+              @change="updateValue('data.depth_prompt.role', ($event.target as HTMLSelectElement).value)"
+              class="text-pole"
+            >
+              <option value="system">{{ t('advancedDefinitions.roles.system') }}</option>
+              <option value="user">{{ t('advancedDefinitions.roles.user') }}</option>
+              <option value="assistant">{{ t('advancedDefinitions.roles.assistant') }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-section">
+          <label>{{ t('advancedDefinitions.talkativeness') }}</label>
+          <small>{{ t('advancedDefinitions.talkativenessHint') }}</small>
+          <input
+            :value="formData.talkativeness"
+            @input="updateValue('talkativeness', ($event.target as HTMLInputElement).valueAsNumber)"
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+          />
+          <div class="slider-hint">
+            <span>{{ t('advancedDefinitions.talkativenessShy') }}</span>
+            <span>{{ t('advancedDefinitions.talkativenessNormal') }}</span>
+            <span>{{ t('advancedDefinitions.talkativenessChatty') }}</span>
+          </div>
+        </div>
+        <hr />
+        <div class="form-section">
+          <label>
+            <span>{{ t('advancedDefinitions.dialogueExamples') }}</span>
+            <i
+              class="editor-maximize-icon fa-solid fa-maximize"
+              :title="t('characterEditor.expandEditor')"
+              @click="openMaximizeEditor('mes_example', t('advancedDefinitions.dialogueExamples'))"
+            ></i>
+          </label>
+          <small>{{ t('advancedDefinitions.dialogueExamplesHint') }}</small>
+          <textarea
+            :value="formData.mes_example"
+            @input="updateValue('mes_example', ($event.target as HTMLTextAreaElement).value)"
+            class="text-pole"
+            rows="6"
+            :placeholder="t('advancedDefinitions.dialogueExamplesPlaceholder')"
+          ></textarea>
+          <div class="token-counter">
+            {{ t('common.tokens') }}: <span>{{ tokenCounts['mes_example'] || 0 }}</span>
+          </div>
+        </div>
+        <hr />
+        <div class="inline-drawer">
+          <div class="inline-drawer-header" @click="isPromptOverridesOpen = !isPromptOverridesOpen">
+            <h4 class="inline-drawer-header__title">
+              {{ t('advancedDefinitions.promptOverrides') }}
+              <small>{{ t('advancedDefinitions.promptOverridesHint') }}</small>
+            </h4>
+            <i
+              class="fa-solid fa-circle-chevron-down inline-drawer-header__icon"
+              :class="{ 'is-open': isPromptOverridesOpen }"
+            ></i>
+          </div>
+          <Transition
+            name="slide-js"
+            @before-enter="beforeEnter"
+            @enter="enter"
+            @after-enter="afterEnter"
+            @before-leave="beforeLeave"
+            @leave="leave"
+            @after-leave="afterLeave"
+          >
+            <div v-show="isPromptOverridesOpen">
+              <div class="inline-drawer-content u-flex-col">
+                <small>{{ t('advancedDefinitions.promptHint') }}</small>
+                <div>
+                  <label>
+                    <span>{{ t('advancedDefinitions.mainPrompt') }}</span>
+                    <i
+                      class="editor-maximize-icon fa-solid fa-maximize"
+                      :title="t('characterEditor.expandEditor')"
+                      @click="openMaximizeEditor('data.system_prompt', t('advancedDefinitions.mainPrompt'))"
+                    ></i>
+                  </label>
+                  <textarea
+                    :value="formData.data.system_prompt"
+                    @input="updateValue('data.system_prompt', ($event.target as HTMLTextAreaElement).value)"
+                    class="text-pole"
+                    rows="3"
+                    :placeholder="t('advancedDefinitions.mainPromptPlaceholder')"
+                  ></textarea>
+                  <div class="token-counter">
+                    {{ t('common.tokens') }}: <span>{{ tokenCounts['data.system_prompt'] || 0 }}</span>
+                  </div>
+                </div>
+                <div>
+                  <label>
+                    <span>{{ t('advancedDefinitions.postHistoryInstructions') }}</span>
+                    <i
+                      class="editor-maximize-icon fa-solid fa-maximize"
+                      :title="t('characterEditor.expandEditor')"
+                      @click="
+                        openMaximizeEditor(
+                          'data.post_history_instructions',
+                          t('advancedDefinitions.postHistoryInstructions'),
+                        )
+                      "
+                    ></i>
+                  </label>
+                  <textarea
+                    :value="formData.data.post_history_instructions"
+                    @input="updateValue('data.post_history_instructions', ($event.target as HTMLTextAreaElement).value)"
+                    class="text-pole"
+                    rows="3"
+                    :placeholder="t('advancedDefinitions.postHistoryInstructionsPlaceholder')"
+                  ></textarea>
+                  <div class="token-counter">
+                    {{ t('common.tokens') }}: <span>{{ tokenCounts['data.post_history_instructions'] || 0 }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Transition>
+        </div>
+        <hr />
+        <div class="inline-drawer">
+          <div class="inline-drawer-header" @click="isMetadataOpen = !isMetadataOpen">
+            <h4 class="inline-drawer-header__title">
+              {{ t('advancedDefinitions.metadata') }} <small>{{ t('advancedDefinitions.metadataHint') }}</small>
+            </h4>
+            <i
+              class="fa-solid fa-circle-chevron-down inline-drawer-header__icon"
+              :class="{ 'is-open': isMetadataOpen }"
+            ></i>
+          </div>
+          <Transition
+            name="slide-js"
+            @before-enter="beforeEnter"
+            @enter="enter"
+            @after-enter="afterEnter"
+            @before-leave="beforeLeave"
+            @leave="leave"
+            @after-leave="afterLeave"
+          >
+            <div v-show="isMetadataOpen">
+              <div class="inline-drawer-content u-flex-col">
+                <small>{{ t('advancedDefinitions.metadataOptional') }}</small>
+                <div class="u-flex u-flex-nowrap">
+                  <div class="u-w-full">
+                    <label>{{ t('advancedDefinitions.createdBy') }}</label>
+                    <textarea
+                      :value="formData.data.creator"
+                      @input="updateValue('data.creator', ($event.target as HTMLTextAreaElement).value)"
+                      class="text-pole"
+                      rows="2"
+                      :placeholder="t('advancedDefinitions.createdByPlaceholder')"
+                    ></textarea>
+                  </div>
+                  <div class="u-w-full">
+                    <label>{{ t('advancedDefinitions.characterVersion') }}</label>
+                    <textarea
+                      :value="formData.data.character_version"
+                      @input="updateValue('data.character_version', ($event.target as HTMLTextAreaElement).value)"
+                      class="text-pole"
+                      rows="2"
+                      :placeholder="t('advancedDefinitions.characterVersionPlaceholder')"
+                    ></textarea>
+                  </div>
+                </div>
+                <div class="u-flex u-flex-nowrap">
+                  <div class="u-w-full">
+                    <label>
+                      <span>{{ t('advancedDefinitions.creatorNotes') }}</span>
+                      <i
+                        class="editor-maximize-icon fa-solid fa-maximize"
+                        :title="t('characterEditor.expandEditor')"
+                        @click="openMaximizeEditor('data.creator_notes', t('advancedDefinitions.creatorNotes'))"
+                      ></i>
+                    </label>
+                    <textarea
+                      :value="formData.data.creator_notes"
+                      @input="updateValue('data.creator_notes', ($event.target as HTMLTextAreaElement).value)"
+                      class="text-pole"
+                      rows="4"
+                      :placeholder="t('advancedDefinitions.creatorNotesPlaceholder')"
+                    ></textarea>
+                  </div>
+                  <div class="u-w-full">
+                    <label>{{ t('advancedDefinitions.tagsToEmbed') }}</label>
+                    <textarea
+                      v-model="joinedTags"
+                      class="text-pole"
+                      rows="4"
+                      :placeholder="t('advancedDefinitions.tagsToEmbedPlaceholder')"
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Transition>
+        </div>
       </div>
     </form>
 
@@ -275,12 +569,6 @@ function handleEditorSubmit({ value }: { value: string }) {
       :options="editorPopupOptions"
       @submit="handleEditorSubmit"
       @close="isEditorPopupVisible = false"
-    />
-
-    <AdvancedDefinitions
-      v-if="isAdvancedDefinitionsVisible"
-      v-model="formData"
-      @close="isAdvancedDefinitionsVisible = false"
     />
   </div>
 </template>
