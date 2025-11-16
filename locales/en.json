@@ -535,7 +535,25 @@
   },
   "apiConnections": {
     "profile": "Connection Profile",
-    "profileNotImplemented": "Connection Profiles are not yet implemented.",
+    "profileManagement": {
+      "create": "Save current connection as new profile",
+      "rename": "Rename current profile",
+      "delete": "Delete current profile",
+      "import": "Import profiles",
+      "export": "Export current profile",
+      "none": "None",
+      "createPopupTitle": "New Connection Profile",
+      "profileName": "Profile Name",
+      "fieldsToInclude": "Fields to include in profile",
+      "renamePopupTitle": "Rename Connection Profile",
+      "deletePopupContent": "Are you sure you want to delete the profile \"<b>{name}</b>\"?",
+      "errors": {
+        "noSelection": "No profile selected.",
+        "deleteNone": "Cannot delete the base profile.",
+        "renameNone": "Cannot rename the base profile.",
+        "nameExists": "A profile with this name already exists."
+      }
+    },
     "api": "API",
     "chatCompletion": "Chat Completion",
     "textCompletion": "Text Completion (TODO)",

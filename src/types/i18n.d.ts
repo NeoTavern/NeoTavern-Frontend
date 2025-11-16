@@ -538,7 +538,25 @@ export interface MessageSchema {
   };
   apiConnections: {
     profile: string;
-    profileNotImplemented: string;
+    profileManagement: {
+      create: string;
+      rename: string;
+      delete: string;
+      import: string;
+      export: string;
+      none: string;
+      createPopupTitle: string;
+      profileName: string;
+      fieldsToInclude: string;
+      renamePopupTitle: string;
+      deletePopupContent: string;
+      errors: {
+        noSelection: string;
+        deleteNone: string;
+        renameNone: string;
+        nameExists: string;
+      };
+    };
     api: string;
     chatCompletion: string;
     textCompletion: string;

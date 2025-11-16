@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useApiStore } from '../../stores/api.store';
-import { chat_completion_sources } from '../../types';
+import { chat_completion_sources, type ConnectionProfile } from '../../types';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
+import ConnectionProfilePopup from './ConnectionProfilePopup.vue';
 
 const { t } = useStrictI18n();
 
 const apiStore = useApiStore();
 const settingsStore = useSettingsStore();
+
+const isProfilePopupVisible = ref(false);
 
 const staticOpenAIModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'];
 const dynamicOpenAIModels = computed(() => {
@@ -18,15 +21,50 @@ const dynamicOpenAIModels = computed(() => {
 const hasOpenRouterGroupedModels = computed(() => {
   return apiStore.groupedOpenRouterModels && Object.keys(apiStore.groupedOpenRouterModels).length > 0;
 });
+
+function handleProfileSave(profile: Omit<ConnectionProfile, 'id'>) {
+  apiStore.createConnectionProfile(profile);
+}
 </script>
 
 <template>
   <div class="api-connections-drawer">
     <div class="api-connections-drawer__wrapper">
-      <!-- TODO: Implement Connection Profiles -->
       <div class="api-connections-drawer__section">
         <h3>{{ t('apiConnections.profile') }}</h3>
-        <p>{{ t('apiConnections.profileNotImplemented') }}</p>
+        <div class="preset-manager__controls">
+          <select class="text-pole" v-model="apiStore.selectedConnectionProfileName">
+            <option :value="undefined">{{ t('apiConnections.profileManagement.none') }}</option>
+            <option v-for="profile in apiStore.connectionProfiles" :key="profile.name" :value="profile.name">
+              {{ profile.name }}
+            </option>
+          </select>
+          <div
+            class="menu-button-icon fa-solid fa-file-circle-plus"
+            :title="t('apiConnections.profileManagement.create')"
+            @click="isProfilePopupVisible = true"
+          ></div>
+          <div
+            class="menu-button-icon fa-solid fa-pencil"
+            :title="t('apiConnections.profileManagement.rename')"
+            @click="apiStore.renameConnectionProfile"
+          ></div>
+          <div
+            class="menu-button-icon fa-solid fa-trash-can"
+            :title="t('apiConnections.profileManagement.delete')"
+            @click="apiStore.deleteConnectionProfile"
+          ></div>
+          <div
+            class="menu-button-icon fa-solid fa-file-import"
+            :title="t('apiConnections.profileManagement.import')"
+            @click="apiStore.importConnectionProfiles"
+          ></div>
+          <div
+            class="menu-button-icon fa-solid fa-file-export"
+            :title="t('apiConnections.profileManagement.export')"
+            @click="apiStore.exportConnectionProfile"
+          ></div>
+        </div>
       </div>
 
       <hr />
@@ -189,5 +227,10 @@ const hasOpenRouterGroupedModels = computed(() => {
         </div>
       </div>
     </div>
+    <ConnectionProfilePopup
+      :visible="isProfilePopupVisible"
+      @close="isProfilePopupVisible = false"
+      @save="handleProfileSave"
+    />
   </div>
 </template>

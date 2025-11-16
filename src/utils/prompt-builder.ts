@@ -1,10 +1,8 @@
-import type { Character, ChatMessage, Settings } from '../types';
+import type { Character, ChatMessage, SamplerSettings } from '../types';
 import type { ApiChatMessage } from '../api/generation';
-import { useUiStore } from '../stores/ui.store';
 import { useWorldInfoStore } from '../stores/world-info.store';
 import { WorldInfoProcessor } from './world-info-processor';
 import { defaultSamplerSettings } from '../constants';
-import { useSettingsStore } from '../stores/settings.store';
 
 // TODO: Replace with a real API call to the backend for accurate tokenization
 async function getTokenCount(text: string): Promise<number> {
@@ -19,26 +17,30 @@ function substitute(text: string, char: Character, user: string): string {
   return text.replace(/{{char}}/g, char.name).replace(/{{user}}/g, user);
 }
 
+export type PromtBuilderOptions = {
+  character: Character;
+  chatHistory: ChatMessage[];
+  samplerSettings: SamplerSettings;
+  playerName: string;
+  forContinue?: boolean;
+};
+
 export class PromptBuilder {
   private character: Character;
   private chatHistory: ChatMessage[];
-  private settings: Settings['api'];
+  private samplerSettings: SamplerSettings;
   private playerName: string;
   private maxContext: number;
   private forContinue: boolean;
 
-  constructor(character: Character, chatHistory: ChatMessage[], forContinue = false) {
+  constructor({ character, chatHistory, samplerSettings, playerName, forContinue = false }: PromtBuilderOptions) {
     this.character = character;
     this.chatHistory = chatHistory;
+    this.samplerSettings = samplerSettings;
+    this.playerName = playerName;
     this.forContinue = forContinue;
 
-    // Stores need to be accessed inside the constructor or methods
-    const uiStore = useUiStore();
-    const settingsStore = useSettingsStore();
-
-    this.settings = settingsStore.settings.api;
-    this.playerName = uiStore.activePlayerName || 'User';
-    this.maxContext = settingsStore.settings.api.samplers.max_context ?? defaultSamplerSettings.max_context;
+    this.maxContext = this.samplerSettings.max_context ?? defaultSamplerSettings.max_context;
   }
 
   public async build(): Promise<ApiChatMessage[]> {
@@ -51,19 +53,19 @@ export class PromptBuilder {
       .filter((name) => worldInfoStore.activeBookNames.includes(name))
       .map((name) => worldInfoStore.getBookFromCache(name));
 
-    const processor = new WorldInfoProcessor(
-      this.chatHistory,
-      this.character,
-      worldInfoStore.settings,
-      activeBooks.filter((book): book is NonNullable<typeof book> => book !== null),
-      this.playerName,
-      this.maxContext,
-    );
+    const processor = new WorldInfoProcessor({
+      books: activeBooks.filter((book): book is NonNullable<typeof book> => book !== null),
+      chat: this.chatHistory,
+      character: this.character,
+      settings: worldInfoStore.settings,
+      playerName: this.playerName,
+      maxContext: this.maxContext,
+    });
     const { worldInfoBefore, worldInfoAfter } = await processor.process();
 
     // 2. Build non-history prompts and count their tokens
     const fixedPrompts: ApiChatMessage[] = [];
-    const promptOrderConfig = this.settings.samplers.prompt_order;
+    const promptOrderConfig = this.samplerSettings.prompt_order;
     if (!promptOrderConfig) {
       console.error('Default prompt order not found in settings.');
       return [];
@@ -72,7 +74,7 @@ export class PromptBuilder {
     const historyPlaceholder = { role: 'system', content: '[[CHAT_HISTORY_PLACEHOLDER]]' } as const;
 
     for (const promptConfig of enabledPrompts) {
-      const promptDefinition = this.settings.samplers.prompts?.find((p) => p.identifier === promptConfig.identifier);
+      const promptDefinition = this.samplerSettings.prompts?.find((p) => p.identifier === promptConfig.identifier);
       if (!promptDefinition) continue;
 
       if (promptDefinition.marker) {
@@ -130,7 +132,7 @@ export class PromptBuilder {
     }
 
     // 3. Build chat history within the remaining token budget
-    const historyBudget = this.maxContext - currentTokenCount - (this.settings.samplers.max_tokens ?? 500);
+    const historyBudget = this.maxContext - currentTokenCount - (this.samplerSettings.max_tokens ?? 500);
     const historyMessages: ApiChatMessage[] = [];
     let historyTokenCount = 0;
 

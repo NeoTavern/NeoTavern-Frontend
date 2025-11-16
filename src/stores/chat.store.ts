@@ -12,7 +12,12 @@ import { getFirstMessage } from '../utils/chat';
 import { toast } from '../composables/useToast';
 import { useStrictI18n } from '../composables/useStrictI18n';
 import { PromptBuilder } from '../utils/prompt-builder';
-import { ChatCompletionService, type GenerationResponse, type StreamedChunk } from '../api/generation';
+import {
+  buildChatCompletionPayload,
+  ChatCompletionService,
+  type GenerationResponse,
+  type StreamedChunk,
+} from '../api/generation';
 import { getThumbnailUrl } from '../utils/image';
 import { default_user_avatar } from '../constants';
 import { useSettingsStore } from './settings.store';
@@ -37,13 +42,14 @@ export const useChatStore = defineStore('chat', () => {
   const activeChatFile = ref<string | null>(null);
   const generationController = ref<AbortController | null>(null);
 
+  const uiStore = useUiStore();
+
   function getCurrentChatId() {
     // TODO: Integrate group store later
     return activeChatFile.value;
   }
 
   async function saveChat() {
-    const uiStore = useUiStore();
     if (uiStore.isChatSaving) {
       console.warn('Chat is already saving.');
       return;
@@ -173,6 +179,7 @@ export const useChatStore = defineStore('chat', () => {
 
     const characterStore = useCharacterStore();
     const apiStore = useApiStore();
+    const settingsStore = useSettingsStore();
     const activeCharacter = characterStore.activeCharacter;
     if (!activeCharacter) {
       console.error('generateResponse called without an active character.');
@@ -201,23 +208,26 @@ export const useChatStore = defineStore('chat', () => {
       }
 
       const forContinue = mode === GenerationMode.CONTINUE;
-      const promptBuilder = new PromptBuilder(activeCharacter, chatHistoryForPrompt, forContinue);
+      const promptBuilder = new PromptBuilder({
+        character: activeCharacter,
+        chatHistory: chatHistoryForPrompt,
+        playerName: uiStore.activePlayerName || 'User',
+        forContinue,
+        samplerSettings: settingsStore.settings.api.samplers,
+      });
       const messages = await promptBuilder.build();
 
       if (messages.length === 0) {
         throw new Error(t('chat.generate.noPrompts'));
       }
 
-      const settingsStore = useSettingsStore();
       const samplers = settingsStore.settings.api.samplers;
-      const payload = {
+      const payload = buildChatCompletionPayload({
         messages,
         model: apiStore.activeModel,
-        chat_completion_source: settingsStore.settings.api.chat_completion_source,
-        max_tokens: samplers.max_tokens,
-        temperature: samplers.temperature,
-        stream: samplers.stream ?? true,
-      };
+        samplerSettings: samplers,
+        source: settingsStore.settings.api.chat_completion_source,
+      });
 
       const handleGenerationResult = async (content: string, reasoning?: string) => {
         const genFinished = new Date().toISOString();
@@ -361,7 +371,6 @@ export const useChatStore = defineStore('chat', () => {
       return;
     }
 
-    const uiStore = useUiStore();
     const userMessage: ChatMessage = {
       name: uiStore.activePlayerName || 'User',
       is_user: true,

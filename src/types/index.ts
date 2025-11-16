@@ -232,6 +232,15 @@ export const chat_completion_sources = {
 
 export type ChatCompletionSource = (typeof chat_completion_sources)[keyof typeof chat_completion_sources];
 
+export interface ConnectionProfile {
+  id: string;
+  name: string;
+  api?: string;
+  chat_completion_source?: ChatCompletionSource;
+  model?: string;
+  sampler?: string;
+}
+
 export interface ApiModel {
   id: string;
   name?: string;
@@ -376,6 +385,7 @@ export interface SamplerSettings {
   temperature: number;
   frequency_penalty: number;
   presence_penalty: number;
+  repetition_penalty: number;
   top_p: number;
   top_k: number;
   top_a: number;
@@ -588,6 +598,9 @@ export interface ExperimentalSettings {
     // Sampler settings
     selected_sampler?: string;
     samplers: SamplerSettings;
+    // Connection profiles
+    connection_profiles: ConnectionProfile[];
+    selected_connection_profile?: string;
   };
   worldInfo: WorldInfoSettings;
   account: AccountStorageState;
@@ -631,6 +644,12 @@ export interface LegacySettings {
   username?: string;
   user_avatar?: string;
   main_api?: string;
+  extension_settings?: {
+    connectionManager?: {
+      profiles?: Record<string, { id: string; mode: 'cc' | 'tc'; api: ChatCompletionSource; model: string }>;
+      selected?: string;
+    };
+  };
 
   // The new, structured settings object.
   v2Experimental?: ExperimentalSettings;

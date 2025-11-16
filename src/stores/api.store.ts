@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
-import type { ApiModel, SamplerSettings, PromptOrderConfig } from '../types';
+import type { ApiModel, SamplerSettings, PromptOrderConfig, ConnectionProfile } from '../types';
 import { POPUP_RESULT, POPUP_TYPE, chat_completion_sources } from '../types';
 import { fetchChatCompletionStatus } from '../api/connection';
 import { toast } from '../composables/useToast';
@@ -15,26 +15,40 @@ import {
 import { usePopupStore } from './popup.store';
 import { downloadFile, readFileAsText } from '../utils/file';
 import { defaultPromptOrder, defaultPrompts } from '../constants';
+import { uuidv4 } from '../utils/common';
 
 export const useApiStore = defineStore('api', () => {
   const { t } = useStrictI18n();
   const settingsStore = useSettingsStore();
+  const popupStore = usePopupStore();
 
   const onlineStatus = ref(t('api.status.notConnected'));
   const isConnecting = ref(false);
   const modelList = ref<ApiModel[]>([]);
   const presets = ref<Preset[]>([]);
 
+  // --- Connection Profiles ---
+  const connectionProfiles = computed({
+    get: () => settingsStore.settings.api.connection_profiles,
+    set: (value) => settingsStore.setSetting('api.connection_profiles', value),
+  });
+
+  const selectedConnectionProfileName = computed({
+    get: () => settingsStore.settings.api.selected_connection_profile,
+    set: (value) => settingsStore.setSetting('api.selected_connection_profile', value),
+  });
+
   const activeModel = computed(() => {
-    switch (settingsStore.settings.api.chat_completion_source) {
+    const apiSettings = settingsStore.settings.api;
+    switch (apiSettings.chat_completion_source) {
       case chat_completion_sources.OPENAI:
-        return settingsStore.settings.api.openai_model;
+        return apiSettings.openai_model;
       case chat_completion_sources.CLAUDE:
-        return settingsStore.settings.api.claude_model;
+        return apiSettings.claude_model;
       case chat_completion_sources.OPENROUTER:
-        return settingsStore.settings.api.openrouter_model;
+        return apiSettings.openrouter_model;
       default:
-        return settingsStore.settings.api.openai_model;
+        return apiSettings.openai_model;
     }
   });
 
@@ -64,7 +78,37 @@ export const useApiStore = defineStore('api', () => {
     return vendors;
   });
 
-  // When the main API or source changes, try to reconnect
+  // When the user selects a different connection profile, apply its settings as a one-time action.
+  watch(selectedConnectionProfileName, (profileName) => {
+    if (settingsStore.settingsInitializing) return;
+
+    const profile = connectionProfiles.value.find((p) => p.name === profileName);
+    if (profile) {
+      // Apply profile settings to the main settings state, only overriding defined fields.
+      if (profile.api) settingsStore.settings.api.main = profile.api;
+      if (profile.chat_completion_source)
+        settingsStore.settings.api.chat_completion_source = profile.chat_completion_source;
+      if (profile.sampler) settingsStore.settings.api.selected_sampler = profile.sampler;
+      if (profile.model) {
+        const source = profile.chat_completion_source ?? settingsStore.settings.api.chat_completion_source;
+        switch (source) {
+          case 'openai':
+            settingsStore.settings.api.openai_model = profile.model;
+            break;
+          case 'claude':
+            settingsStore.settings.api.claude_model = profile.model;
+            break;
+          case 'openrouter':
+            settingsStore.settings.api.openrouter_model = profile.model;
+            break;
+        }
+      }
+      // After applying, reconnect to validate the new settings.
+      connect();
+    }
+  });
+
+  // When the main API or source changes manually, try to reconnect
   watch(
     () => [settingsStore.settings.api.main, settingsStore.settings.api.chat_completion_source],
     ([newMainApi, newSource], [oldMainApi, oldSource]) => {
@@ -93,8 +137,9 @@ export const useApiStore = defineStore('api', () => {
     if (isConnecting.value) return;
 
     modelList.value = [];
+    const apiSettings = settingsStore.settings.api;
 
-    if (settingsStore.settings.api.main !== 'openai') {
+    if (apiSettings.main !== 'openai') {
       onlineStatus.value = `${t('api.status.notConnected')} ${t('api.status.notImplemented')}`;
       return;
     }
@@ -105,7 +150,7 @@ export const useApiStore = defineStore('api', () => {
     try {
       // TODO: Implement secret management. For now, we pass the key directly.
       // TODO: Implement reverse proxy confirmation popup.
-      const response = await fetchChatCompletionStatus(settingsStore.settings.api);
+      const response = await fetchChatCompletionStatus(apiSettings);
 
       if (response.error) {
         throw new Error(response.error);
@@ -115,17 +160,17 @@ export const useApiStore = defineStore('api', () => {
         modelList.value = response.data;
 
         // Check if current model selection is still valid
-        const source = settingsStore.settings.api.chat_completion_source;
+        const source = apiSettings.chat_completion_source;
         const availableModels = modelList.value.map((m) => m.id);
 
         if (source === chat_completion_sources.OPENAI) {
-          if (!availableModels.includes(settingsStore.settings.api.openai_model ?? '')) {
+          if (!availableModels.includes(apiSettings.openai_model ?? '')) {
             settingsStore.settings.api.openai_model = availableModels.length > 0 ? availableModels[0] : 'gpt-4o';
           }
         } else if (source === chat_completion_sources.OPENROUTER) {
           if (
-            settingsStore.settings.api.openrouter_model !== 'OR_Website' &&
-            !availableModels.includes(settingsStore.settings.api.openrouter_model ?? '')
+            apiSettings.openrouter_model !== 'OR_Website' &&
+            !availableModels.includes(apiSettings.openrouter_model ?? '')
           ) {
             settingsStore.settings.api.openrouter_model =
               availableModels.length > 0 ? availableModels[0] : 'OR_Website';
@@ -180,7 +225,6 @@ export const useApiStore = defineStore('api', () => {
       toast.warning(t('aiConfig.presets.errors.renameDefault'));
       return;
     }
-    const popupStore = usePopupStore();
     const { result, value: newName } = await popupStore.show({
       title: t('aiConfig.presets.renamePopupTitle'),
       type: POPUP_TYPE.INPUT,
@@ -211,7 +255,6 @@ export const useApiStore = defineStore('api', () => {
       toast.warning(t('aiConfig.presets.errors.deleteDefault'));
       return;
     }
-    const popupStore = usePopupStore();
     const { result } = await popupStore.show({
       title: t('common.confirmDelete'),
       content: t('aiConfig.presets.deletePopupContent', { name }),
@@ -270,6 +313,84 @@ export const useApiStore = defineStore('api', () => {
 
     const content = JSON.stringify(presetToExport.preset, null, 2);
     downloadFile(content, `${name}.json`, 'application/json');
+  }
+
+  // --- Connection Profile Management ---
+  async function createConnectionProfile(profileData: Omit<ConnectionProfile, 'id'>) {
+    if (connectionProfiles.value.some((p) => p.name === profileData.name)) {
+      toast.error(t('apiConnections.profileManagement.errors.nameExists'));
+      return;
+    }
+
+    const newProfile: ConnectionProfile = {
+      ...profileData,
+      id: uuidv4(),
+    };
+    connectionProfiles.value = [...connectionProfiles.value, newProfile];
+    selectedConnectionProfileName.value = newProfile.name;
+    toast.success(`Profile "${newProfile.name}" created.`);
+  }
+
+  async function renameConnectionProfile() {
+    const oldName = selectedConnectionProfileName.value;
+    if (!oldName) {
+      toast.warning(t('apiConnections.profileManagement.errors.renameNone'));
+      return;
+    }
+
+    const { result, value: newName } = await popupStore.show({
+      title: t('apiConnections.profileManagement.renamePopupTitle'),
+      type: POPUP_TYPE.INPUT,
+      inputValue: oldName,
+    });
+
+    if (result === POPUP_RESULT.AFFIRMATIVE && newName && newName.trim() && newName !== oldName) {
+      const profile = connectionProfiles.value.find((p) => p.name === oldName);
+      if (profile) {
+        profile.name = newName;
+        connectionProfiles.value = [...connectionProfiles.value]; // Trigger reactivity
+        selectedConnectionProfileName.value = newName;
+        toast.success(`Profile renamed to "${newName}".`);
+      }
+    }
+  }
+
+  async function deleteConnectionProfile() {
+    const name = selectedConnectionProfileName.value;
+    if (!name) {
+      toast.warning(t('apiConnections.profileManagement.errors.deleteNone'));
+      return;
+    }
+
+    const { result } = await popupStore.show({
+      title: t('common.confirmDelete'),
+      content: t('apiConnections.profileManagement.deletePopupContent', { name }),
+      type: POPUP_TYPE.CONFIRM,
+    });
+
+    if (result === POPUP_RESULT.AFFIRMATIVE) {
+      connectionProfiles.value = connectionProfiles.value.filter((p) => p.name !== name);
+      selectedConnectionProfileName.value = undefined;
+      toast.success(`Profile "${name}" deleted.`);
+    }
+  }
+
+  function importConnectionProfiles() {
+    // TODO: Implement import logic
+    toast.info('Importing profiles is not yet implemented.');
+  }
+
+  function exportConnectionProfile() {
+    const name = selectedConnectionProfileName.value;
+    if (!name) {
+      toast.error(t('apiConnections.profileManagement.errors.noSelection'));
+      return;
+    }
+    const profile = connectionProfiles.value.find((p) => p.name === name);
+    if (profile) {
+      const content = JSON.stringify([profile], null, 2);
+      downloadFile(content, `${name}-profile.json`, 'application/json');
+    }
   }
 
   // --- Prompt Management ---
@@ -334,5 +455,13 @@ export const useApiStore = defineStore('api', () => {
     togglePromptEnabled,
     updatePromptContent,
     resetPrompts,
+    // Connection Profiles
+    connectionProfiles,
+    selectedConnectionProfileName,
+    createConnectionProfile,
+    renameConnectionProfile,
+    deleteConnectionProfile,
+    importConnectionProfiles,
+    exportConnectionProfile,
   };
 });

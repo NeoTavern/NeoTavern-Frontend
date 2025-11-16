@@ -1,12 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import {
-  SendOnEnterOptions,
-  DEFAULT_SAVE_EDIT_TIMEOUT,
-  defaultPrompts,
-  defaultPromptOrder,
-  defaultSamplerSettings,
-} from '../constants';
+import { SendOnEnterOptions, DEFAULT_SAVE_EDIT_TIMEOUT, defaultSamplerSettings } from '../constants';
 import { isMobile } from '../utils/browser';
 import { debounce } from '../utils/common';
 import {
@@ -16,6 +10,7 @@ import {
   type SettingsPath,
   type AccountStorageKey,
   type Persona,
+  type ConnectionProfile,
 } from '../types';
 import {
   fetchUserSettings,
@@ -52,20 +47,9 @@ function createDefaultSettings(): Settings {
     reverse_proxy: '',
     proxy_password: '',
     selected_sampler: 'Default',
-    samplers: {
-      temperature: 1.0,
-      frequency_penalty: 0,
-      presence_penalty: 0,
-      top_p: 1,
-      top_k: 0,
-      top_a: 0,
-      min_p: 0,
-      max_context: 16384,
-      max_tokens: 500,
-      stream: true,
-      prompts: defaultPrompts,
-      prompt_order: defaultPromptOrder,
-    },
+    samplers: defaultSamplerSettings,
+    connection_profiles: [],
+    selected_connection_profile: undefined,
   };
   defaultSettings.worldInfo = defaultWorldInfoSettings;
   defaultSettings.account = {};
@@ -114,6 +98,21 @@ function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSettingsRes
     });
   }
 
+  // Migrate connection profiles
+  const migratedConnectionProfiles: ConnectionProfile[] = [];
+  const legacyProfiles = legacy.extension_settings?.connectionManager?.profiles ?? {};
+  for (const name in legacyProfiles) {
+    if (Object.prototype.hasOwnProperty.call(legacyProfiles, name)) {
+      migratedConnectionProfiles.push({
+        name: name,
+        api: legacyProfiles[name].mode === 'cc' ? 'openai' : undefined,
+        model: legacyProfiles[name].model,
+        id: legacyProfiles[name].id,
+        chat_completion_source: legacyProfiles[name].mode === 'cc' ? legacyProfiles[name].api : undefined,
+      });
+    }
+  }
+
   const migrated: Settings = {
     ui: {
       background: {
@@ -150,20 +149,23 @@ function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSettingsRes
       proxy_password: oai.proxy_password,
       selected_sampler: oai.preset_settings_openai,
       samplers: {
-        temperature: oai.temp_openai || defaultSamplerSettings.temperature,
-        frequency_penalty: oai.freq_pen_openai || defaultSamplerSettings.frequency_penalty,
-        presence_penalty: oai.pres_pen_openai || defaultSamplerSettings.presence_penalty,
-        top_p: oai.top_p_openai || defaultSamplerSettings.top_p,
-        top_k: oai.top_k_openai || defaultSamplerSettings.top_k,
-        top_a: oai.top_a_openai || defaultSamplerSettings.top_a,
-        min_p: oai.min_p_openai || defaultSamplerSettings.min_p,
-        max_context: oai.openai_max_context || defaultSamplerSettings.max_context,
-        max_context_unlocked: oai.max_context_unlocked || defaultSamplerSettings.max_context_unlocked,
-        max_tokens: oai.openai_max_tokens || defaultSamplerSettings.max_tokens,
+        temperature: oai.temp_openai ?? defaultSamplerSettings.temperature,
+        frequency_penalty: oai.freq_pen_openai ?? defaultSamplerSettings.frequency_penalty,
+        presence_penalty: oai.pres_pen_openai ?? defaultSamplerSettings.presence_penalty,
+        top_p: oai.top_p_openai ?? defaultSamplerSettings.top_p,
+        top_k: oai.top_k_openai ?? defaultSamplerSettings.top_k,
+        top_a: oai.top_a_openai ?? defaultSamplerSettings.top_a,
+        min_p: oai.min_p_openai ?? defaultSamplerSettings.min_p,
+        repetition_penalty: oai.repetition_penalty_openai ?? defaultSamplerSettings.repetition_penalty,
+        max_context: oai.openai_max_context ?? defaultSamplerSettings.max_context,
+        max_context_unlocked: oai.max_context_unlocked ?? defaultSamplerSettings.max_context_unlocked,
+        max_tokens: oai.openai_max_tokens ?? defaultSamplerSettings.max_tokens,
         stream: oai.stream_openai ?? defaultSamplerSettings.stream,
         prompts: oai.prompts ?? defaultSamplerSettings.prompts,
         prompt_order: oai.prompt_order?.[0] ?? defaultSamplerSettings.prompt_order,
       },
+      connection_profiles: migratedConnectionProfiles,
+      selected_connection_profile: legacy.extension_settings?.connectionManager?.selected,
     },
     worldInfo: legacy.world_info_settings,
     account: legacy.account_storage,

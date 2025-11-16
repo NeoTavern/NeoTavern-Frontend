@@ -1,19 +1,26 @@
 import { getRequestHeaders } from '../utils/api';
-import type { ChatCompletionSource } from '../types';
+import type { ChatCompletionSource, MessageRole, SamplerSettings } from '../types';
 import { chat_completion_sources } from '../types';
 
 export interface ApiChatMessage {
-  role: 'user' | 'assistant' | 'system';
+  role: MessageRole;
   content: string;
 }
 
 export interface ChatCompletionPayload {
-  stream?: boolean;
+  stream: boolean;
   messages: ApiChatMessage[];
-  model?: string;
-  chat_completion_source?: string;
-  max_tokens?: number;
+  model: string;
+  chat_completion_source: string;
+  max_tokens: number;
   temperature?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  repetition_penalty?: number;
+  top_p?: number;
+  top_k?: number;
+  top_a?: number;
+  min_p?: number;
   // TODO: Add other parameters
 }
 
@@ -25,6 +32,36 @@ export interface GenerationResponse {
 export interface StreamedChunk {
   delta: string;
   reasoning?: string; // Full reasoning
+}
+
+export type BuildChatCompletionPayloadOptions = {
+  samplerSettings: SamplerSettings;
+  messages: ApiChatMessage[];
+  model: string;
+  source: ChatCompletionSource;
+};
+export function buildChatCompletionPayload({
+  samplerSettings,
+  messages,
+  model,
+  source,
+}: BuildChatCompletionPayloadOptions): ChatCompletionPayload {
+  // TODO: Add logic to only include parameters supported by the target API/model
+  return {
+    messages,
+    model,
+    chat_completion_source: source,
+    stream: samplerSettings.stream ?? true,
+    max_tokens: samplerSettings.max_tokens,
+    temperature: samplerSettings.temperature,
+    frequency_penalty: samplerSettings.frequency_penalty,
+    presence_penalty: samplerSettings.presence_penalty,
+    repetition_penalty: samplerSettings.repetition_penalty,
+    top_p: samplerSettings.top_p,
+    top_k: samplerSettings.top_k,
+    min_p: samplerSettings.min_p,
+    top_a: samplerSettings.top_a,
+  };
 }
 
 function handleApiError(data: any): void {

@@ -103,6 +103,15 @@ export interface ProcessedWorldInfo {
   outletEntries: Record<string, string[]>;
 }
 
+export type WorldInfoOptions = {
+  chat: ChatMessage[];
+  character: Character;
+  settings: WorldInfoSettings;
+  books: WorldInfoBook[];
+  playerName: string;
+  maxContext: number;
+};
+
 // --- Main Processor ---
 export class WorldInfoProcessor {
   private chat: ChatMessage[];
@@ -112,14 +121,7 @@ export class WorldInfoProcessor {
   private playerName: string;
   private maxContext: number;
 
-  constructor(
-    chat: ChatMessage[],
-    character: Character,
-    settings: WorldInfoSettings,
-    books: WorldInfoBook[],
-    playerName: string,
-    maxContext: number,
-  ) {
+  constructor({ chat, character, settings, books, playerName, maxContext }: WorldInfoOptions) {
     this.chat = chat;
     this.character = character;
     this.settings = settings;
