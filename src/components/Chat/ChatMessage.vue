@@ -119,20 +119,23 @@ async function handleDeleteClick() {
   };
 
   if (!settingsStore.powerUser.confirm_message_delete) {
-    // If confirmation is off, default to deleting the swipe if possible,
-    // otherwise delete the whole message. This is a less destructive default.
     performDelete(canDeleteSwipe);
     return;
   }
 
+  const DELETE_MESSAGE_RESULT = 2;
   let popupConfig: PopupShowOptions = {};
+
   if (canDeleteSwipe) {
     popupConfig = {
       title: t('chat.delete.confirmTitle'),
       content: t('chat.delete.confirmSwipeMessage'),
       type: POPUP_TYPE.CONFIRM,
-      okButton: 'chat.delete.deleteSwipe',
-      cancelButton: 'chat.delete.deleteMessage',
+      customButtons: [
+        { text: t('chat.delete.deleteSwipe'), result: POPUP_RESULT.AFFIRMATIVE, isDefault: true },
+        { text: t('chat.delete.deleteMessage'), result: DELETE_MESSAGE_RESULT },
+        { text: t('common.cancel'), result: POPUP_RESULT.CANCELLED },
+      ],
     };
   } else {
     popupConfig = {
@@ -146,16 +149,10 @@ async function handleDeleteClick() {
 
   const { result } = await popupStore.show(popupConfig);
 
-  if (canDeleteSwipe) {
-    if (result === POPUP_RESULT.AFFIRMATIVE) {
-      performDelete(true); // Delete swipe
-    } else if (result === POPUP_RESULT.NEGATIVE) {
-      performDelete(false); // Delete message
-    }
-  } else {
-    if (result === POPUP_RESULT.AFFIRMATIVE) {
-      performDelete(false); // Delete message
-    }
+  if (result === POPUP_RESULT.AFFIRMATIVE) {
+    performDelete(canDeleteSwipe); // Delete swipe or message (if not swipe-deletable)
+  } else if (result === DELETE_MESSAGE_RESULT) {
+    performDelete(false); // Explicitly delete message
   }
 }
 

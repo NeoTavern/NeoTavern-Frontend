@@ -172,9 +172,9 @@ export enum POPUP_RESULT {
 
 export interface CustomPopupButton {
   text: string;
-  result?: number;
+  result: number;
   classes?: string[] | string;
-  action?: () => void;
+  isDefault?: boolean;
 }
 
 export interface CustomPopupInput {

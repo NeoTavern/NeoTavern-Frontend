@@ -5,9 +5,10 @@
   "description": "An experimental frontend for SillyTavern",
   "type": "module",
   "scripts": {
-    "i18n:types": "node generate-i18n-types.js",
-    "dev": "pnpm i18n:types && vite",
-    "build": "pnpm i18n:types && vue-tsc --noEmit && vite build",
+    "i18n": "node manage-i18n.js",
+    "i18n:remove": "node manage-i18n.js --remove",
+    "dev": "pnpm i18n && vite",
+    "build": "pnpm i18n && vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.ts",
     "lint:fix": "eslint . --ext .vue,.js,.ts --fix",
@@ -21,6 +22,7 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^22.18.1",
     "@types/showdown": "^2.0.6",
@@ -31,6 +33,7 @@
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.5.1",
+    "glob": "^11.0.0",
     "prettier": "^3.6.2",
     "sass": "^1.93.3",
     "typescript": "^5.9.2",

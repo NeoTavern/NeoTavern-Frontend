@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed } from 'vue';
 import type { Character, Entity } from '../types';
 import {
   fetchAllCharacters,
@@ -38,6 +38,7 @@ export const useCharacterStore = defineStore('character', () => {
   const favoriteCharacterChecked = ref<boolean>(false);
   const currentPage = ref(1);
   const itemsPerPage = ref(25);
+  const highlightedAvatar = ref<string | null>(null);
   const tokenCounts = ref<{ total: number; permanent: number; fields: Record<string, number> }>({
     total: 0,
     permanent: 0,
@@ -71,7 +72,7 @@ export const useCharacterStore = defineStore('character', () => {
       type: 'group',
     }));
 
-    // TODO: Add sorting and filtering logic here
+    // TODO: Implement character sorting and filtering logic here
     return [...characterEntities, ...groupEntities];
   });
 
@@ -335,7 +336,8 @@ export const useCharacterStore = defineStore('character', () => {
     if (settingsStore.powerUser.tag_import_setting === 'none') {
       return;
     }
-
+    // TODO: Implement 'ask' setting for tag import.
+    // TODO: Implement 'only_existing' setting for tag import.
     for (const avatar of avatarFileNames) {
       const character = characters.value.find((c) => c.avatar === avatar);
       if (character) {
@@ -391,7 +393,6 @@ export const useCharacterStore = defineStore('character', () => {
   }
 
   async function highlightCharacter(avatarFileName: string) {
-    await nextTick();
     const charIndex = characters.value.findIndex((c) => c.avatar === avatarFileName);
     if (charIndex === -1) {
       console.warn(`Could not find imported character ${avatarFileName} in the list.`);
@@ -400,17 +401,13 @@ export const useCharacterStore = defineStore('character', () => {
 
     // select the character to show it in the editor
     await selectCharacterById(charIndex);
+    highlightedAvatar.value = avatarFileName;
 
-    await nextTick();
-
-    const element = document.querySelector(`.character-item[data-avatar="${avatarFileName}"]`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      element.classList.add('flash', 'animated');
-      setTimeout(() => {
-        element.classList.remove('flash', 'animated');
-      }, 5000);
-    }
+    // The component will watch `highlightedAvatar` and handle scrolling/animation.
+    // Reset after a delay.
+    setTimeout(() => {
+      highlightedAvatar.value = null;
+    }, 5000);
   }
 
   return {
@@ -434,6 +431,7 @@ export const useCharacterStore = defineStore('character', () => {
     calculateAllTokens,
     importCharacter,
     importTagsForCharacters,
+    highlightedAvatar,
     highlightCharacter,
   };
 });

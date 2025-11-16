@@ -3,7 +3,7 @@ import { ref, onMounted, watch } from 'vue';
 import type { PropType } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
-import { POPUP_TYPE, POPUP_RESULT, type PopupOptions } from '../../types';
+import { POPUP_TYPE, POPUP_RESULT, type PopupOptions, type CustomPopupButton } from '../../types';
 import 'cropperjs';
 import type { I18nKey } from '../../types/i18n';
 
@@ -32,14 +32,19 @@ const dialog = ref<HTMLDialogElement | null>(null);
 const mainInput = ref<HTMLTextAreaElement | null>(null);
 const cropperSelection = ref<CropperSelectionElement | null>(null);
 const internalInputValue = ref(props.inputValue);
-
-const okText = ref('OK');
-const cancelText = ref('Cancel');
-const showOk = ref(true);
-const showCancel = ref(false);
+const generatedButtons = ref<CustomPopupButton[]>([]);
 
 function resolveOptions() {
+  if (props.options.customButtons) {
+    generatedButtons.value = props.options.customButtons;
+    return;
+  }
+
+  const buttons: CustomPopupButton[] = [];
   const { okButton, cancelButton } = props.options;
+
+  const showOk = okButton !== false;
+  const showCancel = cancelButton !== false;
 
   const getButtonText = (buttonOption: I18nKey | boolean | undefined, defaultKey: I18nKey): string => {
     return typeof buttonOption === 'string' ? t(buttonOption) : t(defaultKey);
@@ -47,24 +52,40 @@ function resolveOptions() {
 
   switch (props.type) {
     case POPUP_TYPE.CONFIRM:
-      okText.value = getButtonText(okButton, 'common.yes');
-      cancelText.value = getButtonText(cancelButton, 'common.no');
-      showOk.value = okButton !== false;
-      showCancel.value = cancelButton !== false;
+      if (showOk) {
+        buttons.push({
+          text: getButtonText(okButton, 'common.yes'),
+          result: POPUP_RESULT.AFFIRMATIVE,
+          isDefault: true,
+        });
+      }
+      if (showCancel) {
+        buttons.push({ text: getButtonText(cancelButton, 'common.no'), result: POPUP_RESULT.NEGATIVE });
+      }
       break;
     case POPUP_TYPE.INPUT:
     case POPUP_TYPE.CROP:
-      okText.value = getButtonText(okButton, 'common.save');
-      cancelText.value = getButtonText(cancelButton, 'common.cancel');
-      showOk.value = okButton !== false;
-      showCancel.value = cancelButton !== false;
+      if (showOk) {
+        buttons.push({
+          text: getButtonText(okButton, 'common.save'),
+          result: POPUP_RESULT.AFFIRMATIVE,
+          isDefault: true,
+        });
+      }
+      if (showCancel) {
+        buttons.push({ text: getButtonText(cancelButton, 'common.cancel'), result: POPUP_RESULT.CANCELLED });
+      }
       break;
     default: // TEXT
-      okText.value = getButtonText(okButton, 'common.ok');
-      cancelText.value = getButtonText(cancelButton, 'common.cancel');
-      showOk.value = okButton !== false;
-      showCancel.value = !!cancelButton;
+      if (showOk) {
+        buttons.push({ text: getButtonText(okButton, 'common.ok'), result: POPUP_RESULT.AFFIRMATIVE, isDefault: true });
+      }
+      if (cancelButton) {
+        // Only show cancel if explicitly requested for TEXT type
+        buttons.push({ text: getButtonText(cancelButton, 'common.cancel'), result: POPUP_RESULT.CANCELLED });
+      }
   }
+  generatedButtons.value = buttons;
 }
 
 watch(
@@ -80,7 +101,7 @@ watch(
         if (props.type === POPUP_TYPE.INPUT && mainInput.value) {
           mainInput.value.focus();
         } else if (props.type !== POPUP_TYPE.CROP) {
-          (dialog.value?.querySelector('.menu-button') as HTMLElement)?.focus();
+          (dialog.value?.querySelector('.menu-button.default') as HTMLElement)?.focus();
         }
       }, 100);
     } else {
@@ -99,7 +120,7 @@ onMounted(() => {
 
 function handleResult(result: number) {
   const payload: { result: number; value: any } = { result, value: null };
-  if (result === POPUP_RESULT.AFFIRMATIVE) {
+  if (result !== POPUP_RESULT.CANCELLED) {
     if (props.type === POPUP_TYPE.INPUT) {
       payload.value = internalInputValue.value;
     } else if (props.type === POPUP_TYPE.CROP && cropperSelection.value) {
@@ -175,20 +196,14 @@ function handleEnter(evt: KeyboardEvent) {
 
       <div class="popup-controls">
         <button
-          v-if="showOk"
+          v-for="button in generatedButtons"
+          :key="button.text"
           type="button"
-          class="menu-button default ok"
-          @click="handleResult(POPUP_RESULT.AFFIRMATIVE)"
+          class="menu-button"
+          :class="[{ default: button.isDefault }, button.classes]"
+          @click="handleResult(button.result)"
         >
-          {{ okText }}
-        </button>
-        <button
-          v-if="showCancel"
-          type="button"
-          class="menu-button popup-button-cancel"
-          @click="handleResult(POPUP_RESULT.NEGATIVE)"
-        >
-          {{ cancelText }}
+          {{ button.text }}
         </button>
       </div>
     </div>

@@ -16,6 +16,8 @@ const settingsStore = useSettingsStore();
 
 const isSearchActive = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
+const characterListEl = ref<HTMLElement | null>(null);
+const highlightedItemRef = ref<HTMLElement | null>(null);
 
 // --- Collapsible & Resizable State ---
 const BROWSER_COLLAPSED_KEY = 'character_browser_collapsed';
@@ -30,6 +32,17 @@ useResizable(browserPane, dividerEl, { storageKey: BROWSER_WIDTH_KEY });
 watch(isBrowserCollapsed, (newValue) => {
   settingsStore.setAccountItem(BROWSER_COLLAPSED_KEY, String(newValue));
 });
+
+// Watch for a character being highlighted by the store
+watch(
+  () => characterStore.highlightedAvatar,
+  (avatar) => {
+    if (avatar && highlightedItemRef.value) {
+      highlightedItemRef.value.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  },
+  { flush: 'post' }, // Wait for the DOM to update
+);
 
 const activeCharacter = computed(() => characterStore.activeCharacter);
 
@@ -116,14 +129,23 @@ onMounted(() => {
         />
       </div>
 
-      <div class="character-panel__character-list">
+      <div ref="characterListEl" class="character-panel__character-list">
         <div v-if="characterStore.paginatedEntities.length === 0">{{ t('common.loading') }}</div>
         <template v-for="entity in characterStore.paginatedEntities" :key="entity.id">
           <div
             v-if="entity.type === 'character'"
+            :ref="
+              (el) => {
+                if ((entity.item as Character).avatar === characterStore.highlightedAvatar) {
+                  highlightedItemRef = el as HTMLElement;
+                }
+              }
+            "
             class="character-item"
-            :class="{ 'is-active': activeCharacter?.avatar === (entity.item as Character).avatar }"
-            :data-avatar="(entity.item as Character).avatar"
+            :class="{
+              'is-active': activeCharacter?.avatar === (entity.item as Character).avatar,
+              'flash animated': (entity.item as Character).avatar === characterStore.highlightedAvatar,
+            }"
             @click="characterStore.selectCharacterById(entity.id as number)"
             tabindex="0"
           >

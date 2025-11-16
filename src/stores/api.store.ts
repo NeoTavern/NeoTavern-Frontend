@@ -18,7 +18,7 @@ export const useApiStore = defineStore('api', () => {
 
   const mainApi = ref('openai');
   const oaiSettings = ref<OaiSettings>({} as OaiSettings);
-  const onlineStatus = ref('Not connected...');
+  const onlineStatus = ref(t('api.status.notConnected'));
   const isConnecting = ref(false);
   const modelList = ref<ApiModel[]>([]);
   const presets = ref<Record<string, Preset[]>>({});
