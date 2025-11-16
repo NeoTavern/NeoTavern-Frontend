@@ -57,11 +57,11 @@ const hasOpenRouterGroupedModels = computed(() => {
         <form v-if="apiStore.oaiSettings.chat_completion_source === chat_completion_sources.OPENAI">
           <div class="api-connections-drawer__section">
             <h4>{{ t('apiConnections.openaiKey') }}</h4>
-            <div class="u-flex u-items-center">
+            <div class="api-connections-drawer__input-group">
               <!-- TODO: Add secret management -->
               <!-- <input
                 type="password"
-                class="text-pole u-w-full"
+                class="text-pole"
                 autocomplete="off"
                 :placeholder="t('apiConnections.openaiKeyPlaceholder')"
                 v-model="apiStore.oaiSettings.api_key_openai"
@@ -95,11 +95,11 @@ const hasOpenRouterGroupedModels = computed(() => {
         <form v-if="apiStore.oaiSettings.chat_completion_source === chat_completion_sources.CLAUDE">
           <div class="api-connections-drawer__section">
             <h4>{{ t('apiConnections.claudeKey') }}</h4>
-            <div class="u-flex u-items-center">
+            <div class="api-connections-drawer__input-group">
               <!-- TODO: Add secret management -->
               <!-- <input
                 type="password"
-                class="text-pole u-w-full"
+                class="text-pole"
                 autocomplete="off"
                 :placeholder="t('apiConnections.claudeKeyPlaceholder')"
                 v-model="apiStore.oaiSettings.api_key_claude"
@@ -124,11 +124,11 @@ const hasOpenRouterGroupedModels = computed(() => {
         <form v-if="apiStore.oaiSettings.chat_completion_source === chat_completion_sources.OPENROUTER">
           <div class="api-connections-drawer__section">
             <h4>{{ t('apiConnections.openrouterKey') }}</h4>
-            <div class="u-flex u-items-center">
+            <div class="api-connections-drawer__input-group">
               <!-- TODO: Add secret management -->
               <!-- <input
                 type="password"
-                class="text-pole u-w-full"
+                class="text-pole"
                 autocomplete="off"
                 :placeholder="t('apiConnections.openrouterKeyPlaceholder')"
                 v-model="apiStore.oaiSettings.api_key_openrouter"
@@ -150,7 +150,7 @@ const hasOpenRouterGroupedModels = computed(() => {
             <input
               v-else
               type="text"
-              class="text-pole u-w-full"
+              class="text-pole"
               placeholder="google/gemini-pro-1.5"
               v-model="apiStore.oaiSettings.openrouter_model"
             />
@@ -160,7 +160,7 @@ const hasOpenRouterGroupedModels = computed(() => {
         <!-- TODO: Add forms for other sources -->
 
         <div class="api-connections-drawer__section">
-          <div class="u-flex u-items-center" style="margin-top: 15px">
+          <div class="api-connections-drawer__actions">
             <button
               @click.prevent="apiStore.connect"
               class="menu-button"

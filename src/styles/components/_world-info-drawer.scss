@@ -98,6 +98,10 @@
       display: flex;
       gap: 5px;
       align-items: center;
+
+      input.text-pole {
+        flex-grow: 1;
+      }
     }
   }
 }

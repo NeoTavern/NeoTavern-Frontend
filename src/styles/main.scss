@@ -1,19 +1,16 @@
-// 1. Utilities: Global helper classes.
-@use 'utilities';
-
-// 2. Variables: SCSS variables and CSS custom properties.
+// Variables: SCSS variables and CSS custom properties.
 @use 'variables';
 
-// 3. Base: Global resets, typography, and base element styles.
+// Base: Global resets, typography, and base element styles.
 @use 'base';
 
-// 4. Transitions: Reusable animation classes.
+// Transitions: Reusable animation classes.
 @use 'transitions';
 
-// 5. Components: Styles for specific Vue components.
+// Components: Styles for specific Vue components.
 @use 'components';
 
-// 6. Toast notifications (high z-index).
+// Toast notifications (high z-index).
 @use 'toast';
 
 #background {

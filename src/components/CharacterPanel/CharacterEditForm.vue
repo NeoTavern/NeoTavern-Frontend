@@ -194,8 +194,8 @@ function handleEditorSubmit({ value }: { value: string }) {
             <div class="menu-button fa-solid fa-clone" :title="t('characterEditor.duplicate')"></div>
             <div class="menu-button fa-solid fa-skull menu-button--danger" :title="t('characterEditor.delete')"></div>
           </div>
-          <label class="u-w-full">
-            <select class="text-pole u-w-full">
+          <label>
+            <select class="text-pole">
               <option value="default" disabled selected>{{ t('characterEditor.more') }}</option>
               <option>{{ t('characterEditor.moreOptions.linkWorldInfo') }}</option>
               <option>{{ t('characterEditor.moreOptions.importCardLore') }}</option>
@@ -213,7 +213,7 @@ function handleEditorSubmit({ value }: { value: string }) {
 
       <div class="character-edit-form__tags-block">
         <div class="tag-controls">
-          <input class="text-pole u-w-full" :placeholder="t('characterEditor.searchTags')" />
+          <input class="text-pole" :placeholder="t('characterEditor.searchTags')" />
           <div class="menu-button fa-solid fa-tags" :title="t('characterEditor.viewAllTags')"></div>
         </div>
         <div class="tags">
@@ -260,7 +260,7 @@ function handleEditorSubmit({ value }: { value: string }) {
 
       <small v-show="areDetailsHidden">{{ t('characterEditor.detailsHidden') }}</small>
 
-      <div v-show="!areDetailsHidden" class="u-flex-col" style="gap: 15px; flex-grow: 1; min-height: 0">
+      <div v-show="!areDetailsHidden" class="character-edit-form__main-content">
         <div class="form-section form-section--text-area">
           <label for="description_textarea">
             <span>{{ t('characterEditor.description') }}</span>
@@ -346,7 +346,7 @@ function handleEditorSubmit({ value }: { value: string }) {
           </div>
         </div>
         <div class="form-section character-note">
-          <div class="u-w-full">
+          <div class="character-note__main">
             <label>
               <span>{{ t('characterEditor.advanced.characterNote') }}</span>
               <i
@@ -363,7 +363,7 @@ function handleEditorSubmit({ value }: { value: string }) {
               :placeholder="t('characterEditor.advanced.characterNotePlaceholder')"
             ></textarea>
           </div>
-          <div>
+          <div class="character-note__controls">
             <label>{{ t('characterEditor.advanced.depth') }}</label>
             <input
               :value="formData.data.depth_prompt.depth"
@@ -446,7 +446,7 @@ function handleEditorSubmit({ value }: { value: string }) {
             @after-leave="afterLeave"
           >
             <div v-show="isPromptOverridesOpen">
-              <div class="inline-drawer-content u-flex-col">
+              <div class="inline-drawer-content inline-drawer-content--column">
                 <small>{{ t('characterEditor.advanced.promptHint') }}</small>
                 <div>
                   <label>
@@ -519,10 +519,10 @@ function handleEditorSubmit({ value }: { value: string }) {
             @after-leave="afterLeave"
           >
             <div v-show="isMetadataOpen">
-              <div class="inline-drawer-content u-flex-col">
+              <div class="inline-drawer-content inline-drawer-content--column">
                 <small>{{ t('characterEditor.advanced.metadataOptional') }}</small>
-                <div class="u-flex u-flex-nowrap">
-                  <div class="u-w-full">
+                <div class="form-row">
+                  <div class="form-column">
                     <label>{{ t('characterEditor.advanced.createdBy') }}</label>
                     <textarea
                       :value="formData.data.creator"
@@ -532,7 +532,7 @@ function handleEditorSubmit({ value }: { value: string }) {
                       :placeholder="t('characterEditor.advanced.createdByPlaceholder')"
                     ></textarea>
                   </div>
-                  <div class="u-w-full">
+                  <div class="form-column">
                     <label>{{ t('characterEditor.advanced.characterVersion') }}</label>
                     <textarea
                       :value="formData.data.character_version"
@@ -543,8 +543,8 @@ function handleEditorSubmit({ value }: { value: string }) {
                     ></textarea>
                   </div>
                 </div>
-                <div class="u-flex u-flex-nowrap">
-                  <div class="u-w-full">
+                <div class="form-row">
+                  <div class="form-column">
                     <label>
                       <span>{{ t('characterEditor.advanced.creatorNotes') }}</span>
                       <i
@@ -561,7 +561,7 @@ function handleEditorSubmit({ value }: { value: string }) {
                       :placeholder="t('characterEditor.advanced.creatorNotesPlaceholder')"
                     ></textarea>
                   </div>
-                  <div class="u-w-full">
+                  <div class="form-column">
                     <label>{{ t('characterEditor.advanced.tagsToEmbed') }}</label>
                     <textarea
                       v-model="joinedTags"

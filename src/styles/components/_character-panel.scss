@@ -73,6 +73,10 @@
     gap: 5px;
   }
 
+  &__search-input {
+    flex-grow: 1;
+  }
+
   &__character-list {
     flex-grow: 1;
     overflow-y: auto;

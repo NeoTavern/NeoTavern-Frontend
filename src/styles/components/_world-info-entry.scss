@@ -50,6 +50,16 @@
       min-width: 120px;
       gap: 2px;
     }
+
+    &--column {
+      flex-direction: column;
+    }
+  }
+
+  &__label--with-uid {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
   }
 
   &__checkbox-grid {

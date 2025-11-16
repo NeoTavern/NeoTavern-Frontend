@@ -76,7 +76,7 @@ const filteredBookNames = computed(() => {
         </div>
         <div class="world-info-controls__row">
           <input
-            class="text-pole u-w-full"
+            class="text-pole"
             type="search"
             :placeholder="t('worldInfo.searchPlaceholder')"
             v-model="worldInfoStore.browserSearchTerm"

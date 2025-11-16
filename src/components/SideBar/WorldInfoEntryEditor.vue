@@ -177,8 +177,8 @@ const entryState = computed({
         </div>
       </div>
 
-      <div class="world-entry-editor__section u-flex-col">
-        <label class="u-flex u-justify-between">
+      <div class="world-entry-editor__section world-entry-editor__section--column">
+        <label class="world-entry-editor__label--with-uid">
           <small>{{ t('worldInfo.entry.content') }}</small>
           <small>(UID: {{ modelValue.uid }})</small>
         </label>

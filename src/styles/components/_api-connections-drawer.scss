@@ -49,6 +49,22 @@
       background-color: #5d9e5d; // Using success color from toast
     }
   }
+
+  &__input-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+
+    .text-pole {
+      flex-grow: 1;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    margin-top: 15px;
+  }
 }
 
 .reverse_proxy_warning:not(small) {

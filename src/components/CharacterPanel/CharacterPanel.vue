@@ -107,8 +107,12 @@ onMounted(() => {
             @click="isSearchActive = !isSearchActive"
           ></div>
         </div>
-        <div v-show="isSearchActive" class="character-panel__search-form">
-          <input class="text-pole u-w-full" type="search" :placeholder="t('characterPanel.searchPlaceholder')" />
+        <div v-show="isSearchActive" id="character-search-form" class="character-panel__search-form">
+          <input
+            class="text-pole character-panel__search-input"
+            type="search"
+            :placeholder="t('characterPanel.searchPlaceholder')"
+          />
           <select class="text-pole character-sort-order" :title="t('characterPanel.sorting.title')">
             <option value="name:asc">{{ t('characterPanel.sorting.nameAsc') }}</option>
             <option value="name:desc">{{ t('characterPanel.sorting.nameDesc') }}</option>
