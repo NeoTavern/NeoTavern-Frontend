@@ -101,7 +101,7 @@ function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSettingsRes
 
   // Migrate presets
   if (
-    userSettingsResponse.v2ExperimentalSamplerPresets.length === 0 &&
+    userSettingsResponse.v2ExperimentalSamplerPreset_settings.length === 0 &&
     Array.isArray(userSettingsResponse.openai_setting_names) &&
     Array.isArray(userSettingsResponse.openai_settings)
   ) {

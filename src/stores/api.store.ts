@@ -23,26 +23,24 @@ export const useApiStore = defineStore('api', () => {
   const onlineStatus = ref(t('api.status.notConnected'));
   const isConnecting = ref(false);
   const modelList = ref<ApiModel[]>([]);
-  const presets = ref<Record<string, Preset[]>>({});
-
-  const apiSettings = computed(() => settingsStore.settings.api);
+  const presets = ref<Preset[]>([]);
 
   const activeModel = computed(() => {
-    switch (apiSettings.value.chat_completion_source) {
+    switch (settingsStore.settings.api.chat_completion_source) {
       case chat_completion_sources.OPENAI:
-        return apiSettings.value.openai_model;
+        return settingsStore.settings.api.openai_model;
       case chat_completion_sources.CLAUDE:
-        return apiSettings.value.claude_model;
+        return settingsStore.settings.api.claude_model;
       case chat_completion_sources.OPENROUTER:
-        return apiSettings.value.openrouter_model;
+        return settingsStore.settings.api.openrouter_model;
       default:
-        return apiSettings.value.openai_model;
+        return settingsStore.settings.api.openai_model;
     }
   });
 
   const groupedOpenRouterModels = computed<Record<string, ApiModel[]> | null>(() => {
     if (
-      apiSettings.value.chat_completion_source !== chat_completion_sources.OPENROUTER ||
+      settingsStore.settings.api.chat_completion_source !== chat_completion_sources.OPENROUTER ||
       modelList.value.length === 0
     ) {
       return null;
@@ -68,7 +66,7 @@ export const useApiStore = defineStore('api', () => {
 
   // When the main API or source changes, try to reconnect
   watch(
-    () => [apiSettings.value.main, apiSettings.value.chat_completion_source],
+    () => [settingsStore.settings.api.main, settingsStore.settings.api.chat_completion_source],
     ([newMainApi, newSource], [oldMainApi, oldSource]) => {
       if (settingsStore.settingsInitializing) return;
       // Only connect if the actual values have changed
@@ -80,13 +78,13 @@ export const useApiStore = defineStore('api', () => {
 
   // When the user selects a different preset, apply its settings
   watch(
-    () => apiSettings.value.selected_sampler,
+    () => settingsStore.settings.api.selected_sampler,
     (newPresetName) => {
       if (settingsStore.settingsInitializing || !newPresetName) return;
 
-      const preset = presets.value.openai?.find((p) => p.name === newPresetName);
+      const preset = presets.value.find((p) => p.name === newPresetName);
       if (preset) {
-        Object.assign(apiSettings.value.samplers, preset.preset);
+        settingsStore.settings.api.samplers = { ...preset.preset };
       }
     },
   );
@@ -96,7 +94,7 @@ export const useApiStore = defineStore('api', () => {
 
     modelList.value = [];
 
-    if (apiSettings.value.main !== 'openai') {
+    if (settingsStore.settings.api.main !== 'openai') {
       onlineStatus.value = `${t('api.status.notConnected')} ${t('api.status.notImplemented')}`;
       return;
     }
@@ -107,7 +105,7 @@ export const useApiStore = defineStore('api', () => {
     try {
       // TODO: Implement secret management. For now, we pass the key directly.
       // TODO: Implement reverse proxy confirmation popup.
-      const response = await fetchChatCompletionStatus(apiSettings.value);
+      const response = await fetchChatCompletionStatus(settingsStore.settings.api);
 
       if (response.error) {
         throw new Error(response.error);
@@ -117,19 +115,20 @@ export const useApiStore = defineStore('api', () => {
         modelList.value = response.data;
 
         // Check if current model selection is still valid
-        const source = apiSettings.value.chat_completion_source;
+        const source = settingsStore.settings.api.chat_completion_source;
         const availableModels = modelList.value.map((m) => m.id);
 
         if (source === chat_completion_sources.OPENAI) {
-          if (!availableModels.includes(apiSettings.value.openai_model ?? '')) {
-            apiSettings.value.openai_model = availableModels.length > 0 ? availableModels[0] : 'gpt-4o';
+          if (!availableModels.includes(settingsStore.settings.api.openai_model ?? '')) {
+            settingsStore.settings.api.openai_model = availableModels.length > 0 ? availableModels[0] : 'gpt-4o';
           }
         } else if (source === chat_completion_sources.OPENROUTER) {
           if (
-            apiSettings.value.openrouter_model !== 'OR_Website' &&
-            !availableModels.includes(apiSettings.value.openrouter_model ?? '')
+            settingsStore.settings.api.openrouter_model !== 'OR_Website' &&
+            !availableModels.includes(settingsStore.settings.api.openrouter_model ?? '')
           ) {
-            apiSettings.value.openrouter_model = availableModels.length > 0 ? availableModels[0] : 'OR_Website';
+            settingsStore.settings.api.openrouter_model =
+              availableModels.length > 0 ? availableModels[0] : 'OR_Website';
           }
         }
       }
@@ -145,23 +144,23 @@ export const useApiStore = defineStore('api', () => {
     }
   }
 
-  async function loadPresetsForApi(apiId: string) {
+  async function loadPresetsForApi() {
     try {
-      presets.value[apiId] = await fetchAllExperimentalPresets();
+      presets.value = await fetchAllExperimentalPresets();
     } catch (error) {
-      console.error(`Failed to load presets for ${apiId}:`, error);
-      toast.error(`Could not load presets for ${apiId}.`);
+      console.error('Failed to load presets:', error);
+      toast.error('Could not load presets.');
     }
   }
 
   async function saveCurrentPresetAs(apiId: string, name: string) {
     try {
       // Create a clean preset object from current samplers
-      const presetData: SamplerSettings = { ...apiSettings.value.samplers };
+      const presetData: SamplerSettings = { ...settingsStore.settings.api.samplers };
 
       await saveExperimentalPreset(name, presetData);
-      await loadPresetsForApi(apiId);
-      apiSettings.value.selected_sampler = name;
+      await loadPresetsForApi();
+      settingsStore.settings.api.selected_sampler = name;
       toast.success(`Preset "${name}" saved.`);
     } catch (error) {
       toast.error(`Failed to save preset "${name}".`);
@@ -169,15 +168,15 @@ export const useApiStore = defineStore('api', () => {
   }
 
   function updateCurrentPreset(apiId: string, name?: string) {
-    if (!name || name === 'Default') {
-      toast.warning(t('aiConfig.presets.errors.updateDefault'));
+    if (!name) {
+      toast.warning(t('aiConfig.presets.errors.noPresetName'));
       return;
     }
     saveCurrentPresetAs(apiId, name);
   }
 
   async function renamePreset(apiId: string, oldName?: string) {
-    if (!oldName || oldName === 'Default') {
+    if (!oldName) {
       toast.warning(t('aiConfig.presets.errors.renameDefault'));
       return;
     }
@@ -190,7 +189,7 @@ export const useApiStore = defineStore('api', () => {
 
     if (result === POPUP_RESULT.AFFIRMATIVE && newName && newName.trim() && newName !== oldName) {
       try {
-        const presetToRename = presets.value[apiId]?.find((p) => p.name === oldName);
+        const presetToRename = presets.value.find((p) => p.name === oldName);
         if (!presetToRename) throw new Error('Preset not found');
 
         // Rename is a delete and save operation
@@ -198,8 +197,8 @@ export const useApiStore = defineStore('api', () => {
         await saveExperimentalPreset(newName, presetToRename.preset);
 
         toast.success(`Preset renamed to "${newName}".`);
-        await loadPresetsForApi(apiId);
-        apiSettings.value.selected_sampler = newName;
+        await loadPresetsForApi();
+        settingsStore.settings.api.selected_sampler = newName;
       } catch (error) {
         toast.error('Failed to rename preset.');
         console.error(error);
@@ -208,7 +207,7 @@ export const useApiStore = defineStore('api', () => {
   }
 
   async function deletePreset(apiId: string, name?: string) {
-    if (!name || name === 'Default') {
+    if (!name) {
       toast.warning(t('aiConfig.presets.errors.deleteDefault'));
       return;
     }
@@ -223,10 +222,10 @@ export const useApiStore = defineStore('api', () => {
       try {
         await apiDeletePreset(name);
         toast.success(`Preset "${name}" deleted.`);
-        if (apiSettings.value.selected_sampler === name) {
-          apiSettings.value.selected_sampler = 'Default';
+        if (settingsStore.settings.api.selected_sampler === name) {
+          settingsStore.settings.api.selected_sampler = 'Default';
         }
-        await loadPresetsForApi(apiId);
+        await loadPresetsForApi();
       } catch (error) {
         toast.error(`Failed to delete preset "${name}".`);
       }
@@ -248,8 +247,8 @@ export const useApiStore = defineStore('api', () => {
         // TODO: Add confirmation for overwriting existing preset, like original ST
         await saveExperimentalPreset(name, presetData);
         toast.success(`Preset "${name}" imported.`);
-        await loadPresetsForApi(apiId);
-        apiSettings.value.selected_sampler = name;
+        await loadPresetsForApi();
+        settingsStore.settings.api.selected_sampler = name;
       } catch (error) {
         toast.error(t('aiConfig.presets.errors.importInvalid'));
         console.error(error);
@@ -263,7 +262,7 @@ export const useApiStore = defineStore('api', () => {
       toast.error(t('aiConfig.presets.errors.noExportSelected'));
       return;
     }
-    const presetToExport = presets.value[apiId]?.find((p) => p.name === name);
+    const presetToExport = presets.value.find((p) => p.name === name);
     if (!presetToExport) {
       toast.error(t('aiConfig.presets.errors.exportNotFound', { name }));
       return;
@@ -275,20 +274,20 @@ export const useApiStore = defineStore('api', () => {
 
   // --- Prompt Management ---
   function updatePromptOrder(newOrder: PromptOrderConfig['order']) {
-    if (apiSettings.value.samplers.prompt_order) {
-      apiSettings.value.samplers.prompt_order.order = newOrder;
+    if (settingsStore.settings.api.samplers.prompt_order) {
+      settingsStore.settings.api.samplers.prompt_order.order = newOrder;
     }
   }
 
   function removePromptFromOrder(identifier: string) {
-    const promptOrder = apiSettings.value.samplers.prompt_order;
+    const promptOrder = settingsStore.settings.api.samplers.prompt_order;
     if (promptOrder) {
       promptOrder.order = promptOrder.order.filter((p) => p.identifier !== identifier);
     }
   }
 
   function addPromptToOrder(identifier: string) {
-    const promptOrder = apiSettings.value.samplers.prompt_order;
+    const promptOrder = settingsStore.settings.api.samplers.prompt_order;
     if (promptOrder) {
       if (promptOrder.order.some((p) => p.identifier === identifier)) return;
       promptOrder.order.push({ identifier, enabled: true });
@@ -296,26 +295,25 @@ export const useApiStore = defineStore('api', () => {
   }
 
   function togglePromptEnabled(identifier: string, enabled: boolean) {
-    const orderItem = apiSettings.value.samplers.prompt_order?.order.find((p) => p.identifier === identifier);
+    const orderItem = settingsStore.settings.api.samplers.prompt_order?.order.find((p) => p.identifier === identifier);
     if (orderItem) {
       orderItem.enabled = enabled;
     }
   }
 
   function updatePromptContent(identifier: string, content: string) {
-    const prompt = apiSettings.value.samplers.prompts?.find((p) => p.identifier === identifier);
+    const prompt = settingsStore.settings.api.samplers.prompts?.find((p) => p.identifier === identifier);
     if (prompt) {
       prompt.content = content;
     }
   }
 
   function resetPrompts() {
-    apiSettings.value.samplers.prompts = JSON.parse(JSON.stringify(defaultPrompts));
-    apiSettings.value.samplers.prompt_order = JSON.parse(JSON.stringify(defaultPromptOrder));
+    settingsStore.settings.api.samplers.prompts = JSON.parse(JSON.stringify(defaultPrompts));
+    settingsStore.settings.api.samplers.prompt_order = JSON.parse(JSON.stringify(defaultPromptOrder));
   }
 
   return {
-    apiSettings,
     onlineStatus,
     isConnecting,
     connect,

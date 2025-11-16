@@ -15,6 +15,7 @@ import { PromptBuilder } from '../utils/prompt-builder';
 import { ChatCompletionService, type GenerationResponse, type StreamedChunk } from '../api/generation';
 import { getThumbnailUrl } from '../utils/image';
 import { default_user_avatar } from '../constants';
+import { useSettingsStore } from './settings.store';
 
 // TODO: Replace with a real API call to the backend for accurate tokenization
 async function getTokenCount(text: string): Promise<number> {
@@ -207,11 +208,12 @@ export const useChatStore = defineStore('chat', () => {
         throw new Error(t('chat.generate.noPrompts'));
       }
 
-      const samplers = apiStore.apiSettings.samplers;
+      const settingsStore = useSettingsStore();
+      const samplers = settingsStore.settings.api.samplers;
       const payload = {
         messages,
         model: apiStore.activeModel,
-        chat_completion_source: apiStore.apiSettings.chat_completion_source,
+        chat_completion_source: settingsStore.settings.api.chat_completion_source,
         max_tokens: samplers.max_tokens,
         temperature: samplers.temperature,
         stream: samplers.stream ?? true,

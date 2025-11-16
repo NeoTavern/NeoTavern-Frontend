@@ -35,7 +35,7 @@ export async function fetchAllExperimentalPresets(): Promise<Preset[]> {
 
   const presets: Preset[] = [];
   const names = userSettingsResponse.v2ExperimentalSamplerPreset_names ?? [];
-  const settingsData = userSettingsResponse.v2ExperimentalSamplerPresets ?? [];
+  const settingsData = userSettingsResponse.v2ExperimentalSamplerPreset_settings ?? [];
 
   if (Array.isArray(names) && Array.isArray(settingsData)) {
     names.forEach((name: string, i: number) => {

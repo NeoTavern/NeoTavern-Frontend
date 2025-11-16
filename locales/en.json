@@ -255,12 +255,12 @@
       "renamePopupTitle": "Rename Preset",
       "deletePopupContent": "Are you sure you want to delete the preset \"<b>{name}</b>\"?",
       "errors": {
-        "updateDefault": "Cannot update the default preset. Please save as a new preset.",
         "renameDefault": "Cannot rename the default preset.",
         "deleteDefault": "Cannot delete the default preset.",
         "noExportSelected": "No preset selected to export.",
         "exportNotFound": "Preset \"{name}\" not found.",
-        "importInvalid": "Failed to import preset. The file might be invalid."
+        "importInvalid": "Failed to import preset. The file might be invalid.",
+        "noPresetName": "Preset name cannot be empty."
       }
     },
     "promptManager": {

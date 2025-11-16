@@ -22,11 +22,14 @@ function checkConditions(conditions?: AiConfigCondition): boolean {
 
   if (conditions.api) {
     const apis = Array.isArray(conditions.api) ? conditions.api : [conditions.api];
-    if (!apis.includes(apiStore.apiSettings.main)) return false;
+    if (!apis.includes(settingsStore.settings.api.main)) return false;
   }
   if (conditions.source) {
     const sources = Array.isArray(conditions.source) ? conditions.source : [conditions.source];
-    if (!apiStore.apiSettings.chat_completion_source || !sources.includes(apiStore.apiSettings.chat_completion_source))
+    if (
+      !settingsStore.settings.api.chat_completion_source ||
+      !sources.includes(settingsStore.settings.api.chat_completion_source)
+    )
       return false;
   }
   // TODO: Add source_not and other conditions
@@ -45,7 +48,7 @@ async function handleNewPreset(apiId: string) {
   const { result, value } = await popupStore.show({
     title: t('aiConfig.presets.newName'),
     type: POPUP_TYPE.INPUT,
-    inputValue: apiStore.apiSettings.selected_sampler || 'New Preset',
+    inputValue: settingsStore.settings.api.selected_sampler || 'New Preset',
   });
 
   if (result === 1 && value) {
@@ -54,7 +57,7 @@ async function handleNewPreset(apiId: string) {
 }
 
 onMounted(() => {
-  apiStore.loadPresetsForApi('openai');
+  apiStore.loadPresetsForApi();
   // TODO: Load presets for other APIs based on selection
 });
 </script>
@@ -108,7 +111,7 @@ onMounted(() => {
                 :value="settingsStore.getSetting(item.id)"
                 @change="settingsStore.setSetting(item.id, ($event.target as HTMLSelectElement).value)"
               >
-                <option v-for="preset in apiStore.presets[item.apiId!]" :key="preset.name" :value="preset.name">
+                <option v-for="preset in apiStore.presets" :key="preset.name" :value="preset.name">
                   {{ preset.name }}
                 </option>
               </select>

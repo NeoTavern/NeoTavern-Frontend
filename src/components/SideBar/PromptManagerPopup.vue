@@ -5,6 +5,7 @@ import { usePopupStore } from '../../stores/popup.store';
 import { POPUP_RESULT, POPUP_TYPE } from '../../types';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { slideTransitionHooks } from '../../utils/dom';
+import { useSettingsStore } from '../../stores/settings.store';
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -13,6 +14,7 @@ const emit = defineEmits(['close']);
 
 const { t } = useStrictI18n();
 const apiStore = useApiStore();
+const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
 
 const dialog = ref<HTMLDialogElement | null>(null);
@@ -25,13 +27,15 @@ const draggedIndex = ref<number | null>(null);
 const dragOverIndex = ref<number | null>(null);
 
 // Assuming the first prompt_order config is the one we're editing
-const promptOrderConfig = computed(() => apiStore.apiSettings.samplers.prompt_order);
+const promptOrderConfig = computed(() => settingsStore.settings.api.samplers.prompt_order);
 
 const orderedPrompts = computed(() => {
   if (!promptOrderConfig.value) return [];
 
   return promptOrderConfig.value.order.map((orderItem) => {
-    const promptDetail = apiStore.apiSettings.samplers.prompts?.find((p) => p.identifier === orderItem.identifier);
+    const promptDetail = settingsStore.settings.api.samplers.prompts?.find(
+      (p) => p.identifier === orderItem.identifier,
+    );
     return {
       ...promptDetail,
       ...orderItem,
@@ -40,9 +44,9 @@ const orderedPrompts = computed(() => {
 });
 
 const unusedPrompts = computed(() => {
-  if (!promptOrderConfig.value || !apiStore.apiSettings.samplers.prompts) return [];
+  if (!promptOrderConfig.value || !settingsStore.settings.api.samplers.prompts) return [];
   const usedIdentifiers = new Set(promptOrderConfig.value.order.map((item) => item.identifier));
-  return apiStore.apiSettings.samplers.prompts.filter((p) => !usedIdentifiers.has(p.identifier));
+  return settingsStore.settings.api.samplers.prompts.filter((p) => !usedIdentifiers.has(p.identifier));
 });
 
 watch(

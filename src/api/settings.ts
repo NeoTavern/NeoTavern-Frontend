@@ -6,7 +6,7 @@ export interface UserSettingsResponse {
   openai_setting_names: string[];
   openai_settings: string[]; // JSON string of LegacyOaiPresetSettings
   v2ExperimentalSamplerPreset_names?: string[];
-  v2ExperimentalSamplerPresets?: string[]; // JSON string of SamplerSettings
+  v2ExperimentalSamplerPreset_settings?: string[]; // JSON string of SamplerSettings
 }
 
 export interface ParsedUserSettingsResponse {
@@ -14,7 +14,7 @@ export interface ParsedUserSettingsResponse {
   openai_setting_names: string[];
   openai_settings: LegacyOaiPresetSettings[];
   v2ExperimentalSamplerPreset_names: string[];
-  v2ExperimentalSamplerPresets: SamplerSettings[];
+  v2ExperimentalSamplerPreset_settings: SamplerSettings[];
 }
 
 export async function fetchUserSettings(): Promise<ParsedUserSettingsResponse> {
@@ -35,7 +35,7 @@ export async function fetchUserSettings(): Promise<ParsedUserSettingsResponse> {
     openai_setting_names: data.openai_setting_names,
     openai_settings: data.openai_settings.map((s) => JSON.parse(s) as LegacyOaiSettings),
     v2ExperimentalSamplerPreset_names: data.v2ExperimentalSamplerPreset_names ?? [],
-    v2ExperimentalSamplerPresets: (data.v2ExperimentalSamplerPresets ?? []).map(
+    v2ExperimentalSamplerPreset_settings: (data.v2ExperimentalSamplerPreset_settings ?? []).map(
       (s) => JSON.parse(s) as SamplerSettings,
     ),
   };

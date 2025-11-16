@@ -258,12 +258,12 @@ export interface MessageSchema {
       renamePopupTitle: string;
       deletePopupContent: string;
       errors: {
-        updateDefault: string;
         renameDefault: string;
         deleteDefault: string;
         noExportSelected: string;
         exportNotFound: string;
         importInvalid: string;
+        noPresetName: string;
       };
     };
     promptManager: {

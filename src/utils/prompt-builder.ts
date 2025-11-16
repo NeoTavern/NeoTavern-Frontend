@@ -1,10 +1,10 @@
-import type { Character, ChatMessage } from '../types';
+import type { Character, ChatMessage, Settings } from '../types';
 import type { ApiChatMessage } from '../api/generation';
 import { useUiStore } from '../stores/ui.store';
-import { useApiStore } from '../stores/api.store';
 import { useWorldInfoStore } from '../stores/world-info.store';
 import { WorldInfoProcessor } from './world-info-processor';
 import { defaultSamplerSettings } from '../constants';
+import { useSettingsStore } from '../stores/settings.store';
 
 // TODO: Replace with a real API call to the backend for accurate tokenization
 async function getTokenCount(text: string): Promise<number> {
@@ -22,7 +22,7 @@ function substitute(text: string, char: Character, user: string): string {
 export class PromptBuilder {
   private character: Character;
   private chatHistory: ChatMessage[];
-  private settings: ReturnType<typeof useApiStore>['apiSettings'];
+  private settings: Settings['api'];
   private playerName: string;
   private maxContext: number;
   private forContinue: boolean;
@@ -33,12 +33,12 @@ export class PromptBuilder {
     this.forContinue = forContinue;
 
     // Stores need to be accessed inside the constructor or methods
-    const apiStore = useApiStore();
     const uiStore = useUiStore();
+    const settingsStore = useSettingsStore();
 
-    this.settings = apiStore.apiSettings;
+    this.settings = settingsStore.settings.api;
     this.playerName = uiStore.activePlayerName || 'User';
-    this.maxContext = apiStore.apiSettings.samplers.max_context ?? defaultSamplerSettings.max_context;
+    this.maxContext = settingsStore.settings.api.samplers.max_context ?? defaultSamplerSettings.max_context;
   }
 
   public async build(): Promise<ApiChatMessage[]> {

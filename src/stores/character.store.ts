@@ -21,7 +21,6 @@ import { onlyUnique } from '../utils/array';
 import { useStrictI18n } from '../composables/useStrictI18n';
 import { getFirstMessage } from '../utils/chat';
 import { get } from 'lodash-es';
-import { useApiStore } from './api.store';
 
 // TODO: Replace with a real API call to the backend for accurate tokenization
 async function getTokenCount(text: string): Promise<number> {
@@ -170,8 +169,8 @@ export const useCharacterStore = defineStore('character', () => {
       fields: newFieldCounts,
     };
 
-    const apiStore = useApiStore();
-    const maxContext = apiStore.apiSettings.samplers.max_context;
+    const settingsStore = useSettingsStore();
+    const maxContext = settingsStore.settings.api.samplers.max_context;
     const warningThreshold = maxContext * 0.75;
 
     if (total > warningThreshold) {
