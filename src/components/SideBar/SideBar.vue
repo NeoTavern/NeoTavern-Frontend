@@ -26,7 +26,7 @@ function toggleDrawer(drawerName: string) {
 
 <template>
   <div>
-    <div class="side-bar">
+    <div id="side-bar" class="side-bar">
       <div class="side-bar__nav">
         <div class="nav-item">
           <button type="button" class="nav-item__toggle" @click="toggleDrawer('ai-config')">

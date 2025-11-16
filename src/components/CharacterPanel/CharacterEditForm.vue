@@ -167,11 +167,12 @@ function handleEditorSubmit({ value }: { value: string }) {
 
 <template>
   <div v-if="activeCharacter && formData.data" class="character-edit-form">
-    <form action="javascript:void(null);" method="post" enctype="multipart/form-data">
+    <form id="character-editor-form" action="javascript:void(null);" method="post" enctype="multipart/form-data">
       <div class="character-edit-form__avatar-name-block">
         <div class="character-edit-form__avatar-area">
           <label for="add_avatar_button" class="character-edit-form__avatar-label" :title="t('characterEditor.avatar')">
             <img
+              id="character-editor-avatar"
               :src="getThumbnailUrl('avatar', formData.avatar)"
               :alt="`${formData.name} Avatar`"
               class="character-edit-form__avatar-img"
@@ -261,7 +262,7 @@ function handleEditorSubmit({ value }: { value: string }) {
       <small v-show="areDetailsHidden">{{ t('characterEditor.detailsHidden') }}</small>
 
       <div v-show="!areDetailsHidden" class="character-edit-form__main-content">
-        <div class="form-section form-section--text-area">
+        <div class="form-section form-section--text-area" data-field-name="description">
           <label for="description_textarea">
             <span>{{ t('characterEditor.description') }}</span>
             <i
@@ -283,7 +284,7 @@ function handleEditorSubmit({ value }: { value: string }) {
           </div>
         </div>
 
-        <div class="form-section form-section--text-area">
+        <div class="form-section form-section--text-area" data-field-name="first_mes">
           <label for="firstmessage_textarea">
             <span>{{ t('characterEditor.firstMessage') }}</span>
             <i
@@ -305,7 +306,7 @@ function handleEditorSubmit({ value }: { value: string }) {
           </div>
         </div>
         <hr />
-        <div class="form-section">
+        <div class="form-section" data-field-name="personality">
           <label>
             <span>{{ t('characterEditor.advanced.personality') }}</span>
             <i
@@ -325,7 +326,7 @@ function handleEditorSubmit({ value }: { value: string }) {
             {{ t('common.tokens') }}: <span>{{ tokenCounts['personality'] || 0 }}</span>
           </div>
         </div>
-        <div class="form-section">
+        <div class="form-section" data-field-name="scenario">
           <label>
             <span>{{ t('characterEditor.advanced.scenario') }}</span>
             <i
@@ -345,7 +346,7 @@ function handleEditorSubmit({ value }: { value: string }) {
             {{ t('common.tokens') }}: <span>{{ tokenCounts['scenario'] || 0 }}</span>
           </div>
         </div>
-        <div class="form-section character-note">
+        <div class="form-section character-note" data-field-name="data.depth_prompt.prompt">
           <div class="character-note__main">
             <label>
               <span>{{ t('characterEditor.advanced.characterNote') }}</span>
@@ -403,7 +404,7 @@ function handleEditorSubmit({ value }: { value: string }) {
           </div>
         </div>
         <hr />
-        <div class="form-section">
+        <div class="form-section" data-field-name="mes_example">
           <label>
             <span>{{ t('characterEditor.advanced.dialogueExamples') }}</span>
             <i
@@ -448,7 +449,7 @@ function handleEditorSubmit({ value }: { value: string }) {
             <div v-show="isPromptOverridesOpen">
               <div class="inline-drawer-content inline-drawer-content--column">
                 <small>{{ t('characterEditor.advanced.promptHint') }}</small>
-                <div>
+                <div data-field-name="data.system_prompt">
                   <label>
                     <span>{{ t('characterEditor.advanced.mainPrompt') }}</span>
                     <i
@@ -468,7 +469,7 @@ function handleEditorSubmit({ value }: { value: string }) {
                     {{ t('common.tokens') }}: <span>{{ tokenCounts['data.system_prompt'] || 0 }}</span>
                   </div>
                 </div>
-                <div>
+                <div data-field-name="data.post_history_instructions">
                   <label>
                     <span>{{ t('characterEditor.advanced.postHistoryInstructions') }}</span>
                     <i
@@ -544,7 +545,7 @@ function handleEditorSubmit({ value }: { value: string }) {
                   </div>
                 </div>
                 <div class="form-row">
-                  <div class="form-column">
+                  <div class="form-column" data-field-name="data.creator_notes">
                     <label>
                       <span>{{ t('characterEditor.advanced.creatorNotes') }}</span>
                       <i

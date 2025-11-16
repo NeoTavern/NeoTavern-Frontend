@@ -166,7 +166,7 @@ function moveDown() {
 </script>
 
 <template>
-  <div class="message" :class="{ 'is-user': message.is_user, 'is-bot': !message.is_user }">
+  <div class="message" :class="{ 'is-user': message.is_user, 'is-bot': !message.is_user }" :data-message-index="index">
     <div class="message__avatar-wrapper">
       <div class="message__avatar" @click="handleAvatarClick" style="cursor: pointer">
         <img :src="avatarUrls.thumbnail" :alt="`${displayName} Avatar`" />

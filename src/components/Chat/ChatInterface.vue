@@ -47,12 +47,12 @@ watch(
 
 <template>
   <div class="chat-interface">
-    <div class="chat-interface__messages" ref="messagesContainer">
+    <div id="chat-messages-container" class="chat-interface__messages" ref="messagesContainer">
       <ChatMessage v-for="(message, index) in chatStore.chat" :key="index" :message="message" :index="index" />
       <!-- TODO: Add typing indicator when chatStore.isGenerating is true -->
     </div>
     <div class="chat-interface__form-container">
-      <form class="chat-form" @submit.prevent="submitMessage">
+      <form id="chat-form" class="chat-form" @submit.prevent="submitMessage">
         <div class="chat-form__inner">
           <div class="chat-form__actions-left">
             <button type="button" class="chat-form__button fa-solid fa-bars" :title="t('chat.options')"></button>

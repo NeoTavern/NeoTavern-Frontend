@@ -97,8 +97,6 @@
     gap: 5px;
 
     &--text-area {
-      flex-grow: 1;
-      min-height: 0;
       textarea {
         height: 100%;
       }

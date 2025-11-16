@@ -26,16 +26,17 @@ onMounted(() => {
 <template>
   <div id="background" :style="backgroundStyle"></div>
   <SideBar />
-  <ChatInterface />
+  <main id="main-content">
+    <ChatInterface />
+    <template v-for="avatar in uiStore.zoomedAvatars" :key="avatar.id">
+      <ZoomedAvatar :avatar="avatar" />
+    </template>
+  </main>
   <template v-for="popup in popupStore.popups" :key="popup.id">
     <Popup
       v-bind="popup"
       @submit="(payload: any) => popupStore.confirm(popup.id, payload)"
       @close="popupStore.cancel(popup.id)"
     />
-  </template>
-
-  <template v-for="avatar in uiStore.zoomedAvatars" :key="avatar.id">
-    <ZoomedAvatar :avatar="avatar" />
   </template>
 </template>

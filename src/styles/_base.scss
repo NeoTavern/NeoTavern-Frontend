@@ -290,3 +290,17 @@ select.text-pole {
     opacity: 0.2;
   }
 }
+
+// =============================================================================
+// Main Layout
+// =============================================================================
+
+#main-content {
+  position: absolute;
+  top: 0;
+  left: var(--side-bar-width);
+  right: 0;
+  margin: 0 auto;
+  width: var(--panel-width);
+  height: 100vh;
+}

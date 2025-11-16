@@ -54,6 +54,7 @@ const entryState = computed({
   <div class="world-entry-editor" :class="{ 'is-disabled': modelValue.disable }">
     <div class="editor-header">
       <div class="editor-header__main">
+        <!-- TODO: This should be near item in WorldInfoDrawer -->
         <i
           class="fa-solid"
           :class="modelValue.disable ? 'fa-toggle-off' : 'fa-toggle-on'"

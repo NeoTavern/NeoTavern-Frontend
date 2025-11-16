@@ -133,7 +133,7 @@ onMounted(() => {
         />
       </div>
 
-      <div ref="characterListEl" class="character-panel__character-list">
+      <div id="character-list" ref="characterListEl" class="character-panel__character-list">
         <div v-if="characterStore.paginatedEntities.length === 0">{{ t('common.loading') }}</div>
         <template v-for="entity in characterStore.paginatedEntities" :key="entity.id">
           <div
@@ -152,6 +152,7 @@ onMounted(() => {
             }"
             @click="characterStore.selectCharacterById(entity.id as number)"
             tabindex="0"
+            :data-character-avatar="(entity.item as Character).avatar"
           >
             <div class="character-item__avatar">
               <img
