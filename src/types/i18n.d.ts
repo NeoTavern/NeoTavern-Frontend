@@ -151,6 +151,17 @@ export interface MessageSchema {
         vectorized: string;
       };
     };
+    popup: {
+      newBookTitle: string;
+      newBookContent: string;
+      newBookInput: string;
+      deleteBookContent: string;
+      renameBookTitle: string;
+      duplicateBookTitle: string;
+      duplicateBookInputSuffix: string;
+      deleteEntryTitle: string;
+      deleteEntryContent: string;
+    };
   };
   backgrounds: {
     add: string;
@@ -200,6 +211,16 @@ export interface MessageSchema {
       rename: string;
       saveAs: string;
       newName: string;
+      renamePopupTitle: string;
+      deletePopupContent: string;
+      errors: {
+        updateDefault: string;
+        renameDefault: string;
+        deleteDefault: string;
+        noExportSelected: string;
+        exportNotFound: string;
+        importInvalid: string;
+      };
     };
     contextSize: {
       label: string;
@@ -262,6 +283,12 @@ export interface MessageSchema {
     of: string;
     search: string;
     resetToDefaults: string;
+    confirmDelete: string;
+  };
+  popup: {
+    cropAvatar: {
+      title: string;
+    };
   };
   pagination: {
     first: string;

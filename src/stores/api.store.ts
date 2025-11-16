@@ -258,7 +258,7 @@ export const useApiStore = defineStore('api', () => {
 
   function updateCurrentPreset(apiId: string, name?: string) {
     if (!name || name === 'Default') {
-      toast.warning('Cannot update the default preset. Please save as a new preset.');
+      toast.warning(t('aiConfig.presets.errors.updateDefault'));
       return;
     }
     saveCurrentPresetAs(apiId, name);
@@ -266,12 +266,12 @@ export const useApiStore = defineStore('api', () => {
 
   async function renamePreset(apiId: string, oldName?: string) {
     if (!oldName || oldName === 'Default') {
-      toast.warning('Cannot rename the default preset.');
+      toast.warning(t('aiConfig.presets.errors.renameDefault'));
       return;
     }
     const popupStore = usePopupStore();
     const { result, value: newName } = await popupStore.show({
-      title: 'Rename Preset',
+      title: t('aiConfig.presets.renamePopupTitle'),
       type: POPUP_TYPE.INPUT,
       inputValue: oldName,
     });
@@ -297,13 +297,13 @@ export const useApiStore = defineStore('api', () => {
 
   async function deletePreset(apiId: string, name?: string) {
     if (!name || name === 'Default') {
-      toast.warning('Cannot delete the default preset.');
+      toast.warning(t('aiConfig.presets.errors.deleteDefault'));
       return;
     }
     const popupStore = usePopupStore();
     const { result } = await popupStore.show({
-      title: 'Confirm Deletion',
-      content: `Are you sure you want to delete the preset "<b>${name}</b>"?`,
+      title: t('common.confirmDelete'),
+      content: t('aiConfig.presets.deletePopupContent', { name }),
       type: POPUP_TYPE.CONFIRM,
     });
 
@@ -339,7 +339,7 @@ export const useApiStore = defineStore('api', () => {
         await loadPresetsForApi(apiId);
         oaiSettings.value.preset_settings_openai = name;
       } catch (error) {
-        toast.error('Failed to import preset. The file might be invalid.');
+        toast.error(t('aiConfig.presets.errors.importInvalid'));
         console.error(error);
       }
     };
@@ -348,12 +348,12 @@ export const useApiStore = defineStore('api', () => {
 
   function exportPreset(apiId: string, name?: string) {
     if (!name) {
-      toast.error('No preset selected to export.');
+      toast.error(t('aiConfig.presets.errors.noExportSelected'));
       return;
     }
     const presetToExport = presets.value[apiId]?.find((p) => p.name === name);
     if (!presetToExport) {
-      toast.error(`Preset "${name}" not found.`);
+      toast.error(t('aiConfig.presets.errors.exportNotFound', { name }));
       return;
     }
 

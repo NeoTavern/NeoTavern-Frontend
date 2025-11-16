@@ -143,6 +143,14 @@ const filteredBookNames = computed(() => {
             </div>
           </div>
 
+          <!--
+            v-if is used here instead of v-show for performance.
+            Rendering potentially hundreds or thousands of lorebook entries, even if hidden,
+            can impact initial load and reactivity. This is a trade-off: it improves performance
+            at the cost of extensions not being able to target the DOM of collapsed entries.
+            Given that data is lazy-loaded upon expansion, this is an acceptable optimization.
+            I'll think something else for extensions.
+          -->
           <Transition name="grid-slide">
             <div v-if="worldInfoStore.expandedBooks.has(bookName)" class="lorebook-group__entries">
               <div>

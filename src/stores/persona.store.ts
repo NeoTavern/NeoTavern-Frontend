@@ -136,7 +136,7 @@ export const usePersonaStore = defineStore('persona', () => {
     if (!settingsStore.powerUser.never_resize_avatars) {
       const dataUrl = await getBase64Async(file);
       const { result, value } = await popupStore.show({
-        title: 'Crop Avatar',
+        title: t('popup.cropAvatar.title'),
         type: POPUP_TYPE.CROP,
         cropImage: dataUrl,
         wide: true,

@@ -17,6 +17,7 @@ import { debounce } from '../utils/common';
 import { defaultsDeep } from 'lodash-es';
 import { usePopupStore } from './popup.store';
 import { downloadFile } from '../utils/file';
+import { useStrictI18n } from '../composables/useStrictI18n';
 
 export const defaultWorldInfoSettings: WorldInfoSettings = {
   world_info: {},
@@ -38,6 +39,7 @@ export const defaultWorldInfoSettings: WorldInfoSettings = {
 const WI_SORT_ORDER_KEY = 'world_info_sort_order';
 
 export const useWorldInfoStore = defineStore('world-info', () => {
+  const { t } = useStrictI18n();
   const settingsStore = useSettingsStore();
   const popupStore = usePopupStore();
 
@@ -220,10 +222,10 @@ export const useWorldInfoStore = defineStore('world-info', () => {
 
   async function createNewBook() {
     const { result, value: newName } = await popupStore.show({
-      title: 'New Lorebook',
-      content: 'Enter the name for the new lorebook:',
+      title: t('worldInfo.popup.newBookTitle'),
+      content: t('worldInfo.popup.newBookContent'),
       type: POPUP_TYPE.INPUT,
-      inputValue: 'New Lorebook',
+      inputValue: t('worldInfo.popup.newBookInput'),
     });
     if (result === POPUP_RESULT.AFFIRMATIVE && newName) {
       const newBook: WorldInfoBook = { name: newName, entries: [] };
@@ -300,8 +302,8 @@ export const useWorldInfoStore = defineStore('world-info', () => {
 
   async function deleteBook(name: string) {
     const { result } = await popupStore.show({
-      title: 'Confirm Deletion',
-      content: `Are you sure you want to delete the lorebook "<b>${name}</b>"?`,
+      title: t('common.confirmDelete'),
+      content: t('worldInfo.popup.deleteBookContent', { name }),
       type: POPUP_TYPE.CONFIRM,
     });
     if (result === POPUP_RESULT.AFFIRMATIVE) {
@@ -321,7 +323,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
 
   async function renameBook(oldName: string) {
     const { result, value: newName } = await popupStore.show({
-      title: 'Rename Lorebook',
+      title: t('worldInfo.popup.renameBookTitle'),
       type: POPUP_TYPE.INPUT,
       inputValue: oldName,
     });
@@ -343,9 +345,9 @@ export const useWorldInfoStore = defineStore('world-info', () => {
 
   async function duplicateBook(sourceName: string) {
     const { result, value: newName } = await popupStore.show({
-      title: 'Duplicate Lorebook',
+      title: t('worldInfo.popup.duplicateBookTitle'),
       type: POPUP_TYPE.INPUT,
-      inputValue: `${sourceName} (copy)`,
+      inputValue: `${sourceName}${t('worldInfo.popup.duplicateBookInputSuffix')}`,
     });
     if (result === POPUP_RESULT.AFFIRMATIVE && newName && newName.trim()) {
       try {
@@ -364,8 +366,8 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     const entry = selectedEntry.value;
 
     const { result } = await popupStore.show({
-      title: 'Confirm Entry Deletion',
-      content: `Are you sure you want to delete the entry "<b>${entry.comment}</b>"?`,
+      title: t('worldInfo.popup.deleteEntryTitle'),
+      content: t('worldInfo.popup.deleteEntryContent', { name: entry.comment }),
       type: POPUP_TYPE.CONFIRM,
     });
     if (result === POPUP_RESULT.AFFIRMATIVE) {

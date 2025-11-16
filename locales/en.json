@@ -147,6 +147,17 @@
         "normal": "🟢 Normal",
         "vectorized": "🔗 Vectorized"
       }
+    },
+    "popup": {
+      "newBookTitle": "New Lorebook",
+      "newBookContent": "Enter the name for the new lorebook:",
+      "newBookInput": "New Lorebook",
+      "deleteBookContent": "Are you sure you want to delete the lorebook \"<b>{name}</b>\"?",
+      "renameBookTitle": "Rename Lorebook",
+      "duplicateBookTitle": "Duplicate Lorebook",
+      "duplicateBookInputSuffix": " (copy)",
+      "deleteEntryTitle": "Confirm Entry Deletion",
+      "deleteEntryContent": "Are you sure you want to delete the entry \"<b>{name}</b>\"?"
     }
   },
   "backgrounds": {
@@ -196,7 +207,17 @@
       "update": "Update current preset",
       "rename": "Rename current preset",
       "saveAs": "Save preset as",
-      "newName": "Enter new preset name:"
+      "newName": "Enter new preset name:",
+      "renamePopupTitle": "Rename Preset",
+      "deletePopupContent": "Are you sure you want to delete the preset \"<b>{name}</b>\"?",
+      "errors": {
+        "updateDefault": "Cannot update the default preset. Please save as a new preset.",
+        "renameDefault": "Cannot rename the default preset.",
+        "deleteDefault": "Cannot delete the default preset.",
+        "noExportSelected": "No preset selected to export.",
+        "exportNotFound": "Preset \"{name}\" not found.",
+        "importInvalid": "Failed to import preset. The file might be invalid."
+      }
     },
     "contextSize": {
       "label": "Context Size (tokens)",
@@ -258,7 +279,13 @@
     "delete": "Delete",
     "of": "of",
     "search": "Search",
-    "resetToDefaults": "Reset to Defaults"
+    "resetToDefaults": "Reset to Defaults",
+    "confirmDelete": "Confirm Deletion"
+  },
+  "popup": {
+    "cropAvatar": {
+      "title": "Crop Avatar"
+    }
   },
   "pagination": {
     "first": "First Page",
