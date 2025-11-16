@@ -1,0 +1,28 @@
+.formatting-drawer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  padding: 10px;
+  gap: 10px;
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h3 {
+      margin: 0;
+    }
+  }
+
+  &__description {
+    opacity: 0.8;
+  }
+
+  &__content {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 5px; // space for scrollbar
+  }
+}

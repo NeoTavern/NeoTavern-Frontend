@@ -6,12 +6,14 @@ import { aiConfigDefinition } from '../../ai-config-definition';
 import type { AiConfigCondition, AiConfigSection } from '../../types';
 import { POPUP_TYPE } from '../../types';
 import { useStrictI18n } from '../../composables/useStrictI18n';
+import PromptManagerPopup from './PromptManagerPopup.vue';
 
 const { t } = useStrictI18n();
 const apiStore = useApiStore();
 const popupStore = usePopupStore();
 
 const isPanelPinned = ref(false); // TODO: connect to settings
+const isPromptManagerVisible = ref(false);
 
 function checkConditions(conditions?: AiConfigCondition): boolean {
   if (!conditions) return true;
@@ -134,6 +136,17 @@ onMounted(() => {
             </div>
           </div>
 
+          <!-- Prompt Manager Button -->
+          <div v-if="item.widget === 'prompt-manager-button'">
+            <div class="standout-header">
+              <strong>{{ item.label ? t(item.label) : '' }}</strong>
+            </div>
+            <small v-if="item.description" class="toggle-description">{{ t(item.description) }}</small>
+            <button class="menu-button" @click="isPromptManagerVisible = true">
+              {{ t('aiConfig.promptManager.openButton') }}
+            </button>
+          </div>
+
           <!-- Slider -->
           <div v-if="item.widget === 'slider' && item.id" class="range-block">
             <div class="range-block-title">{{ item.label ? t(item.label) : '' }}</div>
@@ -205,5 +218,7 @@ onMounted(() => {
         </div>
       </template>
     </div>
+
+    <PromptManagerPopup :visible="isPromptManagerVisible" @close="isPromptManagerVisible = false" />
   </div>
 </template>

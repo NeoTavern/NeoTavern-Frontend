@@ -15,6 +15,16 @@ export const aiConfigDefinition: AiConfigSection[] = [
     ],
   },
   {
+    id: 'prompt-management',
+    items: [
+      {
+        widget: 'prompt-manager-button',
+        label: 'aiConfig.promptManager.label',
+        description: 'aiConfig.promptManager.description',
+      },
+    ],
+  },
+  {
     id: 'common-settings',
     conditions: { api: 'openai' },
     items: [
@@ -93,6 +103,5 @@ export const aiConfigDefinition: AiConfigSection[] = [
       // TODO: Add other sliders like repetition_penalty, min_p, top_a based on source
     ],
   },
-  // TODO: Add Prompt Manager section
   // TODO: Add Utility Prompts section
 ];

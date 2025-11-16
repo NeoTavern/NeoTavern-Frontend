@@ -273,6 +273,7 @@ export interface AiConfigItem {
     | 'textarea'
     | 'custom-component'
     | 'info-display'
+    | 'prompt-manager-button'
     | 'hr'
     | 'header';
   apiId?: string; // For preset manager to know which API it controls

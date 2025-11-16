@@ -10,6 +10,46 @@
     "personaManagement": "Persona Management",
     "characterManagement": "Character Management"
   },
+  "formatting": {
+    "title": "AI Response Formatting",
+    "description": "Customize how the AI formats its responses (e.g., markdown fixes, etc.)."
+  },
+  "promptManager": {
+    "title": "Prompt Manager",
+    "description": "Control how the final prompt is constructed before being sent to the AI. Prompts are processed from top to bottom.",
+    "resetAll": "Reset All to Default",
+    "resetConfirm": {
+      "title": "Confirm Reset",
+      "content": "Are you sure you want to reset all prompt settings to their default values? This cannot be undone."
+    },
+    "promptItem": {
+      "enabled": "Enabled",
+      "moveUp": "Move Up",
+      "moveDown": "Move Down",
+      "role": "Role",
+      "content": "Content"
+    }
+  },
+  "chatManagement": {
+    "title": "Manage Chats for {characterName}",
+    "newChat": "New Chat",
+    "createPrompt": "Enter a name for the new chat:",
+    "renamePrompt": "Enter the new name for this chat:",
+    "deleteConfirmTitle": "Delete Chat",
+    "deleteConfirmContent": "Are you sure you want to delete the chat file \"{chatFile}\"? This action cannot be undone.",
+    "actions": {
+      "select": "Select Chat",
+      "rename": "Rename Chat",
+      "delete": "Delete Chat"
+    },
+    "active": "Active",
+    "errors": {
+      "fetch": "Could not fetch chat list.",
+      "create": "Failed to create new chat.",
+      "rename": "Failed to rename chat.",
+      "delete": "Failed to delete chat."
+    }
+  },
   "personaManagement": {
     "title": "Persona Management",
     "usageStats": "Usage Stats",
@@ -219,6 +259,11 @@
         "importInvalid": "Failed to import preset. The file might be invalid."
       }
     },
+    "promptManager": {
+      "label": "Prompt Manager",
+      "description": "Control how the final prompt is constructed before being sent to the AI.",
+      "openButton": "Open Prompt Manager"
+    },
     "contextSize": {
       "label": "Context Size (tokens)",
       "unlocked": "Unlocked",
@@ -329,7 +374,6 @@
       "error": "Failed to copy message."
     },
     "optionsMenu": {
-      "startNewChat": "Start new chat",
       "manageChats": "Manage chat files",
       "regenerate": "Regenerate",
       "continue": "Continue"

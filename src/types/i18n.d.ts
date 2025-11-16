@@ -13,6 +13,46 @@ export interface MessageSchema {
     personaManagement: string;
     characterManagement: string;
   };
+  formatting: {
+    title: string;
+    description: string;
+  };
+  promptManager: {
+    title: string;
+    description: string;
+    resetAll: string;
+    resetConfirm: {
+      title: string;
+      content: string;
+    };
+    promptItem: {
+      enabled: string;
+      moveUp: string;
+      moveDown: string;
+      role: string;
+      content: string;
+    };
+  };
+  chatManagement: {
+    title: string;
+    newChat: string;
+    createPrompt: string;
+    renamePrompt: string;
+    deleteConfirmTitle: string;
+    deleteConfirmContent: string;
+    actions: {
+      select: string;
+      rename: string;
+      delete: string;
+    };
+    active: string;
+    errors: {
+      fetch: string;
+      create: string;
+      rename: string;
+      delete: string;
+    };
+  };
   personaManagement: {
     title: string;
     usageStats: string;
@@ -222,6 +262,11 @@ export interface MessageSchema {
         importInvalid: string;
       };
     };
+    promptManager: {
+      label: string;
+      description: string;
+      openButton: string;
+    };
     contextSize: {
       label: string;
       unlocked: string;
@@ -332,7 +377,6 @@ export interface MessageSchema {
       error: string;
     };
     optionsMenu: {
-      startNewChat: string;
       manageChats: string;
       regenerate: string;
       continue: string;

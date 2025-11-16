@@ -361,6 +361,32 @@ export const useApiStore = defineStore('api', () => {
     downloadFile(content, `${name}.json`, 'application/json');
   }
 
+  // --- Prompt Management ---
+  function updatePromptOrder(newOrder: OaiPromptOrderConfig['order']) {
+    if (oaiSettings.value.prompt_order && oaiSettings.value.prompt_order[0]) {
+      oaiSettings.value.prompt_order[0].order = newOrder;
+    }
+  }
+
+  function togglePromptEnabled(identifier: string, enabled: boolean) {
+    const orderItem = oaiSettings.value.prompt_order?.[0].order.find((p) => p.identifier === identifier);
+    if (orderItem) {
+      orderItem.enabled = enabled;
+    }
+  }
+
+  function updatePromptContent(identifier: string, content: string) {
+    const prompt = oaiSettings.value.prompts?.find((p) => p.identifier === identifier);
+    if (prompt) {
+      prompt.content = content;
+    }
+  }
+
+  function resetPrompts() {
+    oaiSettings.value.prompts = JSON.parse(JSON.stringify(defaultOaiSettings.prompts));
+    oaiSettings.value.prompt_order = JSON.parse(JSON.stringify(defaultOaiSettings.prompt_order));
+  }
+
   return {
     mainApi,
     oaiSettings,
@@ -378,5 +404,9 @@ export const useApiStore = defineStore('api', () => {
     deletePreset,
     importPreset,
     exportPreset,
+    updatePromptOrder,
+    togglePromptEnabled,
+    updatePromptContent,
+    resetPrompts,
   };
 });

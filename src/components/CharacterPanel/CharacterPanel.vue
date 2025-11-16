@@ -120,8 +120,13 @@ onMounted(() => {
             class="text-pole character-panel__search-input"
             type="search"
             :placeholder="t('characterPanel.searchPlaceholder')"
+            v-model="characterStore.searchTerm"
           />
-          <select class="text-pole character-sort-order" :title="t('characterPanel.sorting.title')">
+          <select
+            class="text-pole character-sort-order"
+            :title="t('characterPanel.sorting.title')"
+            v-model="characterStore.sortOrder"
+          >
             <option value="name:asc">{{ t('characterPanel.sorting.nameAsc') }}</option>
             <option value="name:desc">{{ t('characterPanel.sorting.nameDesc') }}</option>
             <option value="create_date:desc">{{ t('characterPanel.sorting.newest') }}</option>

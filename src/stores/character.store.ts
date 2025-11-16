@@ -46,6 +46,8 @@ export const useCharacterStore = defineStore('character', () => {
     permanent: 0,
     fields: {},
   });
+  const searchTerm = ref('');
+  const sortOrder = ref('name:asc');
 
   const activeCharacter = computed<Character | null>(() => {
     if (activeCharacterIndex.value !== null && characters.value[activeCharacterIndex.value]) {
@@ -59,22 +61,58 @@ export const useCharacterStore = defineStore('character', () => {
   const permanentTokens = computed(() => tokenCounts.value.permanent);
 
   const displayableEntities = computed<Entity[]>(() => {
-    // This is the reactive equivalent of the old `getEntitiesList` function
     const groupStore = useGroupStore();
 
-    const characterEntities: Entity[] = characters.value.map((char, index) => ({
+    // 1. Filter characters based on search term
+    const lowerSearchTerm = searchTerm.value.toLowerCase();
+    const filteredCharacters =
+      lowerSearchTerm.length > 0
+        ? characters.value.filter((char) => {
+            return (
+              char.name.toLowerCase().includes(lowerSearchTerm) ||
+              char.description?.toLowerCase().includes(lowerSearchTerm) ||
+              char.tags?.join(',').toLowerCase().includes(lowerSearchTerm)
+            );
+          })
+        : characters.value;
+
+    // 2. Sort the filtered characters
+    const [sortKey, sortDir] = sortOrder.value.split(':') as ['name' | 'create_date' | 'fav', 'asc' | 'desc'];
+    const sortedCharacters = [...filteredCharacters].sort((a, b) => {
+      const dir = sortDir === 'asc' ? 1 : -1;
+      switch (sortKey) {
+        case 'name':
+          return a.name.localeCompare(b.name) * dir;
+        case 'create_date': {
+          const dateA = a.create_date ? new Date(a.create_date).getTime() : 0;
+          const dateB = b.create_date ? new Date(b.create_date).getTime() : 0;
+          return (dateA - dateB) * dir;
+        }
+        case 'fav': {
+          const favA = a.fav ? 1 : 0;
+          const favB = b.fav ? 1 : 0;
+          if (favA !== favB) return (favB - favA) * dir; // Favorites first
+          return a.name.localeCompare(b.name); // Then sort by name
+        }
+        default:
+          return 0;
+      }
+    });
+
+    const characterEntities: Entity[] = sortedCharacters.map((char) => ({
       item: char,
-      id: index, // Using index as ID for selection
+      // Find original index to use as a stable ID for selection
+      id: characters.value.findIndex((originalChar) => originalChar.avatar === char.avatar),
       type: 'character',
     }));
 
+    // TODO: Implement group filtering and sorting
     const groupEntities: Entity[] = groupStore.groups.map((group) => ({
       item: group,
       id: group.id,
       type: 'group',
     }));
 
-    // TODO: Implement character sorting and filtering logic here
     return [...characterEntities, ...groupEntities];
   });
 
@@ -448,6 +486,8 @@ export const useCharacterStore = defineStore('character', () => {
     paginatedEntities,
     currentPage,
     itemsPerPage,
+    searchTerm,
+    sortOrder,
     refreshCharacters,
     selectCharacterById,
     saveActiveCharacter,

@@ -8,6 +8,7 @@ import AiConfigDrawer from './AiConfigDrawer.vue';
 import BackgroundsDrawer from './BackgroundsDrawer.vue';
 import WorldInfoDrawer from './WorldInfoDrawer.vue';
 import PersonaManagementDrawer from './PersonaManagementDrawer.vue';
+import FormattingDrawer from './FormattingDrawer.vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 
 const { t } = useStrictI18n();
@@ -120,7 +121,7 @@ function toggleDrawer(drawerName: string) {
       <ApiConnectionsDrawer />
     </div>
     <div class="nav-item__content" :class="{ active: activeDrawer === 'formatting' }">
-      <!-- TODO: Formatting Content -->
+      <FormattingDrawer />
     </div>
     <div
       class="nav-item__content"
