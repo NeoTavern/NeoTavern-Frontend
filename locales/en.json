@@ -12,7 +12,7 @@
   },
   "formatting": {
     "title": "AI Response Formatting",
-    "description": "Customize how the AI formats its responses (e.g., markdown fixes, etc.)."
+    "description": "Text completion, such as instruc preset."
   },
   "promptManager": {
     "title": "Prompt Manager",
