@@ -144,12 +144,14 @@ const filteredBookNames = computed(() => {
           </div>
 
           <!--
-            v-if is used here instead of v-show for performance.
+            TODO: v-if is used here instead of v-show for performance.
             Rendering potentially hundreds or thousands of lorebook entries, even if hidden,
             can impact initial load and reactivity. This is a trade-off: it improves performance
             at the cost of extensions not being able to target the DOM of collapsed entries.
             Given that data is lazy-loaded upon expansion, this is an acceptable optimization.
             I'll think something else for extensions.
+
+            TODO: What about pagination for large books?
           -->
           <Transition name="grid-slide">
             <div v-if="worldInfoStore.expandedBooks.has(bookName)" class="lorebook-group__entries">
@@ -186,13 +188,13 @@ const filteredBookNames = computed(() => {
 
     <!-- Right Pane: Editor -->
     <div class="character-panel__editor">
-      <WorldInfoGlobalSettings v-if="worldInfoStore.selectedItemId === 'global-settings'" />
+      <WorldInfoGlobalSettings v-show="worldInfoStore.selectedItemId === 'global-settings'" />
       <WorldInfoEntryEditor
-        v-else-if="worldInfoStore.selectedEntry"
-        :model-value="worldInfoStore.selectedEntry"
+        v-show="worldInfoStore.selectedEntry"
+        :model-value="worldInfoStore.selectedEntry ?? undefined"
         @update:model-value="updateEntry"
       />
-      <div v-else class="character-panel__editor-placeholder">
+      <div v-show="!worldInfoStore.selectedEntry" class="character-panel__editor-placeholder">
         <div class="placeholder-icon fa-solid fa-book-atlas"></div>
         <h2 class="placeholder-title">{{ t('worldInfo.selectEntryPlaceholderTitle') }}</h2>
         <p class="placeholder-text">{{ t('worldInfo.selectEntryPlaceholderText') }}</p>

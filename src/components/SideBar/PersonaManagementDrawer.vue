@@ -153,10 +153,10 @@ onMounted(() => {
 
       <!-- Right Column -->
       <div class="persona-drawer__column--right">
-        <div v-if="personaStore.activePersona" class="persona-editor">
+        <div v-show="personaStore.activePersona" class="persona-editor">
           <h4 class="standoutHeader">{{ t('personaManagement.currentPersona') }}</h4>
           <div class="persona-editor__controls">
-            <h5 class="persona-editor__name">{{ personaStore.activePersona.name }}</h5>
+            <h5 class="persona-editor__name">{{ personaStore.activePersona?.name ?? '' }}</h5>
             <div class="buttons_block">
               <div
                 class="menu-button fa-solid fa-pencil"
@@ -185,7 +185,7 @@ onMounted(() => {
             class="text-pole"
             rows="6"
             :placeholder="t('personaManagement.description.placeholder')"
-            :value="personaStore.activePersona.description"
+            :value="personaStore.activePersona?.description ?? ''"
             @input="personaStore.updateActivePersonaField('description', ($event.target as HTMLTextAreaElement).value)"
           ></textarea>
           <!-- TODO: Add token counter -->

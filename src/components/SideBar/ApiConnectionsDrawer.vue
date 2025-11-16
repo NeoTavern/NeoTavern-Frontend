@@ -40,7 +40,7 @@ const hasOpenRouterGroupedModels = computed(() => {
         </select>
       </div>
 
-      <div v-if="apiStore.mainApi === 'openai'">
+      <div v-show="apiStore.mainApi === 'openai'">
         <div class="api-connections-drawer__section">
           <h4>{{ t('apiConnections.source') }}</h4>
           <select class="text-pole" v-model="apiStore.oaiSettings.chat_completion_source">
@@ -54,7 +54,7 @@ const hasOpenRouterGroupedModels = computed(() => {
         </div>
 
         <!-- OpenAI Form -->
-        <form v-if="apiStore.oaiSettings.chat_completion_source === chat_completion_sources.OPENAI">
+        <form v-show="apiStore.oaiSettings.chat_completion_source === chat_completion_sources.OPENAI">
           <div class="api-connections-drawer__section">
             <h4>{{ t('apiConnections.openaiKey') }}</h4>
             <div class="api-connections-drawer__input-group">
@@ -82,7 +82,7 @@ const hasOpenRouterGroupedModels = computed(() => {
               <optgroup :label="t('apiConnections.modelGroups.gpt4turbo')">
                 <option value="gpt-4-turbo">gpt-4-turbo</option>
               </optgroup>
-              <optgroup v-if="dynamicOpenAIModels.length > 0" :label="t('apiConnections.modelGroups.other')">
+              <optgroup v-show="dynamicOpenAIModels.length > 0" :label="t('apiConnections.modelGroups.other')">
                 <option v-for="model in dynamicOpenAIModels" :key="model.id" :value="model.id">
                   {{ model.id }}
                 </option>
@@ -92,7 +92,7 @@ const hasOpenRouterGroupedModels = computed(() => {
         </form>
 
         <!-- Claude Form (placeholder) -->
-        <form v-if="apiStore.oaiSettings.chat_completion_source === chat_completion_sources.CLAUDE">
+        <form v-show="apiStore.oaiSettings.chat_completion_source === chat_completion_sources.CLAUDE">
           <div class="api-connections-drawer__section">
             <h4>{{ t('apiConnections.claudeKey') }}</h4>
             <div class="api-connections-drawer__input-group">
@@ -121,7 +121,7 @@ const hasOpenRouterGroupedModels = computed(() => {
         </form>
 
         <!-- OpenRouter Form -->
-        <form v-if="apiStore.oaiSettings.chat_completion_source === chat_completion_sources.OPENROUTER">
+        <form v-show="apiStore.oaiSettings.chat_completion_source === chat_completion_sources.OPENROUTER">
           <div class="api-connections-drawer__section">
             <h4>{{ t('apiConnections.openrouterKey') }}</h4>
             <div class="api-connections-drawer__input-group">
@@ -141,14 +141,18 @@ const hasOpenRouterGroupedModels = computed(() => {
           </div>
           <div class="api-connections-drawer__section">
             <h4>{{ t('apiConnections.openrouterModel') }}</h4>
-            <select v-if="hasOpenRouterGroupedModels" class="text-pole" v-model="apiStore.oaiSettings.openrouter_model">
+            <select
+              v-show="hasOpenRouterGroupedModels"
+              class="text-pole"
+              v-model="apiStore.oaiSettings.openrouter_model"
+            >
               <option value="OR_Website">{{ t('apiConnections.openrouterWebsite') }}</option>
               <optgroup v-for="(models, vendor) in apiStore.groupedOpenRouterModels" :key="vendor" :label="vendor">
                 <option v-for="model in models" :key="model.id" :value="model.id">{{ model.name }}</option>
               </optgroup>
             </select>
             <input
-              v-else
+              v-show="!hasOpenRouterGroupedModels"
               type="text"
               class="text-pole"
               placeholder="google/gemini-pro-1.5"
@@ -167,8 +171,8 @@ const hasOpenRouterGroupedModels = computed(() => {
               :disabled="apiStore.isConnecting"
               :class="{ disabled: apiStore.isConnecting }"
             >
-              <i v-if="apiStore.isConnecting" class="fa-solid fa-spinner fa-spin"></i>
-              <span v-else>{{
+              <i v-show="apiStore.isConnecting" class="fa-solid fa-spinner fa-spin"></i>
+              <span v-show="!apiStore.isConnecting">{{
                 apiStore.isConnecting ? t('apiConnections.connecting') : t('apiConnections.connect')
               }}</span>
             </button>

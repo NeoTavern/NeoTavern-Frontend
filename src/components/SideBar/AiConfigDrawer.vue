@@ -87,22 +87,22 @@ onMounted(() => {
           <!-- Preset Manager -->
           <div v-if="item.widget === 'preset-manager' && item.id && item.apiId" class="preset-manager">
             <div class="standout-header">
-              <strong>{{ t(item.label!) }}</strong>
+              <strong>{{ item.label ? t(item.label) : '' }}</strong>
               <div class="preset-manager__actions">
                 <div
                   class="menu-button-icon fa-solid fa-file-import"
                   :title="t('aiConfig.presets.import')"
-                  @click="apiStore.importPreset(item.apiId!)"
+                  @click="item.apiId ? apiStore.importPreset(item.apiId) : undefined"
                 ></div>
                 <div
                   class="menu-button-icon fa-solid fa-file-export"
                   :title="t('aiConfig.presets.export')"
-                  @click="apiStore.exportPreset(item.apiId!, getSetting(item.id))"
+                  @click="item.apiId ? apiStore.exportPreset(item.apiId, getSetting(item.id)) : undefined"
                 ></div>
                 <div
                   class="menu-button-icon fa-solid fa-trash-can"
                   :title="t('aiConfig.presets.delete')"
-                  @click="apiStore.deletePreset(item.apiId!, getSetting(item.id))"
+                  @click="item.apiId ? apiStore.deletePreset(item.apiId, getSetting(item.id)) : undefined"
                 ></div>
               </div>
             </div>
@@ -129,14 +129,14 @@ onMounted(() => {
               <div
                 class="menu-button-icon fa-solid fa-file-circle-plus"
                 :title="t('aiConfig.presets.saveAs')"
-                @click="handleNewPreset(item.apiId!)"
+                @click="item.apiId ? handleNewPreset(item.apiId) : undefined"
               ></div>
             </div>
           </div>
 
           <!-- Slider -->
           <div v-if="item.widget === 'slider' && item.id" class="range-block">
-            <div class="range-block-title">{{ t(item.label!) }}</div>
+            <div class="range-block-title">{{ item.label ? t(item.label) : '' }}</div>
             <div class="range-block-range-and-counter">
               <input
                 type="range"
@@ -157,21 +157,25 @@ onMounted(() => {
                 @input="setSetting(item.id, Number(($event.target as HTMLInputElement).value))"
               />
             </div>
-            <div v-if="item.maxUnlockedId && item.unlockLabel" class="range-block-addon">
-              <label class="checkbox-label" :title="t(item.unlockTooltip!)">
+            <div v-show="item.maxUnlockedId && item.unlockLabel" class="range-block-addon">
+              <label class="checkbox-label" :title="item.unlockTooltip ? t(item.unlockTooltip) : ''">
                 <input
                   type="checkbox"
-                  :checked="getSetting(item.maxUnlockedId)"
-                  @change="setSetting(item.maxUnlockedId, ($event.target as HTMLInputElement).checked)"
+                  :checked="item.maxUnlockedId ? getSetting(item.maxUnlockedId) : false"
+                  @change="
+                    item.maxUnlockedId
+                      ? setSetting(item.maxUnlockedId, ($event.target as HTMLInputElement).checked)
+                      : undefined
+                  "
                 />
-                <span>{{ t(item.unlockLabel) }}</span>
+                <span>{{ item.unlockLabel ? t(item.unlockLabel) : '' }}</span>
               </label>
             </div>
           </div>
 
           <!-- Number Input -->
           <div v-if="item.widget === 'number-input' && item.id" class="range-block">
-            <div class="range-block-title">{{ t(item.label!) }}</div>
+            <div class="range-block-title">{{ item.label ? t(item.label) : '' }}</div>
             <input
               type="number"
               class="text-pole"
@@ -191,7 +195,7 @@ onMounted(() => {
                 :checked="getSetting(item.id)"
                 @change="setSetting(item.id, ($event.target as HTMLInputElement).checked)"
               />
-              <span>{{ t(item.label!) }}</span>
+              <span>{{ item.label ? t(item.label) : '' }}</span>
             </label>
             <div v-if="item.description" class="toggle-description">{{ t(item.description) }}</div>
           </div>

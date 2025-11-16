@@ -94,7 +94,7 @@ const { beforeEnter, enter, afterEnter, beforeLeave, leave, afterLeave } = slide
     </div>
 
     <div class="user-settings-drawer__content">
-      <div v-if="Object.keys(groupedSettings).length === 0" class="user-settings-drawer__no-results">
+      <div v-show="Object.keys(groupedSettings).length === 0" class="user-settings-drawer__no-results">
         {{ t('userSettings.noResults') }}
       </div>
       <div v-for="(settings, category) in groupedSettings" :key="category" class="user-settings-drawer__category">
@@ -120,7 +120,7 @@ const { beforeEnter, enter, afterEnter, beforeLeave, leave, afterLeave } = slide
               <div v-for="setting in settings" :key="setting.id" class="user-settings-drawer__setting">
                 <div class="setting-details">
                   <label :for="setting.id">{{ t(setting.label) }}</label>
-                  <small v-if="setting.description">{{ t(setting.description) }}</small>
+                  <small v-show="setting.description">{{ setting.description ? t(setting.description) : '' }}</small>
                 </div>
                 <div class="setting-control">
                   <!-- Checkbox -->

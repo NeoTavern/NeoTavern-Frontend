@@ -186,7 +186,7 @@ function moveDown() {
         </div>
 
         <!-- Buttons for Normal Mode -->
-        <div v-if="!isEditing" class="message__buttons">
+        <div v-show="!isEditing" class="message__buttons">
           <!-- TODO: Implement extra buttons dropdown -->
           <i class="message__button fa-solid fa-ellipsis" title="Message Actions"></i>
           <!-- TODO: Implement bookmark button -->
@@ -200,7 +200,7 @@ function moveDown() {
         </div>
 
         <!-- Buttons for Editing Mode -->
-        <div v-else class="message__edit-actions">
+        <div v-show="isEditing" class="message__edit-actions">
           <button
             @click="saveEdit"
             class="menu-button confirm fa-solid fa-check"
@@ -222,8 +222,8 @@ function moveDown() {
         </div>
       </div>
 
-      <div v-if="!isEditing" class="message__content" v-html="formattedContent"></div>
-      <div v-else class="message__edit-area">
+      <div v-show="!isEditing" class="message__content" v-html="formattedContent"></div>
+      <div v-show="isEditing" class="message__edit-area">
         <textarea v-model="editedContent" class="text-pole"></textarea>
       </div>
       <!-- TODO: Implement swipes, reasoning block, media, etc. -->
