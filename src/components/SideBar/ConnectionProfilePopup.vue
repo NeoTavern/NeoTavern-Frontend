@@ -28,6 +28,43 @@ const currentSource = computed(() => settingsStore.settings.api.chat_completion_
 const currentModel = computed(() => apiStore.activeModel);
 const currentSampler = computed(() => settingsStore.settings.api.selected_sampler);
 
+const modelLabel = computed(() => {
+  const source = currentSource.value;
+  switch (source) {
+    case 'openai':
+      return t('apiConnections.openaiModel');
+    case 'claude':
+      return t('apiConnections.claudeModel');
+    case 'openrouter':
+      return t('apiConnections.openrouterModel');
+    case 'mistralai':
+      return t('apiConnections.mistralaiModel');
+    case 'groq':
+      return t('apiConnections.groqModel');
+    case 'azure_openai':
+      return t('apiConnections.azureModel');
+    case 'custom':
+    // Fallback for all other sources without a specific label to a generic "Model Name"
+    case 'ai21':
+    case 'makersuite':
+    case 'vertexai':
+    case 'cohere':
+    case 'perplexity':
+    case 'electronhub':
+    case 'nanogpt':
+    case 'deepseek':
+    case 'aimlapi':
+    case 'xai':
+    case 'pollinations':
+    case 'moonshot':
+    case 'fireworks':
+    case 'cometapi':
+    case 'zai':
+    default:
+      return t('apiConnections.customModel');
+  }
+});
+
 watch(
   () => props.visible,
   (isVisible) => {
@@ -97,13 +134,7 @@ function save() {
 
           <label class="checkbox-label field-item">
             <input type="checkbox" v-model="includeModel" />
-            <span>{{
-              currentSource === 'openrouter'
-                ? t('apiConnections.openrouterModel')
-                : currentSource === 'claude'
-                  ? t('apiConnections.claudeModel')
-                  : t('apiConnections.openaiModel')
-            }}</span>
+            <span>{{ modelLabel }}</span>
           </label>
           <div class="field-value">{{ currentModel }}</div>
 
