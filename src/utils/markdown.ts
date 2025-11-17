@@ -10,24 +10,26 @@ const converter = new Showdown.Converter({
   tables: true,
   tasklists: true,
   smartIndentationFix: true,
-  simpleLineBreaks: true, // This is important for chat
+  simpleLineBreaks: true,
   openLinksInNewWindow: true,
 });
 
-export function formatMessage(message: ChatMessage): string {
-  let mes = message.mes;
-  if (!mes) return '';
-
-  if (message?.extra?.display_text) {
-    mes = message.extra.display_text;
-  }
+/**
+ * Formats a raw string with Markdown and sanitizes it.
+ * @param text The raw string to format.
+ * @param options Formatting options.
+ * @returns An HTML string.
+ */
+export function formatText(text: string, options?: { isSystem?: boolean }): string {
+  if (!text) return '';
+  let formattedText = text;
 
   // TODO: Add more complex logic from original messageFormatting, like param substitution, regex, etc.
 
-  if (!message.is_system) {
+  if (!options?.isSystem) {
     // Basic quote handling similar to original
-    mes = mes.replace(/"(.*?)"/g, '<q>"$1"</q>');
-    mes = converter.makeHtml(mes);
+    formattedText = formattedText.replace(/"(.*?)"/g, '<q>"$1"</q>');
+    formattedText = converter.makeHtml(formattedText);
   }
 
   const config: DOMPurify.Config = {
@@ -36,5 +38,28 @@ export function formatMessage(message: ChatMessage): string {
     ADD_TAGS: ['custom-style', 'q'], // Allow <q> for quotes
   };
 
-  return DOMPurify.sanitize(mes, config);
+  return DOMPurify.sanitize(formattedText, config);
+}
+
+/**
+ * A wrapper for `formatText` that specifically handles a ChatMessage object,
+ * accounting for properties like `display_text`.
+ * @param message The ChatMessage object.
+ * @returns An HTML string.
+ */
+export function formatMessage(message: ChatMessage): string {
+  const textToFormat = message?.extra?.display_text || message.mes;
+  return formatText(textToFormat, { isSystem: message.is_system });
+}
+
+/**
+ * A wrapper for `formatText` that specifically handles the reasoning part of a ChatMessage,
+ * accounting for `reasoning_display_text`.
+ * @param message The ChatMessage object.
+ * @returns An HTML string.
+ */
+export function formatReasoning(message: ChatMessage): string {
+  if (!message.extra?.reasoning) return '';
+  const textToFormat = message.extra.reasoning_display_text || message.extra.reasoning;
+  return formatText(textToFormat, { isSystem: message.is_system });
 }

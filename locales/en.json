@@ -390,7 +390,7 @@
     "buttons": {
       "confirmEdit": "Confirm edit",
       "copyMessage": "Copy this message",
-      "addReasoning": "Add a reasoning block",
+      "addReasoning": "Add/Edit reasoning block",
       "deleteMessage": "Delete this message",
       "moveUp": "Move message up",
       "moveDown": "Move message down",
@@ -415,7 +415,10 @@
       "continue": "Continue"
     },
     "typingIndicator": "",
-    "abort": "Abort generation"
+    "abort": "Abort generation",
+    "reasoning": {
+      "title": "Thinking"
+    }
   },
   "character": {
     "import": {
@@ -720,6 +723,14 @@
       "animation": {
         "label": "Animated Backgrounds",
         "description": "Enable animation for supported background formats (e.g., video, animated webp)."
+      }
+    },
+    "ui": {
+      "chat": {
+        "reasoning_collapsed": {
+          "label": "Collapse Reasoning by Default",
+          "description": "If enabled, the reasoning (thinking) block on messages will be collapsed by default."
+        }
       }
     }
   }

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { nextTick, ref, watch } from 'vue';
-import { GenerationMode, type ChatMessage, type ChatMetadata } from '../types';
+import { GenerationMode, type ChatMessage, type ChatMetadata, type SwipeInfo } from '../types';
 import { usePromptStore } from './prompt.store';
 import { useCharacterStore } from './character.store';
 import { useUiStore } from './ui.store';
@@ -264,7 +264,7 @@ export const useChatStore = defineStore('chat', () => {
       const handleGenerationResult = async (content: string, reasoning?: string) => {
         const genFinished = new Date().toISOString();
         const token_count = await getTokenCount(content);
-        const swipeInfo = {
+        const swipeInfo: SwipeInfo = {
           send_date: getMessageTimeStamp(),
           gen_started: genStarted,
           gen_finished: genFinished,
@@ -368,8 +368,8 @@ export const useChatStore = defineStore('chat', () => {
             finalMessage.swipes![0] = finalMessage.mes;
           }
 
-          const swipeInfo = {
-            send_date: finalMessage.send_date,
+          const swipeInfo: SwipeInfo = {
+            send_date: finalMessage.send_date!,
             gen_started: genStarted,
             gen_finished: finalMessage.gen_finished,
             extra: { ...finalMessage.extra },
@@ -430,13 +430,38 @@ export const useChatStore = defineStore('chat', () => {
     originalMessageContent.value = null;
   }
 
-  async function saveMessageEdit(newContent: string) {
+  async function saveMessageEdit(newContent: string, newReasoning?: string) {
     if (activeMessageEditIndex.value !== null) {
       const message = chat.value[activeMessageEditIndex.value];
       message.mes = newContent;
+      if (message.extra) {
+        delete message.extra.display_text;
+        delete message.extra.reasoning_display_text;
+      }
+
+      if (typeof newReasoning === 'string' && newReasoning.trim() !== '') {
+        if (!message.extra) message.extra = {};
+        message.extra.reasoning = newReasoning;
+      } else {
+        if (message.extra) {
+          delete message.extra.reasoning;
+        }
+      }
+
       if (message.swipes && typeof message.swipe_id === 'number' && message.swipes[message.swipe_id] !== undefined) {
         message.swipes[message.swipe_id] = newContent;
       }
+
+      const swipeInfo = message.swipe_info?.[message.swipe_id ?? 0];
+      if (swipeInfo) {
+        if (!swipeInfo.extra) swipeInfo.extra = {};
+        if (typeof newReasoning === 'string' && newReasoning.trim() !== '') {
+          swipeInfo.extra.reasoning = newReasoning;
+        } else {
+          delete swipeInfo.extra.reasoning;
+        }
+      }
+
       await saveChat();
       cancelEditing();
     }
@@ -460,6 +485,12 @@ export const useChatStore = defineStore('chat', () => {
       message.gen_finished = swipeInfo.gen_finished;
       message.extra = { ...swipeInfo.extra };
     }
+
+    if (message.extra) {
+      delete message.extra.display_text;
+      delete message.extra.reasoning_display_text;
+    }
+
     saveChat();
   }
 

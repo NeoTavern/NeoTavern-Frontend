@@ -61,6 +61,15 @@ export const settingsDefinition: SettingDefinition[] = [
     widget: 'checkbox',
     defaultValue: true,
   },
+  {
+    id: 'ui.chat.reasoningCollapsed',
+    label: 'settings.ui.chat.reasoning_collapsed.label',
+    description: 'settings.ui.chat.reasoning_collapsed.description',
+    category: 'Chat/Message Handling',
+    type: 'boolean',
+    widget: 'checkbox',
+    defaultValue: false,
+  },
 
   // --- UI & Display ---
   {

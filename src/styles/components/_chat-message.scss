@@ -189,8 +189,35 @@
     }
   }
 
-  // TODO: Styles for reasoning block, once implemented
   &__reasoning {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background-color: var(--black-30a);
+    border: 1px solid var(--theme-border-color);
+    font-size: 0.9em;
+    overflow: hidden;
+
+    &-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      font-weight: bold;
+      opacity: 0.8;
+      margin-bottom: 5px;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+
+    &-content {
+      p:last-child {
+        margin-bottom: 0;
+      }
+    }
+
     i,
     em {
       color: hsl(from var(--theme-emphasis-color) h calc(s * var(--theme-reasoning-saturation-factor)) l);
@@ -213,11 +240,28 @@
       color: inherit;
     }
 
+    q:before,
+    q:after {
+      content: '';
+    }
+
     font[color] em,
     font[color] i,
     font[color] u,
     font[color] q {
       color: inherit;
+    }
+  }
+
+  &__reasoning-edit-area {
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    label {
+      font-weight: bold;
+      opacity: 0.8;
     }
   }
 }

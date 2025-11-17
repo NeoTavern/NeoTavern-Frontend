@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import type { PropType } from 'vue';
 import type { ChatMessage } from '../../types';
 import { POPUP_TYPE, POPUP_RESULT } from '../../types';
@@ -10,7 +10,7 @@ import { useSettingsStore } from '../../stores/settings.store';
 import { usePopupStore, type PopupShowOptions } from '../../stores/popup.store';
 import { resolveAvatarUrls } from '../../utils/image';
 import { formatTimeStamp } from '../../utils/date';
-import { formatMessage } from '../../utils/markdown';
+import { formatMessage, formatReasoning } from '../../utils/markdown';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
 
@@ -33,12 +33,24 @@ const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
 
 const editedContent = ref('');
+const editedReasoning = ref('');
+const isEditingReasoning = ref(false);
+const isReasoningCollapsed = ref(false);
 
 const isEditing = computed(() => chatStore.activeMessageEditIndex === props.index);
+const hasReasoning = computed(() => props.message.extra?.reasoning && props.message.extra.reasoning.trim().length > 0);
+
+onMounted(() => {
+  isReasoningCollapsed.value = settingsStore.settings.ui?.chat?.reasoningCollapsed ?? false;
+});
 
 watch(isEditing, (editing) => {
   if (editing) {
     editedContent.value = props.message.mes;
+    editedReasoning.value = props.message.extra?.reasoning ?? '';
+    isEditingReasoning.value = !!props.message.extra?.reasoning;
+  } else {
+    isEditingReasoning.value = false;
   }
 });
 
@@ -82,6 +94,10 @@ const formattedContent = computed(() => {
   return formatMessage(props.message);
 });
 
+const formattedReasoning = computed(() => {
+  return formatReasoning(props.message);
+});
+
 const isLastMessage = computed(() => props.index === chatStore.chat.length - 1);
 const hasSwipes = computed(() => Array.isArray(props.message.swipes) && props.message.swipes.length >= 1);
 const canSwipe = computed(() => !props.message.is_user && hasSwipes.value && isLastMessage.value);
@@ -95,11 +111,19 @@ function startEditing() {
 }
 
 function saveEdit() {
-  chatStore.saveMessageEdit(editedContent.value);
+  const reasoningToSave = isEditingReasoning.value ? editedReasoning.value : undefined;
+  chatStore.saveMessageEdit(editedContent.value, reasoningToSave);
 }
 
 function cancelEdit() {
   chatStore.cancelEditing();
+}
+
+function toggleReasoningEdit() {
+  isEditingReasoning.value = !isEditingReasoning.value;
+  if (!isEditingReasoning.value) {
+    editedReasoning.value = '';
+  }
 }
 
 async function copyMessage() {
@@ -218,7 +242,12 @@ function moveDown() {
             class="menu-button fa-solid fa-copy"
             :title="t('chat.buttons.copyMessage')"
           ></button>
-          <button class="menu-button fa-solid fa-lightbulb" :title="t('chat.buttons.addReasoning')"></button>
+          <button
+            @click="toggleReasoningEdit"
+            class="menu-button fa-solid fa-lightbulb"
+            :class="{ active: isEditingReasoning }"
+            :title="t('chat.buttons.addReasoning')"
+          ></button>
           <button @click="moveUp" class="menu-button fa-solid fa-chevron-up" :title="t('chat.buttons.moveUp')"></button>
           <button
             @click="moveDown"
@@ -229,8 +258,24 @@ function moveDown() {
         </div>
       </div>
 
+      <div v-if="!isEditing && hasReasoning" class="message__reasoning">
+        <div class="message__reasoning-header" @click="isReasoningCollapsed = !isReasoningCollapsed">
+          <span>{{ t('chat.reasoning.title') }}</span>
+          <i class="fa-solid" :class="isReasoningCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+        </div>
+        <transition name="expand">
+          <div v-show="!isReasoningCollapsed" class="message__reasoning-content" v-html="formattedReasoning"></div>
+        </transition>
+      </div>
+
       <div v-show="!isEditing" class="message__content" v-html="formattedContent"></div>
       <div v-show="isEditing" class="message__edit-area">
+        <transition name="expand">
+          <div v-show="isEditingReasoning" class="message__reasoning-edit-area">
+            <label>{{ t('chat.reasoning.title') }}</label>
+            <textarea v-model="editedReasoning" class="text-pole"></textarea>
+          </div>
+        </transition>
         <textarea v-model="editedContent" class="text-pole"></textarea>
       </div>
 
@@ -249,7 +294,7 @@ function moveDown() {
           ></i>
         </div>
       </div>
-      <!-- TODO: Implement reasoning block, media, etc. -->
+      <!-- TODO: Implement media, etc. -->
     </div>
   </div>
 </template>

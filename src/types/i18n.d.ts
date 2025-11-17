@@ -419,6 +419,9 @@ export interface MessageSchema {
     };
     typingIndicator: string;
     abort: string;
+    reasoning: {
+      title: string;
+    };
   };
   character: {
     import: {
@@ -723,6 +726,14 @@ export interface MessageSchema {
       animation: {
         label: string;
         description: string;
+      };
+    };
+    ui: {
+      chat: {
+        reasoning_collapsed: {
+          label: string;
+          description: string;
+        };
       };
     };
   };

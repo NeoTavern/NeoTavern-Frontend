@@ -30,15 +30,13 @@ import type { ValueForPath } from '../types/utils';
 import { defaultWorldInfoSettings } from './world-info.store';
 import { migratePreset, saveExperimentalPreset } from '../api/presets';
 
-// --- Create type aliases for convenience ---
 type SettingsValue<P extends SettingsPath> = ValueForPath<Settings, P>;
-// -----------------------------------------
 
+// TODO: We should simply define all default settings, then override with settingsDefinition defaults.
 function createDefaultSettings(): Settings {
   // @ts-ignore
   const defaultSettings: Settings = {};
   for (const def of settingsDefinition) {
-    // This now correctly sets nested properties based on the new structure
     set(defaultSettings, def.id, def.defaultValue);
   }
 
@@ -140,6 +138,9 @@ function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSettingsRes
       avatars: {
         zoomedMagnification: p.zoomed_avatar_magnification,
         neverResize: p.never_resize_avatars,
+      },
+      chat: {
+        reasoningCollapsed: false,
       },
     },
     chat: {
@@ -329,7 +330,8 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
-  const saveSettingsDebounced: DebouncedFunc<() => Promise<void>> = debounce(async () => { // TODO: Should we remove our debounce and use lodash's debounce directly?
+  const saveSettingsDebounced: DebouncedFunc<() => Promise<void>> = debounce(async () => {
+    // TODO: Should we remove our debounce and use lodash's debounce directly?
     if (settingsInitializing.value || !fullLegacySettings.value) return;
 
     const settingsToSave: LegacySettings = { ...fullLegacySettings.value };

@@ -88,6 +88,17 @@ export interface ChatMetadata {
   [key: string]: any;
 }
 
+// TODO: Each swipe should have its own display_text and reasoning_display_text
+export interface SwipeInfo {
+  send_date: string;
+  gen_started: string;
+  gen_finished: string;
+  extra: {
+    reasoning?: string;
+    token_count?: number;
+  } & Record<string, any>;
+}
+
 export interface ChatMessage {
   send_date?: string;
   name: string;
@@ -99,7 +110,7 @@ export interface ChatMessage {
   force_avatar?: string;
   original_avatar?: string;
   swipes?: string[];
-  swipe_info?: Array<any>;
+  swipe_info?: SwipeInfo[];
   swipe_id?: number;
   extra?: {
     reasoning?: string;
@@ -651,6 +662,9 @@ export interface ExperimentalSettings {
     avatars: {
       zoomedMagnification: boolean;
       neverResize: boolean;
+    };
+    chat: {
+      reasoningCollapsed: boolean;
     };
   };
   chat: {
