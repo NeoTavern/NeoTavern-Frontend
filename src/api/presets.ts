@@ -40,6 +40,7 @@ export function migratePreset(legacyPreset: LegacyOaiPresetSettings): SamplerSet
       },
     },
     show_thoughts: legacyPreset.show_thoughts ?? defaultSamplerSettings.show_thoughts,
+    reasoning_effort: legacyPreset.reasoning_effort ?? defaultSamplerSettings.reasoning_effort ?? 'auto',
   };
 
   return newPreset;

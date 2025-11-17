@@ -221,6 +221,35 @@ onMounted(() => {
             <div v-if="item.description" class="toggle-description">{{ t(item.description) }}</div>
           </div>
 
+          <!-- Select Input -->
+          <div v-if="item.widget === 'select' && item.id && item.options" class="range-block">
+            <div class="range-block-title">
+              <label :for="item.id.toString()">{{ item.label ? t(item.label) : '' }}</label>
+              <a
+                v-if="item.infoLink"
+                :href="item.infoLink"
+                target="_blank"
+                class="fa-solid fa-circle-question info-link"
+                :title="item.infoTooltip ? t(item.infoTooltip) : undefined"
+              ></a>
+            </div>
+            <select
+              :id="item.id.toString()"
+              class="text-pole"
+              :value="settingsStore.getSetting(item.id)"
+              @change="settingsStore.setSetting(item.id, ($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="option in item.options" :key="String(option.value)" :value="option.value">
+                {{ t(option.label) }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Info Display -->
+          <div v-if="item.widget === 'info-display' && item.description" class="toggle-description">
+            {{ t(item.description) }}
+          </div>
+
           <!-- Horizontal Rule -->
           <hr v-if="item.widget === 'hr'" />
         </div>

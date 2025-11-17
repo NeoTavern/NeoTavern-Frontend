@@ -22,7 +22,6 @@ export type PromtBuilderOptions = {
   chatHistory: ChatMessage[];
   samplerSettings: SamplerSettings;
   persona: Persona;
-  forContinue?: boolean;
 };
 
 export class PromptBuilder {
@@ -31,14 +30,12 @@ export class PromptBuilder {
   private samplerSettings: SamplerSettings;
   private persona: Persona;
   private maxContext: number;
-  private forContinue: boolean;
 
-  constructor({ character, chatHistory, samplerSettings, persona, forContinue = false }: PromtBuilderOptions) {
+  constructor({ character, chatHistory, samplerSettings, persona }: PromtBuilderOptions) {
     this.character = character;
     this.chatHistory = chatHistory;
     this.samplerSettings = samplerSettings;
     this.persona = persona;
-    this.forContinue = forContinue;
 
     this.maxContext = this.samplerSettings.max_context ?? defaultSamplerSettings.max_context;
   }
@@ -136,9 +133,7 @@ export class PromptBuilder {
     const historyMessages: ApiChatMessage[] = [];
     let historyTokenCount = 0;
 
-    const historySource = this.forContinue ? this.chatHistory : this.chatHistory.slice(0, -1);
-
-    for (let i = historySource.length - 1; i >= 0; i--) {
+    for (let i = this.chatHistory.length - 1; i >= 0; i--) {
       const msg = this.chatHistory[i];
       if (msg.is_system) continue;
 

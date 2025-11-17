@@ -7,6 +7,15 @@ export type SettingsPath = Path<Settings>;
 export type OaiSettingsPath = Path<LegacyOaiSettings>;
 // -----------------------------------------
 
+export enum ReasoningEffort {
+  AUTO = 'auto',
+  MIN = 'min',
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  MAX = 'max',
+}
+
 export enum GenerationMode {
   NEW = 'new',
   CONTINUE = 'continue',
@@ -90,9 +99,9 @@ export interface ChatMetadata {
 
 // TODO: Each swipe should have its own display_text and reasoning_display_text
 export interface SwipeInfo {
-  send_date: string;
-  gen_started: string;
-  gen_finished: string;
+  send_date?: string;
+  gen_started?: string;
+  gen_finished?: string;
   extra: {
     reasoning?: string;
     token_count?: number;
@@ -390,6 +399,7 @@ export interface LegacyOaiSettings {
   prompts?: LegacyOaiPrompt[];
   prompt_order?: LegacyOaiPromptOrderConfig[];
   show_thoughts?: boolean;
+  reasoning_effort?: ReasoningEffort;
 
   // Provider specific settings
   claude_use_sysprompt?: boolean;
@@ -447,6 +457,7 @@ export interface LegacyOaiPresetSettings {
   prompts?: LegacyOaiPrompt[];
   prompt_order?: LegacyOaiPromptOrderConfig[];
   show_thoughts?: boolean;
+  reasoning_effort?: ReasoningEffort;
   // Provider specific settings
   claude_use_sysprompt?: boolean;
   assistant_prefill?: string;
@@ -479,6 +490,7 @@ export interface SamplerSettings {
   prompt_order: PromptOrderConfig;
   providers: ProviderSettings;
   show_thoughts: boolean;
+  reasoning_effort: ReasoningEffort;
 }
 
 // --- World Info Types ---

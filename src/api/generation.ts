@@ -1,6 +1,6 @@
 import { getRequestHeaders } from '../utils/api';
-import type { ChatCompletionSource, MessageRole, SamplerSettings, Settings } from '../types';
-import { chat_completion_sources } from '../types';
+import type { ChatCompletionSource, MessageRole, SamplerSettings, Settings, ReasoningEffort, ApiModel } from '../types';
+import { chat_completion_sources, ReasoningEffort as ReasoningEffortEnum } from '../types';
 import type { OpenrouterMiddleoutType } from '../constants';
 
 export interface ApiChatMessage {
@@ -28,6 +28,7 @@ export type ChatCompletionPayload = Partial<{
   include_reasoning?: boolean;
   seed?: number;
   max_completion_tokens?: number;
+  reasoning_effort?: ReasoningEffort | string;
 
   // Claude-specific
   claude_use_sysprompt: boolean;
@@ -64,6 +65,7 @@ export type BuildChatCompletionPayloadOptions = {
   providerSpecific: Settings['api']['provider_specific'];
   playerName: string;
   characterName: string;
+  modelList: ApiModel[];
 };
 export function buildChatCompletionPayload({
   samplerSettings,
@@ -71,6 +73,7 @@ export function buildChatCompletionPayload({
   model,
   source,
   providerSpecific,
+  modelList,
 }: BuildChatCompletionPayloadOptions): ChatCompletionPayload {
   const payload: ChatCompletionPayload = {
     messages,
@@ -88,6 +91,58 @@ export function buildChatCompletionPayload({
     top_a: samplerSettings.top_a,
     include_reasoning: !!samplerSettings.show_thoughts,
   };
+
+  if (samplerSettings.reasoning_effort) {
+    const reasoningEffortSources: ChatCompletionSource[] = [
+      chat_completion_sources.OPENAI,
+      chat_completion_sources.AZURE_OPENAI,
+      chat_completion_sources.CUSTOM,
+      chat_completion_sources.XAI,
+      chat_completion_sources.AIMLAPI,
+      chat_completion_sources.OPENROUTER,
+      chat_completion_sources.POLLINATIONS,
+      chat_completion_sources.PERPLEXITY,
+      chat_completion_sources.COMETAPI,
+      chat_completion_sources.ELECTRONHUB,
+    ];
+
+    let reasoningEffort: ReasoningEffort | string | undefined = samplerSettings.reasoning_effort;
+
+    if (reasoningEffortSources.includes(source)) {
+      switch (samplerSettings.reasoning_effort) {
+        case ReasoningEffortEnum.AUTO:
+          reasoningEffort = undefined;
+          break;
+        case ReasoningEffortEnum.MIN:
+          reasoningEffort =
+            // @ts-ignore
+            [chat_completion_sources.OPENAI, chat_completion_sources.AZURE_OPENAI].includes(source) &&
+            /^gpt-5/.test(model)
+              ? ReasoningEffortEnum.MIN
+              : ReasoningEffortEnum.LOW;
+          break;
+        case ReasoningEffortEnum.MAX:
+          reasoningEffort = ReasoningEffortEnum.HIGH;
+          break;
+        default:
+          reasoningEffort = samplerSettings.reasoning_effort;
+      }
+
+      if (source === chat_completion_sources.ELECTRONHUB) {
+        if (Array.isArray(modelList) && reasoningEffort) {
+          const currentModel = modelList.find((m) => m.id === model);
+          const supportedEfforts = currentModel?.metadata?.supported_reasoning_efforts;
+          if (Array.isArray(supportedEfforts) && !supportedEfforts.includes(reasoningEffort as string)) {
+            reasoningEffort = undefined;
+          }
+        }
+      }
+    }
+
+    if (reasoningEffort) {
+      payload.reasoning_effort = reasoningEffort;
+    }
+  }
 
   // --- Seed ---
   const seedSupportedSources: ChatCompletionSource[] = [
@@ -261,11 +316,33 @@ function extractReasoning(data: any, source: ChatCompletionSource): string | und
   switch (source) {
     case chat_completion_sources.CLAUDE:
       return data?.content?.find((p: any) => p.type === 'thinking')?.thinking;
+    case chat_completion_sources.MAKERSUITE:
+    case chat_completion_sources.VERTEXAI:
+      return (
+        data?.responseContent?.parts
+          ?.filter((p: any) => p.thought)
+          ?.map((p: any) => p.text)
+          ?.join('\n\n') ?? ''
+      );
+    case chat_completion_sources.MISTRALAI:
+      return (
+        data?.choices?.[0]?.message?.content?.[0]?.thinking
+          ?.map((p: any) => p.text)
+          ?.filter((x: any) => x)
+          ?.join('\n\n') ?? ''
+      );
     case chat_completion_sources.OPENROUTER:
-      return data?.choices?.[0]?.message?.reasoning;
     case chat_completion_sources.DEEPSEEK:
     case chat_completion_sources.XAI:
-      return data?.choices?.[0]?.message?.reasoning_content;
+    case chat_completion_sources.AIMLAPI:
+    case chat_completion_sources.POLLINATIONS:
+    case chat_completion_sources.MOONSHOT:
+    case chat_completion_sources.COMETAPI:
+    case chat_completion_sources.ELECTRONHUB:
+    case chat_completion_sources.NANOGPT:
+    case chat_completion_sources.ZAI:
+    case chat_completion_sources.CUSTOM:
+      return data?.choices?.[0]?.message?.reasoning_content ?? data?.choices?.[0]?.message?.reasoning;
     default:
       return undefined;
   }
@@ -278,17 +355,48 @@ function getStreamingReply(data: any, source: ChatCompletionSource): { delta: st
         delta: data?.delta?.text || '',
         reasoning: data?.delta?.thinking || '',
       };
+    case chat_completion_sources.MAKERSUITE:
+    case chat_completion_sources.VERTEXAI:
+      return {
+        delta:
+          data?.candidates?.[0]?.content?.parts?.filter((x: any) => !x.thought)?.map((x: any) => x.text)?.[0] || '',
+        reasoning:
+          data?.candidates?.[0]?.content?.parts?.filter((x: any) => x.thought)?.map((x: any) => x.text)?.[0] || '',
+      };
+    case chat_completion_sources.MISTRALAI:
+      return {
+        delta:
+          data.choices?.[0]?.delta?.content
+            ?.map((x: any) => x.text)
+            .filter((x: any) => x)
+            .join('') || '',
+        reasoning:
+          data.choices?.filter((x: any) => x?.delta?.content?.[0]?.thinking)?.[0]?.delta?.content?.[0]?.thinking?.[0]
+            ?.text || '',
+      };
     case chat_completion_sources.OPENROUTER:
       return {
         delta:
           data.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '',
-        reasoning: data.choices?.[0]?.delta?.reasoning || '',
+        reasoning: data.choices?.filter((x: any) => x?.delta?.reasoning)?.[0]?.delta?.reasoning || '',
       };
     case chat_completion_sources.DEEPSEEK:
     case chat_completion_sources.XAI:
+    case chat_completion_sources.CUSTOM:
+    case chat_completion_sources.POLLINATIONS:
+    case chat_completion_sources.AIMLAPI:
+    case chat_completion_sources.MOONSHOT:
+    case chat_completion_sources.COMETAPI:
+    case chat_completion_sources.ELECTRONHUB:
+    case chat_completion_sources.NANOGPT:
+    case chat_completion_sources.ZAI:
       return {
-        delta: data.choices?.[0]?.delta?.content || '',
-        reasoning: data.choices?.filter((x: any) => x?.delta?.reasoning_content)?.[0]?.delta?.reasoning_content || '',
+        delta:
+          data.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '',
+        reasoning:
+          data.choices?.filter((x: any) => x?.delta?.reasoning_content)?.[0]?.delta?.reasoning_content ??
+          data.choices?.filter((x: any) => x?.delta?.reasoning)?.[0]?.delta?.reasoning ??
+          '',
       };
     // Fallback for OpenAI and compatible APIs
     case chat_completion_sources.OPENAI:
@@ -380,12 +488,15 @@ export class ChatCompletionService {
                 const source = payload.chat_completion_source as ChatCompletionSource;
                 const chunk = getStreamingReply(parsed, source);
 
-                if (chunk.reasoning) {
+                const hasNewReasoning = chunk.reasoning && chunk.reasoning.length > 0;
+                const hasNewDelta = chunk.delta && chunk.delta.length > 0;
+
+                if (hasNewReasoning) {
                   reasoning += chunk.reasoning;
                 }
 
-                if (chunk.delta) {
-                  yield { delta: chunk.delta, reasoning: reasoning };
+                if (hasNewDelta || hasNewReasoning) {
+                  yield { delta: chunk.delta || '', reasoning: reasoning };
                 }
               } catch (e) {
                 console.error('Error parsing stream chunk:', data, e);

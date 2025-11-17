@@ -223,7 +223,6 @@ export const useChatStore = defineStore('chat', () => {
         if (!lastMessage || lastMessage.is_user) return;
       }
 
-      const forContinue = mode === GenerationMode.CONTINUE;
       if (!personaStore.activePersona) {
         toast.error(t('chat.generate.noPersonaError'));
         console.error('generateResponse called without an active persona.');
@@ -233,7 +232,6 @@ export const useChatStore = defineStore('chat', () => {
         character: activeCharacter,
         chatHistory: chatHistoryForPrompt,
         persona: personaStore.activePersona,
-        forContinue,
         samplerSettings: settingsStore.settings.api.samplers,
       });
       const messages = await promptBuilder.build();
@@ -259,6 +257,7 @@ export const useChatStore = defineStore('chat', () => {
         providerSpecific: settings.api.provider_specific,
         playerName: uiStore.activePlayerName || 'User',
         characterName: activeCharacter.name,
+        modelList: apiStore.modelList,
       });
 
       const handleGenerationResult = async (content: string, reasoning?: string) => {

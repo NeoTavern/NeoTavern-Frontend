@@ -78,6 +78,59 @@ export const aiConfigDefinition: AiConfigSection[] = [
           ],
         },
       },
+      {
+        id: 'api.samplers.reasoning_effort',
+        widget: 'select',
+        label: 'aiConfig.reasoningEffort.label',
+        infoTooltip: 'aiConfig.reasoningEffort.tooltip',
+        infoLink: 'https://docs.sillytavern.app/usage/prompts/reasoning/#reasoning-effort',
+        conditions: {
+          source: [
+            'openai',
+            'custom',
+            'claude',
+            'xai',
+            'makersuite',
+            'vertexai',
+            'aimlapi',
+            'openrouter',
+            'pollinations',
+            'perplexity',
+            'cometapi',
+            'electronhub',
+            'azure_openai',
+          ],
+        },
+        options: [
+          { value: 'auto', label: 'aiConfig.reasoningEffort.options.auto' },
+          { value: 'min', label: 'aiConfig.reasoningEffort.options.minimum' },
+          { value: 'low', label: 'aiConfig.reasoningEffort.options.low' },
+          { value: 'medium', label: 'aiConfig.reasoningEffort.options.medium' },
+          { value: 'high', label: 'aiConfig.reasoningEffort.options.high' },
+          { value: 'max', label: 'aiConfig.reasoningEffort.options.maximum' },
+        ],
+      },
+      {
+        widget: 'info-display',
+        description: 'aiConfig.reasoningEffort.descriptionOpenAI',
+        conditions: {
+          source: ['openai', 'custom', 'xai', 'aimlapi', 'openrouter', 'perplexity', 'electronhub', 'azure_openai'],
+        },
+      },
+      {
+        widget: 'info-display',
+        description: 'aiConfig.reasoningEffort.descriptionClaude',
+        conditions: {
+          source: ['claude'],
+        },
+      },
+      {
+        widget: 'info-display',
+        description: 'aiConfig.reasoningEffort.descriptionGoogle',
+        conditions: {
+          source: ['makersuite', 'vertexai'],
+        },
+      },
     ],
   },
   {

@@ -287,6 +287,21 @@ export interface MessageSchema {
       label: string;
       description: string;
     };
+    reasoningEffort: {
+      label: string;
+      tooltip: string;
+      options: {
+        auto: string;
+        minimum: string;
+        low: string;
+        medium: string;
+        high: string;
+        maximum: string;
+      };
+      descriptionOpenAI: string;
+      descriptionClaude: string;
+      descriptionGoogle: string;
+    };
     temperature: {
       label: string;
     };

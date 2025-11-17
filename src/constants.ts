@@ -1,4 +1,10 @@
-import type { ChatCompletionSource, Prompt, PromptOrderConfig, SamplerSettings } from './types';
+import {
+  ReasoningEffort,
+  type ChatCompletionSource,
+  type Prompt,
+  type PromptOrderConfig,
+  type SamplerSettings,
+} from './types';
 
 export enum OpenrouterMiddleoutType {
   AUTO = 'auto',
@@ -91,6 +97,7 @@ export const defaultSamplerSettings: SamplerSettings = {
     claude: {},
     google: {},
   },
+  reasoning_effort: ReasoningEffort.AUTO,
 };
 
 export const defaultProviderModels: Record<ChatCompletionSource, string> = {

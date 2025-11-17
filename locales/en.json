@@ -284,6 +284,21 @@
       "label": "Request model reasoning",
       "description": "Allows the model to return its thinking process. This setting affects visibility only."
     },
+    "reasoningEffort": {
+      "label": "Reasoning Effort",
+      "tooltip": "Constrains effort on reasoning for reasoning models.\nReducing reasoning effort can result in faster responses and fewer tokens used on reasoning in a response.",
+      "options": {
+        "auto": "Auto",
+        "minimum": "Minimum",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "maximum": "Maximum"
+      },
+      "descriptionOpenAI": "OpenAI-style options: low, medium, high. Minimum and maximum are aliased to low and high. Auto does not send an effort level.",
+      "descriptionClaude": "Allocates a portion of the response length for thinking (min: 1024 tokens, low: 10%, medium: 25%, high: 50%, max: 95%), but minimum 1024 tokens. Auto does not request thinking.",
+      "descriptionGoogle": "Allocates a portion of the response length for thinking (Flash 2.5/Pro 2.5) (min: 0/128 tokens, low: 10%, medium: 25%, high: 50%, max: 24576/32768 tokens). Auto lets the model decide."
+    },
     "temperature": {
       "label": "Temperature"
     },

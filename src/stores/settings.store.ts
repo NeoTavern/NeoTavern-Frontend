@@ -233,6 +233,7 @@ function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSettingsRes
             use_makersuite_sysprompt: oai.use_makersuite_sysprompt,
           },
         },
+        reasoning_effort: oai.reasoning_effort ?? defaultSamplerSettings.reasoning_effort,
       },
       connection_profiles: migratedConnectionProfiles,
       selected_connection_profile: legacy.extension_settings?.connectionManager?.selected,

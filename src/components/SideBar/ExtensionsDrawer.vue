@@ -15,11 +15,13 @@ useResizable(browserPane, dividerEl, { storageKey: 'extensions_browser_width', i
 
 const notifyOnUpdates = ref(false); // TODO: Connect this to settings
 
+// @ts-ignore
 function manageExtensions() {
   // TODO: Open manage extensions popup
   alert(t('extensions.managePopupNotImplemented'));
 }
 
+// @ts-ignore
 function installExtension() {
   // TODO: Open install extension popup
   alert(t('extensions.installPopupNotImplemented'));
