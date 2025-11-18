@@ -33,13 +33,8 @@ import { useStrictI18n } from '../composables/useStrictI18n';
 import { getFirstMessage } from '../utils/chat';
 import { get, set, defaultsDeep } from 'lodash-es';
 import { eventEmitter } from '../utils/event-emitter';
+import { ApiTokenizer } from '../api/tokenizer';
 
-// TODO: Replace with a real API call to the backend for accurate tokenization
-async function getTokenCount(text: string): Promise<number> {
-  if (!text || typeof text !== 'string') return 0;
-  // This is a very rough approximation. The backend will have a proper tokenizer.
-  return Math.round(text.length / 4);
-}
 
 const ANTI_TROLL_MAX_TAGS = 50;
 const IMPORT_EXLCUDED_TAGS: string[] = [];
@@ -167,9 +162,10 @@ export const useCharacterStore = defineStore('character', () => {
       'data.depth_prompt.prompt',
     ];
 
+    const tokenizer = ApiTokenizer.default;
     const newFieldCounts: Record<string, number> = {};
     const promises = fieldPaths.map((path) =>
-      getTokenCount(get(characterData, path)).then((count) => {
+      tokenizer.getTokenCount(get(characterData, path)).then((count) => {
         newFieldCounts[path] = count;
       }),
     );

@@ -5,6 +5,7 @@ import type { ChatMessage } from './chat';
 import type { MessageRole } from './common';
 import type { Persona } from './persona';
 import type { SamplerSettings, Settings } from './settings';
+import type { Tokenizer } from './tokenizer';
 
 export { type ReasoningEffort, type MessageRole };
 
@@ -78,6 +79,7 @@ export type GenerationContext = {
   character: Character;
   history: ChatMessage[];
   persona: Persona;
+  tokenizer: Tokenizer;
   settings: {
     sampler: SamplerSettings;
     source: ChatCompletionSource;
@@ -94,4 +96,5 @@ export type PromptBuilderOptions = {
   chatHistory: ChatMessage[];
   samplerSettings: SamplerSettings;
   persona: Persona;
+  tokenizer: Tokenizer;
 };

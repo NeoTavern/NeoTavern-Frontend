@@ -27,13 +27,7 @@ import { default_user_avatar, DEFAULT_SAVE_EDIT_TIMEOUT, GenerationMode } from '
 import { useSettingsStore } from './settings.store';
 import { usePersonaStore } from './persona.store';
 import { eventEmitter } from '../utils/event-emitter';
-
-// TODO: Replace with a real API call to the backend for accurate tokenization
-async function getTokenCount(text: string): Promise<number> {
-  if (!text || typeof text !== 'string') return 0;
-  // This is a very rough approximation. The backend will have a proper tokenizer.
-  return Math.round(text.length / 4);
-}
+import { ApiTokenizer } from '../api/tokenizer';
 
 export const useChatStore = defineStore('chat', () => {
   const { t } = useStrictI18n();
@@ -270,6 +264,8 @@ export const useChatStore = defineStore('chat', () => {
         throw new Error(t('chat.generate.noModelError'));
       }
 
+      const tokenizer = new ApiTokenizer({ tokenizerType: settings.api.tokenizer, model: activeModel });
+
       const context: GenerationContext = {
         mode,
         character: activeCharacter,
@@ -284,6 +280,7 @@ export const useChatStore = defineStore('chat', () => {
         playerName: uiStore.activePlayerName || 'User',
         characterName: activeCharacter.name,
         controller: new AbortController(),
+        tokenizer: tokenizer,
       };
 
       await eventEmitter.emit('process:generation-context', context);
@@ -299,6 +296,7 @@ export const useChatStore = defineStore('chat', () => {
         chatHistory: context.history,
         persona: context.persona,
         samplerSettings: context.settings.sampler,
+        tokenizer: context.tokenizer,
       });
       const messages = await promptBuilder.build();
 
@@ -328,7 +326,7 @@ export const useChatStore = defineStore('chat', () => {
 
       const handleGenerationResult = async (content: string, reasoning?: string) => {
         const genFinished = new Date().toISOString();
-        const token_count = await getTokenCount(content);
+        const token_count = await tokenizer.getTokenCount(content);
         const swipeInfo: SwipeInfo = {
           send_date: getMessageTimeStamp(),
           gen_started: genStarted,
@@ -339,7 +337,7 @@ export const useChatStore = defineStore('chat', () => {
         if (mode === GenerationMode.CONTINUE && lastMessage) {
           lastMessage.mes += content;
           lastMessage.gen_finished = genFinished;
-          lastMessage.extra!.token_count = await getTokenCount(lastMessage.mes);
+          lastMessage.extra!.token_count = await tokenizer.getTokenCount(lastMessage.mes);
           generatedMessage = lastMessage;
           await eventEmitter.emit('message:updated', chat.value.length - 1, lastMessage);
         } else if (mode === GenerationMode.ADD_SWIPE && lastMessage) {
@@ -469,7 +467,7 @@ export const useChatStore = defineStore('chat', () => {
           const finalMessage = chat.value[targetMessageIndex];
           if (!finalMessage) return;
           finalMessage.gen_finished = new Date().toISOString();
-          finalMessage.extra!.token_count = await getTokenCount(finalMessage.mes);
+          finalMessage.extra!.token_count = await tokenizer.getTokenCount(finalMessage.mes);
 
           if (mode === GenerationMode.NEW || mode === GenerationMode.REGENERATE) {
             finalMessage.swipes![0] = finalMessage.mes;

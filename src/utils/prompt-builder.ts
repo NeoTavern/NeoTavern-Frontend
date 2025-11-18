@@ -1,15 +1,8 @@
-import type { Character, ChatMessage, Persona, SamplerSettings, ApiChatMessage, PromptBuilderOptions } from '../types';
+import type { Character, ChatMessage, Persona, SamplerSettings, ApiChatMessage, PromptBuilderOptions, Tokenizer } from '../types';
 import { useWorldInfoStore } from '../stores/world-info.store';
 import { WorldInfoProcessor } from './world-info-processor';
 import { defaultSamplerSettings } from '../constants';
 import { eventEmitter } from './event-emitter';
-
-// TODO: Replace with a real API call to the backend for accurate tokenization
-async function getTokenCount(text: string): Promise<number> {
-  if (!text || typeof text !== 'string') return 0;
-  // This is a very rough approximation. The backend will have a proper tokenizer.
-  return Math.round(text.length / 4);
-}
 
 // TODO: Add proper templating engine
 function substitute(text: string, char: Character, user: string): string {
@@ -23,12 +16,14 @@ export class PromptBuilder {
   private samplerSettings: SamplerSettings;
   private persona: Persona;
   private maxContext: number;
-
-  constructor({ character, chatHistory, samplerSettings, persona }: PromptBuilderOptions) {
+  private tokenizer: Tokenizer;
+    
+  constructor({ character, chatHistory, samplerSettings, persona, tokenizer }: PromptBuilderOptions) {
     this.character = character;
     this.chatHistory = chatHistory;
     this.samplerSettings = samplerSettings;
     this.persona = persona;
+    this.tokenizer = tokenizer;
 
     this.maxContext = this.samplerSettings.max_context ?? defaultSamplerSettings.max_context;
   }
@@ -39,6 +34,7 @@ export class PromptBuilder {
       chatHistory: this.chatHistory,
       samplerSettings: this.samplerSettings,
       persona: this.persona,
+      tokenizer: this.tokenizer,
     };
     await eventEmitter.emit('prompt:building-started', options);
     const finalMessages: ApiChatMessage[] = [];
@@ -57,6 +53,7 @@ export class PromptBuilder {
       settings: worldInfoStore.settings,
       persona: this.persona,
       maxContext: this.maxContext,
+      tokenizer: this.tokenizer,
     });
     const { worldInfoBefore, worldInfoAfter } = await processor.process();
 
@@ -124,7 +121,7 @@ export class PromptBuilder {
 
     for (const prompt of fixedPrompts) {
       if (prompt.content !== historyPlaceholder.content) {
-        currentTokenCount += await getTokenCount(prompt.content);
+        currentTokenCount += await this.tokenizer.getTokenCount(prompt.content);
       }
     }
 
@@ -141,7 +138,7 @@ export class PromptBuilder {
         role: msg.is_user ? 'user' : 'assistant',
         content: msg.mes,
       };
-      const msgTokenCount = await getTokenCount(apiMsg.content);
+      const msgTokenCount = await this.tokenizer.getTokenCount(apiMsg.content);
 
       if (historyTokenCount + msgTokenCount <= historyBudget) {
         historyTokenCount += msgTokenCount;

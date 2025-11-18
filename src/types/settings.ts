@@ -3,6 +3,7 @@ import {
   type OpenrouterMiddleoutType,
   type SendOnEnterOptions,
   type TagImportSetting,
+  type TokenizerType,
 } from '../constants';
 import type { ChatCompletionSource, ConnectionProfile } from './api';
 import type { BackgroundFitting, MessageRole } from './common';
@@ -233,6 +234,7 @@ export interface Settings {
     connection_profiles: ConnectionProfile[];
     selected_connection_profile?: string;
     selected_provider_models: Record<ChatCompletionSource, string>;
+    tokenizer: TokenizerType;
     provider_specific: {
       openrouter: {
         use_fallback: boolean;

@@ -57,6 +57,42 @@ export enum GenerationMode {
   ADD_SWIPE = 'add_swipe',
 }
 
+export enum TokenizerType {
+    AUTO = 'auto',
+    LLAMA = 'llama',
+    LLAMA3 = 'llama3',
+    MISTRAL = 'mistral',
+    YI = 'yi',
+    CLAUDE = 'claude',
+    GEMMA = 'gemma',
+    JAMBA = 'jamba',
+    QWEN2 = 'qwen2',
+    COMMANDR = 'command-r',
+    COMMANDA = 'command-a',
+    NEMO = 'nemo',
+    DEEPSEEK = 'deepseek',
+    GPT2 = 'gpt2',
+    GPT35 = 'gpt-3.5-turbo',
+    GPT4O = 'gpt-4o',
+}
+
+export const TOKENIZER_GUESS_MAP: Array<[RegExp, TokenizerType]> = [
+    [/gemma|gemini/i, TokenizerType.GEMMA],
+    [/deepseek/i, TokenizerType.DEEPSEEK],
+    [/llama3|llama-3/i, TokenizerType.LLAMA3],
+    [/llama/i, TokenizerType.LLAMA],
+    [/gpt-4o|gpt-5|o1|o3|o4/i, TokenizerType.GPT4O],
+    [/gpt-4|gpt-3.5/i, TokenizerType.GPT35],
+    [/claude/i, TokenizerType.CLAUDE],
+    [/command-r/i, TokenizerType.COMMANDR],
+    [/command-a/i, TokenizerType.COMMANDA],
+    [/nemo|pixtral/i, TokenizerType.NEMO],
+    [/mistral|mixtral/i, TokenizerType.MISTRAL],
+    [/qwen2/i, TokenizerType.QWEN2],
+    [/jamba/i, TokenizerType.JAMBA],
+    [/yi/i, TokenizerType.YI],
+];
+
 export const DEFAULT_SAVE_EDIT_TIMEOUT = DebounceTimeout.RELAXED;
 export const DEFAULT_PRINT_TIMEOUT = DebounceTimeout.QUICK;
 export const default_avatar = 'img/ai4.png';

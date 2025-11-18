@@ -9,15 +9,9 @@ import {
   type Persona,
   type ProcessedWorldInfo,
   type WorldInfoOptions,
+  type Tokenizer,
 } from '../types';
 import { eventEmitter } from './event-emitter';
-
-// TODO: Replace with a real API call to the backend for accurate tokenization
-async function getTokenCount(text: string): Promise<number> {
-  if (!text || typeof text !== 'string') return 0;
-  // This is a very rough approximation. The backend will have a proper tokenizer.
-  return Math.round(text.length / 4);
-}
 
 // TODO: These should be sourced from a central place or settings
 const MAX_SCAN_DEPTH = 1000;
@@ -106,14 +100,16 @@ export class WorldInfoProcessor {
   private books: WorldInfoBook[];
   private maxContext: number;
   private persona: Persona;
+  private tokenizer: Tokenizer;
 
-  constructor({ chat, character, settings, books, maxContext, persona }: WorldInfoOptions) {
+  constructor({ chat, character, settings, books, maxContext, persona, tokenizer }: WorldInfoOptions) {
     this.chat = chat;
     this.character = character;
     this.settings = settings;
     this.books = books;
     this.persona = persona;
     this.maxContext = maxContext;
+    this.tokenizer = tokenizer;
   }
 
   public async process(): Promise<ProcessedWorldInfo> {
@@ -124,6 +120,7 @@ export class WorldInfoProcessor {
       books: this.books,
       persona: this.persona,
       maxContext: this.maxContext,
+      tokenizer: this.tokenizer,
     };
     await eventEmitter.emit('world-info:processing-started', options);
 
@@ -225,8 +222,8 @@ export class WorldInfoProcessor {
 
           const substitutedContent = substituteParams(entry.content, this.character, this.persona.name);
           const contentForBudget = `\n${substitutedContent}`;
-          const currentTokens = await getTokenCount(currentContentForBudget);
-          const entryTokens = await getTokenCount(contentForBudget);
+          const currentTokens = await this.tokenizer.getTokenCount(currentContentForBudget);
+          const entryTokens = await this.tokenizer.getTokenCount(contentForBudget);
 
           if (!entry.ignoreBudget && currentTokens + entryTokens > budget) {
             tokenBudgetOverflowed = true;

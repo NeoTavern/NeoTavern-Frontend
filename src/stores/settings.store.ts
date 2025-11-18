@@ -6,6 +6,7 @@ import {
   defaultSamplerSettings,
   defaultProviderModels,
   OpenrouterMiddleoutType,
+  TokenizerType,
 } from '../constants';
 import { isMobile } from '../utils/browser';
 import {
@@ -52,6 +53,7 @@ function createDefaultSettings(): Settings {
     connection_profiles: [],
     selected_connection_profile: undefined,
     selected_provider_models: { ...defaultProviderModels },
+    tokenizer: TokenizerType.AUTO,
     provider_specific: {
       openrouter: {
         allow_fallbacks: true,
@@ -240,6 +242,7 @@ function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSettingsRes
       },
       connection_profiles: migratedConnectionProfiles,
       selected_connection_profile: legacy.extension_settings?.connectionManager?.selected,
+      tokenizer: TokenizerType.AUTO,
     },
     worldInfo: legacy.world_info_settings,
     account: legacy.account_storage,

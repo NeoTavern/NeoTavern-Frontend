@@ -9,6 +9,7 @@ export * from './popup';
 export * from './settings';
 export * from './ui';
 export * from './world-info';
+export * from './tokenizer';
 
 export type { ExtensionEventMap } from './events';
 export type { ExtensionAPI, LlmGenerationOptions } from './ExtensionAPI';

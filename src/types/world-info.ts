@@ -2,6 +2,7 @@ import type { Character } from './character';
 import type { ChatMessage } from './chat';
 import type { MessageRole } from './common';
 import type { Persona } from './persona';
+import type { Tokenizer } from './tokenizer';
 
 export enum WorldInfoPosition {
   BEFORE_CHAR = 0,
@@ -119,4 +120,5 @@ export type WorldInfoOptions = {
   books: WorldInfoBook[];
   persona: Persona;
   maxContext: number;
+  tokenizer: Tokenizer;
 };
