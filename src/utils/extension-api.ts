@@ -585,6 +585,19 @@ const baseExtensionAPI: ExtensionAPI = {
         console.error(`[ExtensionAPI] Failed to load and mount component "${componentName}":`, error);
       }
     },
+
+    mount: (container: HTMLElement, component: Vue.Component, props: Record<string, any> = {}): Vue.App => {
+      if (!container) {
+        throw new Error('[ExtensionAPI] Target container is null.');
+      }
+
+      const app = createApp(component, props);
+      app.use(pinia);
+      app.use(i18n);
+      app.mount(container);
+
+      return app;
+    },
   },
 
   /**
@@ -658,7 +671,7 @@ const baseExtensionAPI: ExtensionAPI = {
  * Creates a proxy for the extension API that scopes settings access to the specific extension.
  * @param extensionId The unique ID of the extension (manifest.name).
  */
-function createScopedApiProxy(extensionId: string): ExtensionAPI {
+export function createScopedApiProxy(extensionId: string): ExtensionAPI {
   const settingsStore = useSettingsStore();
 
   const meta: ExtensionMetadata = {

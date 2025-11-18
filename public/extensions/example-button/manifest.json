@@ -1,6 +1,0 @@
-{
-  "name": "example-button",
-  "display_name": "Example Button",
-  "description": "Adds a simple button to the character menu.",
-  "js": "script.js"
-}

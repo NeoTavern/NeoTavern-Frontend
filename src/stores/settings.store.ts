@@ -71,6 +71,8 @@ function createDefaultSettings(): Settings {
   };
   defaultSettings.worldInfo = defaultWorldInfoSettings;
   defaultSettings.account = {};
+  defaultSettings.disabledExtensions = [];
+  defaultSettings.extensionSettings = {};
   defaultSettings.persona = {
     showNotifications: true,
     allowMultiConnections: false,
@@ -241,6 +243,7 @@ function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSettingsRes
     },
     worldInfo: legacy.world_info_settings,
     account: legacy.account_storage,
+    disabledExtensions: [],
     extensionSettings: {}, // Since old extensions not going to work, start fresh
   };
   return migrated;

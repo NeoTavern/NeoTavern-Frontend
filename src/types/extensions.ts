@@ -1,3 +1,5 @@
+import type { ExtensionAPI } from './ExtensionAPI';
+
 export interface ExtensionManifest {
   name: string;
   display_name: string;
@@ -21,4 +23,14 @@ export interface ExtensionPrompt {
   depth: number;
   scan: boolean;
   filter: () => boolean | Promise<boolean>;
+}
+
+export interface BuiltInExtensionModule {
+  manifest: ExtensionManifest;
+  /**
+   * Called when the extension is enabled.
+   * @param api The scoped API instance for this extension.
+   * @returns A cleanup function to run when disabled (remove DOM nodes, listeners).
+   */
+  activate: (api: ExtensionAPI) => void | (() => void) | Promise<void | (() => void)>;
 }

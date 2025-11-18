@@ -5,9 +5,9 @@ export async function discoverExtensions(): Promise<{ name: string; type: string
   // Mocked response for development. The real implementation is commented out below.
   console.log('Using mocked extension discovery');
   return Promise.resolve([
-    { name: 'example-button', type: 'local' },
-    { name: 'example-vue-component', type: 'local' },
-    { name: 'message-buttons', type: 'local' },
+    // { name: 'example-button', type: 'local' },
+    // { name: 'example-vue-component', type: 'local' },
+    // { name: 'message-buttons', type: 'local' },
   ]);
   /*
   const response = await fetch('/api/extensions/discover');

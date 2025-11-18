@@ -1,9 +1,12 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { discoverExtensions, fetchManifest } from '../api/extensions';
-import type { ExtensionManifest } from '../types';
+import type { BuiltInExtensionModule, ExtensionManifest } from '../types';
 import { loadScript, loadStyle } from '../utils/extension-loader';
 import { sanitizeSelector } from '../utils/dom';
+import { builtInExtensions } from '../extensions/built-in';
+import { createScopedApiProxy } from '../utils/extension-api';
+import { useSettingsStore } from './settings.store';
 
 export interface Extension {
   id: string;
@@ -11,6 +14,7 @@ export interface Extension {
   manifest: ExtensionManifest;
   isActive: boolean;
   containerId: string;
+  moduleRef?: BuiltInExtensionModule;
 }
 
 /**
@@ -21,10 +25,13 @@ export function getExtensionContainerId(extensionId: string): string {
 }
 
 export const useExtensionStore = defineStore('extension', () => {
+  const settingsStore = useSettingsStore();
   const extensions = ref<Record<string, Extension>>({});
-  const disabledExtensions = ref<string[]>([]); // This should be loaded from settings store
   const searchTerm = ref('');
   const selectedExtensionId = ref<string | null>(null);
+  const cleanupFunctions = new Map<string, () => void>();
+
+  const disabledExtensions = computed(() => settingsStore.settings.disabledExtensions);
 
   const filteredExtensions = computed(() => {
     const lowerSearch = searchTerm.value.toLowerCase();
@@ -51,7 +58,37 @@ export const useExtensionStore = defineStore('extension', () => {
   async function initializeExtensions() {
     if (Object.keys(extensions.value).length > 0) return; // Already initialized
 
+    if (settingsStore.settingsInitializing) {
+      await new Promise<void>((resolve) => {
+        const stop = watch(
+          () => settingsStore.settingsInitializing,
+          (initializing) => {
+            if (!initializing) {
+              stop();
+              resolve();
+            }
+          },
+          { immediate: true },
+        );
+        settingsStore.initializeSettings();
+      });
+    }
+
+    // 1. Load Built-ins
+    for (const module of builtInExtensions) {
+      const id = module.manifest.name;
+      extensions.value[id] = {
+        id,
+        type: 'builtin',
+        manifest: module.manifest,
+        isActive: false,
+        containerId: getExtensionContainerId(id),
+        moduleRef: module,
+      };
+    }
+
     try {
+      // 2. Load External
       const discovered = await discoverExtensions();
       const manifestPromises = discovered.map(async (ext) => {
         try {
@@ -65,43 +102,97 @@ export const useExtensionStore = defineStore('extension', () => {
 
       const results = (await Promise.all(manifestPromises)).filter((x): x is NonNullable<typeof x> => x !== null);
 
-      const newExtensions: Record<string, Extension> = {};
       for (const ext of results) {
         // The name in the manifest (or folder name) is the ID
         const id = ext.name;
-        newExtensions[id] = {
-          id: id,
-          type: ext.type,
-          manifest: ext.manifest,
-          isActive: false, // will be set by activation logic
-          containerId: getExtensionContainerId(id),
-        };
+        // Don't overwrite built-ins if name conflict occurs (built-ins take priority/are loaded first)
+        if (!extensions.value[id]) {
+          extensions.value[id] = {
+            id: id,
+            type: ext.type,
+            manifest: ext.manifest,
+            isActive: false,
+            containerId: getExtensionContainerId(id),
+          };
+        }
       }
-      extensions.value = newExtensions;
 
       await activateExtensions();
     } catch (error) {
       console.error('Failed to initialize extensions:', error);
+      // Even if external fails, we should try to activate built-ins
+      await activateExtensions();
     }
   }
 
   async function activateExtensions() {
-    // Basic activation logic. A full implementation would check dependencies, versions etc.
     for (const ext of Object.values(extensions.value)) {
-      if (!disabledExtensions.value.includes(ext.id)) {
-        try {
+      if (!disabledExtensions.value.includes(ext.id) && !ext.isActive) {
+        // Activate without modifying settings (save=false)
+        await toggleExtension(ext.id, true, false);
+      }
+    }
+  }
+
+  async function toggleExtension(id: string, enabled: boolean, save = true) {
+    const ext = extensions.value[id];
+    if (!ext) return;
+
+    if (enabled) {
+      // --- ACTIVATION ---
+      if (ext.isActive) return;
+
+      const api = createScopedApiProxy(id);
+
+      try {
+        if (ext.type === 'builtin' && ext.moduleRef) {
+          // Built-in activation
+          const cleanup = await ext.moduleRef.activate(api);
+          if (typeof cleanup === 'function') {
+            cleanupFunctions.set(id, cleanup);
+          }
+          console.debug(`Activated built-in extension: ${id}`);
+        } else {
+          // External activation
           if (ext.manifest.css) {
-            await loadStyle(ext.id, ext.manifest.css);
+            await loadStyle(id, ext.manifest.css);
           }
           if (ext.manifest.js) {
-            await loadScript(ext.id, ext.manifest.js);
+            await loadScript(id, ext.manifest.js);
           }
-          ext.isActive = true;
-          console.debug(`Activated extension: ${ext.id}`);
-        } catch (error) {
-          console.error(`Failed to activate extension ${ext.id}:`, error);
+          console.debug(`Activated external extension: ${id}`);
         }
+        ext.isActive = true;
+
+        if (save && settingsStore.settings.disabledExtensions.includes(id)) {
+          settingsStore.settings.disabledExtensions = settingsStore.settings.disabledExtensions.filter((x) => x !== id);
+          settingsStore.saveSettingsDebounced();
+        }
+      } catch (error) {
+        console.error(`Failed to activate extension ${id}:`, error);
       }
+    } else {
+      // --- DEACTIVATION ---
+      if (!ext.isActive) return;
+
+      // 1. Run cleanup
+      const cleanup = cleanupFunctions.get(id);
+      if (cleanup) {
+        try {
+          cleanup();
+        } catch (e) {
+          console.error(`Error during cleanup of ${id}`, e);
+        }
+        cleanupFunctions.delete(id);
+      }
+
+      // 2. Update state
+      ext.isActive = false;
+      if (save && !settingsStore.settings.disabledExtensions.includes(id)) {
+        settingsStore.settings.disabledExtensions.push(id);
+        settingsStore.saveSettingsDebounced();
+      }
+      console.debug(`Deactivated extension: ${id}`);
     }
   }
 
@@ -115,5 +206,6 @@ export const useExtensionStore = defineStore('extension', () => {
     selectExtension,
     initializeExtensions,
     getExtensionContainerId,
+    toggleExtension,
   };
 });

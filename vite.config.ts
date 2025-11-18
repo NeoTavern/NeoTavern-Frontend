@@ -4,18 +4,21 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
     VueI18nPlugin({
-      include: resolve(dirname(fileURLToPath(import.meta.url)), './locales/**'),
+      include: resolve(__dirname, './locales/**'),
       strictMessage: false, //bypassing html error
     }),
   ],
   resolve: {
     alias: {
-      // This is the fix: alias 'vue' to the full build that includes the template compiler
+      '@': resolve(__dirname, './src'),
       vue: 'vue/dist/vue.esm-bundler.js',
     },
   },

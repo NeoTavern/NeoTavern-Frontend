@@ -11,6 +11,7 @@ import type { WorldInfoBook, WorldInfoEntry, WorldInfoSettings } from './world-i
 import type { MenuType } from './common';
 import type { ExtensionEventMap } from './events';
 import type { PopupShowOptions } from './popup';
+import type { Component, App } from 'vue';
 
 export interface LlmGenerationOptions {
   connectionProfileName?: string;
@@ -105,6 +106,16 @@ export interface ExtensionAPI {
       componentName: MountableComponent,
       props: Record<string, any>,
     ) => Promise<void>;
+    /**
+     * Mounts a raw Vue component to a specific DOM element.
+     * This is primarily for Built-in extensions that have access to compiled .vue files.
+     *
+     * @param container The DOM element to mount into.
+     * @param component The Vue component to render.
+     * @param props Props to pass to the component.
+     * @returns The Vue Application instance (useful for unmounting later).
+     */
+    mount: (container: HTMLElement, component: Component, props?: Record<string, any>) => App;
   };
   events: {
     on: <E extends keyof ExtensionEventMap>(

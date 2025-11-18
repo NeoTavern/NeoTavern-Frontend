@@ -252,6 +252,7 @@ export interface Settings {
   };
   worldInfo: WorldInfoSettings;
   account: AccountStorageState;
+  disabledExtensions: string[];
   extensionSettings: Record<string, Record<string, any>>;
 }
 

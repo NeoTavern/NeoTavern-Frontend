@@ -1,6 +1,0 @@
-{
-  "name": "message-buttons",
-  "display_name": "Message Buttons Example",
-  "description": "Demonstrates adding a custom button to each chat message after the chat updates.",
-  "js": "script.js"
-}
