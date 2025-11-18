@@ -129,7 +129,7 @@ async function deleteChat(chatFile: string) {
 </script>
 
 <template>
-  <dialog ref="dialog" class="popup wide" @cancel="close">
+  <dialog ref="dialog" id="chat-management-popup" class="popup wide" @cancel="close">
     <div class="popup-body">
       <h3>
         {{ t('chatManagement.title', { characterName: characterStore.activeCharacterName }) }}
@@ -140,9 +140,9 @@ async function deleteChat(chatFile: string) {
       <div class="chat-management-popup__list">
         <table>
           <tbody>
-            <tr v-for="file in chatFiles" :key="file">
+            <tr v-for="file in chatFiles" :key="file" class="chat-file-row" :data-file="file">
               <td class="chat-file-name">
-                <span v-if="chatStore.activeChatFile === file" class="active-indicator">
+                <span v-show="chatStore.activeChatFile === file" class="active-indicator">
                   {{ t('chatManagement.active') }}
                 </span>
                 {{ file.replace(/\.jsonl$/, '') }}
@@ -177,48 +177,3 @@ async function deleteChat(chatFile: string) {
     </div>
   </dialog>
 </template>
-
-<style scoped>
-.chat-management-popup__actions {
-  display: flex;
-  justify-content: flex-start;
-  margin-bottom: 10px;
-}
-
-.chat-management-popup__list {
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-tr {
-  border-bottom: 1px solid var(--theme-border-color);
-}
-
-td {
-  padding: 8px;
-}
-
-.chat-file-name {
-  width: 100%;
-}
-
-.chat-file-actions {
-  display: flex;
-  gap: 5px;
-  justify-content: flex-end;
-}
-
-.active-indicator {
-  background-color: var(--color-accent-green-70a);
-  color: white;
-  padding: 2px 5px;
-  border-radius: 5px;
-  font-size: 0.8em;
-  margin-right: 10px;
-}
-</style>

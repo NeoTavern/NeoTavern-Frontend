@@ -1,0 +1,32 @@
+.connection-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .fields-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 10px 15px;
+
+    .field-item {
+      font-weight: bold;
+    }
+
+    .field-value {
+      background: var(--black-30a);
+      padding: 5px;
+      border-radius: 5px;
+      font-family: var(--font-family-mono);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}

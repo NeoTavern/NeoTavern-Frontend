@@ -36,9 +36,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="extensions-panel" :class="{ 'is-collapsed': isBrowserCollapsed }">
+  <div id="extensions-panel" class="extensions-panel" :class="{ 'is-collapsed': isBrowserCollapsed }">
     <!-- Left Pane: Extension Browser -->
-    <div ref="browserPane" class="extensions-panel__browser">
+    <div ref="browserPane" id="extensions-browser" class="extensions-panel__browser">
       <div class="extensions-panel__browser-header">
         <div style="display: flex; gap: 5px">
           <div class="menu-button" :title="t('extensions.manage')">
@@ -61,6 +61,7 @@ onMounted(() => {
           :key="extension.id"
           class="extension-item"
           :class="{ 'is-active': extensionStore.selectedExtensionId === extension.id }"
+          :data-extension-id="extension.id"
           @click="extensionStore.selectExtension(extension.id)"
         >
           <i class="extension-item__icon fa-solid fa-puzzle-piece"></i>
@@ -92,8 +93,8 @@ onMounted(() => {
     </div>
 
     <!-- Right Pane: Editor -->
-    <div class="extensions-panel__editor">
-      <div v-if="!extensionStore.selectedExtension" class="extensions-panel__placeholder">
+    <div id="extensions-editor" class="extensions-panel__editor">
+      <div v-show="!extensionStore.selectedExtension" class="extensions-panel__placeholder">
         <div class="placeholder-icon fa-solid fa-puzzle-piece"></div>
         <h2 class="placeholder-title">{{ t('extensions.placeholder.title') }}</h2>
         <p>{{ t('extensions.placeholder.text') }}</p>
@@ -120,58 +121,3 @@ onMounted(() => {
     </div>
   </div>
 </template>
-
-<style scoped>
-/* Extension Item Actions & Toggle Switch */
-.extension-item__actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  padding-left: 5px;
-}
-
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 30px;
-  height: 17px;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--grey-50);
-  transition: 0.2s;
-  border-radius: 17px;
-}
-
-.slider:before {
-  position: absolute;
-  content: '';
-  height: 13px;
-  width: 13px;
-  left: 2px;
-  bottom: 2px;
-  background-color: white;
-  transition: 0.2s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: var(--color-accent-green-70a);
-}
-
-input:checked + .slider:before {
-  transform: translateX(13px);
-}
-</style>

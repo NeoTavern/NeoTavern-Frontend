@@ -5,7 +5,7 @@
   position: relative;
   overflow: hidden;
 
-  &.is-collapsed &__browser {
+  &.is-collapsed .extensions-panel__browser {
     width: 0 !important;
     padding: 5px 0;
     opacity: 0;
@@ -149,6 +149,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
+  &__actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    padding-left: 5px;
+  }
 }
 
 .extension-content {
@@ -191,5 +198,51 @@
 
   .inline-drawer-content {
     background-color: var(--black-50a);
+  }
+}
+
+/* Toggle Switch for Extensions */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 30px;
+  height: 17px;
+
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--grey-50);
+    transition: 0.2s;
+    border-radius: 17px;
+
+    &:before {
+      position: absolute;
+      content: '';
+      height: 13px;
+      width: 13px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: 0.2s;
+      border-radius: 50%;
+    }
+  }
+
+  input:checked + .slider {
+    background-color: var(--color-accent-green-70a);
+  }
+
+  input:checked + .slider:before {
+    transform: translateX(13px);
   }
 }

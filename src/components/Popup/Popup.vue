@@ -163,14 +163,21 @@ function handleEnter(evt: KeyboardEvent) {
 </script>
 
 <template>
-  <dialog ref="dialog" class="popup" :class="{ wide: wide, large: large }" @cancel="onCancel" @keydown="handleEnter">
+  <dialog
+    ref="dialog"
+    class="popup"
+    :id="id"
+    :class="{ wide: wide, large: large }"
+    @cancel="onCancel"
+    @keydown="handleEnter"
+  >
     <div class="popup-body">
-      <h3 v-if="title" v-html="title"></h3>
+      <h3 v-if="title" v-html="title" class="popup-title"></h3>
       <div
         class="popup-content"
         :class="{ 'is-input': type === POPUP_TYPE.INPUT, 'is-crop': type === POPUP_TYPE.CROP }"
       >
-        <div v-if="content" v-html="content"></div>
+        <div v-if="content" v-html="content" class="popup-message"></div>
         <textarea
           v-if="type === POPUP_TYPE.INPUT"
           ref="mainInput"
@@ -211,14 +218,3 @@ function handleEnter(evt: KeyboardEvent) {
     </div>
   </dialog>
 </template>
-
-<style scoped>
-.crop-container {
-  max-width: 100%;
-  max-height: 70vh;
-}
-.is-crop {
-  display: flex;
-  justify-content: center;
-}
-</style>

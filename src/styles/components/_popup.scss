@@ -57,6 +57,16 @@
   &.is-input {
     display: flex;
   }
+
+  &.is-crop {
+    display: flex;
+    justify-content: center;
+  }
+
+  .crop-container {
+    max-width: 100%;
+    max-height: 70vh;
+  }
 }
 
 .popup-controls {

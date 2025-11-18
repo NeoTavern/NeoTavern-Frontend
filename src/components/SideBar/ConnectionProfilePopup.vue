@@ -107,7 +107,7 @@ function save() {
 </script>
 
 <template>
-  <dialog ref="dialog" class="popup" @cancel="close">
+  <dialog ref="dialog" id="connection-profile-popup" class="popup" @cancel="close">
     <div class="popup-body">
       <h3>{{ t('apiConnections.profileManagement.createPopupTitle') }}</h3>
 
@@ -147,40 +147,9 @@ function save() {
       </div>
 
       <div class="popup-controls">
-        <button class="menu-button" @click="save">{{ t('common.save') }}</button>
+        <button class="menu-button menu-button--confirm" @click="save">{{ t('common.save') }}</button>
         <button class="menu-button" @click="close">{{ t('common.cancel') }}</button>
       </div>
     </div>
   </dialog>
 </template>
-
-<style scoped>
-.connection-profile-form {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-.fields-grid {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 10px 15px;
-}
-.field-item {
-  font-weight: bold;
-}
-.field-value {
-  background: var(--black-30a);
-  padding: 5px;
-  border-radius: 5px;
-  font-family: var(--font-family-mono);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-</style>
