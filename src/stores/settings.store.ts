@@ -330,7 +330,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
       if (legacySettings.v2Experimental) {
         // If new structure exists, use it but merge with defaults to add any newly defined settings.
-        experimentalSettings = defaultsDeep({}, defaultSettings, legacySettings.v2Experimental);
+        experimentalSettings = defaultsDeep({}, legacySettings.v2Experimental, defaultSettings);
       } else {
         // If not, migrate from legacy structure.
         experimentalSettings = migrateLegacyToExperimental(userSettingsResponse);
