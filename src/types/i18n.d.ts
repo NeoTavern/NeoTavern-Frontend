@@ -12,6 +12,7 @@ export interface MessageSchema {
     extensions: string;
     personaManagement: string;
     characterManagement: string;
+    chatManagement: string;
   };
   formatting: {
     title: string;
@@ -242,6 +243,8 @@ export interface MessageSchema {
     };
   };
   aiConfig: {
+    tabSampler: string;
+    tabPrompts: string;
     manualInputNote: string;
     docsLinkTooltip: string;
     presets: {
@@ -269,7 +272,8 @@ export interface MessageSchema {
     promptManager: {
       label: string;
       description: string;
-      openButton: string;
+      noPrompts: string;
+      newPrompt: string;
     };
     contextSize: {
       label: string;

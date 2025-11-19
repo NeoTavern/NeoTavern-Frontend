@@ -1,0 +1,64 @@
+.app-sidebar {
+  position: fixed;
+  top: 0;
+  height: 100%;
+  z-index: 3000;
+  background-color: var(--theme-background-tint);
+  box-shadow: 0 0 15px var(--theme-shadow-color);
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--animation-duration-2x) cubic-bezier(0.25, 1, 0.5, 1);
+
+  width: var(--sidebar-width);
+
+  &--left {
+    left: var(--nav-bar-width);
+    border-right: 1px solid var(--theme-border-color);
+    transform: translateX(calc(-100% - 10px));
+
+    &.is-open {
+      transform: translateX(0);
+    }
+  }
+
+  &--right {
+    right: 0;
+    border-left: 1px solid var(--theme-border-color);
+    transform: translateX(calc(100% + 10px));
+
+    &.is-open {
+      transform: translateX(0);
+    }
+  }
+
+  &-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  &-resizer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: ew-resize;
+    z-index: 3001;
+    background-color: transparent;
+    transition: background-color var(--animation-duration);
+
+    &:hover {
+      background-color: var(--theme-emphasis-color);
+      opacity: 0.5;
+    }
+  }
+
+  &--left &-resizer {
+    right: 0;
+  }
+
+  &--right &-resizer {
+    left: 0;
+  }
+}

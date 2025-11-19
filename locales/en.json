@@ -1,14 +1,15 @@
 {
   "navbar": {
-    "aiConfig": "AI Response Configuration",
+    "aiConfig": "AI Configuration",
     "apiConnections": "API Connections",
-    "formatting": "AI Response Formatting",
+    "formatting": "Formatting",
     "worldInfo": "World Info",
     "userSettings": "User Settings",
-    "backgrounds": "Change Background Image",
+    "backgrounds": "Backgrounds",
     "extensions": "Extensions",
     "personaManagement": "Persona Management",
-    "characterManagement": "Character Management"
+    "characterManagement": "Character Management",
+    "chatManagement": "Chat Management"
   },
   "formatting": {
     "title": "AI Response Formatting",
@@ -239,6 +240,8 @@
     }
   },
   "aiConfig": {
+    "tabSampler": "Sampler",
+    "tabPrompts": "Prompts",
     "manualInputNote": "Click slider numbers to input manually.",
     "docsLinkTooltip": "Documentation on sampling parameters.",
     "presets": {
@@ -266,7 +269,8 @@
     "promptManager": {
       "label": "Prompt Manager",
       "description": "Control how the final prompt is constructed before being sent to the AI.",
-      "openButton": "Open Prompt Manager"
+      "noPrompts": "No prompts created yet.",
+      "newPrompt": "New Prompt"
     },
     "contextSize": {
       "label": "Context Size (tokens)",

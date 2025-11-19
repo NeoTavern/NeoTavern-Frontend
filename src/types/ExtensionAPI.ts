@@ -144,6 +144,26 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
     showPopup: (options: PopupShowOptions) => Promise<{ result: number; value: any }>;
 
     /**
+     * Registers a custom sidebar component to the right sidebar area.
+     * @param id Unique identifier for the sidebar view.
+     * @param component The Vue component to render. If null, a generic <div> container is created for vanilla DOM manipulation.
+     * @param options Display options (icon, title, props).
+     */
+    registerSidebar: (
+      id: string,
+      component: Component | null,
+      side: 'left' | 'right',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      options?: { title?: string; icon?: string; props?: Record<string, any> },
+    ) => void;
+
+    /**
+     * Opens a specific sidebar view.
+     * @param id The ID of the sidebar to open.
+     */
+    openSidebar: (id: string) => void;
+
+    /**
      * Mounts a predefined system component to the DOM.
      */
     mountComponent: <T extends MountableComponent>(

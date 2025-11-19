@@ -44,6 +44,7 @@ import * as Vue from 'vue';
 import i18n from '../i18n';
 import pinia from '../stores';
 import type { MountableComponent } from '../types/ExtensionAPI';
+import VanillaSidebar from '../components/Shared/VanillaSidebar.vue';
 
 /**
  * Helper to deep clone an object to prevent accidental mutation of state.
@@ -557,6 +558,40 @@ const baseExtensionAPI: ExtensionAPI = {
     },
 
     /**
+     * Registers a custom sidebar component to the right sidebar area.
+     */
+    registerSidebar: (
+      id: string,
+      component: Vue.Component | null,
+      side: 'left' | 'right',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      options: { title?: string; icon?: string; props?: Record<string, any> } = {},
+    ): void => {
+      // If no component is provided, use the Vanilla DOM adapter.
+      // The 'id' passed here will be used as the DOM ID for the container <div>.
+      const effectiveComponent = component || VanillaSidebar;
+      const effectiveProps = component ? options.props : { id, ...options.props };
+
+      useUiStore().registerSidebar(
+        id,
+        {
+          component: effectiveComponent,
+          componentProps: effectiveProps,
+          title: options.title,
+          icon: options.icon,
+        },
+        side,
+      );
+    },
+
+    /**
+     * Opens a specific sidebar view.
+     */
+    openSidebar: (id: string): void => {
+      useUiStore().toggleRightSidebar(id);
+    },
+
+    /**
      * Renders a standard, pre-built Vue component into a given container.
      * @param container The HTMLElement where the component should be mounted.
      * @param componentName The name of the component to mount (e.g., 'ConnectionProfileSelector').
@@ -785,11 +820,58 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
     emit: baseExtensionAPI.events.emit,
   };
 
+  const scopedUi = {
+    ...baseExtensionAPI.ui,
+    /**
+     * Registers a sidebar but scoped to the extension ID if needed (though UI store registry is global).
+     * We pass the extension ID as a prefix if we wanted to, but for now, let's keep it clean.
+     */
+    registerSidebar: (
+      id: string,
+      component: Vue.Component | null,
+      side: 'left' | 'right',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      options: { title?: string; icon?: string; props?: Record<string, any> } = {},
+    ): void => {
+      const namespacedId = id.startsWith(extensionId) ? id : `${extensionId}.${id}`;
+
+      // Apply Vanilla Adapter logic
+      const effectiveComponent = component || VanillaSidebar;
+      // If using Vanilla Adapter, we pass the ID prop to the wrapper
+      const effectiveProps = component ? options.props : { id: namespacedId, ...options.props };
+
+      useUiStore().registerSidebar(
+        namespacedId,
+        {
+          component: effectiveComponent,
+          componentProps: effectiveProps,
+          title: options.title,
+          icon: options.icon,
+        },
+        side,
+      );
+    },
+    openSidebar: (id: string): void => {
+      const store = useUiStore();
+      if (store.rightSidebarRegistry.has(id)) {
+        store.toggleRightSidebar(id);
+      } else {
+        const namespacedId = `${extensionId}.${id}`;
+        if (store.rightSidebarRegistry.has(namespacedId)) {
+          store.toggleRightSidebar(namespacedId);
+        } else {
+          console.warn(`[ExtensionAPI] Sidebar ID "${id}" not found.`);
+        }
+      }
+    },
+  };
+
   return {
     ...baseExtensionAPI,
     meta,
     settings: scopedSettings,
     events: scopedEvents,
+    ui: scopedUi,
   };
 }
 

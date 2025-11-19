@@ -6,16 +6,18 @@ interface UseResizableOptions {
   storageKey?: AccountStorageKey;
   initialWidth?: number;
   minWidth?: number;
+  maxWidth?: number;
+  side?: 'left' | 'right';
 }
 
 const RESIZING_CLASS = 'is-resizing';
 
 export function useResizable(
-  leftPane: Ref<HTMLElement | null>,
-  divider: Ref<HTMLElement | null>,
+  element: Ref<HTMLElement | null>,
+  handle: Ref<HTMLElement | null>,
   options: UseResizableOptions = {},
 ) {
-  const { storageKey, initialWidth = 350, minWidth = 200 } = options;
+  const { storageKey, initialWidth = 350, minWidth = 200, maxWidth = 800, side = 'left' } = options;
   const settingsStore = useSettingsStore();
 
   let isResizing = false;
@@ -32,20 +34,28 @@ export function useResizable(
   };
 
   const onMouseMove = (e: MouseEvent) => {
-    if (!isResizing || !leftPane.value) return;
+    if (!isResizing || !element.value) return;
 
-    // Calculate new width relative to the parent container's left edge
-    const parentRect = leftPane.value.parentElement?.getBoundingClientRect();
-    if (!parentRect) return;
+    const parentRect = element.value.parentElement?.getBoundingClientRect();
+    const parentLeft = parentRect?.left ?? 0;
+    const parentRight = parentRect?.right ?? window.innerWidth;
 
-    let newWidth = e.clientX - parentRect.left;
+    let newWidth = 0;
 
-    // Enforce minimum width
+    if (side === 'left') {
+      newWidth = e.clientX - parentLeft;
+    } else {
+      newWidth = parentRight - e.clientX;
+    }
+
     if (newWidth < minWidth) {
       newWidth = minWidth;
     }
+    if (maxWidth && newWidth > maxWidth) {
+      newWidth = maxWidth;
+    }
 
-    leftPane.value.style.width = `${newWidth}px`;
+    element.value.style.width = `${newWidth}px`;
   };
 
   const onMouseUp = () => {
@@ -60,26 +70,26 @@ export function useResizable(
     document.removeEventListener('mouseup', onMouseUp);
 
     // Save the final width to account storage
-    if (leftPane.value && storageKey) {
-      settingsStore.setAccountItem(storageKey, leftPane.value.style.width);
+    if (element.value && storageKey) {
+      settingsStore.setAccountItem(storageKey, element.value.style.width);
     }
   };
 
   onMounted(() => {
     // Restore saved width on mount
     const savedWidth = storageKey ? settingsStore.getAccountItem(storageKey) : null;
-    if (leftPane.value) {
-      leftPane.value.style.width = savedWidth || `${initialWidth}px`;
+    if (element.value) {
+      element.value.style.width = savedWidth || `${initialWidth}px`;
     }
 
-    if (divider.value) {
-      divider.value.addEventListener('mousedown', onMouseDown);
+    if (handle.value) {
+      handle.value.addEventListener('mousedown', onMouseDown);
     }
   });
 
   onUnmounted(() => {
-    if (divider.value) {
-      divider.value.removeEventListener('mousedown', onMouseDown);
+    if (handle.value) {
+      handle.value.removeEventListener('mousedown', onMouseDown);
     }
     // Clean up global listeners if component is unmounted while resizing
     document.removeEventListener('mousemove', onMouseMove);
