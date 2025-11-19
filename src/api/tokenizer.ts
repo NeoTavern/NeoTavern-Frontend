@@ -4,13 +4,13 @@ import { TOKENIZER_GUESS_MAP, TokenizerType } from '../constants';
 import { useApiStore } from '../stores/api.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { getRequestHeaders } from '../utils/api';
-import { getStringHash } from '../utils/common';
+import { StringHash } from '../utils/common';
 
 export class TokenCacheHelper {
   private static readonly cacheStorage = localforage.createInstance({ name: 'SillyTavern_TokenCache' });
 
   static key(tokenizerType: TokenizerType, text: string): string {
-    return `${tokenizerType}:${getStringHash(text)}`;
+    return `${tokenizerType}:${StringHash.get(text)}`;
   }
 
   static async get(tokenizerType: TokenizerType, text: string): Promise<number | null> {
