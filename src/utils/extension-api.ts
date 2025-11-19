@@ -532,7 +532,7 @@ const baseExtensionAPI: ExtensionAPI = {
     },
 
     /**
-     * Opens a specific side panel.
+     * Opens a specific nav panel.
      * @param panelName The name of the panel, e.g., 'characters', 'settings'.
      */
     openPanel: (panelName: MenuType): void => {
@@ -540,7 +540,7 @@ const baseExtensionAPI: ExtensionAPI = {
     },
 
     /**
-     * Closes the currently open side panel.
+     * Closes the currently open nav panel.
      */
     closePanel: (): void => {
       useUiStore().menuType = null;

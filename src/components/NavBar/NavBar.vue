@@ -27,14 +27,14 @@ function toggleDrawer(drawerName: string) {
 
 <template>
   <div>
-    <div id="side-bar" class="side-bar">
-      <div class="side-bar-nav">
+    <div id="nav-bar" class="nav-bar">
+      <div class="nav-bar-nav">
         <div class="nav-item">
           <button type="button" class="nav-item-toggle" @click="toggleDrawer('ai-config')">
             <div
               class="nav-item-icon fa-solid fa-sliders fa-fw"
               :class="{ active: activeDrawer === 'ai-config' }"
-              :title="t('sidebar.aiConfig')"
+              :title="t('navbar.aiConfig')"
             ></div>
           </button>
         </div>
@@ -43,7 +43,7 @@ function toggleDrawer(drawerName: string) {
             <div
               class="nav-item-icon fa-solid fa-plug fa-fw"
               :class="{ active: activeDrawer === 'api-status' }"
-              :title="t('sidebar.apiConnections')"
+              :title="t('navbar.apiConnections')"
             ></div>
           </button>
         </div>
@@ -52,7 +52,7 @@ function toggleDrawer(drawerName: string) {
             <div
               class="nav-item-icon fa-solid fa-font fa-fw"
               :class="{ active: activeDrawer === 'formatting' }"
-              :title="t('sidebar.formatting')"
+              :title="t('navbar.formatting')"
             ></div>
           </button>
         </div>
@@ -61,7 +61,7 @@ function toggleDrawer(drawerName: string) {
             <div
               class="nav-item-icon fa-solid fa-book-atlas fa-fw"
               :class="{ active: activeDrawer === 'world-info' }"
-              :title="t('sidebar.worldInfo')"
+              :title="t('navbar.worldInfo')"
             ></div>
           </button>
         </div>
@@ -70,7 +70,7 @@ function toggleDrawer(drawerName: string) {
             <div
               class="nav-item-icon fa-solid fa-user-cog fa-fw"
               :class="{ active: activeDrawer === 'user-settings' }"
-              :title="t('sidebar.userSettings')"
+              :title="t('navbar.userSettings')"
             ></div>
           </button>
         </div>
@@ -79,7 +79,7 @@ function toggleDrawer(drawerName: string) {
             <div
               class="nav-item-icon fa-solid fa-panorama fa-fw"
               :class="{ active: activeDrawer === 'backgrounds' }"
-              :title="t('sidebar.backgrounds')"
+              :title="t('navbar.backgrounds')"
             ></div>
           </button>
         </div>
@@ -88,7 +88,7 @@ function toggleDrawer(drawerName: string) {
             <div
               class="nav-item-icon fa-solid fa-cubes fa-fw"
               :class="{ active: activeDrawer === 'extensions' }"
-              :title="t('sidebar.extensions')"
+              :title="t('navbar.extensions')"
             ></div>
           </button>
         </div>
@@ -97,7 +97,7 @@ function toggleDrawer(drawerName: string) {
             <div
               class="nav-item-icon fa-solid fa-face-smile fa-fw"
               :class="{ active: activeDrawer === 'persona' }"
-              :title="t('sidebar.personaManagement')"
+              :title="t('navbar.personaManagement')"
             ></div>
           </button>
         </div>
@@ -106,7 +106,7 @@ function toggleDrawer(drawerName: string) {
             <div
               class="nav-item-icon fa-solid fa-address-card fa-fw"
               :class="{ active: activeDrawer === 'character' }"
-              :title="t('sidebar.characterManagement')"
+              :title="t('navbar.characterManagement')"
             ></div>
           </button>
         </div>

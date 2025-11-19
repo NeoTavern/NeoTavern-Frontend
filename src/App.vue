@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import SideBar from './components/SideBar/SideBar.vue';
+import Navbar from './components/NavBar/NavBar.vue';
 import ChatInterface from './components/Chat/ChatInterface.vue';
 import Popup from './components/Popup/Popup.vue';
 import ZoomedAvatar from './components/ZoomedAvatar.vue';
@@ -25,7 +25,7 @@ onMounted(() => {
 
 <template>
   <div id="background" :style="backgroundStyle"></div>
-  <SideBar />
+  <Navbar />
   <main id="main-content">
     <ChatInterface />
     <template v-for="avatar in uiStore.zoomedAvatars" :key="avatar.id">
