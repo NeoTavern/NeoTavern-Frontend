@@ -2,11 +2,13 @@
 import { computed } from 'vue';
 import { useUiStore } from '../../stores/ui.store';
 import { useCharacterStore } from '../../stores/character.store';
+import { useSettingsStore } from '../../stores/settings.store';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { getThumbnailUrl } from '@/utils/image';
 
 const uiStore = useUiStore();
 const characterStore = useCharacterStore();
+const settingsStore = useSettingsStore();
 const { t } = useStrictI18n();
 
 const activeCharacter = computed(() => characterStore.activeCharacter);
@@ -16,6 +18,8 @@ const lastMessageDate = computed(() => {
   // TODO: Not character, get first/last message date from chat store
   return activeCharacter.value?.create_date || '';
 });
+
+const isFullScreen = computed(() => settingsStore.getAccountItem('chat_full_screen') === 'true');
 
 function handleChatManagement() {
   uiStore.toggleLeftSidebar();
@@ -27,6 +31,10 @@ function handleAiConfig() {
 
 function handleCharacterClick() {
   // TODO:: Expand/collapse logic if needed, or open character details in sidebar
+}
+
+function toggleFullScreen() {
+  settingsStore.setAccountItem('chat_full_screen', (!isFullScreen.value).toString());
 }
 </script>
 
@@ -52,6 +60,12 @@ function handleCharacterClick() {
     </div>
 
     <div class="chat-header-group right">
+      <i
+        class="chat-header-icon fa-solid"
+        :class="isFullScreen ? 'fa-compress active' : 'fa-expand'"
+        title="Toggle Full Screen"
+        @click="toggleFullScreen"
+      ></i>
       <i
         class="chat-header-icon fa-solid fa-sliders"
         :class="{ active: uiStore.rightSidebarView === 'ai-config' }"

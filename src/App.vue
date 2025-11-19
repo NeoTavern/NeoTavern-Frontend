@@ -22,6 +22,8 @@ const backgroundStyle = computed(() => ({
   backgroundImage: backgroundStore.currentBackgroundUrl,
 }));
 
+const isFullScreen = computed(() => settingsStore.getAccountItem('chat_full_screen') === 'true');
+
 onMounted(() => {
   settingsStore.initializeSettings();
 
@@ -60,7 +62,14 @@ onMounted(() => {
   </AppSidebar>
 
   <!-- Main Layout -->
-  <main id="main-content">
+  <main
+    id="main-content"
+    :class="{
+      'full-screen': isFullScreen,
+      'left-open': uiStore.isLeftSidebarOpen,
+      'right-open': uiStore.isRightSidebarOpen,
+    }"
+  >
     <ChatHeader />
     <div class="content-wrapper">
       <ChatInterface />

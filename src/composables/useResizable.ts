@@ -8,6 +8,7 @@ interface UseResizableOptions {
   minWidth?: number;
   maxWidth?: number;
   side?: 'left' | 'right';
+  cssVariable?: string;
 }
 
 const RESIZING_CLASS = 'is-resizing';
@@ -17,10 +18,16 @@ export function useResizable(
   handle: Ref<HTMLElement | null>,
   options: UseResizableOptions = {},
 ) {
-  const { storageKey, initialWidth = 350, minWidth = 200, maxWidth = 800, side = 'left' } = options;
+  const { storageKey, initialWidth = 350, minWidth = 200, maxWidth = 800, side = 'left', cssVariable } = options;
   const settingsStore = useSettingsStore();
 
   let isResizing = false;
+
+  const updateCssVariable = (width: number) => {
+    if (cssVariable) {
+      document.documentElement.style.setProperty(cssVariable, `${width}px`);
+    }
+  };
 
   const onMouseDown = (e: MouseEvent) => {
     e.preventDefault();
@@ -56,6 +63,7 @@ export function useResizable(
     }
 
     element.value.style.width = `${newWidth}px`;
+    updateCssVariable(newWidth);
   };
 
   const onMouseUp = () => {
@@ -77,10 +85,13 @@ export function useResizable(
 
   onMounted(() => {
     // Restore saved width on mount
-    const savedWidth = storageKey ? settingsStore.getAccountItem(storageKey) : null;
+    const savedWidthStr = storageKey ? settingsStore.getAccountItem(storageKey) : null;
+    const widthValue = savedWidthStr ? parseInt(savedWidthStr, 10) : initialWidth;
+
     if (element.value) {
-      element.value.style.width = savedWidth || `${initialWidth}px`;
+      element.value.style.width = `${widthValue}px`;
     }
+    updateCssVariable(widthValue);
 
     if (handle.value) {
       handle.value.addEventListener('mousedown', onMouseDown);

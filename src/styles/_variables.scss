@@ -115,6 +115,10 @@ $base-border-radius-rounded: 10px;
   --header-height: 50px;
   --layout-message-right-spacing: 30px;
 
+  // Sidebars (Dynamic)
+  --sidebar-left-width: var(--sidebar-width);
+  --sidebar-right-width: var(--sidebar-width);
+
   // Font
   --font-scale: #{$base-font-scale};
   --font-size-main: calc(var(--font-scale) * #{$base-font-size});

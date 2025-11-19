@@ -12,11 +12,14 @@ const props = defineProps<{
 const sidebarRef = ref<HTMLElement | null>(null);
 const resizerRef = ref<HTMLElement | null>(null);
 
+const cssVariable = props.side === 'left' ? '--sidebar-left-width' : '--sidebar-right-width';
+
 useResizable(sidebarRef, resizerRef, {
   storageKey: props.storageKey,
   initialWidth: 350,
   minWidth: 200,
   side: props.side,
+  cssVariable,
 });
 </script>
 

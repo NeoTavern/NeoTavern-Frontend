@@ -188,7 +188,8 @@ export type AccountStorageKey =
   | 'worldinfo_browser_width'
   | 'world_info_sort_order'
   | 'character_sort_order'
-  | 'extensions_browser_width';
+  | 'extensions_browser_width'
+  | 'chat_full_screen';
 
 export type AccountStorageState = Partial<Record<AccountStorageKey, string>>;
 
