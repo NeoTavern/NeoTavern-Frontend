@@ -475,6 +475,7 @@ const openrouterProvidersString = computed({
             @change="settingsStore.setSetting('api.tokenizer', ($event.target as HTMLSelectElement).value as any)"
           >
             <option :value="TokenizerType.AUTO">{{ t('apiConnections.tokenizers.auto') }}</option>
+            <option :value="TokenizerType.NONE">{{ t('apiConnections.tokenizers.none') }}</option>
             <option :value="TokenizerType.GPT4O">{{ t('apiConnections.tokenizers.gpt4o') }}</option>
             <option :value="TokenizerType.GPT35">{{ t('apiConnections.tokenizers.gpt35') }}</option>
             <option :value="TokenizerType.GPT2">{{ t('apiConnections.tokenizers.gpt2') }}</option>

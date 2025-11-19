@@ -4,10 +4,10 @@ import { TOKENIZER_GUESS_MAP, TokenizerType } from '../constants';
 import { useApiStore } from '../stores/api.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { getRequestHeaders } from '../utils/api';
-import { getStringHash } from '@/utils/common';
+import { getStringHash } from '../utils/common';
 
 export class TokenCacheHelper {
-  static tokenizerStorage = localforage.createInstance({ name: 'SillyTavern_TokenCache' });
+  private static cacheStorage = localforage.createInstance({ name: 'SillyTavern_TokenCache' });
 
   static key(tokenizerType: TokenizerType, text: string): string {
     return `${tokenizerType}:${getStringHash(text)}`;
@@ -15,13 +15,13 @@ export class TokenCacheHelper {
 
   static async get(tokenizerType: TokenizerType, text: string): Promise<number | null> {
     const key = this.key(tokenizerType, text);
-    const value = await this.tokenizerStorage.getItem<number>(key);
+    const value = await this.cacheStorage.getItem<number>(key);
     return value ?? null;
   }
 
   static async set(tokenizerType: TokenizerType, text: string, tokenCount: number): Promise<void> {
     const key = this.key(tokenizerType, text);
-    await this.tokenizerStorage.setItem<number>(key, tokenCount);
+    await this.cacheStorage.setItem<number>(key, tokenCount);
   }
 }
 
@@ -69,6 +69,11 @@ export class ApiTokenizer implements Tokenizer {
 
   async getTokenCount(text: string): Promise<number> {
     if (!text || typeof text !== 'string') return 0;
+
+    if (this.tokenizerType === TokenizerType.NONE) {
+      const dummyTokenizer = new DummyTokenizer();
+      return dummyTokenizer.getTokenCount(text);
+    }
 
     const cachedValue = await TokenCacheHelper.get(this.tokenizerType, text);
     if (typeof cachedValue === 'number') {

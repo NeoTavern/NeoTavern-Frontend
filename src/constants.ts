@@ -59,6 +59,7 @@ export enum GenerationMode {
 
 export enum TokenizerType {
   AUTO = 'auto',
+  NONE = 'none',
   LLAMA = 'llama',
   LLAMA3 = 'llama3',
   MISTRAL = 'mistral',

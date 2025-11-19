@@ -691,6 +691,7 @@
     "tokenizer": "Tokenizer",
     "tokenizers": {
       "auto": "Auto (recommended)",
+      "none": "None (estimated)",
       "llama": "Llama 1/2",
       "llama3": "Llama 3",
       "mistral": "Mistral V1",

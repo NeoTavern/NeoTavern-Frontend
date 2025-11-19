@@ -694,6 +694,7 @@ export interface MessageSchema {
     tokenizer: string;
     tokenizers: {
       auto: string;
+      none: string;
       llama: string;
       llama3: string;
       mistral: string;
