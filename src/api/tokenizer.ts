@@ -86,7 +86,7 @@ export class ApiTokenizer implements Tokenizer {
     const response = await fetch(`/api/tokenizers/openai/count?model=${encodeURIComponent(this.tokenizerType)}`, {
       method: 'POST',
       headers: getRequestHeaders(),
-      body: JSON.stringify({ messages: [{ content: text }] }),
+      body: JSON.stringify([{ content: text }]),
     });
 
     if (!response.ok) {
