@@ -1,8 +1,29 @@
+import localforage from 'localforage';
 import type { Tokenizer } from '../types/tokenizer';
 import { TOKENIZER_GUESS_MAP, TokenizerType } from '../constants';
 import { useApiStore } from '../stores/api.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { getRequestHeaders } from '../utils/api';
+import { getStringHash } from '@/utils/common';
+
+export class TokenCacheHelper {
+  static tokenizerStorage = localforage.createInstance({ name: 'SillyTavern_TokenCache' });
+
+  static key(tokenizerType: TokenizerType, text: string): string {
+    return `${tokenizerType}:${getStringHash(text)}`;
+  }
+
+  static async get(tokenizerType: TokenizerType, text: string): Promise<number | null> {
+    const key = this.key(tokenizerType, text);
+    const value = await this.tokenizerStorage.getItem<number>(key);
+    return value ?? null;
+  }
+
+  static async set(tokenizerType: TokenizerType, text: string, tokenCount: number): Promise<void> {
+    const key = this.key(tokenizerType, text);
+    await this.tokenizerStorage.setItem<number>(key, tokenCount);
+  }
+}
 
 export class DummyTokenizer implements Tokenizer {
   async getTokenCount(text: string): Promise<number> {
@@ -19,24 +40,22 @@ export type ApiTokenizerOptions = {
 
 export class ApiTokenizer implements Tokenizer {
   private tokenizerType: TokenizerType;
-  private model: string;
 
   constructor({ tokenizerType, model }: ApiTokenizerOptions) {
-    this.tokenizerType = tokenizerType;
-    this.model = model;
+    this.tokenizerType = ApiTokenizer.resolveTokenizerType(tokenizerType, model);
   }
 
-  private resolveTokenizerType(): TokenizerType {
-    if (this.tokenizerType === TokenizerType.AUTO) {
+  private static resolveTokenizerType(tokenizerType: TokenizerType, model: string): TokenizerType {
+    if (tokenizerType === TokenizerType.AUTO) {
       for (const [regex, tokenizerType] of TOKENIZER_GUESS_MAP) {
-        if (regex.test(this.model)) {
+        if (regex.test(model)) {
           return tokenizerType;
         }
       }
       return TokenizerType.GPT35; // Default fallback
     }
 
-    return this.tokenizerType;
+    return tokenizerType;
   }
 
   static get default(): Tokenizer {
@@ -51,8 +70,12 @@ export class ApiTokenizer implements Tokenizer {
   async getTokenCount(text: string): Promise<number> {
     if (!text || typeof text !== 'string') return 0;
 
-    const tokenizerType = this.resolveTokenizerType();
-    const response = await fetch(`/api/tokenizers/openai/count?model=${encodeURIComponent(tokenizerType)}`, {
+    const cachedValue = await TokenCacheHelper.get(this.tokenizerType, text);
+    if (typeof cachedValue === 'number') {
+      return cachedValue;
+    }
+
+    const response = await fetch(`/api/tokenizers/openai/count?model=${encodeURIComponent(this.tokenizerType)}`, {
       method: 'POST',
       headers: getRequestHeaders(),
       body: JSON.stringify({ messages: [{ content: text }] }),
@@ -63,8 +86,9 @@ export class ApiTokenizer implements Tokenizer {
     }
 
     const data = await response.json();
+    const count = data.token_count;
 
-    // TODO: Add caching of token counts based on the string hash to reduce API calls
-    return data.token_count;
+    await TokenCacheHelper.set(this.tokenizerType, text, count);
+    return count;
   }
 }
