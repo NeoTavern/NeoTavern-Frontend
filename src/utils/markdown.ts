@@ -1,18 +1,24 @@
-import Showdown from 'showdown';
+import { Marked } from 'marked';
 import DOMPurify, { type Config } from 'dompurify';
 import type { ChatMessage } from '../types';
 
-const converter = new Showdown.Converter({
-  // See https://github.com/showdownjs/showdown/wiki/Showdown-Options
-  ghCompatibleHeaderId: true,
-  parseImgDimensions: true,
-  strikethrough: true,
-  tables: true,
-  tasklists: true,
-  smartIndentationFix: true,
-  simpleLineBreaks: true,
-  openLinksInNewWindow: true,
+const marked = new Marked({
+  async: false,
+  gfm: true, // GitHub Flavored Markdown (Tables, Strikethrough, Tasklists)
+  breaks: true, // Convert \n to <br>
+  pedantic: false,
 });
+
+const renderer = {
+  link({ href, title, text }: { href: string; title?: string | null; text: string }): string {
+    const titleAttr = title ? ` title="${title}"` : '';
+    return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+  },
+  // TODO: Implement custom image handling if we need '![alt](url =100x100)' syntax support
+  // Showdown supported parsing dimensions from the URL/alt text, whereas standard Markdown does not.
+};
+
+marked.use({ renderer });
 
 /**
  * Formats a raw string with Markdown and sanitizes it.
@@ -22,23 +28,26 @@ const converter = new Showdown.Converter({
  */
 export function formatText(text: string, options?: { isSystem?: boolean }): string {
   if (!text) return '';
-  let formattedText = text;
 
-  // TODO: Add more complex logic from original messageFormatting, like param substitution, regex, etc.
+  let contentToParse = text;
 
+  // Legacy SillyTavern behavior: Wrap quotes in <q> tags.
+  // TODO: This regex is simplistic and might break HTML attributes containing quotes.
+  // A more robust solution would be a custom Tokenizer in marked.
   if (!options?.isSystem) {
-    // Basic quote handling similar to original
-    formattedText = formattedText.replace(/"(.*?)"/g, '<q>"$1"</q>');
-    formattedText = converter.makeHtml(formattedText);
+    contentToParse = contentToParse.replace(/"(.*?)"/g, '<q>"$1"</q>');
   }
+
+  const rawHtml = marked.parse(contentToParse) as string;
 
   const config: Config = {
     RETURN_DOM: false,
     RETURN_DOM_FRAGMENT: false,
     ADD_TAGS: ['custom-style', 'q'], // Allow <q> for quotes
+    ADD_ATTR: ['target'], // openLinksInNewWindow
   };
 
-  return DOMPurify.sanitize(formattedText, config);
+  return DOMPurify.sanitize(rawHtml, config);
 }
 
 /**
