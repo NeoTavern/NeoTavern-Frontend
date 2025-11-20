@@ -24,13 +24,9 @@
     transition: opacity var(--animation-duration);
     padding: 5px;
 
-    &:hover {
-      opacity: 1;
-    }
-
+    &:hover,
     &.active {
       opacity: 1;
-      color: var(--theme-emphasis-color);
     }
   }
 
