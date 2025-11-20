@@ -17,8 +17,8 @@
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/your-username/sillytavern-experimental-frontend.git
-    cd sillytavern-experimental-frontend
+    https://github.com/bmen25124/SillyTavern-Experimental-Frontend.git
+    cd SillyTavern-Experimental-Frontend
     ```
 
 2.  **Install dependencies:**
