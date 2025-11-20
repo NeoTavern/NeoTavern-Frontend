@@ -1,17 +1,10 @@
 import { getRequestHeaders } from '../utils/api';
 import type { WorldInfoBook, WorldInfoEntry } from '../types';
+import { fetchUserSettings } from './settings';
 
 export async function fetchAllWorldInfoNames(): Promise<string[]> {
-  const response = await fetch('/api/settings/get', {
-    method: 'POST',
-    headers: getRequestHeaders(),
-    body: JSON.stringify({}),
-  });
-  if (!response.ok) {
-    throw new Error('Failed to fetch world info list');
-  }
-  const data = await response.json();
-  return data.world_names ?? [];
+  const response = await fetchUserSettings();
+  return response.world_names;
 }
 
 export async function fetchWorldInfoBook(name: string): Promise<WorldInfoBook> {

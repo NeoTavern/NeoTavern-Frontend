@@ -260,6 +260,8 @@ export const useSettingsStore = defineStore('settings', () => {
   // Keep a copy of the full legacy settings to preserve unsused fields on save
   const fullLegacySettings = ref<LegacySettings | null>(null);
 
+  let initializationPromise: Promise<void> | null = null;
+
   // Watch for settings changes to emit events
   watch(
     settings,
@@ -320,58 +322,52 @@ export const useSettingsStore = defineStore('settings', () => {
 
   async function initializeSettings() {
     if (!settingsInitializing.value) return;
+    if (initializationPromise) return initializationPromise;
 
-    try {
-      const userSettingsResponse = await fetchUserSettings();
-      const legacySettings = userSettingsResponse.settings;
-      fullLegacySettings.value = legacySettings;
+    initializationPromise = (async () => {
+      try {
+        const userSettingsResponse = await fetchUserSettings();
+        const legacySettings = userSettingsResponse.settings;
+        fullLegacySettings.value = legacySettings;
 
-      const defaultSettings = createDefaultSettings();
-      let experimentalSettings: Settings;
+        const defaultSettings = createDefaultSettings();
+        let experimentalSettings: Settings;
 
-      if (legacySettings.v2Experimental) {
-        // If new structure exists, use it but merge with defaults to add any newly defined settings.
-        experimentalSettings = defaultsDeep({}, legacySettings.v2Experimental, defaultSettings);
-      } else {
-        // If not, migrate from legacy structure.
-        experimentalSettings = migrateLegacyToExperimental(userSettingsResponse);
-        // Then merge with defaults.
-        experimentalSettings = defaultsDeep(experimentalSettings, defaultSettings);
-      }
+        if (legacySettings.v2Experimental) {
+          // If new structure exists, use it but merge with defaults to add any newly defined settings.
+          experimentalSettings = defaultsDeep({}, legacySettings.v2Experimental, defaultSettings);
+        } else {
+          // If not, migrate from legacy structure.
+          experimentalSettings = migrateLegacyToExperimental(userSettingsResponse);
+          // Then merge with defaults.
+          experimentalSettings = defaultsDeep(experimentalSettings, defaultSettings);
+        }
 
-      settings.value = experimentalSettings;
+        settings.value = experimentalSettings;
 
-      const uiStore = useUiStore();
-      uiStore.activePlayerName = legacySettings.username || null;
-      uiStore.activePlayerAvatar = legacySettings.user_avatar || null;
-    } catch (error) {
-      console.error('Failed to initialize settings:', error);
-      toast.error('Could not load user settings. Using defaults.');
-      // The store already has defaults, so we can just continue safely.
-    } finally {
-      Promise.resolve().then(async () => {
+        const uiStore = useUiStore();
+        uiStore.activePlayerName = legacySettings.username || null;
+        uiStore.activePlayerAvatar = legacySettings.user_avatar || null;
+
         settingsInitializing.value = false;
         await nextTick();
         await eventEmitter.emit('app:loaded');
-      });
-    }
+      } catch (error) {
+        console.error('Failed to initialize settings:', error);
+        toast.error('Could not load user settings. Using defaults.');
+        // Even on error, mark as initialized to prevent infinite loops/retries
+        settingsInitializing.value = false;
+      } finally {
+        initializationPromise = null;
+      }
+    })();
+
+    return initializationPromise;
   }
 
   async function waitForSettings() {
     if (!settingsInitializing.value) return;
-    await new Promise<void>((resolve) => {
-      const stop = watch(
-        settingsInitializing,
-        (val) => {
-          if (!val) {
-            stop();
-            resolve();
-          }
-        },
-        { immediate: true },
-      );
-      initializeSettings();
-    });
+    await initializeSettings();
   }
 
   const saveSettingsDebounced = debounce(async () => {
