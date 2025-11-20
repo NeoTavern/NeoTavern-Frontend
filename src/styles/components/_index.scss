@@ -6,7 +6,7 @@
 @use 'character-panel';
 @use 'popup';
 @use 'connection-profile-popup';
-@use 'chat-management-popup';
+@use 'chat-management';
 @use 'character-edit-form';
 @use 'extensions-drawer';
 @use 'user-settings-drawer';
@@ -20,5 +20,4 @@
 @use 'pagination';
 @use 'persona-management-drawer';
 @use 'formatting-drawer';
-@use 'prompt-manager-popup';
 @use 'prompt-itemization';

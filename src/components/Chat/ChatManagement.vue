@@ -113,10 +113,12 @@ async function deleteChat(chatFile: string) {
 <template>
   <div class="popup-body">
     <h3>{{ t('chatManagement.title') }}</h3>
-    <div class="chat-management-popup-actions">
-      <button v-show="characterStore.activeCharacter" class="menu-button" @click="createNewChat">{{ t('chatManagement.newChat') }}</button>
+    <div class="chat-management-actions">
+      <button v-show="characterStore.activeCharacter" class="menu-button" @click="createNewChat">
+        {{ t('chatManagement.newChat') }}
+      </button>
     </div>
-    <div class="chat-management-popup-list">
+    <div class="chat-management-list">
       <table>
         <tbody>
           <tr v-for="file in chats" :key="file.file_id" class="chat-file-row" :data-file="file.file_id">

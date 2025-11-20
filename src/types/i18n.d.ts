@@ -18,26 +18,6 @@ export interface MessageSchema {
     title: string;
     description: string;
   };
-  promptManager: {
-    title: string;
-    description: string;
-    resetAll: string;
-    resetConfirm: {
-      title: string;
-      content: string;
-    };
-    promptOrderTitle: string;
-    addSectionTitle: string;
-    selectToAdd: string;
-    addPrompt: string;
-    promptItem: {
-      enabled: string;
-      remove: string;
-      dragHandle: string;
-      role: string;
-      content: string;
-    };
-  };
   chatManagement: {
     title: string;
     newChat: string;
