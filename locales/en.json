@@ -826,6 +826,15 @@
       },
       "promptTemplate": "Translation Prompt Template",
       "promptHint": "Customize how the LLM translates text. Supports Handlebars variables: {'{{prompt}}'}, {'{{sourceLang}}'}, {'{{targetLang}}'}, {'{{name}}'}."
+    },
+    "rerollContinue": {
+      "buttonLabel": "Reroll Continue",
+      "noSnapshot": "No previous state to reroll.",
+      "contextChanged": "Chat context changed. Cannot reroll.",
+      "divergenceError": "Message content divergence detected. Aborting reroll.",
+      "swipeError": "Swipe changed. Cannot reroll previous swipe state.",
+      "reverting": "Reverting and rerolling...",
+      "error": "Failed to reroll continue."
     }
   }
 }

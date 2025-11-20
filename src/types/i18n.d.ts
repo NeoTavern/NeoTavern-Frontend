@@ -830,5 +830,14 @@ export interface MessageSchema {
       promptTemplate: string;
       promptHint: string;
     };
+    rerollContinue: {
+      buttonLabel: string;
+      noSnapshot: string;
+      contextChanged: string;
+      divergenceError: string;
+      swipeError: string;
+      reverting: string;
+      error: string;
+    };
   };
 }

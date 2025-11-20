@@ -12,9 +12,7 @@ export interface ExtensionManifest {
   minimum_client_version?: string;
   js?: string;
   css?: string;
-  i18n?: Record<string, string>;
   auto_update?: boolean;
-  generate_interceptor?: string;
 }
 
 export interface ExtensionPrompt {
