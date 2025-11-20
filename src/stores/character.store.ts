@@ -201,7 +201,7 @@ export const useCharacterStore = defineStore('character', () => {
       for (const char of newCharacters) {
         char.name = DOMPurify.sanitize(char.name);
         if (!char.chat) {
-          char.chat = `${char.name} - ${humanizedDateTime()}.jsonl`;
+          char.chat = `${char.name} - ${humanizedDateTime()}`;
         }
         char.chat = String(char.chat);
       }

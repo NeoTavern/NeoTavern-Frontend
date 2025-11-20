@@ -54,7 +54,7 @@ function close() {
 }
 
 async function selectChat(chatFile: string) {
-  await chatStore.setActiveChatFile(chatFile.replace(/\.jsonl$/, ''));
+  await chatStore.setActiveChatFile(chatFile);
   close();
 }
 
@@ -78,12 +78,11 @@ async function createNewChat() {
 }
 
 async function renameChat(oldFile: string) {
-  const baseName = oldFile.replace(/\.jsonl$/, '');
   const { result, value: newName } = await popupStore.show({
     title: t('chatManagement.actions.rename'),
     content: t('chatManagement.renamePrompt'),
     type: POPUP_TYPE.INPUT,
-    inputValue: baseName,
+    inputValue: oldFile,
   });
 
   if (result === POPUP_RESULT.AFFIRMATIVE && newName && characterStore.activeCharacter) {
@@ -113,9 +112,9 @@ async function deleteChat(chatFile: string) {
       await api.deleteChat(characterStore.activeCharacter, chatFile);
       if (chatStore.activeChatFile === chatFile && chats.value) {
         // If we deleted the active chat, switch to another one or create a new one
-        const remainingChats = chats.value.filter((f) => f.file_name !== chatFile);
+        const remainingChats = chats.value.filter((f) => f.file_id !== chatFile);
         if (remainingChats.length > 0) {
-          await selectChat(remainingChats[0].file_name);
+          await selectChat(remainingChats[0].file_id);
         } else {
           await createNewChat();
         }
@@ -140,36 +139,33 @@ async function deleteChat(chatFile: string) {
       <div class="chat-management-popup-list">
         <table>
           <tbody>
-            <tr v-for="file in chats" :key="file.file_name" class="chat-file-row" :data-file="file.file_name">
+            <tr v-for="file in chats" :key="file.file_id" class="chat-file-row" :data-file="file.file_id">
               <td class="chat-file-name">
-                <span
-                  v-show="chatStore.activeChatFile?.replace(/\.jsonl$/, '') === file.file_name.replace(/\.jsonl$/, '')"
-                  class="active-indicator"
-                >
+                <span v-show="chatStore.activeChatFile === file.file_id" class="active-indicator">
                   {{ t('chatManagement.active') }}
                 </span>
-                {{ file.file_name.replace(/\.jsonl$/, '') }}
+                {{ file.file_id }}
               </td>
               <td class="chat-file-actions">
                 <button
                   class="menu-button"
-                  :disabled="chatStore.activeChatFile === file.file_name"
+                  :disabled="chatStore.activeChatFile === file.file_id"
                   :title="t('chatManagement.actions.select')"
-                  @click="selectChat(file.file_name)"
+                  @click="selectChat(file.file_id)"
                 >
                   <i class="fa-solid fa-check"></i>
                 </button>
                 <button
                   class="menu-button"
                   :title="t('chatManagement.actions.rename')"
-                  @click="renameChat(file.file_name)"
+                  @click="renameChat(file.file_id)"
                 >
                   <i class="fa-solid fa-pencil"></i>
                 </button>
                 <button
                   class="menu-button menu-button--danger"
                   :title="t('chatManagement.actions.delete')"
-                  @click="deleteChat(file.file_name)"
+                  @click="deleteChat(file.file_id)"
                 >
                   <i class="fa-solid fa-trash-can"></i>
                 </button>

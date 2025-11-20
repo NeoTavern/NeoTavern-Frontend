@@ -49,6 +49,13 @@ export type ChatHeader = {
 export type FullChat = [ChatHeader, ...ChatMessage[]];
 
 export type ChatInfo = {
+  /**
+   * File name without extension
+   */
+  file_id: string;
+  /**
+   * File name with extension
+   */
   file_name: string;
   file_size: number;
   chat_items: number;
