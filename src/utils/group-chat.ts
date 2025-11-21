@@ -15,6 +15,7 @@ export function joinCharacterField(
       // For single character (if list has 1), strictly speaking we might not need the name prefix,
       // but for consistency in Join mode, we usually keep it or rely on prompt template.
       // However, standard ST behavior for Join mode puts: "Character Name: Field Content"
+      // TODO: Configuration?
       return `${char.name}: ${val.trim()}`;
     })
     .filter(Boolean)
