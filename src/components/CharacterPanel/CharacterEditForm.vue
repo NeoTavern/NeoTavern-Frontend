@@ -2,6 +2,7 @@
 import { ref, computed, onUnmounted, watch } from 'vue';
 import { useCharacterStore } from '../../stores/character.store';
 import { useSettingsStore } from '../../stores/settings.store';
+import { useChatStore } from '../../stores/chat.store';
 import type { Character, MessageRole } from '../../types';
 import Popup from '../Popup/Popup.vue';
 import { POPUP_TYPE, type PopupOptions } from '../../types';
@@ -12,11 +13,13 @@ import { default_avatar } from '../../constants';
 import { toast } from '../../composables/useToast';
 import { usePopupStore } from '../../stores/popup.store';
 import { cloneDeep, set } from 'lodash-es';
+import { humanizedDateTime } from '../../utils/date';
 
 const { t } = useStrictI18n();
 const characterStore = useCharacterStore();
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
+const chatStore = useChatStore();
 const tokenCounts = computed(() => characterStore.tokenCounts.fields);
 
 const isCreating = computed(() => characterStore.isCreating);
@@ -214,6 +217,21 @@ async function handleDelete() {
   }
 }
 
+async function openLastChat() {
+  if (!localCharacter.value) return;
+  if (localCharacter.value.chat) {
+    await chatStore.setActiveChatFile(localCharacter.value.chat);
+  } else {
+    await createNewChat();
+  }
+}
+
+async function createNewChat() {
+  if (!localCharacter.value) return;
+  const filename = `${localCharacter.value.name.replace(/\s+/g, '_')}_${humanizedDateTime()}`;
+  await chatStore.createNewChatForCharacter(localCharacter.value.avatar, filename);
+}
+
 const displayAvatarUrl = computed(() => {
   if (!characterStore.editFormCharacter) return '';
 
@@ -304,7 +322,29 @@ const displayAvatarUrl = computed(() => {
             </button>
           </div>
 
-          <!-- Existing Character Controls -->
+          <div
+            v-show="!isCreating"
+            class="character-primary-actions"
+            style="display: flex; gap: 5px; margin-bottom: 5px"
+          >
+            <button
+              class="menu-button menu-button--confirm"
+              style="flex: 1"
+              @click="openLastChat"
+              :title="t('characterEditor.openLastChat')"
+            >
+              <i class="fa-solid fa-comments"></i> {{ t('common.chat') }}
+            </button>
+            <button
+              class="menu-button"
+              style="flex: 1"
+              @click="createNewChat"
+              :title="t('characterEditor.startNewChat')"
+            >
+              <i class="fa-solid fa-plus"></i> {{ t('common.new') }}
+            </button>
+          </div>
+
           <div v-show="!isCreating" class="character-edit-form-buttons">
             <div
               class="menu-button fa-solid fa-star"

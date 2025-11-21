@@ -408,6 +408,8 @@ export interface MessageSchema {
     select: string;
     selected: string;
     selectAll: string;
+    chat: string;
+    new: string;
   };
   popup: {
     cropAvatar: {
@@ -514,9 +516,6 @@ export interface MessageSchema {
     fetch: {
       overflowWarning: string;
     };
-    switch: {
-      wait: string;
-    };
     create: {
       success: string;
       error: string;
@@ -580,6 +579,8 @@ export interface MessageSchema {
     namePlaceholder: string;
     descriptionPlaceholder: string;
     firstMessagePlaceholder: string;
+    openLastChat: string;
+    startNewChat: string;
     tokenCounts: {
       title: string;
       total: string;

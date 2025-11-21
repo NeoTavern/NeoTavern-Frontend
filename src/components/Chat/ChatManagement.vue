@@ -12,12 +12,14 @@ import { toast } from '../../composables/useToast';
 import { GenerationMode, GroupGenerationHandlingMode, GroupReplyStrategy } from '../../constants';
 import { getThumbnailUrl } from '../../utils/image';
 import Pagination from '../Common/Pagination.vue';
+import { useUiStore } from '@/stores/ui.store';
 
 const { t } = useStrictI18n();
 const chatStore = useChatStore();
 const characterStore = useCharacterStore();
 const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
+const uiStore = useUiStore();
 
 const activeTab = ref<'chats' | 'members' | 'prompts'>('chats');
 const chatSearchTerm = ref('');
@@ -186,6 +188,7 @@ function moveMember(index: number, direction: 'up' | 'down') {
 
 function peekCharacter(avatar: string) {
   characterStore.selectCharacterByAvatar(avatar);
+  uiStore.activeDrawer = 'character';
 }
 
 async function addMember(avatar: string) {

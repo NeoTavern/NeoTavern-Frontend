@@ -13,7 +13,6 @@ import {
   type Settings,
   type SettingsPath,
   type Persona,
-  type MenuType,
   type SamplerSettings,
   type PersonaDescription,
   type WorldInfoSettings,
@@ -28,6 +27,7 @@ import {
   type ExtensionAPI,
   type ChatMetadata,
   type ExtensionEventMap,
+  type DrawerType,
 } from '../types';
 import type { ValueForPath } from '../types/utils';
 import { eventEmitter } from './event-emitter';
@@ -518,15 +518,15 @@ const baseExtensionAPI: ExtensionAPI = {
      * Opens a specific nav panel.
      * @param panelName The name of the panel, e.g., 'characters', 'settings'.
      */
-    openPanel: (panelName: MenuType): void => {
-      useUiStore().menuType = panelName;
+    openDrawer: (panelName: DrawerType): void => {
+      useUiStore().activeDrawer = panelName;
     },
 
     /**
      * Closes the currently open nav panel.
      */
     closePanel: (): void => {
-      useUiStore().menuType = null;
+      useUiStore().activeDrawer = null;
     },
 
     /**

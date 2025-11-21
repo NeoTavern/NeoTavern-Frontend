@@ -8,10 +8,10 @@ import type { ApiChatMessage, ChatCompletionPayload, GenerationResponse, Streame
 import type { Character } from './character';
 import type { Persona, PersonaDescription } from './persona';
 import type { WorldInfoBook, WorldInfoEntry, WorldInfoSettings } from './world-info';
-import type { MenuType } from './common';
 import type { ExtensionEventMap } from './events';
 import type { PopupShowOptions } from './popup';
 import type { Component, App } from 'vue';
+import type { DrawerType } from './common';
 
 export interface LlmGenerationOptions {
   connectionProfileName?: string;
@@ -136,7 +136,7 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
   };
   ui: {
     showToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
-    openPanel: (panelName: MenuType) => void;
+    openDrawer: (panelName: DrawerType) => void;
     closePanel: () => void;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     showPopup: (options: PopupShowOptions) => Promise<{ result: number; value: any }>;

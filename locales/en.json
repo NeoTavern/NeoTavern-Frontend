@@ -404,7 +404,9 @@
     "name": "Name",
     "select": "Select",
     "selected": "Selected",
-    "selectAll": "Select All"
+    "selectAll": "Select All",
+    "chat": "Chat",
+    "new": "New"
   },
   "popup": {
     "cropAvatar": {
@@ -511,9 +513,6 @@
     "fetch": {
       "overflowWarning": "Character data length limit reached. To resolve this, set \"performance.lazyLoadCharacters\" to \"true\" in config.yaml and restart the server."
     },
-    "switch": {
-      "wait": "Please wait until the chat is saved before switching characters."
-    },
     "create": {
       "success": "New character created: {name}",
       "error": "Failed to create character."
@@ -577,6 +576,8 @@
     "namePlaceholder": "Enter character name here",
     "descriptionPlaceholder": "Describe your character's physical and mental traits here.",
     "firstMessagePlaceholder": "This will be the first message from the character that starts every chat.",
+    "openLastChat": "Open last chat with this character",
+    "startNewChat": "Start a new chat with this character",
     "tokenCounts": {
       "title": "Token counts may be inaccurate and provided just for reference.",
       "total": "Total tokens",

@@ -227,18 +227,6 @@ export const useCharacterStore = defineStore('character', () => {
     }
 
     uiStore.selectedCharacterAvatarForEditing = avatar;
-    if (uiStore.isChatSaving) {
-      toast.info(t('character.switch.wait'));
-      return;
-    }
-
-    const isChatExist = chatStore.chatInfos.some((chat) => chat.file_id === character.chat);
-    if (isChatExist) {
-      await chatStore.setActiveChatFile(character.chat);
-    } else {
-      const filename = `${character.name.replace(/\s+/g, '_')}_${humanizedDateTime()}`;
-      await chatStore.createNewChatForCharacter(avatar, filename);
-    }
   }
 
   async function updateAndSaveCharacter(avatar: string, changes: Partial<Character>) {

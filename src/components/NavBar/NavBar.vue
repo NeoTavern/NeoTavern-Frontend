@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import CharacterPanel from '../CharacterPanel/CharacterPanel.vue';
 import ExtensionsDrawer from './ExtensionsDrawer.vue';
 import UserSettingsDrawer from './UserSettingsDrawer.vue';
@@ -10,17 +9,18 @@ import WorldInfoDrawer from './WorldInfoDrawer.vue';
 import PersonaManagementDrawer from './PersonaManagementDrawer.vue';
 import FormattingDrawer from './FormattingDrawer.vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
+import { useUiStore } from '@/stores/ui.store';
+import type { DrawerType } from '@/types';
 
 const { t } = useStrictI18n();
 
-// Reactive state to control which drawer is open
-const activeDrawer = ref<string | null>(null);
+const uiStore = useUiStore();
 
-function toggleDrawer(drawerName: string) {
-  if (activeDrawer.value === drawerName) {
-    activeDrawer.value = null; // Close if already open
+function toggleDrawer(drawerName: DrawerType) {
+  if (uiStore.activeDrawer === drawerName) {
+    uiStore.activeDrawer = null; // Close if already open
   } else {
-    activeDrawer.value = drawerName; // Open the new one
+    uiStore.activeDrawer = drawerName; // Open the new one
   }
 }
 </script>
@@ -33,7 +33,7 @@ function toggleDrawer(drawerName: string) {
           <button type="button" class="nav-item-toggle" @click="toggleDrawer('ai-config')">
             <div
               class="nav-item-icon fa-solid fa-sliders fa-fw"
-              :class="{ active: activeDrawer === 'ai-config' }"
+              :class="{ active: uiStore.activeDrawer === 'ai-config' }"
               :title="t('navbar.aiConfig')"
             ></div>
           </button>
@@ -42,7 +42,7 @@ function toggleDrawer(drawerName: string) {
           <button type="button" class="nav-item-toggle" @click="toggleDrawer('api-status')">
             <div
               class="nav-item-icon fa-solid fa-plug fa-fw"
-              :class="{ active: activeDrawer === 'api-status' }"
+              :class="{ active: uiStore.activeDrawer === 'api-status' }"
               :title="t('navbar.apiConnections')"
             ></div>
           </button>
@@ -51,7 +51,7 @@ function toggleDrawer(drawerName: string) {
           <button type="button" class="nav-item-toggle" @click="toggleDrawer('formatting')">
             <div
               class="nav-item-icon fa-solid fa-font fa-fw"
-              :class="{ active: activeDrawer === 'formatting' }"
+              :class="{ active: uiStore.activeDrawer === 'formatting' }"
               :title="t('navbar.formatting')"
             ></div>
           </button>
@@ -60,7 +60,7 @@ function toggleDrawer(drawerName: string) {
           <button type="button" class="nav-item-toggle" @click="toggleDrawer('world-info')">
             <div
               class="nav-item-icon fa-solid fa-book-atlas fa-fw"
-              :class="{ active: activeDrawer === 'world-info' }"
+              :class="{ active: uiStore.activeDrawer === 'world-info' }"
               :title="t('navbar.worldInfo')"
             ></div>
           </button>
@@ -69,7 +69,7 @@ function toggleDrawer(drawerName: string) {
           <button type="button" class="nav-item-toggle" @click="toggleDrawer('user-settings')">
             <div
               class="nav-item-icon fa-solid fa-user-cog fa-fw"
-              :class="{ active: activeDrawer === 'user-settings' }"
+              :class="{ active: uiStore.activeDrawer === 'user-settings' }"
               :title="t('navbar.userSettings')"
             ></div>
           </button>
@@ -78,7 +78,7 @@ function toggleDrawer(drawerName: string) {
           <button type="button" class="nav-item-toggle" @click="toggleDrawer('backgrounds')">
             <div
               class="nav-item-icon fa-solid fa-panorama fa-fw"
-              :class="{ active: activeDrawer === 'backgrounds' }"
+              :class="{ active: uiStore.activeDrawer === 'backgrounds' }"
               :title="t('navbar.backgrounds')"
             ></div>
           </button>
@@ -87,7 +87,7 @@ function toggleDrawer(drawerName: string) {
           <button type="button" class="nav-item-toggle" @click="toggleDrawer('extensions')">
             <div
               class="nav-item-icon fa-solid fa-cubes fa-fw"
-              :class="{ active: activeDrawer === 'extensions' }"
+              :class="{ active: uiStore.activeDrawer === 'extensions' }"
               :title="t('navbar.extensions')"
             ></div>
           </button>
@@ -96,7 +96,7 @@ function toggleDrawer(drawerName: string) {
           <button type="button" class="nav-item-toggle" @click="toggleDrawer('persona')">
             <div
               class="nav-item-icon fa-solid fa-face-smile fa-fw"
-              :class="{ active: activeDrawer === 'persona' }"
+              :class="{ active: uiStore.activeDrawer === 'persona' }"
               :title="t('navbar.personaManagement')"
             ></div>
           </button>
@@ -105,7 +105,7 @@ function toggleDrawer(drawerName: string) {
           <button type="button" class="nav-item-toggle" @click="toggleDrawer('character')">
             <div
               class="nav-item-icon fa-solid fa-address-card fa-fw"
-              :class="{ active: activeDrawer === 'character' }"
+              :class="{ active: uiStore.activeDrawer === 'character' }"
               :title="t('navbar.characterManagement')"
             ></div>
           </button>
@@ -114,37 +114,40 @@ function toggleDrawer(drawerName: string) {
     </div>
 
     <!-- Drawers -->
-    <div class="nav-item-content" :class="{ active: activeDrawer === 'ai-config' }">
+    <div class="nav-item-content" :class="{ active: uiStore.activeDrawer === 'ai-config' }">
       <AiConfigDrawer />
     </div>
-    <div class="nav-item-content" :class="{ active: activeDrawer === 'api-status' }">
+    <div class="nav-item-content" :class="{ active: uiStore.activeDrawer === 'api-status' }">
       <ApiConnectionsDrawer />
     </div>
-    <div class="nav-item-content" :class="{ active: activeDrawer === 'formatting' }">
+    <div class="nav-item-content" :class="{ active: uiStore.activeDrawer === 'formatting' }">
       <FormattingDrawer />
     </div>
     <div
       class="nav-item-content"
-      :class="{ active: activeDrawer === 'world-info', wide: activeDrawer === 'world-info' }"
+      :class="{ active: uiStore.activeDrawer === 'world-info', wide: uiStore.activeDrawer === 'world-info' }"
     >
       <WorldInfoDrawer />
     </div>
-    <div class="nav-item-content" :class="{ active: activeDrawer === 'user-settings' }">
+    <div class="nav-item-content" :class="{ active: uiStore.activeDrawer === 'user-settings' }">
       <UserSettingsDrawer />
     </div>
-    <div class="nav-item-content" :class="{ active: activeDrawer === 'backgrounds' }">
+    <div class="nav-item-content" :class="{ active: uiStore.activeDrawer === 'backgrounds' }">
       <BackgroundsDrawer />
     </div>
     <div
       class="nav-item-content"
-      :class="{ active: activeDrawer === 'extensions', wide: activeDrawer === 'extensions' }"
+      :class="{ active: uiStore.activeDrawer === 'extensions', wide: uiStore.activeDrawer === 'extensions' }"
     >
       <ExtensionsDrawer />
     </div>
-    <div class="nav-item-content" :class="{ active: activeDrawer === 'persona' }">
+    <div class="nav-item-content" :class="{ active: uiStore.activeDrawer === 'persona' }">
       <PersonaManagementDrawer />
     </div>
-    <div class="nav-item-content" :class="{ active: activeDrawer === 'character', wide: activeDrawer === 'character' }">
+    <div
+      class="nav-item-content"
+      :class="{ active: uiStore.activeDrawer === 'character', wide: uiStore.activeDrawer === 'character' }"
+    >
       <CharacterPanel />
     </div>
   </div>
