@@ -1,4 +1,4 @@
-import { createApp } from 'vue';
+import { createVNode, render, type App } from 'vue';
 import { useChatStore } from '../stores/chat.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { useCharacterStore } from '../stores/character.store';
@@ -41,8 +41,6 @@ import { getExtensionContainerId } from '../stores/extension.store';
 import type { ExtensionMetadata, MountableComponentPropsMap } from '../types/ExtensionAPI';
 
 import * as Vue from 'vue';
-import i18n from '../i18n';
-import pinia from '../stores';
 import type { MountableComponent } from '../types/ExtensionAPI';
 import VanillaSidebar from '../components/Shared/VanillaSidebar.vue';
 
@@ -66,6 +64,16 @@ function deepClone<T>(obj: T): T {
 const mountableComponents: Record<MountableComponent, () => Promise<{ default: Vue.Component }>> = {
   ConnectionProfileSelector: () => import('../components/Common/ConnectionProfileSelector.vue'),
 };
+
+// Add a variable to hold the main app instance
+let mainAppInstance: App | null = null;
+
+/**
+ * Call this from main.ts to share the app context with the API
+ */
+export function setMainAppInstance(app: App) {
+  mainAppInstance = app;
+}
 
 /**
  * The public API exposed to extensions.
@@ -541,6 +549,10 @@ const baseExtensionAPI: ExtensionAPI = {
 
     /**
      * Registers a custom sidebar component to the right sidebar area.
+     * @param id Unique identifier for the sidebar view.
+     * @param component The Vue component to render. If null, a generic <div> container is created for vanilla DOM manipulation.
+     * @param side 'left' or 'right' sidebar.
+     * @param options Display options (icon, title, props).
      */
     registerSidebar: async (
       id: string,
@@ -599,28 +611,48 @@ const baseExtensionAPI: ExtensionAPI = {
       try {
         const componentModule = await componentLoader();
         const component = componentModule.default;
+
         container.innerHTML = '';
-        const componentApp = createApp(component, props);
-        componentApp.use(pinia);
-        componentApp.use(i18n);
-        componentApp.mount(container);
+        const vnode = createVNode(component, props);
+
+        // 3. Inherit the context (Plugins, Provides, Global Properties)
+        if (mainAppInstance) {
+          vnode.appContext = mainAppInstance._context;
+        }
+
+        // 4. Render efficiently using Vue's internal renderer
+        render(vnode, container);
       } catch (error) {
         console.error(`[ExtensionAPI] Failed to load and mount component "${componentName}":`, error);
       }
     },
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mount: (container: HTMLElement, component: Vue.Component, props: Record<string, any> = {}): Vue.App => {
+    mount: (
+      container: HTMLElement,
+      component: Vue.Component,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      props: Record<string, any> = {},
+    ): { unmount: () => void } => {
       if (!container) {
         throw new Error('[ExtensionAPI] Target container is null.');
       }
 
-      const app = createApp(component, props);
-      app.use(pinia);
-      app.use(i18n);
-      app.mount(container);
+      // Create VNode
+      const vnode = createVNode(component, props);
 
-      return app;
+      // Inherit context
+      if (mainAppInstance) {
+        vnode.appContext = mainAppInstance._context;
+      }
+
+      // Render
+      render(vnode, container);
+
+      return {
+        unmount: () => {
+          render(null, container);
+        },
+      };
     },
   },
 

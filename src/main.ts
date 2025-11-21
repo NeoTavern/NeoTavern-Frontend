@@ -15,7 +15,8 @@ async function initializeApp() {
   app.use(i18n);
 
   // Dynamically import and initialize the extension API
-  await import('./utils/extension-api');
+  const { setMainAppInstance } = await import('./utils/extension-api');
+  setMainAppInstance(app);
 
   // @ts-expect-error 'i18n.global' is of type 'unknown'
   const t = i18n.global.t as StrictT;

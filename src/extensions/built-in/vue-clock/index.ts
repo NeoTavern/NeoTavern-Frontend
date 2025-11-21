@@ -1,12 +1,13 @@
 import type { ExtensionAPI } from '@/types/';
-import type { App } from 'vue';
 import { manifest } from './manifest';
 import ClockWidget from './ClockWidget.vue';
 
 export { manifest };
 
 export function activate(api: ExtensionAPI) {
-  let vueApp: App | null = null;
+  let vueApp: {
+    unmount: () => void;
+  } | null = null;
   let container: HTMLElement | null = null;
 
   const mountWidget = () => {

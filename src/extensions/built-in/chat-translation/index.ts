@@ -3,13 +3,14 @@ import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
 import { Translator } from './translator';
 import { AutoTranslateMode, type ChatTranslationSettings } from './types';
-import type { App } from 'vue';
 
 export { manifest };
 
 export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
   const translator = new Translator(api);
-  let settingsApp: App | null = null;
+  let settingsApp: {
+    unmount: () => void;
+  } | null = null;
 
   const settingsContainer = document.getElementById(api.meta.containerId);
   if (settingsContainer) {
@@ -90,7 +91,7 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
   injectButtons();
 
   return () => {
-    if (settingsApp) settingsApp.unmount();
+    settingsApp?.unmount();
     unbinds.forEach((u) => u());
     // Remove buttons
     document.querySelectorAll('.translation-button').forEach((el) => el.remove());

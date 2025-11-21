@@ -10,7 +10,7 @@ import type { Persona, PersonaDescription } from './persona';
 import type { WorldInfoBook, WorldInfoEntry, WorldInfoSettings } from './world-info';
 import type { ExtensionEventMap } from './events';
 import type { PopupShowOptions } from './popup';
-import type { Component, App } from 'vue';
+import type { Component } from 'vue';
 import type { DrawerType } from './common';
 
 export interface LlmGenerationOptions {
@@ -176,10 +176,10 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
      * @param container The DOM element to mount into.
      * @param component The Vue component to render.
      * @param props Props to pass to the component.
-     * @returns The Vue Application instance (useful for unmounting later).
+     * @returns An object containing an unmount function to clean up the component.
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mount: (container: HTMLElement, component: Component, props?: Record<string, any>) => App;
+    mount: (container: HTMLElement, component: Component, props?: Record<string, any>) => { unmount: () => void };
   };
   events: {
     on: <E extends keyof ExtensionEventMap>(
