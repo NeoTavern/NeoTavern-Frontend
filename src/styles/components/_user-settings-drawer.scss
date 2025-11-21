@@ -4,30 +4,21 @@
   height: 100%;
   width: 100%;
   padding: 10px;
-  gap: 15px;
 
   &-header {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    flex-shrink: 0;
-
+    margin-bottom: 10px;
     h3 {
       margin: 0;
-      white-space: nowrap;
     }
-  }
-
-  &-search {
-    flex-grow: 1;
-    margin: 0;
-    height: 100%;
   }
 
   &-content {
     flex-grow: 1;
     overflow-y: auto;
-    padding-right: 5px; // space for scrollbar
+    padding-right: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
   }
 
   &-no-results {
@@ -40,35 +31,10 @@
     margin-bottom: 5px;
   }
 
-  &-category-header {
+  .user-settings-list {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    padding: 8px 5px;
-    border-bottom: 1px solid var(--theme-border-color);
-    margin-bottom: 10px;
-
-    h4 {
-      margin: 0;
-      opacity: 0.8;
-      font-size: 1.1em;
-    }
-
-    &:hover {
-      h4 {
-        opacity: 1;
-      }
-    }
-  }
-
-  &-chevron {
-    transition: transform var(--animation-duration-2x) ease-in-out;
-    opacity: 0.7;
-
-    &.is-collapsed {
-      transform: rotate(-90deg);
-    }
+    flex-direction: column;
+    gap: 10px;
   }
 
   &-setting {
@@ -76,11 +42,16 @@
     align-items: center;
     justify-content: space-between;
     gap: 20px;
-    padding: 8px 0;
-    min-height: 40px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--white-20a);
 
-    &:not(:last-child) {
-      border-bottom: 1px solid var(--black-30a);
+    &:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .setting-full-width {
+      width: 100%;
     }
 
     .setting-details {
@@ -101,35 +72,7 @@
 
     .setting-control {
       flex-shrink: 0;
-      width: 200px;
-      display: flex;
-      justify-content: flex-end;
-
-      .text-pole {
-        width: 100%;
-        margin: 0;
-      }
-
-      .checkbox-label-wrapper {
-        transform: scale(1.2);
-      }
-
-      .slider-control {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        width: 100%;
-
-        input[type='range'] {
-          flex-grow: 1;
-        }
-
-        .slider-value {
-          min-width: 35px;
-          text-align: right;
-          font-family: var(--font-family-mono);
-        }
-      }
+      width: 220px;
     }
   }
 }

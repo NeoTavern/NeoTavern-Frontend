@@ -158,7 +158,6 @@
     "entry": {
       "toggle": "Toggle entry's active state.",
       "titlePlaceholder": "Entry Title/Memo",
-      "primaryKeywords": "Primary Keywords",
       "keywordsPlaceholder": "Comma separated list",
       "logic": "Logic",
       "logicOptions": {
@@ -167,7 +166,6 @@
         "notAll": "NOT ALL",
         "notAny": "NOT ANY"
       },
-      "optionalFilter": "Optional Filter",
       "filterPlaceholder": "Comma separated list (ignored if empty)",
       "content": "Content",
       "contentPlaceholder": "What this keyword should mean to the AI...",

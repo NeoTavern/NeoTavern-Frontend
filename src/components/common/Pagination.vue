@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
+import { AppIconButton, AppSelect } from '../UI';
 
 const props = defineProps({
   totalItems: { type: Number, required: true },
@@ -28,8 +29,14 @@ function changePage(page: number) {
   }
 }
 
-function changeItemsPerPage(event: Event) {
-  const newSize = parseInt((event.target as HTMLSelectElement).value, 10);
+const sizeOptions = computed(() => {
+  return props.itemsPerPageOptions.map((opt) => ({
+    label: t('pagination.perPage', { count: opt }),
+    value: opt,
+  }));
+});
+
+function onSizeChange(newSize: number) {
   emit('update:itemsPerPage', newSize);
   emit('update:currentPage', 1); // Reset to first page
 }
@@ -39,37 +46,33 @@ function changeItemsPerPage(event: Event) {
   <div v-if="totalItems > 0" class="pagination">
     <div class="pagination-nav">{{ startItem }}-{{ endItem }} {{ t('common.of') }} {{ totalItems }}</div>
     <div class="pagination-pages">
-      <div
-        class="menu-button fa-solid fa-angles-left"
-        :class="{ disabled: !canGoBack }"
+      <AppIconButton
+        icon="fa-angles-left"
+        :disabled="!canGoBack"
         :title="t('pagination.first')"
         @click="changePage(1)"
-      ></div>
-      <div
-        class="menu-button fa-solid fa-angle-left"
-        :class="{ disabled: !canGoBack }"
+      />
+      <AppIconButton
+        icon="fa-angle-left"
+        :disabled="!canGoBack"
         :title="t('pagination.previous')"
         @click="changePage(currentPage - 1)"
-      ></div>
-      <div
-        class="menu-button fa-solid fa-angle-right"
-        :class="{ disabled: !canGoForward }"
+      />
+      <AppIconButton
+        icon="fa-angle-right"
+        :disabled="!canGoForward"
         :title="t('pagination.next')"
         @click="changePage(currentPage + 1)"
-      ></div>
-      <div
-        class="menu-button fa-solid fa-angles-right"
-        :class="{ disabled: !canGoForward }"
+      />
+      <AppIconButton
+        icon="fa-angles-right"
+        :disabled="!canGoForward"
         :title="t('pagination.last')"
         @click="changePage(totalPages)"
-      ></div>
+      />
     </div>
     <div class="pagination-size-changer">
-      <select :value="itemsPerPage" class="text-pole" @change="changeItemsPerPage">
-        <option v-for="option in itemsPerPageOptions" :key="option" :value="option">
-          {{ t('pagination.perPage', { count: option }) }}
-        </option>
-      </select>
+      <AppSelect :model-value="itemsPerPage" :options="sizeOptions" @update:model-value="onSizeChange" />
     </div>
   </div>
 </template>

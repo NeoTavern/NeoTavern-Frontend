@@ -16,21 +16,6 @@
   }
 
   &-size-changer {
-    select {
-      margin: 0;
-      padding-top: 2px;
-      padding-bottom: 2px;
-    }
-  }
-
-  .menu-button {
-    padding: 3px 6px;
-    margin: 0;
-  }
-
-  .disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
+    min-width: 120px;
   }
 }

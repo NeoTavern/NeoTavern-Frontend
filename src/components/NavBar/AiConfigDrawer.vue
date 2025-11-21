@@ -8,6 +8,7 @@ import { POPUP_TYPE } from '../../types';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
 import PromptManager from '../AiConfig/PromptManager.vue';
+import { AppIconButton, AppSelect, AppInput, AppTextarea, AppCheckbox, RangeControl } from '../../components/UI';
 
 const { t } = useStrictI18n();
 const apiStore = useApiStore();
@@ -74,12 +75,11 @@ onMounted(() => {
       </div>
 
       <div class="header-actions">
-        <div
+        <AppIconButton
+          :icon="isPanelPinned ? 'fa-lock' : 'fa-unlock'"
           :title="t('characterPanel.pinToggle')"
-          class="menu-button-icon"
-          :class="isPanelPinned ? 'fa-lock' : 'fa-unlock'"
           @click="isPanelPinned = !isPanelPinned"
-        ></div>
+        />
         <a
           class="ai-config-drawer-docs-link fa-solid fa-circle-question"
           href="https://docs.sillytavern.app/usage/common-settings/"
@@ -100,151 +100,115 @@ onMounted(() => {
               <div class="standout-header">
                 <strong>{{ item.label ? t(item.label) : '' }}</strong>
                 <div class="preset-manager-actions">
-                  <div
-                    class="menu-button-icon fa-solid fa-file-import"
+                  <AppIconButton
+                    icon="fa-file-import"
                     :title="t('aiConfig.presets.import')"
                     @click="apiStore.importPreset()"
-                  ></div>
-                  <div
-                    class="menu-button-icon fa-solid fa-file-export"
+                  />
+                  <AppIconButton
+                    icon="fa-file-export"
                     :title="t('aiConfig.presets.export')"
                     @click="apiStore.exportPreset(settingsStore.getSetting(item.id))"
-                  ></div>
-                  <div
-                    class="menu-button-icon fa-solid fa-trash-can"
+                  />
+                  <AppIconButton
+                    icon="fa-trash-can"
+                    variant="danger"
                     :title="t('aiConfig.presets.delete')"
                     @click="apiStore.deletePreset(settingsStore.getSetting(item.id))"
-                  ></div>
+                  />
                 </div>
               </div>
               <div class="preset-manager-controls">
-                <select
-                  class="text-pole"
-                  :value="settingsStore.getSetting(item.id)"
-                  @change="settingsStore.setSetting(item.id, ($event.target as HTMLSelectElement).value)"
-                >
-                  <option v-for="preset in apiStore.presets" :key="preset.name" :value="preset.name">
-                    {{ preset.name }}
-                  </option>
-                </select>
-                <div
-                  class="menu-button-icon fa-solid fa-save"
+                <div style="flex-grow: 1">
+                  <AppSelect
+                    :model-value="settingsStore.getSetting(item.id)"
+                    :options="apiStore.presets.map((p) => ({ label: p.name, value: p.name }))"
+                    @update:model-value="(val) => settingsStore.setSetting(item.id!, val)"
+                  />
+                </div>
+                <AppIconButton
+                  icon="fa-save"
                   :title="t('aiConfig.presets.update')"
                   @click="apiStore.updateCurrentPreset(settingsStore.getSetting(item.id))"
-                ></div>
-                <div
-                  class="menu-button-icon fa-solid fa-pencil"
+                />
+                <AppIconButton
+                  icon="fa-pencil"
                   :title="t('aiConfig.presets.rename')"
                   @click="apiStore.renamePreset(settingsStore.getSetting(item.id))"
-                ></div>
-                <div
-                  class="menu-button-icon fa-solid fa-file-circle-plus"
+                />
+                <AppIconButton
+                  icon="fa-file-circle-plus"
                   :title="t('aiConfig.presets.saveAs')"
                   @click="handleNewPreset()"
-                ></div>
+                />
               </div>
             </div>
 
             <!-- Slider -->
-            <div v-if="item.widget === 'slider' && item.id" class="range-block">
-              <div class="range-block-title">{{ item.label ? t(item.label) : '' }}</div>
-              <div class="range-block-range-and-counter">
-                <input
-                  type="range"
-                  class="neo-range-slider"
-                  :min="item.min"
-                  :max="item.maxUnlockedId && settingsStore.getSetting(item.maxUnlockedId) ? 131072 : item.max"
-                  :step="item.step"
-                  :value="settingsStore.getSetting(item.id)"
-                  @input="settingsStore.setSetting(item.id, Number(($event.target as HTMLInputElement).value))"
-                />
-                <input
-                  type="number"
-                  class="neo-range-input"
-                  :min="item.min"
-                  :max="item.maxUnlockedId && settingsStore.getSetting(item.maxUnlockedId) ? 131072 : item.max"
-                  :step="item.step"
-                  :value="settingsStore.getSetting(item.id)"
-                  @input="settingsStore.setSetting(item.id, Number(($event.target as HTMLInputElement).value))"
-                />
-              </div>
-              <div v-show="item.maxUnlockedId && item.unlockLabel" class="range-block-addon">
-                <label class="checkbox-label" :title="item.unlockTooltip ? t(item.unlockTooltip) : ''">
-                  <input
-                    type="checkbox"
-                    :checked="item.maxUnlockedId ? settingsStore.getSetting(item.maxUnlockedId) : false"
-                    @change="
-                      item.maxUnlockedId
-                        ? settingsStore.setSetting(item.maxUnlockedId, ($event.target as HTMLInputElement).checked)
-                        : undefined
-                    "
-                  />
-                  <span>{{ item.unlockLabel ? t(item.unlockLabel) : '' }}</span>
-                </label>
-              </div>
+            <div v-if="item.widget === 'slider' && item.id">
+              <RangeControl
+                :model-value="settingsStore.getSetting(item.id)"
+                :label="item.label ? t(item.label) : ''"
+                :min="item.min"
+                :max="item.maxUnlockedId && settingsStore.getSetting(item.maxUnlockedId) ? 131072 : item.max"
+                :step="item.step"
+                @update:model-value="(val) => settingsStore.setSetting(item.id!, Number(val))"
+              >
+                <template v-if="item.maxUnlockedId && item.unlockLabel" #addon>
+                  <div class="mt-1">
+                    <AppCheckbox
+                      :model-value="!!settingsStore.getSetting(item.maxUnlockedId)"
+                      :label="t(item.unlockLabel)"
+                      :title="item.unlockTooltip ? t(item.unlockTooltip) : ''"
+                      @update:model-value="(val) => settingsStore.setSetting(item.maxUnlockedId!, val)"
+                    />
+                  </div>
+                </template>
+              </RangeControl>
             </div>
 
             <!-- Number Input -->
-            <div v-if="item.widget === 'number-input' && item.id" class="range-block">
-              <div class="range-block-title">{{ item.label ? t(item.label) : '' }}</div>
-              <input
+            <div v-if="item.widget === 'number-input' && item.id">
+              <AppInput
                 type="number"
-                class="text-pole"
+                :label="item.label ? t(item.label) : ''"
+                :model-value="settingsStore.getSetting(item.id)"
                 :min="item.min"
                 :max="item.max"
                 :step="item.step"
-                :value="settingsStore.getSetting(item.id)"
-                @input="settingsStore.setSetting(item.id, Number(($event.target as HTMLInputElement).value))"
+                @update:model-value="(val) => settingsStore.setSetting(item.id!, Number(val))"
               />
             </div>
 
             <!-- Textarea -->
-            <div v-if="item.widget === 'textarea' && item.id" class="range-block">
-              <div class="range-block-title">{{ item.label ? t(item.label) : '' }}</div>
-              <textarea
-                class="text-pole"
-                rows="3"
-                :value="settingsStore.getSetting(item.id)"
-                @input="settingsStore.setSetting(item.id, ($event.target as HTMLTextAreaElement).value)"
-              ></textarea>
+            <div v-if="item.widget === 'textarea' && item.id">
+              <AppTextarea
+                :label="item.label ? t(item.label) : ''"
+                :model-value="settingsStore.getSetting(item.id)"
+                @update:model-value="(val) => settingsStore.setSetting(item.id!, val)"
+              />
               <small v-if="item.description" class="toggle-description">{{ t(item.description) }}</small>
             </div>
 
             <!-- Checkbox -->
-            <div v-if="item.widget === 'checkbox' && item.id" class="range-block">
-              <label class="checkbox-label">
-                <input
-                  type="checkbox"
-                  :checked="settingsStore.getSetting(item.id)"
-                  @change="settingsStore.setSetting(item.id, ($event.target as HTMLInputElement).checked)"
-                />
-                <span>{{ item.label ? t(item.label) : '' }}</span>
-              </label>
-              <div v-if="item.description" class="toggle-description">{{ t(item.description) }}</div>
+            <div v-if="item.widget === 'checkbox' && item.id">
+              <AppCheckbox
+                :label="item.label ? t(item.label) : ''"
+                :model-value="!!settingsStore.getSetting(item.id)"
+                :description="item.description ? t(item.description) : undefined"
+                @update:model-value="(val) => settingsStore.setSetting(item.id!, val)"
+              />
             </div>
 
             <!-- Select Input -->
-            <div v-if="item.widget === 'select' && item.id && item.options" class="range-block">
-              <div class="range-block-title">
-                <label :for="item.id.toString()">{{ item.label ? t(item.label) : '' }}</label>
-                <a
-                  v-if="item.infoLink"
-                  :href="item.infoLink"
-                  target="_blank"
-                  class="fa-solid fa-circle-question info-link"
-                  :title="item.infoTooltip ? t(item.infoTooltip) : undefined"
-                ></a>
-              </div>
-              <select
-                :id="item.id.toString()"
-                class="text-pole"
-                :value="settingsStore.getSetting(item.id)"
-                @change="settingsStore.setSetting(item.id, ($event.target as HTMLSelectElement).value)"
-              >
-                <option v-for="option in item.options" :key="String(option.value)" :value="option.value">
-                  {{ t(option.label) }}
-                </option>
-              </select>
+            <div v-if="item.widget === 'select' && item.id && item.options">
+              <AppSelect
+                :label="item.label ? t(item.label) : ''"
+                :model-value="settingsStore.getSetting(item.id)"
+                :options="item.options.map((o) => ({ label: t(o.label), value: o.value }))"
+                :title="item.infoTooltip ? t(item.infoTooltip) : undefined"
+                @update:model-value="(val) => settingsStore.setSetting(item.id!, val)"
+              />
             </div>
 
             <!-- Info Display -->

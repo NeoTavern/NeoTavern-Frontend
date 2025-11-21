@@ -23,26 +23,16 @@
       display: flex;
       align-items: center;
       gap: 10px;
+    }
 
-      i {
-        cursor: pointer;
-        font-size: 1.2em;
+    .toggle-icon-wrapper {
+      cursor: pointer;
+      font-size: 1.4em;
+      color: var(--color-accent-green-70a);
+      transition: opacity var(--animation-duration-2x);
+
+      &:hover {
         opacity: 0.8;
-        transition: opacity 0.2s;
-        color: var(--color-accent-green-70a);
-
-        &.fa-toggle-off {
-          color: var(--grey-70);
-        }
-
-        &:hover {
-          opacity: 1;
-        }
-      }
-
-      textarea {
-        resize: none;
-        font-weight: bold;
       }
     }
 
@@ -58,14 +48,14 @@
     gap: 15px;
     height: 100%;
     overflow-y: auto;
-    padding-right: 5px; // Space for scrollbar
+    padding-right: 5px;
   }
 
   &-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 10px;
-    align-items: center;
+    align-items: flex-end;
   }
 
   &-section {
@@ -75,63 +65,35 @@
 
     .flex-1 {
       flex: 1;
-    }
-
-    small {
-      text-align: center;
-      opacity: 0.8;
-      font-weight: bold;
-      width: 100%;
-      margin-bottom: -5px;
-      display: block;
+      min-width: 200px;
     }
 
     .control-group {
       display: flex;
       flex-direction: column;
-      flex: 1;
-      min-width: 120px;
-      gap: 2px;
+      gap: 5px;
     }
 
     &--column {
+      display: flex;
       flex-direction: column;
       flex: 1;
-      min-height: 200px; // Give content area some minimum height
-
-      textarea {
-        flex-grow: 1;
-      }
+      min-height: 200px;
     }
-  }
-
-  &-label--with-uid {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    align-items: baseline;
   }
 
   &-checkbox-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 5px 15px;
-
-    .checkbox-label {
-      font-size: 0.9em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-
-      input[type='checkbox'] {
-        width: auto;
-        margin: 0;
-      }
-    }
+    gap: 10px 20px;
   }
 
-  .additional-sources {
-    width: 100%;
+  .uid-label {
+    text-align: right;
+    opacity: 0.5;
+    font-size: 0.8em;
+    font-family: var(--font-family-mono);
+    display: block;
+    margin-top: 2px;
   }
 }

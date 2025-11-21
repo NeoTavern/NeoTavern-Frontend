@@ -161,7 +161,6 @@ export interface MessageSchema {
     entry: {
       toggle: string;
       titlePlaceholder: string;
-      primaryKeywords: string;
       keywordsPlaceholder: string;
       logic: string;
       logicOptions: {
@@ -170,7 +169,6 @@ export interface MessageSchema {
         notAll: string;
         notAny: string;
       };
-      optionalFilter: string;
       filterPlaceholder: string;
       content: string;
       contentPlaceholder: string;

@@ -2,6 +2,7 @@
 import { useApiStore } from '../../stores/api.store';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { computed } from 'vue';
+import { AppSelect } from '../UI';
 
 const props = defineProps<{
   modelValue?: string;
@@ -16,13 +17,16 @@ const selectedProfile = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value),
 });
+
+const options = computed(() => {
+  const list = [
+    { label: t('apiConnections.profileManagement.none'), value: undefined },
+    ...apiStore.connectionProfiles.map((p) => ({ label: p.name, value: p.name })),
+  ];
+  return list as { label: string; value: string | undefined }[];
+});
 </script>
 
 <template>
-  <select v-model="selectedProfile" class="text-pole">
-    <option :value="undefined">{{ t('apiConnections.profileManagement.none') }}</option>
-    <option v-for="profile in apiStore.connectionProfiles" :key="profile.name" :value="profile.name">
-      {{ profile.name }}
-    </option>
-  </select>
+  <AppSelect v-model="selectedProfile" :options="options" />
 </template>
