@@ -550,8 +550,6 @@ export interface MessageSchema {
       placeholderText: string;
       placeholderButton: string;
     };
-    collapseBrowser: string;
-    expandBrowser: string;
   };
   characterEditor: {
     avatar: string;

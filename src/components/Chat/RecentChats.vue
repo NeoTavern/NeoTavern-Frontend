@@ -11,6 +11,9 @@ import { listRecentChats, deleteChat } from '../../api/chat';
 import { toast } from '../../composables/useToast';
 import Pagination from '../Common/Pagination.vue';
 import { AppIconButton, AppButton } from '../UI';
+import SmartAvatar from '../Common/SmartAvatar.vue';
+import EmptyState from '../Common/EmptyState.vue';
+import DrawerHeader from '../Common/DrawerHeader.vue';
 
 const { t } = useStrictI18n();
 const chatStore = useChatStore();
@@ -49,15 +52,10 @@ watch(
   },
 );
 
-function getChatAvatar(chat: ChatInfo) {
+function getChatAvatars(chat: ChatInfo): string[] {
   const members = chat.chat_metadata.members || [];
-  if (members.length === 0) return null;
-  if (members.length === 1) return getThumbnailUrl('avatar', members[0]);
+  if (members.length === 0) return [];
   return members.slice(0, 4).map((m) => getThumbnailUrl('avatar', m));
-}
-
-function isGroup(chat: ChatInfo) {
-  return (chat.chat_metadata.members?.length ?? 0) > 1;
 }
 
 async function onItemClick(chat: ChatInfo) {
@@ -144,17 +142,16 @@ onMounted(() => {
 
 <template>
   <div class="recent-chats">
-    <div class="recent-chats-header">
-      <h3>{{ t('navbar.recentChats') }}</h3>
-      <div class="recent-chats-actions">
+    <DrawerHeader :title="t('navbar.recentChats')">
+      <template #actions>
         <AppIconButton
           :icon="isSelectionMode ? 'fa-xmark' : 'fa-check-to-slot'"
           :title="isSelectionMode ? t('common.cancel') : t('common.select')"
           @click="toggleSelectionMode"
         />
         <AppIconButton icon="fa-rotate-right" :title="t('common.refresh')" @click="refresh" />
-      </div>
-    </div>
+      </template>
+    </DrawerHeader>
 
     <div v-show="isSelectionMode" class="recent-chats-selection-bar">
       <div class="selection-info">{{ selectedChats.size }} {{ t('common.selected') }}</div>
@@ -181,19 +178,7 @@ onMounted(() => {
         @click="onItemClick(chat)"
       >
         <div class="recent-chat-item-avatar">
-          <template v-if="isGroup(chat)">
-            <div class="group-avatar-grid">
-              <img
-                v-for="(avatar, index) in (getChatAvatar(chat) as string[]) || []"
-                :key="index"
-                :src="avatar"
-                onerror="this.src='img/ai4.png'"
-              />
-            </div>
-          </template>
-          <template v-else>
-            <img :src="getChatAvatar(chat) as string" onerror="this.src='img/ai4.png'" />
-          </template>
+          <SmartAvatar :urls="getChatAvatars(chat)" />
 
           <div v-show="isSelectionMode" class="selection-checkbox">
             <i v-if="selectedChats.has(chat.file_id)" class="fa-solid fa-check"></i>
@@ -214,10 +199,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <div v-if="recentChats.length === 0" class="recent-chats-empty">
-        <i class="fa-solid fa-comments"></i>
-        <p>{{ t('chatManagement.noRecentChats') }}</p>
-      </div>
+      <EmptyState v-if="recentChats.length === 0" icon="fa-comments" :description="t('chatManagement.noRecentChats')" />
     </div>
 
     <div class="recent-chats-pagination">

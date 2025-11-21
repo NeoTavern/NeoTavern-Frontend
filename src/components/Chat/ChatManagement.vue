@@ -16,6 +16,7 @@ import DraggableList from '../Common/DraggableList.vue';
 import { useUiStore } from '@/stores/ui.store';
 import { AppButton, AppIconButton, AppInput, AppSelect, AppTextarea, AppCheckbox } from '../UI';
 import CollapsibleSection from '../UI/CollapsibleSection.vue';
+import EmptyState from '../Common/EmptyState.vue';
 
 const { t } = useStrictI18n();
 const chatStore = useChatStore();
@@ -274,9 +275,7 @@ async function removeMember(avatar: string) {
               />
             </div>
           </div>
-          <div v-if="chats.length === 0" class="prompt-empty-state">
-            {{ t('chatManagement.noChatsFound') }}
-          </div>
+          <EmptyState v-if="chats.length === 0" :description="t('chatManagement.noChatsFound')" />
         </div>
       </div>
 
@@ -361,9 +360,7 @@ async function removeMember(avatar: string) {
                 <span>{{ char.name }}</span>
                 <i class="fa-solid fa-plus"></i>
               </div>
-              <div v-if="availableCharactersPaginated.length === 0" class="chat-management-empty-notice">
-                {{ t('common.noResults') }}
-              </div>
+              <EmptyState v-if="availableCharactersPaginated.length === 0" :description="t('common.noResults')" />
             </div>
             <Pagination
               v-if="availableCharactersFiltered.length > settingsStore.settings.account.addMemberPageSize"

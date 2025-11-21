@@ -16,6 +16,7 @@ import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
 import PromptItemizationPopup from './PromptItemizationPopup.vue';
 import { AppIconButton, AppTextarea } from '../UI';
+import SmartAvatar from '../Common/SmartAvatar.vue';
 
 const props = defineProps({
   message: {
@@ -222,7 +223,7 @@ async function showPromptItemization() {
   <div class="message" :class="{ 'is-user': message.is_user, 'is-bot': !message.is_user }" :data-message-index="index">
     <div class="message-avatar-wrapper">
       <div class="message-avatar" style="cursor: pointer" @click="handleAvatarClick">
-        <img :src="avatarUrls.thumbnail" :alt="`${displayName} Avatar`" />
+        <SmartAvatar :urls="[avatarUrls.thumbnail]" :alt="`${displayName} Avatar`" />
       </div>
       <div class="message-id">#{{ index }}</div>
       <div v-if="message.extra?.reasoning_duration" class="message-timer">

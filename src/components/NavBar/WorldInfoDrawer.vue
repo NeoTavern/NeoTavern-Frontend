@@ -2,21 +2,17 @@
 import { onMounted, ref, computed } from 'vue';
 import { useWorldInfoStore } from '../../stores/world-info.store';
 import { useStrictI18n } from '../../composables/useStrictI18n';
-import { useResizable } from '../../composables/useResizable';
 import WorldInfoEntryEditor from './WorldInfoEntryEditor.vue';
 import WorldInfoGlobalSettings from './WorldInfoGlobalSettings.vue';
 import type { WorldInfoEntry as WorldInfoEntryType } from '../../types';
 import { AppIconButton, AppInput, AppSelect } from '../UI';
+import SplitPane from '../Common/SplitPane.vue';
 
 const { t } = useStrictI18n();
 const worldInfoStore = useWorldInfoStore();
 
-const browserPane = ref<HTMLElement | null>(null);
-const dividerEl = ref<HTMLElement | null>(null);
 const isBrowserCollapsed = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
-
-useResizable(browserPane, dividerEl, { storageKey: 'worldinfoBrowserWidth', initialWidth: 350 });
 
 onMounted(() => {
   if (worldInfoStore.bookNames.length === 0) {
@@ -65,9 +61,13 @@ const sortOptions = computed(() => [
 </script>
 
 <template>
-  <div class="character-panel world-info-drawer" :class="{ 'is-collapsed': isBrowserCollapsed }">
-    <!-- Left Pane: Lorebook Browser -->
-    <div ref="browserPane" class="character-panel-browser">
+  <SplitPane
+    v-model:collapsed="isBrowserCollapsed"
+    storage-key="worldinfoBrowserWidth"
+    :initial-width="350"
+    class="character-panel world-info-drawer"
+  >
+    <template #side>
       <div class="character-panel-browser-header world-info-controls">
         <div class="world-info-controls-row">
           <AppIconButton icon="fa-plus" :title="t('worldInfo.newWorld')" @click="worldInfoStore.createNewBook" />
@@ -171,23 +171,17 @@ const sortOptions = computed(() => [
           </Transition>
         </div>
       </div>
-    </div>
+    </template>
 
-    <!-- Divider -->
-    <div ref="dividerEl" class="character-panel-divider">
-      <div class="character-panel-collapse-toggle" @click="isBrowserCollapsed = !isBrowserCollapsed">
-        <i class="fa-solid" :class="isBrowserCollapsed ? 'fa-angles-right' : 'fa-angles-left'"></i>
+    <template #main>
+      <div class="character-panel-editor">
+        <WorldInfoGlobalSettings v-show="worldInfoStore.selectedItemId === 'global-settings'" />
+        <WorldInfoEntryEditor
+          v-show="worldInfoStore.selectedEntry"
+          :model-value="worldInfoStore.selectedEntry ?? undefined"
+          @update:model-value="updateEntry"
+        />
       </div>
-    </div>
-
-    <!-- Right Pane: Editor -->
-    <div class="character-panel-editor">
-      <WorldInfoGlobalSettings v-show="worldInfoStore.selectedItemId === 'global-settings'" />
-      <WorldInfoEntryEditor
-        v-show="worldInfoStore.selectedEntry"
-        :model-value="worldInfoStore.selectedEntry ?? undefined"
-        @update:model-value="updateEntry"
-      />
-    </div>
-  </div>
+    </template>
+  </SplitPane>
 </template>

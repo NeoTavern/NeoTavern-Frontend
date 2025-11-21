@@ -7,6 +7,7 @@ import { getThumbnailUrl } from '@/utils/image';
 import { useChatStore } from '@/stores/chat.store';
 import { formatTimeStamp } from '@/utils/date';
 import { AppIconButton } from '../UI';
+import SmartAvatar from '../Common/SmartAvatar.vue';
 
 const uiStore = useUiStore();
 const characterStore = useCharacterStore();
@@ -69,23 +70,9 @@ function toggleFullScreen() {
 
     <div class="chat-header-group center" @click="handleCharacterClick">
       <div v-if="characterStore.activeCharacters.length > 0" class="chat-header-info">
-        <div v-if="isGroup" class="chat-header-info-avatar group-grid">
-          <img
-            v-for="(url, index) in avatarUrls"
-            :key="index"
-            :src="url"
-            class="group-avatar-img"
-            onerror="this.src='img/ai4.png'"
-            alt="Group Member"
-          />
+        <div class="chat-header-info-avatar" :class="{ 'group-grid': isGroup }">
+          <SmartAvatar :urls="avatarUrls" :alt="headerTitle" />
         </div>
-        <img
-          v-else
-          :src="avatarUrls[0]"
-          :alt="headerTitle"
-          class="chat-header-info-avatar"
-          onerror="this.src='img/ai4.png'"
-        />
 
         <div class="chat-header-info-text">
           <span class="chat-header-info-name" :title="headerTitle">{{ headerTitle }}</span>

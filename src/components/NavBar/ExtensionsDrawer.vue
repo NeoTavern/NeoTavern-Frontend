@@ -1,19 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useExtensionStore } from '../../stores/extension.store';
 import { useStrictI18n } from '../../composables/useStrictI18n';
-import { useResizable } from '../../composables/useResizable';
-import { AppIconButton, AppInput, AppCheckbox, AppToggle } from '../UI';
+import { AppIconButton, AppInput, AppToggle } from '../UI';
+import SplitPane from '../Common/SplitPane.vue';
+import EmptyState from '../Common/EmptyState.vue';
 
 const { t } = useStrictI18n();
 const extensionStore = useExtensionStore();
 
-const browserPane = ref<HTMLElement | null>(null);
-const dividerEl = ref<HTMLElement | null>(null);
 const isBrowserCollapsed = ref(false); // TODO: load from account storage
-
-useResizable(browserPane, dividerEl, { storageKey: 'extensionsBrowserWidth', initialWidth: 250 });
-
 const notifyOnUpdates = ref(false); // TODO: Connect this to settings
 
 function manageExtensions() {
@@ -35,18 +31,18 @@ onMounted(() => {
 </script>
 
 <template>
-  <div id="extensions-panel" class="extensions-panel" :class="{ 'is-collapsed': isBrowserCollapsed }">
-    <!-- Left Pane: Extension Browser -->
-    <div id="extensions-browser" ref="browserPane" class="extensions-panel-browser">
+  <SplitPane
+    v-model:collapsed="isBrowserCollapsed"
+    storage-key="extensionsBrowserWidth"
+    :initial-width="250"
+    class="extensions-panel"
+  >
+    <template #side>
       <div class="extensions-panel-browser-header">
-        <div style="display: flex; gap: 5px">
+        <div style="display: flex; gap: 5px; align-items: center">
           <AppIconButton icon="fa-cubes" :title="t('extensions.manage')" @click="manageExtensions" />
           <AppIconButton icon="fa-cloud-arrow-down" :title="t('extensions.install')" @click="installExtension" />
-          <AppCheckbox
-            v-model="notifyOnUpdates"
-            :label="t('extensions.notifyUpdates')"
-            style="margin-left: auto; font-size: 0.9em"
-          />
+          <AppToggle v-model="notifyOnUpdates" :title="t('extensions.notifyUpdates')" style="margin-left: auto" />
         </div>
         <AppInput v-model="extensionStore.searchTerm" type="search" :placeholder="t('common.search')" />
       </div>
@@ -75,41 +71,36 @@ onMounted(() => {
           </div>
         </div>
       </div>
-    </div>
+    </template>
 
-    <!-- Divider -->
-    <div ref="dividerEl" class="extensions-panel-divider">
-      <div class="extensions-panel-collapse-toggle" @click="isBrowserCollapsed = !isBrowserCollapsed">
-        <i class="fa-solid" :class="isBrowserCollapsed ? 'fa-angles-right' : 'fa-angles-left'"></i>
-      </div>
-    </div>
+    <template #main>
+      <div class="extensions-panel-editor">
+        <EmptyState
+          v-show="!extensionStore.selectedExtension"
+          icon="fa-puzzle-piece"
+          :title="t('extensions.placeholder.title')"
+          :description="t('extensions.placeholder.text')"
+        />
 
-    <!-- Right Pane: Editor -->
-    <div id="extensions-editor" class="extensions-panel-editor">
-      <div v-show="!extensionStore.selectedExtension" class="extensions-panel-placeholder">
-        <div class="placeholder-icon fa-solid fa-puzzle-piece"></div>
-        <h2 class="placeholder-title">{{ t('extensions.placeholder.title') }}</h2>
-        <p>{{ t('extensions.placeholder.text') }}</p>
-      </div>
+        <template v-for="extension in Object.values(extensionStore.extensions)" :key="extension.id">
+          <div v-show="extensionStore.selectedExtensionId === extension.id">
+            <div class="extension-content">
+              <div class="extension-content-header">
+                <h3>
+                  <span>{{ extension.manifest.display_name || extension.id }}</span>
+                  <span v-if="extension.manifest.version" class="version">v{{ extension.manifest.version }}</span>
+                </h3>
+              </div>
+              <p v-if="extension.manifest.description" class="extension-content-description">
+                {{ extension.manifest.description }}
+              </p>
 
-      <template v-for="extension in Object.values(extensionStore.extensions)" :key="extension.id">
-        <div v-show="extensionStore.selectedExtensionId === extension.id">
-          <div class="extension-content">
-            <div class="extension-content-header">
-              <h3>
-                <span>{{ extension.manifest.display_name || extension.id }}</span>
-                <span v-if="extension.manifest.version" class="version">v{{ extension.manifest.version }}</span>
-              </h3>
+              <!-- This is the container where the extension will mount its UI -->
+              <div :id="extension.containerId"></div>
             </div>
-            <p v-if="extension.manifest.description" class="extension-content-description">
-              {{ extension.manifest.description }}
-            </p>
-
-            <!-- This is the container where the extension will mount its UI -->
-            <div :id="extension.containerId"></div>
           </div>
-        </div>
-      </template>
-    </div>
-  </div>
+        </template>
+      </div>
+    </template>
+  </SplitPane>
 </template>

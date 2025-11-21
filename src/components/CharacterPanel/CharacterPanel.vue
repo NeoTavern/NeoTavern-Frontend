@@ -5,9 +5,10 @@ import CharacterEditForm from './CharacterEditForm.vue';
 import Pagination from '../Common/Pagination.vue';
 import { getThumbnailUrl } from '../../utils/image';
 import { useStrictI18n } from '../../composables/useStrictI18n';
-import { useResizable } from '../../composables/useResizable';
 import { useSettingsStore } from '../../stores/settings.store';
-import { AppIconButton, AppInput, AppSelect } from '../UI';
+import { AppIconButton, AppInput, AppSelect, AppButton } from '../UI';
+import SplitPane from '../Common/SplitPane.vue';
+import EmptyState from '../Common/EmptyState.vue';
 
 const { t } = useStrictI18n();
 
@@ -18,11 +19,6 @@ const isSearchActive = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 const characterListEl = ref<HTMLElement | null>(null);
 const highlightedItemRef = ref<HTMLElement | null>(null);
-
-const browserPane = ref<HTMLElement | null>(null);
-const dividerEl = ref<HTMLElement | null>(null);
-
-useResizable(browserPane, dividerEl, { storageKey: 'characterBrowserWidth' });
 
 // Watch for a character being highlighted by the store
 watch(
@@ -87,9 +83,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="character-panel" :class="{ 'is-collapsed': !settingsStore.settings.account.characterBrowserExpanded }">
-    <!-- Left Pane: Character Browser -->
-    <div ref="browserPane" class="character-panel-browser">
+  <SplitPane
+    v-model:collapsed="settingsStore.settings.account.characterBrowserExpanded"
+    storage-key="characterBrowserWidth"
+    class="character-panel"
+  >
+    <template #side>
       <div class="character-panel-browser-header">
         <div class="character-panel-actions">
           <AppIconButton icon="fa-user-plus" :title="t('characterPanel.createNew')" @click="createNew" />
@@ -172,41 +171,23 @@ onMounted(() => {
           </div>
         </template>
       </div>
-    </div>
+    </template>
 
-    <!-- Divider -->
-    <div ref="dividerEl" class="character-panel-divider">
-      <div
-        class="character-panel-collapse-toggle"
-        :title="
-          !settingsStore.settings.account.characterBrowserExpanded
-            ? t('characterPanel.expandBrowser')
-            : t('characterPanel.collapseBrowser')
-        "
-        @click="
-          settingsStore.settings.account.characterBrowserExpanded =
-            !settingsStore.settings.account.characterBrowserExpanded
-        "
-      >
-        <i
-          class="fa-solid"
-          :class="!settingsStore.settings.account.characterBrowserExpanded ? 'fa-angles-right' : 'fa-angles-left'"
-        ></i>
-      </div>
-    </div>
+    <template #main>
+      <div class="character-panel-editor">
+        <EmptyState
+          v-show="!characterStore.editFormCharacter"
+          icon="fa-user-pen"
+          :title="t('characterPanel.editor.placeholderTitle')"
+          :description="t('characterPanel.editor.placeholderText')"
+        >
+          <AppButton icon="fa-user-plus" @click="createNew">
+            {{ t('characterPanel.editor.placeholderButton') }}
+          </AppButton>
+        </EmptyState>
 
-    <!-- Right Pane: Character Editor -->
-    <div class="character-panel-editor">
-      <div v-show="!characterStore.editFormCharacter" class="character-panel-editor-placeholder">
-        <div class="placeholder-icon fa-solid fa-user-pen"></div>
-        <h2 class="placeholder-title">{{ t('characterPanel.editor.placeholderTitle') }}</h2>
-        <p class="placeholder-text">{{ t('characterPanel.editor.placeholderText') }}</p>
-        <div class="menu-button" @click="createNew">
-          <i class="fa-solid fa-user-plus"></i>&nbsp;
-          <span>{{ t('characterPanel.editor.placeholderButton') }}</span>
-        </div>
+        <CharacterEditForm v-show="characterStore.editFormCharacter" />
       </div>
-      <CharacterEditForm v-show="characterStore.editFormCharacter" />
-    </div>
-  </div>
+    </template>
+  </SplitPane>
 </template>

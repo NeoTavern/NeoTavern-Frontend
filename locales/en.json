@@ -546,9 +546,7 @@
       "placeholderTitle": "Select a Character",
       "placeholderText": "Select a character from the list to view or edit their details.",
       "placeholderButton": "Create New Character"
-    },
-    "collapseBrowser": "Collapse character browser",
-    "expandBrowser": "Expand character browser"
+    }
   },
   "characterEditor": {
     "avatar": "Click to select a new avatar for this character",

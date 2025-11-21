@@ -8,6 +8,7 @@ import { toast } from '../../composables/useToast';
 import type { MessageRole } from '@/types';
 import DraggableList from '../Common/DraggableList.vue';
 import { AppButton, AppIconButton, AppInput, AppSelect, AppTextarea } from '../UI';
+import EmptyState from '../Common/EmptyState.vue';
 
 const settingsStore = useSettingsStore();
 const { t } = useStrictI18n();
@@ -233,10 +234,11 @@ function getBadgeClass(role?: string) {
         </template>
       </DraggableList>
 
-      <div v-if="displayPrompts.length === 0" class="prompt-empty-state">
-        <i class="fa-solid fa-layer-group"></i>
-        <p>{{ t('aiConfig.promptManager.noPrompts') }}</p>
-      </div>
+      <EmptyState
+        v-if="displayPrompts.length === 0"
+        icon="fa-layer-group"
+        :description="t('aiConfig.promptManager.noPrompts')"
+      />
     </div>
   </div>
 </template>

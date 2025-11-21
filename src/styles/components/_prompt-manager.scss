@@ -158,23 +158,6 @@
   }
 }
 
-.prompt-empty-state {
-  text-align: center;
-  opacity: 0.6;
-  padding: 40px 20px;
-  font-style: italic;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-
-  i {
-    font-size: 2.5em;
-    opacity: 0.5;
-  }
-}
-
 @keyframes slideDown {
   from {
     opacity: 0;
