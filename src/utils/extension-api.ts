@@ -74,6 +74,7 @@ const mountableComponents: Record<MountableComponent, () => Promise<{ default: V
   RangeControl: () => import('../components/UI/RangeControl.vue'),
   TagInput: () => import('../components/UI/TagInput.vue'),
   Pagination: () => import('../components/Common/Pagination.vue'),
+  DraggableList: () => import('../components/Common/DraggableList.vue'),
 };
 
 // Add a variable to hold the main app instance

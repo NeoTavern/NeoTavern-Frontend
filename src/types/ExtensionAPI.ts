@@ -32,6 +32,7 @@ export enum MountableComponent {
   RangeControl = 'RangeControl',
   TagInput = 'TagInput',
   Pagination = 'Pagination',
+  DraggableList = 'DraggableList',
 }
 
 /**
@@ -131,6 +132,16 @@ export interface MountableComponentPropsMap {
     itemsPerPageOptions?: number[];
     'onUpdate:currentPage'?: (page: number) => void;
     'onUpdate:itemsPerPage'?: (size: number) => void;
+  };
+  [MountableComponent.DraggableList]: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    items: any[];
+    itemKey?: string;
+    handleClass?: string;
+    disabled?: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    'onUpdate:items'?: (items: any[]) => void;
+    onReorder?: (payload: { from: number; to: number }) => void;
   };
 }
 
