@@ -255,10 +255,16 @@ export interface Settings {
     extensionsBrowserWidth: number;
     chatFullScreen: boolean;
     recentChatsPageSize: number;
+
     addMemberPageSize: number;
     addMemberExpanded: boolean;
     groupMembersExpanded: boolean;
     groupConfigExpanded: boolean;
+
+    rightSidebarWidth: number;
+    leftSidebarWidth: number;
+    rightSidebarExpanded: boolean;
+    leftSidebarExpanded: boolean;
   };
   disabledExtensions: string[];
   extensionSettings: Record<string, Record<string, never>>;

@@ -21,6 +21,17 @@ export interface LlmGenerationOptions {
 
 export enum MountableComponent {
   ConnectionProfileSelector = 'ConnectionProfileSelector',
+  AppButton = 'AppButton',
+  AppCheckbox = 'AppCheckbox',
+  AppIcon = 'AppIcon',
+  AppIconButton = 'AppIconButton',
+  AppInput = 'AppInput',
+  AppSelect = 'AppSelect',
+  AppTextarea = 'AppTextarea',
+  AppToggle = 'AppToggle',
+  RangeControl = 'RangeControl',
+  TagInput = 'TagInput',
+  Pagination = 'Pagination',
 }
 
 /**
@@ -31,6 +42,95 @@ export interface MountableComponentPropsMap {
   [MountableComponent.ConnectionProfileSelector]: {
     modelValue?: string;
     'onUpdate:modelValue'?: (value: string | undefined) => void;
+  };
+  [MountableComponent.AppButton]: {
+    variant?: 'default' | 'danger' | 'confirm';
+    icon?: string;
+    disabled?: boolean;
+    loading?: boolean;
+    title?: string;
+    onClick?: (event: MouseEvent) => void;
+  };
+  [MountableComponent.AppCheckbox]: {
+    modelValue: boolean;
+    label: string;
+    description?: string;
+    disabled?: boolean;
+    'onUpdate:modelValue'?: (value: boolean) => void;
+  };
+  [MountableComponent.AppIcon]: {
+    icon: string;
+    spin?: boolean;
+    fixedWidth?: boolean;
+  };
+  [MountableComponent.AppIconButton]: {
+    icon: string;
+    title?: string;
+    active?: boolean;
+    disabled?: boolean;
+    variant?: 'default' | 'danger';
+    onClick?: (event: MouseEvent) => void;
+  };
+  [MountableComponent.AppInput]: {
+    modelValue: string | number;
+    label?: string;
+    type?: 'text' | 'number' | 'search' | 'password';
+    placeholder?: string;
+    disabled?: boolean;
+    min?: number;
+    max?: number;
+    step?: number;
+    'onUpdate:modelValue'?: (value: string | number) => void;
+    onChange?: (event: Event) => void;
+  };
+  [MountableComponent.AppSelect]: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    modelValue: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    options: { label: string; value: any; disabled?: boolean }[];
+    label?: string;
+    disabled?: boolean;
+    title?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    'onUpdate:modelValue'?: (value: any) => void;
+    onChange?: (event: Event) => void;
+  };
+  [MountableComponent.AppTextarea]: {
+    modelValue: string;
+    label?: string;
+    placeholder?: string;
+    rows?: number;
+    disabled?: boolean;
+    resizable?: boolean;
+    'onUpdate:modelValue'?: (value: string) => void;
+    onMaximize?: () => void;
+  };
+  [MountableComponent.AppToggle]: {
+    modelValue: boolean;
+    disabled?: boolean;
+    'onUpdate:modelValue'?: (value: boolean) => void;
+  };
+  [MountableComponent.RangeControl]: {
+    modelValue: number;
+    min?: number;
+    max?: number;
+    step?: number;
+    label?: string;
+    disabled?: boolean;
+    'onUpdate:modelValue'?: (value: number) => void;
+  };
+  [MountableComponent.TagInput]: {
+    modelValue: string[];
+    placeholder?: string;
+    'onUpdate:modelValue'?: (value: string[]) => void;
+  };
+  [MountableComponent.Pagination]: {
+    totalItems: number;
+    currentPage: number;
+    itemsPerPage: number;
+    itemsPerPageOptions?: number[];
+    'onUpdate:currentPage'?: (page: number) => void;
+    'onUpdate:itemsPerPage'?: (size: number) => void;
   };
 }
 

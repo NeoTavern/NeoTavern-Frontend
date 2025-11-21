@@ -67,7 +67,7 @@ onMounted(() => {
   <div id="background" :style="backgroundStyle"></div>
   <Navbar />
 
-  <AppSidebar side="left" :is-open="uiStore.isLeftSidebarOpen" storage-key="characterBrowserWidth">
+  <AppSidebar side="left" :is-open="uiStore.isLeftSidebarOpen" storage-key="leftSidebarWidth">
     <template v-for="[id, def] in uiStore.leftSidebarRegistry" :key="id">
       <div v-show="uiStore.leftSidebarView === id" style="height: 100%">
         <component :is="def.component" v-bind="def.componentProps" />
@@ -93,7 +93,7 @@ onMounted(() => {
     </template>
   </main>
 
-  <AppSidebar side="right" :is-open="uiStore.isRightSidebarOpen" storage-key="extensionsBrowserWidth">
+  <AppSidebar side="right" :is-open="uiStore.isRightSidebarOpen" storage-key="rightSidebarWidth">
     <template v-for="[id, def] in uiStore.rightSidebarRegistry" :key="id">
       <div v-show="uiStore.rightSidebarView === id" style="height: 100%">
         <component :is="def.component" v-bind="def.componentProps" />

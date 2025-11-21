@@ -257,15 +257,19 @@ export enum WorldInfoSortOption {
 }
 export const defaultAccountSettings: Settings['account'] = {
   characterBrowserExpanded: true,
-  characterBrowserWidth: 200,
-  worldinfoBrowserWidth: 200,
+  characterBrowserWidth: 300,
+  worldinfoBrowserWidth: 300,
   characterSortOrder: CharacterSortOption.NAME_ASC,
   worldInfoSortOrder: WorldInfoSortOption.ORDER_ASC,
-  extensionsBrowserWidth: 200,
+  extensionsBrowserWidth: 300,
   chatFullScreen: false,
   recentChatsPageSize: 20,
   addMemberPageSize: 20,
   addMemberExpanded: true,
   groupMembersExpanded: true,
   groupConfigExpanded: true,
+  leftSidebarExpanded: true,
+  rightSidebarExpanded: true,
+  leftSidebarWidth: 300,
+  rightSidebarWidth: 300,
 };

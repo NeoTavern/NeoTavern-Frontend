@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useStrictI18n } from '@/composables/useStrictI18n';
+import { AppIcon } from '@/components/UI';
 
 const { t } = useStrictI18n();
 const time = ref(new Date().toLocaleTimeString());
@@ -22,7 +23,7 @@ onUnmounted(() => {
 <template>
   <div class="clock-widget">
     <div class="clock-widget-icon">
-      <i class="fa-regular fa-clock"></i>
+      <AppIcon icon="fa-regular fa-clock" />
     </div>
     <div class="clock-widget-content">
       <div class="clock-widget-label">{{ t('common.of') }} Time</div>

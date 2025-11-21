@@ -198,7 +198,7 @@ select.text-pole {
   background-color: transparent;
   border: none;
   border-radius: 5px;
-  padding: 5px;
+  padding: 2px;
   cursor: pointer;
   transition:
     background-color var(--animation-duration-2x),
@@ -211,7 +211,7 @@ select.text-pole {
 
   &:not(.disabled):not([disabled]):hover,
   &:not(.disabled):not([disabled]).active {
-    background-color: var(--white-20a);
+    background-color: transparent;
     opacity: 1;
   }
 }

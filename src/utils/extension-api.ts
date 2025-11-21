@@ -63,6 +63,17 @@ function deepClone<T>(obj: T): T {
  */
 const mountableComponents: Record<MountableComponent, () => Promise<{ default: Vue.Component }>> = {
   ConnectionProfileSelector: () => import('../components/Common/ConnectionProfileSelector.vue'),
+  AppButton: () => import('../components/UI/AppButton.vue'),
+  AppCheckbox: () => import('../components/UI/AppCheckbox.vue'),
+  AppIcon: () => import('../components/UI/AppIcon.vue'),
+  AppIconButton: () => import('../components/UI/AppIconButton.vue'),
+  AppInput: () => import('../components/UI/AppInput.vue'),
+  AppSelect: () => import('../components/UI/AppSelect.vue'),
+  AppTextarea: () => import('../components/UI/AppTextarea.vue'),
+  AppToggle: () => import('../components/UI/AppToggle.vue'),
+  RangeControl: () => import('../components/UI/RangeControl.vue'),
+  TagInput: () => import('../components/UI/TagInput.vue'),
+  Pagination: () => import('../components/Common/Pagination.vue'),
 };
 
 // Add a variable to hold the main app instance

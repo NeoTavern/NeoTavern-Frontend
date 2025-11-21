@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from '@/types';
 import { manifest } from './manifest';
+import { MountableComponent } from '@/types/ExtensionAPI';
 
 export { manifest };
 
@@ -22,18 +23,12 @@ export function activate(api: ExtensionAPI) {
         box-shadow: inset 0 0 50px var(--color-accent-crimson-70a);
         transition: all 0.3s ease;
       }
-      /* Styles for our vanilla UI panel */
       .vanilla-controls {
         padding: 10px;
         background: var(--black-30a);
         border-radius: 5px;
         margin-top: 10px;
         border: 1px solid var(--theme-border-color);
-      }
-      .vanilla-controls h4 {
-        margin: 0 0 10px 0;
-        font-size: 0.9rem;
-        opacity: 0.8;
       }
     `;
     document.head.appendChild(style);
@@ -51,57 +46,28 @@ export function activate(api: ExtensionAPI) {
     }
   };
 
-  // 3. Build the Settings UI inside the extension drawer
-  // We use the container provided by the system for this specific extension
+  // 3. Build the Settings UI inside the extension drawer using MountableComponent
   const container = document.getElementById(meta.containerId);
 
   if (container) {
-    // Create wrapper
     const wrapper = document.createElement('div');
     wrapper.className = 'vanilla-controls';
-
-    const title = document.createElement('h4');
-    title.textContent = 'Vanilla Settings';
-    wrapper.appendChild(title);
-
-    // Create Checkbox Label
-    const label = document.createElement('label');
-    label.className = 'checkbox-label';
-    label.style.display = 'flex';
-    label.style.alignItems = 'center';
-    label.style.cursor = 'pointer';
-    label.style.gap = '10px';
-
-    // Create Input
-    const input = document.createElement('input');
-    input.type = 'checkbox';
+    container.appendChild(wrapper);
 
     // Load Saved State (default to false)
     const savedState = settings.get(SETTING_KEY) ?? false;
-    input.checked = savedState;
-
-    // Apply initial state
     setEffect(savedState);
 
-    // Add Event Listener
-    input.onchange = () => {
-      const isChecked = input.checked;
-      setEffect(isChecked);
-
-      // Save setting
-      settings.set(SETTING_KEY, isChecked);
-
-      ui.showToast(isChecked ? 'Highlight Enabled' : 'Highlight Disabled');
-    };
-
-    const span = document.createElement('span');
-    span.textContent = 'Enable High Visibility Mode';
-
-    // Assemble
-    label.appendChild(input);
-    label.appendChild(span);
-    wrapper.appendChild(label);
-    container.appendChild(wrapper);
+    api.ui.mountComponent(wrapper, MountableComponent.AppCheckbox, {
+      label: 'Enable High Visibility Mode',
+      description: 'Highlights the chat area with a red border.',
+      modelValue: savedState,
+      'onUpdate:modelValue': (isChecked: boolean) => {
+        setEffect(isChecked);
+        settings.set(SETTING_KEY, isChecked);
+        ui.showToast(isChecked ? 'Highlight Enabled' : 'Highlight Disabled');
+      },
+    });
   }
 
   // 4. Return Cleanup Function
@@ -114,6 +80,8 @@ export function activate(api: ExtensionAPI) {
     if (style) {
       style.remove();
     }
-    document.getElementById(meta.containerId)!.innerHTML = '';
+    if (document.getElementById(meta.containerId)) {
+      document.getElementById(meta.containerId)!.innerHTML = '';
+    }
   };
 }

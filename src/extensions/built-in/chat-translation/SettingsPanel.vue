@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import type { ExtensionAPI } from '@/types';
 import { AutoTranslateMode, type ChatTranslationSettings, DEFAULT_PROMPT } from './types';
 import ConnectionProfileSelector from '@/components/Common/ConnectionProfileSelector.vue';
+import { AppInput, AppSelect, AppTextarea, AppButton } from '@/components/UI';
 import { useStrictI18n } from '@/composables/useStrictI18n';
 
 const props = defineProps<{
@@ -18,6 +19,13 @@ const settings = ref<ChatTranslationSettings>({
   autoMode: AutoTranslateMode.NONE,
   prompt: DEFAULT_PROMPT,
 });
+
+const autoModeOptions = computed(() => [
+  { label: t('extensionsBuiltin.chatTranslation.autoMode.none'), value: AutoTranslateMode.NONE },
+  { label: t('extensionsBuiltin.chatTranslation.autoMode.responses'), value: AutoTranslateMode.RESPONSES },
+  { label: t('extensionsBuiltin.chatTranslation.autoMode.inputs'), value: AutoTranslateMode.INPUTS },
+  { label: t('extensionsBuiltin.chatTranslation.autoMode.both'), value: AutoTranslateMode.BOTH },
+]);
 
 onMounted(() => {
   const saved = props.api.settings.get();
@@ -50,37 +58,29 @@ function resetPrompt() {
 
     <div class="setting-row">
       <div class="setting-item">
-        <label>{{ t('extensionsBuiltin.chatTranslation.sourceLang') }}</label>
-        <input v-model="settings.sourceLang" type="text" class="text-pole" />
+        <AppInput v-model="settings.sourceLang" :label="t('extensionsBuiltin.chatTranslation.sourceLang')" />
       </div>
       <div class="setting-item">
-        <label>{{ t('extensionsBuiltin.chatTranslation.targetLang') }}</label>
-        <input v-model="settings.targetLang" type="text" class="text-pole" />
+        <AppInput v-model="settings.targetLang" :label="t('extensionsBuiltin.chatTranslation.targetLang')" />
       </div>
     </div>
 
     <div class="setting-item">
-      <label>{{ t('extensionsBuiltin.chatTranslation.autoMode.label') }}</label>
-      <select v-model="settings.autoMode" class="text-pole">
-        <option :value="AutoTranslateMode.NONE">{{ t('extensionsBuiltin.chatTranslation.autoMode.none') }}</option>
-        <option :value="AutoTranslateMode.RESPONSES">
-          {{ t('extensionsBuiltin.chatTranslation.autoMode.responses') }}
-        </option>
-        <option :value="AutoTranslateMode.INPUTS">
-          {{ t('extensionsBuiltin.chatTranslation.autoMode.inputs') }}
-        </option>
-        <option :value="AutoTranslateMode.BOTH">{{ t('extensionsBuiltin.chatTranslation.autoMode.both') }}</option>
-      </select>
+      <AppSelect
+        v-model="settings.autoMode"
+        :label="t('extensionsBuiltin.chatTranslation.autoMode.label')"
+        :options="autoModeOptions"
+      />
     </div>
 
     <div class="setting-item">
       <div class="header-row">
         <label>{{ t('extensionsBuiltin.chatTranslation.promptTemplate') }}</label>
-        <button class="menu-button" @click="resetPrompt">
-          <i class="fa-solid fa-rotate-left"></i> {{ t('common.reset') }}
-        </button>
+        <AppButton icon="fa-rotate-left" @click="resetPrompt">
+          {{ t('common.reset') }}
+        </AppButton>
       </div>
-      <textarea v-model="settings.prompt" class="text-pole prompt-area" rows="10"></textarea>
+      <AppTextarea v-model="settings.prompt" class="prompt-area" :rows="10" />
       <small>{{ t('extensionsBuiltin.chatTranslation.promptHint') }}</small>
     </div>
   </div>
@@ -113,6 +113,12 @@ function resetPrompt() {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 5px;
+}
+
+.header-row label {
+  font-weight: bold;
+  font-size: 0.9em;
 }
 
 .prompt-area {

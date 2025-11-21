@@ -281,7 +281,7 @@ async function removeMember(avatar: string) {
       </div>
 
       <!-- Tab: Members / Group Config -->
-      <div v-show="activeTab === 'members'" class="chat-management-tab-content">
+      <div v-show="activeTab === 'members' && chatStore.activeChatFile" class="chat-management-tab-content">
         <!-- Current Members -->
         <CollapsibleSection
           v-model:is-open="settingsStore.settings.account.groupMembersExpanded"

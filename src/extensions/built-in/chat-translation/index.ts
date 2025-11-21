@@ -3,6 +3,7 @@ import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
 import { Translator } from './translator';
 import { AutoTranslateMode, type ChatTranslationSettings } from './types';
+import { MountableComponent } from '@/types/ExtensionAPI';
 
 export { manifest };
 
@@ -17,24 +18,26 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
     settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
   }
 
-  const injectSingleButton = (messageElement: HTMLElement, messageIndex: number) => {
+  const injectSingleButton = async (messageElement: HTMLElement, messageIndex: number) => {
     const buttonsContainer = messageElement.querySelector('.message-buttons');
     if (!buttonsContainer) return;
 
-    if (buttonsContainer.querySelector('.translation-button')) return;
+    if (buttonsContainer.querySelector('.translation-button-wrapper')) return;
 
-    // TODO: Use AppIconButton component instead of raw <i> element for better consistency?
-    const btn = document.createElement('i');
-    btn.className = 'message-button fa-solid fa-globe translation-button';
-    btn.title = 'Translate Message';
-    btn.style.cursor = 'pointer';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'translation-button-wrapper';
+    wrapper.style.display = 'inline-flex';
 
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      translator.translateMessage(messageIndex);
-    };
+    buttonsContainer.appendChild(wrapper);
 
-    buttonsContainer.appendChild(btn);
+    await api.ui.mountComponent(wrapper, MountableComponent.AppIconButton, {
+      icon: 'fa-globe',
+      title: 'Translate Message',
+      onClick: (e: MouseEvent) => {
+        e.stopPropagation();
+        translator.translateMessage(messageIndex);
+      },
+    });
   };
 
   const injectButtons = () => {
@@ -95,6 +98,6 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
     settingsApp?.unmount();
     unbinds.forEach((u) => u());
     // Remove buttons
-    document.querySelectorAll('.translation-button').forEach((el) => el.remove());
+    document.querySelectorAll('.translation-button-wrapper').forEach((el) => el.remove());
   };
 }
