@@ -344,7 +344,10 @@ export const useChatStore = defineStore('chat', () => {
 
       if (activeChatFile.value) {
         for (const character of characterStore.activeCharacters) {
-          await characterStore.updateAndSaveCharacter(character.avatar, { chat: chatFile });
+          const changes = characterStore.getDifferences(character, { ...character, chat: activeChatFile.value });
+          if (changes) {
+            await characterStore.updateAndSaveCharacter(character.avatar, changes);
+          }
         }
 
         // Check for embedded lorebooks in characters
@@ -405,7 +408,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function createNewChatForCharacter(avatar: string, filename: string) {
+  async function createNewChatForCharacter(avatar: string, chatName: string) {
     const character = characterStore.characters.find((c) => c.avatar === avatar);
     if (!character) {
       throw new Error('Character not found for creating new chat.');
@@ -413,20 +416,30 @@ export const useChatStore = defineStore('chat', () => {
 
     try {
       isChatLoading.value = true;
+
+      const filename = uuidv4();
+      const fullFilename = `${filename}.jsonl`;
+
       const firstMessage = getFirstMessage(character);
       activeChat.value = {
-        metadata: { members: [character.avatar], integrity: uuidv4(), promptOverrides: { scenario: '' } },
+        metadata: {
+          members: [character.avatar],
+          integrity: uuidv4(),
+          promptOverrides: { scenario: '' },
+          name: chatName,
+        },
         messages: firstMessage && firstMessage.mes ? [firstMessage] : [],
       };
       const fullChat: FullChat = [{ chat_metadata: activeChat.value.metadata }, ...activeChat.value.messages];
       await saveChat(filename, fullChat);
       characterStore.updateAndSaveCharacter(character.avatar, { chat: filename });
+
       activeChatFile.value = filename;
       const cInfo: ChatInfo = {
         chat_metadata: activeChat.value.metadata,
         chat_items: activeChat.value.messages.length,
         file_id: filename,
-        file_name: `${filename}.jsonl`,
+        file_name: fullFilename,
         file_size: JSON.stringify(fullChat).length,
         last_mes: Date.now(),
         mes: firstMessage?.mes || '',
@@ -444,6 +457,33 @@ export const useChatStore = defineStore('chat', () => {
       toast.error(t('chat.createError'));
     } finally {
       isChatLoading.value = false;
+    }
+  }
+
+  async function updateChatName(fileId: string, newName: string) {
+    const chatInfo = chatInfos.value.find((c) => c.file_id === fileId);
+    if (!chatInfo) return;
+
+    // If active chat, update local state and save
+    if (activeChatFile.value === fileId && activeChat.value) {
+      activeChat.value.metadata.name = newName;
+      chatInfo.chat_metadata.name = newName;
+      saveChatDebounced();
+    } else {
+      // If not active, we need to load it briefly or rely on API if it supports metadata patch
+      // Assuming we need to load full chat to update metadata safely
+      try {
+        const response = await fetchChat(fileId);
+        if (response.length > 0) {
+          const metadataItem = response[0] as ChatHeader;
+          metadataItem.chat_metadata.name = newName;
+          await saveChat(fileId, response as FullChat);
+          chatInfo.chat_metadata.name = newName; // Update cache
+        }
+      } catch (error) {
+        console.error('Failed to update chat name', error);
+        toast.error(t('chat.renameError'));
+      }
     }
   }
 
@@ -1195,5 +1235,6 @@ export const useChatStore = defineStore('chat', () => {
     removeMember,
     toggleChatPersona,
     syncPersonaName,
+    updateChatName,
   };
 });

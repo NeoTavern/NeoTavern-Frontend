@@ -450,6 +450,7 @@
     "send": "Send a message",
     "loadError": "Failed to load chat.",
     "createError": "Failed to create chat message.",
+    "renameError": "Failed to rename chat.",
     "emptyLog": "Empty chat log",
     "generate": {
       "noPrompts": "No prompts were built for the AI. Please check your prompt settings.",
@@ -551,6 +552,9 @@
     },
     "duplicate": {
       "error": "Failed to duplicate character."
+    },
+    "rename": {
+      "success": "Character renamed to {name}."
     },
     "tokenWarning": "Character definition is large ({tokens} tokens), using over {percentage}% of your context window. This may impact performance and context limits."
   },

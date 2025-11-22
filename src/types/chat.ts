@@ -5,6 +5,7 @@ export interface GroupMemberStatus {
 }
 
 export interface ChatMetadata {
+  name?: string;
   integrity: string;
   custom_background?: string;
   chat_backgrounds?: string[];

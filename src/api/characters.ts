@@ -49,8 +49,10 @@ export async function saveCharacter(character: Partial<Character> & { avatar: st
 export async function importCharacter(file: File): Promise<{ file_name: string; name: string }> {
   const uiStore = useUiStore();
   const format = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '').toLowerCase();
   const formData = new FormData();
   formData.append('avatar', file);
+  formData.append('preserved_name', fileNameWithoutExt);
   formData.append('file_type', format);
   formData.append('user_name', uiStore.activePlayerName || '');
 

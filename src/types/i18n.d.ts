@@ -453,6 +453,7 @@ export interface MessageSchema {
     send: string;
     loadError: string;
     createError: string;
+    renameError: string;
     emptyLog: string;
     generate: {
       noPrompts: string;
@@ -554,6 +555,9 @@ export interface MessageSchema {
     };
     duplicate: {
       error: string;
+    };
+    rename: {
+      success: string;
     };
     tokenWarning: string;
   };

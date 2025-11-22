@@ -15,6 +15,7 @@ import { getBase64Async } from '../utils/file';
 import { eventEmitter } from '../utils/event-emitter';
 import { default_user_avatar } from '../constants';
 import { getThumbnailUrl } from '../utils/image';
+import { uuidv4 } from '../utils/common';
 
 export const usePersonaStore = defineStore('persona', () => {
   const { t } = useStrictI18n();
@@ -209,7 +210,7 @@ export const usePersonaStore = defineStore('persona', () => {
       const blob = await res.blob();
       const file = new File([blob], 'avatar.png', { type: blob.type });
 
-      const newAvatarId = `persona_${Date.now()}.png`;
+      const newAvatarId = `${uuidv4()}.png`;
       await uploadPersonaAvatar(newAvatarId, file, true);
 
       const newPersona: Persona = {
@@ -230,7 +231,7 @@ export const usePersonaStore = defineStore('persona', () => {
   }
 
   async function createPersona() {
-    const newAvatarId = `persona_${Date.now()}.png`;
+    const newAvatarId = `${uuidv4()}.png`;
     const res = await fetch(default_user_avatar);
     const blob = await res.blob();
     const defaultPersonaAvatar = new File([blob], 'avatar.png', { type: 'image/png' });
@@ -253,7 +254,7 @@ export const usePersonaStore = defineStore('persona', () => {
       const blob = await res.blob();
       const file = new File([blob], 'avatar.png', { type: blob.type });
 
-      const newAvatarId = `persona_${Date.now()}.png`;
+      const newAvatarId = `${uuidv4()}.png`;
 
       await uploadPersonaAvatar(newAvatarId, file, true);
 

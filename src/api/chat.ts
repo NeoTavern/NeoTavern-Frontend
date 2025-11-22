@@ -89,28 +89,3 @@ export async function deleteChat(chatFile: string): Promise<void> {
     throw new Error('Failed to delete chat history');
   }
 }
-
-export async function renameChat(oldFile: string, newFile: string, isGroup: boolean): Promise<{ newFileName: string }> {
-  const response = await fetch('/api/chats/rename', {
-    method: 'POST',
-    headers: getRequestHeaders(),
-    body: JSON.stringify({
-      avatar_url: '',
-      original_file: oldFile,
-      renamed_file: newFile,
-      is_group: isGroup,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to rename chat history');
-  }
-
-  const data = await response.json();
-
-  if (data.error) {
-    throw new Error('Server returned an error.');
-  }
-
-  return { newFileName: data.sanitizedFileName || newFile };
-}

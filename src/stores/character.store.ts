@@ -12,7 +12,6 @@ import {
 } from '../api/characters';
 import * as apiWorldInfo from '../api/world-info';
 import DOMPurify from 'dompurify';
-import { humanizedDateTime } from '../utils/date';
 import { toast } from '../composables/useToast';
 import { useChatStore } from './chat.store';
 import { useUiStore } from './ui.store';
@@ -37,6 +36,7 @@ import { eventEmitter } from '../utils/event-emitter';
 import { ApiTokenizer } from '../api/tokenizer';
 import { getThumbnailUrl } from '../utils/image';
 import { convertCharacterBookToWorldInfoBook } from '../utils/world-info-conversion';
+import { uuidv4 } from '../utils/common';
 
 const ANTI_TROLL_MAX_TAGS = 50;
 const IMPORT_EXLCUDED_TAGS: string[] = [];
@@ -204,7 +204,7 @@ export const useCharacterStore = defineStore('character', () => {
       for (const char of newCharacters) {
         char.name = DOMPurify.sanitize(char.name);
         if (!char.chat) {
-          char.chat = `${char.name} - ${humanizedDateTime()}`;
+          char.chat = uuidv4();
         }
         char.chat = String(char.chat);
       }
@@ -258,6 +258,15 @@ export const useCharacterStore = defineStore('character', () => {
       console.error('Failed to save character:', error);
       toast.error(t('character.save.error'));
     }
+  }
+
+  async function renameCharacter(avatar: string, newName: string) {
+    const character = characters.value.find((c) => c.avatar === avatar);
+    if (!character) return;
+    const changes = getDifferences(character, { ...character, name: newName });
+    if (!changes) return;
+    await updateAndSaveCharacter(avatar, changes);
+    toast.success(t('character.rename.success', { name: newName }));
   }
 
   function getDifferences(oldChar: Character, newChar: Character): Partial<Character> | null {
@@ -357,7 +366,12 @@ export const useCharacterStore = defineStore('character', () => {
     }
 
     try {
-      const data = await apiImportCharacter(file);
+      // Generate UUID for filename
+      const uuid = uuidv4();
+      const newFileName = `${uuid}.${ext}`;
+      const renamedFile = new File([file], newFileName, { type: file.type });
+
+      const data = await apiImportCharacter(renamedFile);
       if (data.file_name) {
         const avatarFileName = `${data.file_name}.png`;
         toast.success(t('character.import.success', { fileName: data.file_name }));
@@ -446,7 +460,9 @@ export const useCharacterStore = defineStore('character', () => {
 
     if (tagsToImport.length > 0) {
       const newTags = [...alreadyAssignedTags, ...tagsToImport].filter(onlyUnique);
-      await updateAndSaveCharacter(character.avatar, { tags: newTags });
+      const changes = getDifferences(character, { ...character, tags: newTags });
+      if (!changes) return;
+      await updateAndSaveCharacter(character.avatar, changes);
       toast.success(
         t('character.import.tagsImportedMessage', { characterName: character.name, tags: tagsToImport.join(', ') }),
         t('character.import.tagsImported'),
@@ -492,11 +508,17 @@ export const useCharacterStore = defineStore('character', () => {
     }
 
     const formData = new FormData();
+
+    const uuid = uuidv4();
+    const fileName = `${uuid}.png`;
+    const fileToSend = file ? new File([file], fileName, { type: file.type }) : null;
+
     // Basic fields
     formData.append('ch_name', character.name);
-    if (file) {
-      formData.append('avatar', file);
+    if (fileToSend) {
+      formData.append('avatar', fileToSend);
     }
+    formData.append('preserved_name', uuid);
     formData.append('fav', String(character.fav || false));
     formData.append('description', character.description || '');
     formData.append('first_mes', character.first_mes || '');
@@ -609,7 +631,8 @@ export const useCharacterStore = defineStore('character', () => {
 
     const charCopy = { ...character, name: character.name };
 
-    charCopy.chat = `${character.name} - ${humanizedDateTime()}`;
+    const uuid = uuidv4();
+    charCopy.chat = uuid;
     delete charCopy.create_date;
 
     try {
@@ -655,6 +678,8 @@ export const useCharacterStore = defineStore('character', () => {
     startCreating,
     cancelCreating,
     createNewCharacter,
+    renameCharacter,
+    getDifferences,
     deleteCharacter,
     updateCharacterImage,
     updateAndSaveCharacter,

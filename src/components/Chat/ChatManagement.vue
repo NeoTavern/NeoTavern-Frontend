@@ -45,7 +45,11 @@ const chats = computed<ChatInfo[]>(() => {
 
   if (chatSearchTerm.value) {
     const lower = chatSearchTerm.value.toLowerCase();
-    allChats = allChats.filter((c) => c.file_id.toLowerCase().includes(lower));
+    allChats = allChats.filter(
+      (c) =>
+        c.file_id.toLowerCase().includes(lower) ||
+        (c.chat_metadata.name && c.chat_metadata.name.toLowerCase().includes(lower)),
+    );
   }
 
   allChats.sort((a, b) => b.last_mes - a.last_mes);
@@ -60,7 +64,7 @@ async function createNewChat(askConfirmation = true) {
   if (!characterStore.activeCharacters) return;
   const firstCharacter = characterStore.activeCharacters[0];
   let result: POPUP_RESULT = POPUP_RESULT.AFFIRMATIVE;
-  let value = `${firstCharacter?.avatar} - ${humanizedDateTime()}`;
+  let value = `${firstCharacter?.name} - ${humanizedDateTime()}`;
   if (askConfirmation) {
     ({ result, value } = await popupStore.show({
       title: t('chatManagement.newChat'),
@@ -79,23 +83,17 @@ async function createNewChat(askConfirmation = true) {
   }
 }
 
-async function renameChat(oldFile: string) {
+async function renameChat(fileId: string, currentName?: string) {
   const { result, value: newName } = await popupStore.show({
     title: t('chatManagement.actions.rename'),
     content: t('chatManagement.renamePrompt'),
     type: POPUP_TYPE.INPUT,
-    inputValue: oldFile,
+    inputValue: currentName || fileId,
   });
 
   if (result === POPUP_RESULT.AFFIRMATIVE && newName) {
-    let newFileName = newName.trim();
     try {
-      const info = chats.value.find((c) => c.file_id === oldFile);
-      const isGroup = (info?.chat_metadata.members?.length ?? 0) > 1;
-      newFileName = (await api.renameChat(oldFile, newFileName, isGroup)).newFileName;
-      if (chatStore.activeChatFile === oldFile) {
-        chatStore.activeChatFile = newFileName;
-      }
+      await chatStore.updateChatName(fileId, newName.trim());
     } catch {
       toast.error(t('chatManagement.errors.rename'));
     }
@@ -260,10 +258,10 @@ async function removeMember(avatar: string) {
               <template #default>
                 <div
                   class="font-bold"
-                  :title="file.file_id"
+                  :title="file.chat_metadata.name || file.file_id"
                   style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis"
                 >
-                  {{ file.file_id }}
+                  {{ file.chat_metadata.name || file.file_id }}
                 </div>
                 <div style="font-size: 0.85em; opacity: 0.7; display: flex; gap: 12px">
                   <span>{{ formatTimeStamp(file.last_mes) }}</span>
@@ -275,7 +273,7 @@ async function removeMember(avatar: string) {
                   icon="fa-pencil"
                   variant="ghost"
                   :title="t('chatManagement.actions.rename')"
-                  @click.stop="renameChat(file.file_id)"
+                  @click.stop="renameChat(file.file_id, file.chat_metadata.name)"
                 />
                 <Button
                   icon="fa-trash-can"

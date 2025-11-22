@@ -175,8 +175,8 @@ onMounted(() => {
             </div>
           </template>
           <template #default>
-            <div class="recent-chat-item-name" :title="chat.file_name">
-              {{ chat.file_name.replace('.jsonl', '') }}
+            <div class="recent-chat-item-name">
+              {{ chat.chat_metadata.name || chat.file_id }}
             </div>
             <div class="recent-chat-item-preview">
               {{ chat.mes || t('chat.emptyLog') }}

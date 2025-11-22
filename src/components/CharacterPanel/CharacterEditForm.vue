@@ -7,7 +7,7 @@ import { usePersonaStore } from '../../stores/persona.store';
 import { useWorldInfoStore } from '../../stores/world-info.store';
 import type { Character } from '../../types';
 import Popup from '../Popup/Popup.vue';
-import { POPUP_TYPE, type PopupOptions } from '../../types';
+import { POPUP_TYPE, type PopupOptions, POPUP_RESULT } from '../../types';
 import { getThumbnailUrl } from '../../utils/image';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { default_avatar } from '../../constants';
@@ -206,7 +206,8 @@ async function handleDelete() {
 
 async function openLastChat() {
   if (!localCharacter.value) return;
-  if (localCharacter.value.chat) {
+  const chatExist = chatStore.chatInfos.find((chat) => chat.file_id === localCharacter.value?.chat);
+  if (localCharacter.value.chat && chatExist) {
     await chatStore.setActiveChatFile(localCharacter.value.chat);
   } else {
     await createNewChat();
@@ -215,13 +216,27 @@ async function openLastChat() {
 
 async function createNewChat() {
   if (!localCharacter.value) return;
-  const filename = `${localCharacter.value.name.replace(/\s+/g, '_')}_${humanizedDateTime()}`;
-  await chatStore.createNewChatForCharacter(localCharacter.value.avatar, filename);
+  const chatName = `${localCharacter.value.name.replace(/\s+/g, '_')}_${humanizedDateTime()}`;
+  await chatStore.createNewChatForCharacter(localCharacter.value.avatar, chatName);
 }
 
 async function handleDuplicate() {
   if (!localCharacter.value) return;
   await characterStore.duplicateCharacter(localCharacter.value.avatar);
+}
+
+async function handleRename() {
+  if (!localCharacter.value) return;
+
+  const { result, value: newName } = await popupStore.show({
+    title: t('characterEditor.moreOptions.rename'),
+    type: POPUP_TYPE.INPUT,
+    inputValue: localCharacter.value.name,
+  });
+
+  if (result === POPUP_RESULT.AFFIRMATIVE && newName) {
+    await characterStore.renameCharacter(localCharacter.value.avatar, newName);
+  }
 }
 
 const displayAvatarUrl = computed(() => {
@@ -258,6 +273,9 @@ async function handleMoreAction(action: string) {
   switch (action) {
     case 'convertToPersona':
       await personaStore.createPersonaFromCharacter(localCharacter.value);
+      break;
+    case 'rename':
+      await handleRename();
       break;
     default:
       console.log('Selected action:', action);
