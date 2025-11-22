@@ -385,6 +385,7 @@ export interface MessageSchema {
     save: string;
     yes: string;
     no: string;
+    none: string;
     loading: string;
     tokens: string;
     confirm: string;

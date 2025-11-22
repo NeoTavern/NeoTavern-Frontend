@@ -361,6 +361,7 @@ function handleMoreAction(action: string) {
           </div>
 
           <div v-show="!isCreating">
+            <!-- @vue-ignore -->
             <AppSelect :model-value="'default'" :options="moreOptions" @update:model-value="handleMoreAction" />
           </div>
         </div>

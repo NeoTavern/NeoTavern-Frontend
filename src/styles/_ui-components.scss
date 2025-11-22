@@ -3,7 +3,7 @@
 .app-input-wrapper,
 .app-select-wrapper,
 .app-textarea-wrapper {
-  margin-bottom: 0; // Removed margin, handled by FormItem now
+  margin-bottom: 0;
   width: 100%;
 
   .text-pole {
@@ -19,6 +19,126 @@
     font-size: 0.9em;
     display: block;
     margin-bottom: 2px;
+  }
+}
+
+// --- AppSelect Custom ---
+.app-select-wrapper {
+  position: relative;
+
+  .app-select-trigger {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    min-height: 30px; // Match standard input height
+
+    &.is-disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    &.is-open {
+      border-color: var(--theme-quote-color);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    .selected-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-grow: 1;
+      margin-right: 8px;
+    }
+
+    .chevron-icon {
+      font-size: 0.8em;
+      opacity: 0.7;
+      transition: transform 0.2s ease;
+
+      &.rotate-180 {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  .app-select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 250px;
+    overflow-y: auto;
+    background-color: var(--theme-background-tint); // Or a specific dropdown bg
+    border: 1px solid var(--theme-border-color);
+    border-top: none;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    z-index: 1000;
+    box-shadow: 0 4px 6px var(--theme-shadow-color);
+
+    // Scrollbar adjustments for the dropdown
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background-color: var(--grey-5050a);
+      border-radius: 3px;
+    }
+  }
+
+  .app-select-option {
+    padding: 8px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.1s ease;
+
+    &:hover:not(.is-disabled) {
+      background-color: var(--white-20a);
+    }
+
+    &.is-selected {
+      background-color: var(--color-accent-cobalt-30a);
+      color: var(--white-100);
+    }
+
+    &.is-disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .option-checkbox {
+      width: 16px;
+      height: 16px;
+      border: 1px solid var(--theme-border-color);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--black-30a);
+      flex-shrink: 0;
+
+      .check-icon {
+        font-size: 0.8em;
+        color: var(--theme-text-color);
+      }
+    }
+
+    .option-label {
+      flex-grow: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .check-icon-single {
+      font-size: 0.9em;
+      opacity: 0.8;
+    }
   }
 }
 
@@ -65,11 +185,7 @@
     }
 
     .app-form-item-description {
-      // For horizontal items, description usually goes below the whole row or inside label column.
-      // Current implementation puts it at bottom flex container level.
-      // For complex layouts, we might need grid.
-      // Keep simple for now: flex wrap or just handle description outside.
-      display: none; // Horizontal usually implies simple toggle label
+      display: none;
     }
   }
 
@@ -157,7 +273,6 @@
     align-items: center;
     justify-content: center;
 
-    // Default avatar size if not overridden
     img {
       width: var(--avatar-width);
       height: var(--avatar-height);
@@ -194,7 +309,6 @@
   .search-input-wrapper {
     flex-grow: 1;
 
-    // Reset margin for inner input
     .app-input-wrapper {
       margin: 0;
     }
@@ -512,7 +626,7 @@
 
   &-divider {
     width: 12px;
-    margin-right: -6px; // Overlap slightly or center
+    margin-right: -6px;
     flex-shrink: 0;
     cursor: ew-resize;
     position: relative;
@@ -616,4 +730,14 @@
       display: block;
     }
   }
+}
+
+.fade-fast-enter-active,
+.fade-fast-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.fade-fast-enter-from,
+.fade-fast-leave-to {
+  opacity: 0;
 }

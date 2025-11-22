@@ -246,7 +246,7 @@ onMounted(() => {
             <AppSelect
               :model-value="settingsStore.settings.api.selectedProviderModels.claude"
               :options="claudeModelOptions"
-              @update:model-value="settingsStore.setSetting('api.selectedProviderModels.claude', $event)"
+              @update:model-value="settingsStore.setSetting('api.selectedProviderModels.claude', $event as string)"
             />
           </AppFormItem>
         </div>
@@ -331,7 +331,7 @@ onMounted(() => {
             <AppSelect
               :model-value="settingsStore.settings.api.selectedProviderModels.mistralai"
               :options="mistralModelOptions"
-              @update:model-value="settingsStore.setSetting('api.selectedProviderModels.mistralai', $event)"
+              @update:model-value="settingsStore.setSetting('api.selectedProviderModels.mistralai', $event as string)"
             />
           </AppFormItem>
         </div>
@@ -348,7 +348,7 @@ onMounted(() => {
             <AppSelect
               :model-value="settingsStore.settings.api.selectedProviderModels.groq"
               :options="groqModelOptions"
-              @update:model-value="settingsStore.setSetting('api.selectedProviderModels.groq', $event)"
+              @update:model-value="settingsStore.setSetting('api.selectedProviderModels.groq', $event as string)"
             />
           </AppFormItem>
         </div>

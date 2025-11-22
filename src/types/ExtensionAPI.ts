@@ -125,9 +125,12 @@ export interface MountableComponentPropsMap {
     label?: string;
     disabled?: boolean;
     title?: string;
+    multiple?: boolean;
+    placeholder?: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     'onUpdate:modelValue'?: (value: any) => void;
-    onChange?: (event: Event) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onChange?: (value: any) => void;
   };
   [MountableComponent.AppTabs]: {
     modelValue: string;

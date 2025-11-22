@@ -72,6 +72,7 @@ function onSizeChange(newSize: number) {
       />
     </div>
     <div class="pagination-size-changer">
+      <!-- @vue-ignore -->
       <AppSelect :model-value="itemsPerPage" :options="sizeOptions" @update:model-value="onSizeChange" />
     </div>
   </div>

@@ -18,6 +18,13 @@ const strategyOptions = computed(() => [
   { value: WorldInfoInsertionStrategy.CHARACTER_FIRST, label: t('worldInfo.insertionStrategies.characterLoreFirst') },
   { value: WorldInfoInsertionStrategy.GLOBAL_FIRST, label: t('worldInfo.insertionStrategies.globalLoreFirst') },
 ]);
+
+const bookOptions = computed(() => {
+  return worldInfoStore.bookNames.map((name) => ({
+    label: name,
+    value: name,
+  }));
+});
 </script>
 
 <template>
@@ -28,10 +35,14 @@ const strategyOptions = computed(() => [
     </div>
 
     <div class="settings-section">
-      <AppFormItem :label="t('worldInfo.activeWorlds')" :description="t('worldInfo.activeWorldsHint')">
-        <select v-model="worldInfoStore.activeBookNames" class="text-pole" multiple>
-          <option v-for="name in worldInfoStore.bookNames" :key="name" :value="name">{{ name }}</option>
-        </select>
+      <AppFormItem :description="t('worldInfo.activeWorldsHint')">
+        <AppSelect
+          v-model="worldInfoStore.activeBookNames"
+          :options="bookOptions"
+          multiple
+          :label="t('worldInfo.activeWorlds')"
+          :placeholder="t('common.none')"
+        />
       </AppFormItem>
     </div>
 
@@ -100,9 +111,10 @@ const strategyOptions = computed(() => [
 
     <div class="settings-section">
       <h4>{{ t('worldInfo.advancedSettings') }}</h4>
-      <AppFormItem :label="t('worldInfo.insertionStrategy')">
+      <AppFormItem>
         <AppSelect
           v-model="worldInfoStore.settings.world_info_character_strategy"
+          :label="t('worldInfo.insertionStrategy')"
           :title="t('worldInfo.insertionStrategyHint')"
           :options="strategyOptions"
         />
