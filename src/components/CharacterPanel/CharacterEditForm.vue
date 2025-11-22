@@ -3,6 +3,7 @@ import { ref, computed, onUnmounted, watch } from 'vue';
 import { useCharacterStore } from '../../stores/character.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useChatStore } from '../../stores/chat.store';
+import { usePersonaStore } from '../../stores/persona.store';
 import type { Character } from '../../types';
 import Popup from '../Popup/Popup.vue';
 import { POPUP_TYPE, type PopupOptions } from '../../types';
@@ -30,6 +31,7 @@ const characterStore = useCharacterStore();
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
 const chatStore = useChatStore();
+const personaStore = usePersonaStore();
 const tokenCounts = computed(() => characterStore.tokenCounts.fields);
 
 const isCreating = computed(() => characterStore.isCreating);
@@ -224,6 +226,11 @@ async function createNewChat() {
   await chatStore.createNewChatForCharacter(localCharacter.value.avatar, filename);
 }
 
+async function handleDuplicate() {
+  if (!localCharacter.value) return;
+  await characterStore.duplicateCharacter(localCharacter.value.avatar);
+}
+
 const displayAvatarUrl = computed(() => {
   if (!characterStore.editFormCharacter) return '';
 
@@ -252,8 +259,16 @@ const moreOptions = computed(() => [
   { value: 'setAsWelcomeAssistant', label: t('characterEditor.moreOptions.setAsWelcomeAssistant') },
 ]);
 
-function handleMoreAction(action: string) {
-  console.log('Selected action:', action);
+async function handleMoreAction(action: string) {
+  if (!localCharacter.value) return;
+
+  switch (action) {
+    case 'convertToPersona':
+      await personaStore.createPersonaFromCharacter(localCharacter.value);
+      break;
+    default:
+      console.log('Selected action:', action);
+  }
 }
 </script>
 
@@ -351,7 +366,7 @@ function handleMoreAction(action: string) {
             <AppIconButton icon="fa-passport" :title="t('characterEditor.chatLore')" />
             <AppIconButton icon="fa-face-smile" :title="t('characterEditor.personas')" />
             <AppIconButton icon="fa-file-export" :title="t('characterEditor.export')" />
-            <AppIconButton icon="fa-clone" :title="t('characterEditor.duplicate')" />
+            <AppIconButton icon="fa-clone" :title="t('characterEditor.duplicate')" @click="handleDuplicate" />
             <AppIconButton
               icon="fa-skull"
               variant="danger"

@@ -525,6 +525,9 @@
     "updateImage": {
       "error": "Failed to update character image."
     },
+    "duplicate": {
+      "error": "Failed to duplicate character."
+    },
     "tokenWarning": "Character definition is large ({tokens} tokens), using over {percentage}% of your context window. This may impact performance and context limits."
   },
   "characterPanel": {
@@ -555,8 +558,8 @@
     "chatLore": "Chat Lore",
     "personas": "Connected Personas",
     "export": "Export and Download",
-    "duplicate": "Duplicate Character",
-    "delete": "Delete Character",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
     "more": "More...",
     "searchTags": "Search / Create tags",
     "creatorNotes": "Creator's Notes",
@@ -854,6 +857,12 @@
       "swipeError": "Swipe changed. Cannot reroll previous swipe state.",
       "reverting": "Reverting and rerolling...",
       "error": "Failed to reroll continue."
+    }
+  },
+  "persona": {
+    "createFromCharacter": {
+      "success": "Successfully created persona: {name}",
+      "error": "Failed to create persona from character."
     }
   }
 }

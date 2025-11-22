@@ -528,6 +528,9 @@ export interface MessageSchema {
     updateImage: {
       error: string;
     };
+    duplicate: {
+      error: string;
+    };
     tokenWarning: string;
   };
   characterPanel: {
@@ -856,6 +859,12 @@ export interface MessageSchema {
       divergenceError: string;
       swipeError: string;
       reverting: string;
+      error: string;
+    };
+  };
+  persona: {
+    createFromCharacter: {
+      success: string;
       error: string;
     };
   };

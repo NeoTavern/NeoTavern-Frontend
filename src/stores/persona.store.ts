@@ -7,13 +7,14 @@ import {
   deletePersonaAvatar,
   uploadPersonaAvatar as apiUploadPersonaAvatar,
 } from '../api/personas';
-import { type Persona, type PersonaDescription, POPUP_TYPE, POPUP_RESULT } from '../types';
+import { type Persona, type PersonaDescription, POPUP_TYPE, POPUP_RESULT, type Character } from '../types';
 import { toast } from '../composables/useToast';
 import { useStrictI18n } from '../composables/useStrictI18n';
 import { usePopupStore } from './popup.store';
 import { getBase64Async } from '../utils/file';
 import { eventEmitter } from '../utils/event-emitter';
 import { default_user_avatar } from '@/constants';
+import { getThumbnailUrl } from '../utils/image';
 
 export const usePersonaStore = defineStore('persona', () => {
   const { t } = useStrictI18n();
@@ -211,6 +212,34 @@ export const usePersonaStore = defineStore('persona', () => {
     await eventEmitter.emit('persona:created', newPersona);
   }
 
+  async function createPersonaFromCharacter(character: Character) {
+    try {
+      const url = getThumbnailUrl('avatar', character.avatar);
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const file = new File([blob], 'avatar.png', { type: blob.type });
+
+      const newAvatarId = `persona_${Date.now()}.png`;
+
+      await uploadPersonaAvatar(newAvatarId, file, true);
+
+      const newPersona: Persona = {
+        ...createDefaultDescription(),
+        avatarId: newAvatarId,
+        name: character.name,
+        description: character.description || '',
+      };
+
+      personas.value.push(newPersona);
+      toast.success(t('persona.createFromCharacter.success', { name: character.name }));
+      await nextTick();
+      await eventEmitter.emit('persona:created', newPersona);
+    } catch (error) {
+      console.error('Failed to create persona from character', error);
+      toast.error(t('persona.createFromCharacter.error'));
+    }
+  }
+
   return {
     personas,
     activePersonaId,
@@ -224,5 +253,6 @@ export const usePersonaStore = defineStore('persona', () => {
     uploadPersonaAvatar,
     deletePersona,
     createPersona,
+    createPersonaFromCharacter,
   };
 });

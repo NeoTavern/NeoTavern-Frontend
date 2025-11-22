@@ -32,6 +32,7 @@ import { getFirstMessage } from '../utils/chat';
 import { get, set, debounce } from 'lodash-es';
 import { eventEmitter } from '../utils/event-emitter';
 import { ApiTokenizer } from '../api/tokenizer';
+import { getThumbnailUrl } from '../utils/image';
 
 const ANTI_TROLL_MAX_TAGS = 50;
 const IMPORT_EXLCUDED_TAGS: string[] = [];
@@ -573,6 +574,28 @@ export const useCharacterStore = defineStore('character', () => {
     }
   }
 
+  async function duplicateCharacter(avatar: string) {
+    const character = characters.value.find((c) => c.avatar === avatar);
+    if (!character) return;
+
+    const charCopy = { ...character, name: character.name };
+
+    charCopy.chat = `${character.name} - ${humanizedDateTime()}`;
+    delete charCopy.create_date;
+
+    try {
+      const url = getThumbnailUrl('avatar', avatar);
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const file = new File([blob], 'avatar.png', { type: blob.type });
+
+      await createNewCharacter(charCopy, file);
+    } catch (error) {
+      console.error('Failed to duplicate character', error);
+      toast.error(t('character.duplicate.error'));
+    }
+  }
+
   return {
     characters,
     activeCharacters,
@@ -606,5 +629,6 @@ export const useCharacterStore = defineStore('character', () => {
     deleteCharacter,
     updateCharacterImage,
     updateAndSaveCharacter,
+    duplicateCharacter,
   };
 });
