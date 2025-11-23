@@ -546,7 +546,6 @@ export interface MessageSchema {
     save: {
       error: string;
       noActive: string;
-      syncWarning: string;
     };
     fetch: {
       overflowWarning: string;

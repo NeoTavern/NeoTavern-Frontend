@@ -329,6 +329,11 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           lastMessage.gen_finished = genFinished;
           if (!lastMessage.extra) lastMessage.extra = {};
           lastMessage.extra.token_count = await tokenizer.getTokenCount(lastMessage.mes);
+
+          if (lastMessage.swipes && lastMessage.swipe_id !== undefined && lastMessage.swipes[lastMessage.swipe_id] !== undefined) {
+            lastMessage.swipes[lastMessage.swipe_id] = lastMessage.mes;
+          }
+
           generatedMessage = lastMessage;
           await nextTick();
           await eventEmitter.emit('message:updated', activeChatMessages.length - 1, lastMessage);
@@ -447,6 +452,9 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
               targetMessage.mes = targetMessage.swipes[targetMessage.swipe_id];
             } else {
               targetMessage.mes += chunk.delta;
+              if (targetMessage.swipes[targetMessage.swipe_id] !== undefined) {
+                targetMessage.swipes[targetMessage.swipe_id] = targetMessage.mes;
+              }
             }
             if (chunk.reasoning) targetMessage.extra.reasoning = streamedReasoning;
           }

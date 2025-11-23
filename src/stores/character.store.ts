@@ -161,8 +161,8 @@ export const useCharacterStore = defineStore('character', () => {
         await nextTick();
         await eventEmitter.emit('character:updated', updatedCharacter, changes);
       } else {
-        console.error(`Saved character with avatar ${avatar} not found in local list.`);
-        toast.warning(t('character.save.syncWarning'));
+        console.warn(`Saved character with avatar ${avatar} not found in local list. Refreshing list.`);
+        await refreshCharacters();
       }
     } catch (error) {
       console.error('Failed to save character:', error);

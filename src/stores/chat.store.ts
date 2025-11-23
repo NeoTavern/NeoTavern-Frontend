@@ -145,7 +145,6 @@ export const useChatStore = defineStore('chat', () => {
 
   const saveChatDebounced = debounce(async () => {
     if (!activeChat.value || !activeChatFile.value) {
-      console.error('Debounced save failed: No active character or chat file.');
       return;
     }
 
@@ -221,14 +220,9 @@ export const useChatStore = defineStore('chat', () => {
     saveChatDebounced.cancel();
     activeChat.value.messages = [];
 
-    if (!recreateFirstMessage) {
-      activeChatFile.value = null;
-    }
+    activeChatFile.value = null;
 
     promptStore.extensionPrompts = {};
-    if (activeChatFile.value) {
-      await promptStore.saveItemizedPrompts(activeChatFile.value);
-    }
     promptStore.itemizedPrompts = [];
 
     await nextTick();
@@ -248,11 +242,6 @@ export const useChatStore = defineStore('chat', () => {
     }
 
     isChatLoading.value = false;
-
-    // Manually trigger a save if a new first message was created.
-    if (recreateFirstMessage && activeChat.value.messages.length > 0) {
-      saveChatDebounced();
-    }
   }
 
   async function setActiveChatFile(chatFile: string) {
