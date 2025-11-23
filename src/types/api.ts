@@ -47,7 +47,6 @@ export interface ApiModel {
 export interface AiConfigCondition {
   api?: string | string[];
   source?: ChatCompletionSource | ChatCompletionSource[];
-  source_not?: ChatCompletionSource | ChatCompletionSource[];
 }
 
 // TODO: Some values might change based on model/source, e.g., max tokens
@@ -60,6 +59,9 @@ export interface AiConfigItem {
     | 'checkbox'
     | 'select'
     | 'textarea'
+    | 'text-input'
+    | 'key-manager'
+    | 'model-select'
     | 'custom-component'
     | 'info-display'
     | 'prompt-manager-button'
@@ -81,7 +83,8 @@ export interface AiConfigItem {
   unlockTooltip?: I18nKey;
 
   // for select
-  options?: { value: string | number; label: I18nKey }[]; // TODO: Implement
+  options?: { value: string | number; label: I18nKey | string }[]; // Label can be i18n key or string
+  placeholder?: string; // For text/number inputs
 
   // for custom components
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

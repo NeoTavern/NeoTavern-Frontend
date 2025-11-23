@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { apiConnectionDefinition } from '../../api-connection-definition';
 import { useStrictI18n } from '../../composables/useStrictI18n';
-import { OpenrouterMiddleoutType, TokenizerType } from '../../constants';
+import { TokenizerType } from '../../constants';
 import { useApiStore } from '../../stores/api.store';
 import { useSettingsStore } from '../../stores/settings.store';
-import { chat_completion_sources, type ConnectionProfile } from '../../types';
+import {
+  chat_completion_sources,
+  type AiConfigCondition,
+  type AiConfigItem,
+  type ConnectionProfile,
+} from '../../types';
 import { ConnectionProfileSelector } from '../Common';
 import { Button, Checkbox, FormItem, Input, Select } from '../UI';
 import ConnectionProfilePopup from './ConnectionProfilePopup.vue';
@@ -29,6 +35,33 @@ function handleProfileSave(profile: Omit<ConnectionProfile, 'id'>) {
   apiStore.createConnectionProfile(profile);
 }
 
+function checkConditions(conditions?: AiConfigCondition): boolean {
+  if (!conditions) return true;
+
+  if (conditions.api) {
+    const apis = Array.isArray(conditions.api) ? conditions.api : [conditions.api];
+    if (!apis.includes(settingsStore.settings.api.main)) return false;
+  }
+  if (conditions.source) {
+    const sources = Array.isArray(conditions.source) ? conditions.source : [conditions.source];
+    if (
+      !settingsStore.settings.api.chatCompletionSource ||
+      !sources.includes(settingsStore.settings.api.chatCompletionSource)
+    )
+      return false;
+  }
+  return true;
+}
+
+const visibleSections = computed(() => {
+  return apiConnectionDefinition.filter((section) => checkConditions(section.conditions));
+});
+
+function getVisibleItems(section: (typeof apiConnectionDefinition)[0]) {
+  return section.items.filter((item) => checkConditions(item.conditions));
+}
+
+// Special computed for array-based settings (e.g. OpenRouter providers)
 const openrouterProvidersString = computed({
   get: () => settingsStore.settings.api.providerSpecific.openrouter.providers.join(','),
   set: (value) => {
@@ -40,41 +73,31 @@ const openrouterProvidersString = computed({
   },
 });
 
+function getModelValue(item: AiConfigItem) {
+  if (item.id === 'api.providerSpecific.openrouter.providers') {
+    return openrouterProvidersString.value;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return item.id ? settingsStore.getSetting(item.id) : undefined;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function setModelValue(item: AiConfigItem, value: any) {
+  if (item.id === 'api.providerSpecific.openrouter.providers') {
+    openrouterProvidersString.value = String(value);
+    return;
+  }
+  if (item.id) {
+    settingsStore.setSetting(item.id, value);
+  }
+}
+
 const mainApiOptions = computed(() => [
   { label: t('apiConnections.chatCompletion'), value: 'openai' },
   { label: t('apiConnections.textCompletion'), value: 'textgenerationwebui', disabled: true },
   { label: t('apiConnections.novel'), value: 'novel', disabled: true },
   { label: t('apiConnections.horde'), value: 'koboldhorde', disabled: true },
   { label: t('apiConnections.kobold'), value: 'kobold', disabled: true },
-]);
-
-const claudeModelOptions = [
-  { label: 'claude-3-5-sonnet-20240620', value: 'claude-3-5-sonnet-20240620' },
-  { label: 'claude-3-opus-20240229', value: 'claude-3-opus-20240229' },
-  { label: 'claude-3-haiku-20240307', value: 'claude-3-haiku-20240307' },
-];
-
-const mistralModelOptions = [
-  { label: 'mistral-large-latest', value: 'mistral-large-latest' },
-  { label: 'mistral-small-latest', value: 'mistral-small-latest' },
-];
-
-const groqModelOptions = [
-  { label: 'llama3-70b-8192', value: 'llama3-70b-8192' },
-  { label: 'llama3-8b-8192', value: 'llama3-8b-8192' },
-  { label: 'gemma-7b-it', value: 'gemma-7b-it' },
-  { label: 'mixtral-8x7b-32768', value: 'mixtral-8x7b-32768' },
-];
-
-const deepseekModelOptions = [
-  { label: 'deepseek-chat', value: 'deepseek-chat' },
-  { label: 'deepseek-reasoner', value: 'deepseek-reasoner' },
-];
-
-const middleoutOptions = computed(() => [
-  { label: t('apiConnections.middleout.on'), value: OpenrouterMiddleoutType.ON },
-  { label: t('apiConnections.middleout.off'), value: OpenrouterMiddleoutType.OFF },
-  { label: t('apiConnections.middleout.auto'), value: OpenrouterMiddleoutType.AUTO },
 ]);
 
 const tokenizerOptions = computed(() => [
@@ -96,6 +119,17 @@ const tokenizerOptions = computed(() => [
   { label: t('apiConnections.tokenizers.qwen2'), value: TokenizerType.QWEN2 },
   { label: t('apiConnections.tokenizers.yi'), value: TokenizerType.YI },
 ]);
+
+// Helper to convert definitions options to component compatible options
+function resolveOptions(item: AiConfigItem) {
+  return (
+    item.options?.map((opt) => ({
+      // @ts-expect-error dynamic label
+      label: opt.label.startsWith('apiConnections') ? t(opt.label) : opt.label,
+      value: opt.value,
+    })) || []
+  );
+}
 
 onMounted(() => {
   apiStore.initialize();
@@ -202,248 +236,111 @@ onMounted(() => {
           </FormItem>
         </div>
 
-        <!-- OpenAI Form -->
-        <div v-show="settingsStore.settings.api.chatCompletionSource === chat_completion_sources.OPENAI">
-          <FormItem :label="t('apiConnections.openaiKey')">
-            <div class="api-connections-drawer-input-group">
-              <Button icon="fa-key" :title="t('apiConnections.manageKeys')" />
-            </div>
-            <div class="neutral_warning">
-              {{ t('apiConnections.keyPrivacy') }}
-            </div>
-          </FormItem>
-
-          <FormItem :label="t('apiConnections.openaiModel')">
-            <select
-              class="text-pole"
-              :value="settingsStore.settings.api.selectedProviderModels.openai"
-              @change="
-                settingsStore.setSetting(
-                  'api.selectedProviderModels.openai',
-                  ($event.target as HTMLSelectElement).value,
-                )
-              "
-            >
-              <optgroup :label="t('apiConnections.modelGroups.gpt4o')">
-                <option value="gpt-4o">gpt-4o</option>
-                <option value="gpt-4o-mini">gpt-4o-mini</option>
-              </optgroup>
-              <optgroup :label="t('apiConnections.modelGroups.gpt4turbo')">
-                <option value="gpt-4-turbo">gpt-4-turbo</option>
-              </optgroup>
-              <optgroup v-show="dynamicOpenAIModels.length > 0" :label="t('apiConnections.modelGroups.other')">
-                <option v-for="model in dynamicOpenAIModels" :key="model.id" :value="model.id">
-                  {{ model.id }}
-                </option>
-              </optgroup>
-            </select>
-          </FormItem>
-        </div>
-
-        <!-- Claude Form -->
-        <div v-show="settingsStore.settings.api.chatCompletionSource === chat_completion_sources.CLAUDE">
-          <FormItem :label="t('apiConnections.claudeKey')">
-            <div class="api-connections-drawer-input-group">
-              <Button icon="fa-key" :title="t('apiConnections.manageKeys')" />
-            </div>
-            <div class="neutral_warning">
-              {{ t('apiConnections.keyPrivacy') }}
-            </div>
-          </FormItem>
-
-          <FormItem :label="t('apiConnections.claudeModel')">
-            <Select
-              :model-value="settingsStore.settings.api.selectedProviderModels.claude"
-              :options="claudeModelOptions"
-              @update:model-value="settingsStore.setSetting('api.selectedProviderModels.claude', $event as string)"
-            />
-          </FormItem>
-        </div>
-
-        <!-- OpenRouter Form -->
-        <div v-show="settingsStore.settings.api.chatCompletionSource === chat_completion_sources.OPENROUTER">
-          <FormItem :label="t('apiConnections.openrouterKey')">
-            <div class="api-connections-drawer-input-group">
-              <Button icon="fa-key" :title="t('apiConnections.manageKeys')" />
-            </div>
-            <div class="neutral_warning">
-              {{ t('apiConnections.keyPrivacy') }}
-            </div>
-          </FormItem>
-
-          <FormItem :label="t('apiConnections.openrouterModel')">
-            <select
-              v-show="hasOpenRouterGroupedModels"
-              class="text-pole"
-              :value="settingsStore.settings.api.selectedProviderModels.openrouter"
-              @change="
-                settingsStore.setSetting(
-                  'api.selectedProviderModels.openrouter',
-                  ($event.target as HTMLSelectElement).value,
-                )
-              "
-            >
-              <option value="OR_Website">{{ t('apiConnections.openrouterWebsite') }}</option>
-              <optgroup v-for="(models, vendor) in apiStore.groupedOpenRouterModels" :key="vendor" :label="vendor">
-                <option v-for="model in models" :key="model.id" :value="model.id">{{ model.name }}</option>
-              </optgroup>
-            </select>
-            <Input
-              v-show="!hasOpenRouterGroupedModels"
-              :model-value="settingsStore.settings.api.selectedProviderModels.openrouter"
-              placeholder="google/gemini-pro-1.5"
-              @update:model-value="settingsStore.setSetting('api.selectedProviderModels.openrouter', String($event))"
-            />
-          </FormItem>
-
+        <!-- Data-Driven Provider Forms -->
+        <template v-for="section in visibleSections" :key="section.id">
           <div class="api-connections-drawer-section">
-            <h4>{{ t('apiConnections.openrouterOptions') }}</h4>
-            <Checkbox
-              :model-value="settingsStore.settings.api.providerSpecific.openrouter.useFallback"
-              :label="t('apiConnections.openrouterUseFallback')"
-              @update:model-value="
-                settingsStore.setSetting('api.providerSpecific.openrouter.useFallback', Boolean($event))
-              "
-            />
-            <Checkbox
-              :model-value="settingsStore.settings.api.providerSpecific.openrouter.allowFallbacks"
-              :label="t('apiConnections.openrouterAllowFallbacks')"
-              @update:model-value="
-                settingsStore.setSetting('api.providerSpecific.openrouter.allowFallbacks', Boolean($event))
-              "
-            />
-            <FormItem :label="t('apiConnections.openrouterFallbackProviders')">
-              <Input v-model="openrouterProvidersString" />
-            </FormItem>
+            <template v-for="item in getVisibleItems(section)" :key="item.id || item.label">
+              <!-- Key Manager -->
+              <FormItem v-if="item.widget === 'key-manager'" :label="item.label ? t(item.label) : ''">
+                <div class="api-connections-drawer-input-group">
+                  <Button icon="fa-key" :title="t('apiConnections.manageKeys')" />
+                </div>
+                <!-- Warning only for direct keys -->
+                <div v-if="['openai', 'claude', 'openrouter'].includes(section.id)" class="neutral_warning">
+                  {{ t('apiConnections.keyPrivacy') }}
+                </div>
+              </FormItem>
 
-            <FormItem :label="t('apiConnections.openrouterMiddleout')">
-              <Select
-                :model-value="settingsStore.settings.api.providerSpecific.openrouter.middleout"
-                :options="middleoutOptions"
-                @update:model-value="
-                  settingsStore.setSetting('api.providerSpecific.openrouter.middleout', $event as any)
-                "
-              />
-            </FormItem>
+              <!-- Model Select -->
+              <FormItem v-else-if="item.widget === 'model-select'" :label="item.label ? t(item.label) : ''">
+                <!-- OpenAI Specific Grouped Select -->
+                <select
+                  v-if="settingsStore.settings.api.chatCompletionSource === chat_completion_sources.OPENAI"
+                  class="text-pole"
+                  :value="getModelValue(item)"
+                  @change="setModelValue(item, ($event.target as HTMLSelectElement).value)"
+                >
+                  <optgroup :label="t('apiConnections.modelGroups.gpt4o')">
+                    <option value="gpt-4o">gpt-4o</option>
+                    <option value="gpt-4o-mini">gpt-4o-mini</option>
+                  </optgroup>
+                  <optgroup :label="t('apiConnections.modelGroups.gpt4turbo')">
+                    <option value="gpt-4-turbo">gpt-4-turbo</option>
+                  </optgroup>
+                  <optgroup v-show="dynamicOpenAIModels.length > 0" :label="t('apiConnections.modelGroups.other')">
+                    <option v-for="model in dynamicOpenAIModels" :key="model.id" :value="model.id">
+                      {{ model.id }}
+                    </option>
+                  </optgroup>
+                </select>
+
+                <!-- OpenRouter Specific Grouped Select -->
+                <template
+                  v-else-if="settingsStore.settings.api.chatCompletionSource === chat_completion_sources.OPENROUTER"
+                >
+                  <select
+                    v-show="hasOpenRouterGroupedModels"
+                    class="text-pole"
+                    :value="getModelValue(item)"
+                    @change="setModelValue(item, ($event.target as HTMLSelectElement).value)"
+                  >
+                    <option value="OR_Website">{{ t('apiConnections.openrouterWebsite') }}</option>
+                    <optgroup
+                      v-for="(models, vendor) in apiStore.groupedOpenRouterModels"
+                      :key="vendor"
+                      :label="vendor"
+                    >
+                      <option v-for="model in models" :key="model.id" :value="model.id">{{ model.name }}</option>
+                    </optgroup>
+                  </select>
+                  <Input
+                    v-show="!hasOpenRouterGroupedModels"
+                    :model-value="getModelValue(item) as string"
+                    :placeholder="item.placeholder"
+                    @update:model-value="setModelValue(item, String($event))"
+                  />
+                </template>
+
+                <!-- Fallback to simple select if simple list exists, or text input? Actually model-select implies complexity.
+                     For now only OpenAI and OpenRouter use 'model-select'. Others use 'select' or 'text-input' -->
+              </FormItem>
+
+              <!-- Standard Select -->
+              <FormItem v-else-if="item.widget === 'select'" :label="item.label ? t(item.label) : ''">
+                <Select
+                  :model-value="getModelValue(item) as string"
+                  :options="resolveOptions(item)"
+                  @update:model-value="setModelValue(item, $event)"
+                />
+              </FormItem>
+
+              <!-- Text Input -->
+              <FormItem v-else-if="item.widget === 'text-input'" :label="item.label ? t(item.label) : ''">
+                <Input
+                  :model-value="getModelValue(item) as string"
+                  :placeholder="item.placeholder"
+                  @update:model-value="setModelValue(item, String($event))"
+                />
+              </FormItem>
+
+              <!-- Checkbox -->
+              <div v-else-if="item.widget === 'checkbox'">
+                <Checkbox
+                  :model-value="Boolean(getModelValue(item))"
+                  :label="item.label ? t(item.label) : ''"
+                  @update:model-value="setModelValue(item, $event)"
+                />
+              </div>
+
+              <!-- Header -->
+              <h4 v-else-if="item.widget === 'header'">{{ item.label ? t(item.label) : '' }}</h4>
+            </template>
           </div>
-        </div>
-
-        <!-- MistralAI Form -->
-        <div v-show="settingsStore.settings.api.chatCompletionSource === chat_completion_sources.MISTRALAI">
-          <FormItem :label="t('apiConnections.mistralaiKey')">
-            <div class="api-connections-drawer-input-group">
-              <Button icon="fa-key" :title="t('apiConnections.manageKeys')" />
-            </div>
-          </FormItem>
-
-          <FormItem :label="t('apiConnections.mistralaiModel')">
-            <Select
-              :model-value="settingsStore.settings.api.selectedProviderModels.mistralai"
-              :options="mistralModelOptions"
-              @update:model-value="settingsStore.setSetting('api.selectedProviderModels.mistralai', $event as string)"
-            />
-          </FormItem>
-        </div>
-
-        <!-- Groq Form -->
-        <div v-show="settingsStore.settings.api.chatCompletionSource === chat_completion_sources.GROQ">
-          <FormItem :label="t('apiConnections.groqKey')">
-            <div class="api-connections-drawer-input-group">
-              <Button icon="fa-key" :title="t('apiConnections.manageKeys')" />
-            </div>
-          </FormItem>
-
-          <FormItem :label="t('apiConnections.groqModel')">
-            <Select
-              :model-value="settingsStore.settings.api.selectedProviderModels.groq"
-              :options="groqModelOptions"
-              @update:model-value="settingsStore.setSetting('api.selectedProviderModels.groq', $event as string)"
-            />
-          </FormItem>
-        </div>
-
-        <!-- Custom Form -->
-        <div v-show="settingsStore.settings.api.chatCompletionSource === chat_completion_sources.CUSTOM">
-          <FormItem :label="t('apiConnections.customUrl')">
-            <Input
-              :model-value="settingsStore.settings.api.providerSpecific.custom.url"
-              @update:model-value="settingsStore.settings.api.providerSpecific.custom.url = String($event)"
-            />
-          </FormItem>
-          <FormItem :label="t('apiConnections.customModel')">
-            <Input
-              :model-value="settingsStore.settings.api.selectedProviderModels.custom"
-              @update:model-value="settingsStore.settings.api.selectedProviderModels.custom = String($event)"
-            />
-          </FormItem>
-          <FormItem :label="t('apiConnections.customKey')">
-            <div class="api-connections-drawer-input-group">
-              <Button icon="fa-key" :title="t('apiConnections.manageKeys')" />
-            </div>
-          </FormItem>
-        </div>
-
-        <!-- Azure OpenAI Form -->
-        <div v-show="settingsStore.settings.api.chatCompletionSource === chat_completion_sources.AZURE_OPENAI">
-          <FormItem :label="t('apiConnections.azureKey')">
-            <div class="api-connections-drawer-input-group">
-              <Button icon="fa-key" :title="t('apiConnections.manageKeys')" />
-            </div>
-          </FormItem>
-
-          <FormItem :label="t('apiConnections.azureBaseUrl')">
-            <Input
-              :model-value="settingsStore.settings.api.providerSpecific.azure_openai.baseUrl"
-              @update:model-value="
-                settingsStore.setSetting('api.providerSpecific.azure_openai.baseUrl', String($event))
-              "
-            />
-          </FormItem>
-          <FormItem :label="t('apiConnections.azureDeploymentName')">
-            <Input
-              :model-value="settingsStore.settings.api.providerSpecific.azure_openai.deploymentName"
-              @update:model-value="
-                settingsStore.setSetting('api.providerSpecific.azure_openai.deploymentName', String($event))
-              "
-            />
-          </FormItem>
-          <FormItem :label="t('apiConnections.azureApiVersion')">
-            <Input
-              :model-value="settingsStore.settings.api.providerSpecific.azure_openai.apiVersion"
-              @update:model-value="
-                settingsStore.setSetting('api.providerSpecific.azure_openai.apiVersion', String($event))
-              "
-            />
-          </FormItem>
-          <FormItem :label="t('apiConnections.azureModel')">
-            <Input
-              :model-value="settingsStore.settings.api.selectedProviderModels.azure_openai"
-              placeholder="This is the model name inside your deployment"
-              @update:model-value="settingsStore.setSetting('api.selectedProviderModels.azure_openai', String($event))"
-            />
-          </FormItem>
-        </div>
-
-        <!-- Deepseek Form -->
-        <div v-show="settingsStore.settings.api.chatCompletionSource === chat_completion_sources.DEEPSEEK">
-          <FormItem :label="t('apiConnections.deepseekModel')">
-            <Select
-              :model-value="settingsStore.settings.api.selectedProviderModels.deepseek"
-              :options="deepseekModelOptions"
-              @update:model-value="settingsStore.setSetting('api.selectedProviderModels.deepseek', String($event))"
-            />
-          </FormItem>
-        </div>
-
-        <!-- TODO: Add forms for other sources -->
+        </template>
 
         <!-- Tokenizer Selection -->
         <FormItem :label="t('apiConnections.tokenizer')">
-          <Select
-            :model-value="settingsStore.settings.api.tokenizer"
-            :options="tokenizerOptions"
-            @update:model-value="settingsStore.settings.api.tokenizer = $event as any"
-          />
+          <Select v-model="settingsStore.settings.api.tokenizer" :options="tokenizerOptions" />
         </FormItem>
 
         <div class="api-connections-drawer-section">
