@@ -1,5 +1,6 @@
 import {
   CharacterSortOption,
+  CustomPromptPostProcessing,
   ReasoningEffort,
   WorldInfoSortOption,
   type OpenrouterMiddleoutType,
@@ -183,6 +184,7 @@ export interface LegacyOaiSettings {
   openrouter_middleout?: boolean;
   openrouter_use_fallback?: boolean;
   openrouter_providers?: string[];
+  custom_prompt_post_processing?: CustomPromptPostProcessing;
 }
 
 export interface LegacyOaiPresetSettings {
@@ -286,6 +288,7 @@ export interface Settings {
 
     formatter: ApiFormatter;
     instructTemplateName?: string;
+    customPromptPostProcessing: CustomPromptPostProcessing;
 
     providerSpecific: {
       openrouter: {

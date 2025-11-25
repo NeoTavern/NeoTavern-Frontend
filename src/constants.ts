@@ -8,6 +8,17 @@ import {
 } from './types';
 import { NamesBehavior, type InstructTemplate } from './types/instruct';
 
+export enum CustomPromptPostProcessing {
+  NONE = '',
+  MERGE = 'merge',
+  MERGE_TOOLS = 'merge_tools',
+  SEMI = 'semi',
+  SEMI_TOOLS = 'semi_tools',
+  STRICT = 'strict',
+  STRICT_TOOLS = 'strict_tools',
+  SINGLE = 'single',
+}
+
 export enum OpenrouterMiddleoutType {
   AUTO = 'auto',
   ON = 'on',

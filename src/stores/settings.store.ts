@@ -9,6 +9,7 @@ import {
 } from '../api/settings';
 import { toast } from '../composables/useToast';
 import {
+  CustomPromptPostProcessing,
   DEFAULT_SAVE_EDIT_TIMEOUT,
   defaultAccountSettings,
   defaultPrompts,
@@ -60,6 +61,7 @@ function createDefaultSettings(): Settings {
     selectedProviderModels: structuredClone(defaultProviderModels),
     tokenizer: TokenizerType.AUTO,
     providerSpecific: structuredClone(defaultProviderSpecific),
+    customPromptPostProcessing: CustomPromptPostProcessing.NONE,
   };
   defaultSettings.worldInfo = defaultWorldInfoSettings;
   defaultSettings.account = defaultAccountSettings;
@@ -344,6 +346,7 @@ function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSettingsRes
       connectionProfiles: [],
       selectedConnectionProfile: legacy.extension_settings?.connectionManager?.selected,
       tokenizer: TokenizerType.AUTO,
+      customPromptPostProcessing: oai.custom_prompt_post_processing ?? CustomPromptPostProcessing.NONE,
     },
     account: defaultAccountSettings,
     worldInfo: {

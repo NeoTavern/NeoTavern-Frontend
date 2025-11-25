@@ -852,6 +852,23 @@ export interface MessageSchema {
       gpt35: string;
       gpt4o: string;
     };
+    postProcessing: {
+      label: string;
+      description: string;
+      tooltip: string;
+      withTools: string;
+      noTools: string;
+      prompts: {
+        none: string;
+        merge_tools: string;
+        semi_tools: string;
+        strict_tools: string;
+        merge: string;
+        semi: string;
+        strict: string;
+        single: string;
+      };
+    };
   };
   settings: {
     powerUser: {

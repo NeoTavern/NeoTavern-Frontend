@@ -1,5 +1,3 @@
-<!-- TODO: Convert to ConnectionProfile and use with popup.show({component: ConnectionProfile}) -->
-
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
@@ -24,10 +22,12 @@ const profileName = ref('New Profile');
 const includeProvider = ref(true);
 const includeModel = ref(true);
 const includeSampler = ref(true);
+const includePostProcessing = ref(true);
 
 const currentProvider = computed(() => settingsStore.settings.api.provider);
 const currentModel = computed(() => apiStore.activeModel);
 const currentSampler = computed(() => settingsStore.settings.api.selectedSampler);
+const currentPostProcessing = computed(() => settingsStore.settings.api.customPromptPostProcessing);
 
 const modelLabel = computed(() => {
   const provider = currentProvider.value;
@@ -74,6 +74,7 @@ watch(
       includeProvider.value = true;
       includeModel.value = true;
       includeSampler.value = true;
+      includePostProcessing.value = true;
       dialog.value?.showModal();
     } else {
       dialog.value?.close();
@@ -99,6 +100,7 @@ function save() {
   if (includeProvider.value) profile.provider = currentProvider.value;
   if (includeModel.value) profile.model = currentModel.value;
   if (includeSampler.value) profile.sampler = currentSampler.value;
+  if (includePostProcessing.value) profile.customPromptPostProcessing = currentPostProcessing.value;
 
   emit('save', profile);
   close();
@@ -126,6 +128,9 @@ function save() {
 
           <Checkbox v-model="includeSampler" :label="t('aiConfig.presets.sampler.label')" />
           <div class="field-value">{{ currentSampler }}</div>
+
+          <Checkbox v-model="includePostProcessing" :label="t('apiConnections.postProcessing.label')" />
+          <div class="field-value">{{ currentPostProcessing || t('apiConnections.postProcessing.prompts.none') }}</div>
         </div>
       </div>
 

@@ -222,6 +222,7 @@ export class PromptBuilder {
       const apiMsg: ApiChatMessage = {
         role: msg.is_user ? 'user' : 'assistant',
         content: msg.mes,
+        name: msg.name,
       };
 
       if (!msg.is_user && (this.chatMetadata.members?.length ?? 0) > 1) {

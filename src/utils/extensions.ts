@@ -418,6 +418,9 @@ const baseExtensionAPI: ExtensionAPI = {
           const sampler = apiStore.presets.find((p) => p.name === profile.sampler);
           if (sampler) samplerSettings = { ...sampler.preset, ...(options.samplerOverrides ?? {}) };
         }
+        if (profile.customPromptPostProcessing) {
+          messages = await ChatCompletionService.formatMessages(messages, profile.customPromptPostProcessing);
+        }
       }
       if (!model) throw new Error('No model specified.');
 

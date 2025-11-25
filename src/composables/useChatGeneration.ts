@@ -462,6 +462,23 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         }
       };
 
+      let effectivePostProcessing = settings.api.customPromptPostProcessing;
+      if (profileSettings?.customPromptPostProcessing) {
+        effectivePostProcessing = profileSettings.customPromptPostProcessing;
+      }
+
+      if (effectivePostProcessing) {
+        try {
+          payload.messages = await ChatCompletionService.formatMessages(
+            payload.messages || [],
+            effectivePostProcessing,
+          );
+        } catch (e) {
+          console.error('Post-processing failed:', e);
+          toast.error('Post-processing failed. Check console for details.'); // TODO: i18n
+          throw e;
+        }
+      }
       if (!payload.stream) {
         const response = (await ChatCompletionService.generate(
           payload,

@@ -848,6 +848,23 @@
       "gpt2": "GPT-2",
       "gpt35": "GPT-3.5-Turbo / GPT-4",
       "gpt4o": "GPT-4o / GPT-5"
+    },
+    "postProcessing": {
+      "label": "Prompt Post-Processing",
+      "description": "Applies additional processing to the prompt before sending it to the API.",
+      "tooltip": "Applies additional processing to the prompt before sending it to the API.",
+      "withTools": "With Tools",
+      "noTools": "No Tools",
+      "prompts": {
+        "none": "None",
+        "merge_tools": "Merge consecutive roles (with tools)",
+        "semi_tools": "Semi-strict (alternating roles; with tools)",
+        "strict_tools": "Strict (user first, alternating roles; with tools)",
+        "merge": "Merge consecutive roles (no tools)",
+        "semi": "Semi-strict (alternating roles; no tools)",
+        "strict": "Strict (user first, alternating roles; no tools)",
+        "single": "Single user message (no tools)"
+      }
     }
   },
   "settings": {
