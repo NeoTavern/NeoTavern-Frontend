@@ -14,7 +14,7 @@ import { POPUP_RESULT, POPUP_TYPE } from '../../types';
 import { resolveAvatarUrls } from '../../utils/character';
 import { formatMessage, formatReasoning } from '../../utils/chat';
 import { formatTimeStamp } from '../../utils/commons';
-import { SmartAvatar } from '../Common';
+import { SmartAvatar } from '../common';
 import { Button, Textarea } from '../UI';
 import PromptItemizationPopup from './PromptItemizationPopup.vue';
 
@@ -296,11 +296,15 @@ async function showPromptItemization() {
           <i class="fa-solid" :class="isReasoningCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
         </div>
         <transition name="expand">
+          <!-- eslint-disable-next-line vue/no-v-html -->
           <div v-show="!isReasoningCollapsed" class="message-reasoning-content" v-html="formattedReasoning"></div>
+          <!-- formattedReasoning 已在 utils/chat.ts 透過 DOMPurify 消毒 -->
         </transition>
       </div>
 
+      <!-- eslint-disable-next-line vue/no-v-html -->
       <div v-show="!isEditing" class="message-content" v-html="formattedContent"></div>
+      <!-- formattedContent 已在 utils/chat.ts 透過 DOMPurify 消毒 -->
 
       <div v-show="isEditing" class="message-edit-area">
         <transition name="expand">

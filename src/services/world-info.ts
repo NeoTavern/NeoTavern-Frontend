@@ -181,39 +181,9 @@ interface ProcessingEntry extends WorldInfoEntry {
   world: string;
 }
 
-function substitute(text: string, chars: Character[], persona: Persona): string {
+function substituteParams(text: string, char: Character, user: string): string {
   if (!text) return '';
-  if (!text.includes('{{')) return text;
-
-  try {
-    const context = {
-      user: persona.name,
-      char: chars.length > 0 ? chars[0].name : '',
-      chars: chars.map((c) => c.name),
-      description: chars.length > 0 ? chars[0].description : '',
-      personality: chars.length > 0 ? chars[0].personality : '',
-      scenario: chars.length > 0 ? chars[0].scenario : '',
-      persona: persona.description,
-    };
-
-    // Register each field as a helper that returns its value
-    Object.entries(context).forEach(([key, value]) => {
-      Handlebars.registerHelper(key, () => value);
-    });
-
-    const template = Handlebars.compile(text, { noEscape: true });
-    const result = template(context);
-
-    // Unregister helpers to avoid conflicts
-    Object.keys(context).forEach((key) => {
-      Handlebars.unregisterHelper(key);
-    });
-
-    return result;
-  } catch (e) {
-    console.warn('Failed to compile Handlebars template for prompt:', e);
-    return text;
-  }
+  return text.replace(/{{char}}/g, char.name).replace(/{{user}}/g, user);
 }
 
 class WorldInfoBuffer {
@@ -376,7 +346,7 @@ export class WorldInfoProcessor {
         if (!textToScan) continue;
 
         const hasPrimaryKeyMatch = entry.key.some((key) => {
-          const subbedKey = substitute(key, this.characters, this.persona);
+          const subbedKey = substituteParams(key, this.character, this.persona.name);
           return subbedKey && buffer.matchKeys(textToScan, subbedKey, entry);
         });
 
@@ -390,7 +360,7 @@ export class WorldInfoProcessor {
           let hasAnySecondaryMatch = false;
           let hasAllSecondaryMatch = true;
           for (const key of entry.keysecondary) {
-            const subbedKey = substitute(key, this.characters, this.persona);
+            const subbedKey = substituteParams(key, this.character, this.persona.name);
             if (subbedKey && buffer.matchKeys(textToScan, subbedKey, entry)) {
               hasAnySecondaryMatch = true;
             } else {
@@ -428,7 +398,7 @@ export class WorldInfoProcessor {
           const roll = Math.random() * 100;
           if (entry.useProbability && roll > entry.probability) continue;
 
-          const substitutedContent = substitute(entry.content, this.characters, this.persona);
+          const substitutedContent = substituteParams(entry.content, this.character, this.persona.name);
           const contentForBudget = `\n${substitutedContent}`;
           candidates.push({ entry, content: contentForBudget, rawContent: substitutedContent });
         }
@@ -486,7 +456,7 @@ export class WorldInfoProcessor {
       }
       result.triggeredEntries[entry.world].push(entry);
 
-      const content = substitute(entry.content, this.characters, this.persona);
+      const content = substituteParams(entry.content, this.character, this.persona.name);
       if (!content) continue;
 
       switch (entry.position) {

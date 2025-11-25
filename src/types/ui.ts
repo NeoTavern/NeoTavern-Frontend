@@ -14,7 +14,14 @@ export interface SidebarDefinition {
   componentProps?: Record<string, any>;
   title?: string | I18nKey;
   icon?: string; // FontAwesome class
+  /**
+   * Which main layout this sidebar belongs to (only used for right sidebars).
+   * Defaults to 'chat' when not provided.
+   */
+  layoutId?: string;
 }
+
+export type NavBarItemSection = 'main' | 'floating' | 'drawer';
 
 export interface NavBarItemDefinition {
   id: string;
@@ -23,4 +30,10 @@ export interface NavBarItemDefinition {
   component?: Component;
   onClick?: () => void;
   layout?: 'default' | 'wide';
+  section?: NavBarItemSection;
+  layoutComponent?: Component;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  layoutProps?: Record<string, any>;
+  defaultSidebarId?: string;
+  targetSidebarId?: string;
 }

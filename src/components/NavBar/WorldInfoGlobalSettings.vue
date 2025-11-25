@@ -6,6 +6,8 @@ import { useSettingsStore } from '../../stores/settings.store';
 import { useWorldInfoStore } from '../../stores/world-info.store';
 import { Button, Checkbox, FormItem, RangeControl, Select } from '../UI';
 
+const props = withDefaults(defineProps<{ showHeader?: boolean }>(), { showHeader: true });
+
 const { t } = useStrictI18n();
 const worldInfoStore = useWorldInfoStore();
 const settingsStore = useSettingsStore();
@@ -33,9 +35,13 @@ const bookOptions = computed(() => {
 
 <template>
   <div class="world-info-global-settings">
-    <div class="editor-header">
-      <h3>{{ t('worldInfo.globalSettings') }}</h3>
-      <Button @click="resetToDefaults">{{ t('common.resetToDefaults') }}</Button>
+    <div v-if="props.showHeader" class="main-page-header">
+      <div class="main-page-header-main">
+        <h3>{{ t('worldInfo.globalSettings') }}</h3>
+      </div>
+      <div class="main-page-header-actions">
+        <Button @click="resetToDefaults">{{ t('common.resetToDefaults') }}</Button>
+      </div>
     </div>
 
     <div class="settings-section">

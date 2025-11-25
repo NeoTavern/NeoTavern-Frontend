@@ -275,7 +275,7 @@
   background: transparent;
   border: none;
   color: var(--theme-text-color);
-  padding: 4px 12px;
+  padding: 4px 8px;
   cursor: pointer;
   border-radius: var(--base-border-radius);
   opacity: 0.6;
@@ -614,16 +614,26 @@
   }
 }
 
-// Drawer Header
-.drawer-header {
+// Sidebar/Main Page Header
+.sidebar-header,
+.drawer-header,
+.main-page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--theme-border-color);
-  padding: 4px;
-  margin-bottom: 4px;
+  padding: 4px 16px;
+  height: var(--header-height);
+  font-size: medium;
+
+  &-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
 
   &-main {
     display: flex;
@@ -644,6 +654,31 @@
   }
 }
 
+.main-page-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+// Sidebar Controls
+.sidebar-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--theme-border-color);
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+}
+
 // Split Pane
 .split-pane {
   display: flex;
@@ -652,7 +687,7 @@
   position: relative;
   overflow: hidden;
 
-  &.is-collapsed .split-pane-side {
+  &.is-collapsed .split-pane-panel--side {
     width: 0 !important;
     padding: 5px 0;
     opacity: 0;
@@ -660,22 +695,25 @@
     border-right: none;
   }
 
-  &-side {
-    width: 360px;
-    flex-shrink: 0;
+  &-panel {
     display: flex;
     flex-direction: column;
     height: 100%;
-    border-right: 1px solid var(--theme-border-color);
-    padding: 4px;
-    gap: 4px;
     background-color: var(--theme-background-tint);
 
-    body:not(.is-resizing) & {
-      transition:
-        width var(--animation-duration-3x) ease-in-out,
-        padding var(--animation-duration-3x) ease-in-out,
-        opacity var(--animation-duration-2x) ease-in-out;
+    &--side {
+      width: 360px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--theme-border-color);
+      padding: 4px;
+      gap: 4px;
+
+      body:not(.is-resizing) & {
+        transition:
+          width var(--animation-duration-3x) ease-in-out,
+          padding var(--animation-duration-3x) ease-in-out,
+          opacity var(--animation-duration-2x) ease-in-out;
+      }
     }
   }
 

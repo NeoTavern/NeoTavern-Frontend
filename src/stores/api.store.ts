@@ -98,9 +98,6 @@ export const useApiStore = defineStore('api', () => {
       if (profile.instructTemplate) {
         settingsStore.settings.api.instructTemplateName = profile.instructTemplate;
       }
-      if (profile.customPromptPostProcessing !== undefined) {
-        settingsStore.settings.api.customPromptPostProcessing = profile.customPromptPostProcessing;
-      }
 
       const caps = PROVIDER_CAPABILITIES[settingsStore.settings.api.provider];
       if (caps) {

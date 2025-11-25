@@ -4,8 +4,7 @@
 export interface MessageSchema {
   navbar: {
     aiConfig: string;
-    apiConnections: string;
-    formatting: string;
+    chat: string;
     worldInfo: string;
     userSettings: string;
     backgrounds: string;
@@ -272,10 +271,18 @@ export interface MessageSchema {
     };
   };
   aiConfig: {
+    tabConnections: string;
     tabSampler: string;
-    tabPrompts: string;
+    modeLabel: string;
+    modeChat: string;
+    modeText: string;
+    chatCompletionTitle: string;
+    chatCompletionSubtitle: string;
+    textCompletionTitle: string;
+    textCompletionSubtitle: string;
     manualInputNote: string;
     docsLinkTooltip: string;
+    formattingUnavailable: string;
     presets: {
       sampler: {
         label: string;
@@ -421,7 +428,6 @@ export interface MessageSchema {
     };
   };
   userSettings: {
-    title: string;
     searchPlaceholder: string;
     noResults: string;
   };
@@ -845,23 +851,6 @@ export interface MessageSchema {
       gpt2: string;
       gpt35: string;
       gpt4o: string;
-    };
-    postProcessing: {
-      label: string;
-      description: string;
-      tooltip: string;
-      withTools: string;
-      noTools: string;
-      prompts: {
-        none: string;
-        merge_tools: string;
-        semi_tools: string;
-        strict_tools: string;
-        merge: string;
-        semi: string;
-        strict: string;
-        single: string;
-      };
     };
   };
   settings: {

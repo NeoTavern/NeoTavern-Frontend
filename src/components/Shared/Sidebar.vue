@@ -28,7 +28,7 @@ useResizable(sidebarRef, resizerRef, {
   <aside :id="`sidebar-${side}`" ref="sidebarRef" class="sidebar" :class="[`sidebar--${side}`, { 'is-open': isOpen }]">
     <div ref="resizerRef" class="sidebar-resizer"></div>
 
-    <div class="sidebar-content">
+    <div :id="`sidebar-${side}-content`" class="sidebar-content">
       <slot></slot>
     </div>
   </aside>

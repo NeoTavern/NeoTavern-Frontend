@@ -4,7 +4,7 @@ import { computed, ref } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { Prompt } from '../../types';
-import { DraggableList, EmptyState } from '../Common';
+import { DraggableList, EmptyState } from '../common';
 import { Button, FormItem, Input, Select, Textarea } from '../UI';
 
 const emit = defineEmits(['close']);

@@ -16,9 +16,21 @@
   flex-direction: column;
   height: 100%;
   padding: var(--nav-bar-padding) 0;
-  justify-content: center;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-bar-section {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
+  width: 100%;
+
+  & + & {
+    margin-top: 12px;
+  }
 }
 
 .nav-item {

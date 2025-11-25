@@ -6,7 +6,7 @@ import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { MessageRole } from '../../types';
 import type { Prompt } from '../../types/settings';
-import { DraggableList, EmptyState } from '../Common';
+import { DraggableList, EmptyState } from '../common';
 import { Button, FormItem, Input, Select, Textarea } from '../UI';
 import GlobalPromptManager from './GlobalPromptManager.vue';
 

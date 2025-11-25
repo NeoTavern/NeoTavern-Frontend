@@ -4,7 +4,7 @@ import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { AiConfigItem, AiConfigValueItem, ApiProvider } from '../../types';
 import type { I18nKey } from '../../types/i18n';
-import { DraggableList } from '../Common';
+import { DraggableList } from '../common';
 import {
   Button,
   Checkbox,
@@ -186,7 +186,7 @@ function getOptionLabel(item: AiConfigItem, value: string | number) {
     <!-- Number Input -->
     <FormItem v-else-if="item.widget === 'number-input'" :label="item.label ? t(item.label) : ''">
       <!-- @vue-ignore -->
-      <Input type="number" v-model="boundValue" :min="item.min" :max="item.max" :step="item.step" />
+      <Input v-model="boundValue" type="number" :min="item.min" :max="item.max" :step="item.step" />
     </FormItem>
 
     <!-- Textarea -->

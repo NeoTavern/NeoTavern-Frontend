@@ -326,7 +326,7 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
       component: Component | null,
       side: 'left' | 'right',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      options?: { title?: string; icon?: string; props?: Record<string, any> },
+      options?: { title?: string; icon?: string; props?: Record<string, any>; layoutId?: string },
     ) => Promise<string>;
 
     /**
@@ -342,6 +342,12 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
         component?: Component | null;
         onClick?: () => void;
         layout?: 'default' | 'wide';
+        section?: 'main' | 'floating' | 'drawer';
+        layoutComponent?: Component | null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        layoutProps?: Record<string, any>;
+        defaultSidebarId?: string;
+        targetSidebarId?: string;
       },
     ) => Promise<string>;
 

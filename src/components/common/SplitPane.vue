@@ -37,7 +37,7 @@ function toggleCollapse() {
 
 <template>
   <div class="split-pane" :class="{ 'is-collapsed': collapsed }">
-    <div ref="paneRef" class="split-pane-side">
+    <div ref="paneRef" class="split-pane-panel split-pane-panel--side">
       <slot name="side" />
     </div>
 
@@ -48,6 +48,7 @@ function toggleCollapse() {
     </div>
 
     <div class="split-pane-main">
+      <!-- Core main pane for split layouts; standalone main-only views no longer wrap content in extra split-pane-main -->
       <slot name="main" />
     </div>
   </div>

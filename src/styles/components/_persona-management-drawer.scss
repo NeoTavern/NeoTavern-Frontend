@@ -6,34 +6,29 @@
   gap: 8px;
 
   &-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-    flex-wrap: wrap;
-    padding: 12px 12px 0 12px;
-
-    h3 {
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-grow: 1;
-    }
-
     .note-link-span {
-      font-size: 1em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 6px;
+      border-radius: var(--base-border-radius);
+      border: 1px solid transparent;
+      font-size: 1.1em;
       opacity: 0.7;
       color: var(--theme-text-color);
+      text-decoration: none;
+      transition:
+        opacity var(--animation-duration),
+        background-color var(--animation-duration),
+        border-color var(--animation-duration);
       &:hover {
         opacity: 1;
+        background-color: var(--black-30a);
+        border-color: var(--theme-border-color);
       }
     }
-  }
-
-  &-header-actions {
-    display: flex;
-    gap: 4px;
   }
 
   // Split Pane Wrapper
@@ -58,11 +53,19 @@
     min-width: 0;
   }
 
-  &-list-controls {
-    display: flex;
+  &-controls {
+    width: 100%;
     gap: 4px;
     align-items: flex-start;
-    flex-shrink: 0;
+  }
+
+  &-actions-row {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  &-search-row {
+    align-items: flex-start;
   }
 }
 

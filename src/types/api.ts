@@ -1,4 +1,3 @@
-import { CustomPromptPostProcessing } from '../constants';
 import type { I18nKey } from './i18n';
 import type { ApiFormatter, SettingsPath } from './settings';
 
@@ -38,7 +37,6 @@ export interface ConnectionProfile {
   sampler?: string;
   formatter?: ApiFormatter;
   instructTemplate?: string;
-  customPromptPostProcessing?: CustomPromptPostProcessing;
 }
 
 export interface ApiModel {

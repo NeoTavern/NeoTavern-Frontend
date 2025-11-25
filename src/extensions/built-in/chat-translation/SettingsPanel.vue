@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/Common';
+import { ConnectionProfileSelector } from '../../../components/common';
 import { Button, FormItem, Input, Select, Textarea } from '../../../components/UI';
 import { useStrictI18n } from '../../../composables/useStrictI18n';
 import type { ExtensionAPI } from '../../../types';

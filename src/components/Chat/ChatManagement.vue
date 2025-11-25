@@ -15,7 +15,7 @@ import { useWorldInfoStore } from '../../stores/world-info.store';
 import { POPUP_RESULT, POPUP_TYPE, type Character, type ChatInfo } from '../../types';
 import { getThumbnailUrl } from '../../utils/character';
 import { formatTimeStamp, humanizedDateTime } from '../../utils/commons';
-import { ConnectionProfileSelector, DraggableList, EmptyState, Pagination } from '../Common';
+import { ConnectionProfileSelector, DraggableList, EmptyState, Pagination } from '../common';
 import { Button, Checkbox, CollapsibleSection, FormItem, Input, ListItem, Search, Select, Tabs, Textarea } from '../UI';
 
 const { t } = useStrictI18n();

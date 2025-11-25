@@ -1,23 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import ChatHeader from './components/Chat/ChatHeader.vue';
-import ChatInterface from './components/Chat/ChatInterface.vue';
 import ChatManagement from './components/Chat/ChatManagement.vue';
 import RecentChats from './components/Chat/RecentChats.vue';
-
 import CharacterPanel from './components/CharacterPanel/CharacterPanel.vue';
+import ChatMainLayout from './components/Layout/ChatMainLayout.vue';
 import AiConfigDrawer from './components/NavBar/AiConfigDrawer.vue';
-import ApiConnectionsDrawer from './components/NavBar/ApiConnectionsDrawer.vue';
 import BackgroundsDrawer from './components/NavBar/BackgroundsDrawer.vue';
 import ExtensionsDrawer from './components/NavBar/ExtensionsDrawer.vue';
-import FormattingDrawer from './components/NavBar/FormattingDrawer.vue';
 import NavBar from './components/NavBar/NavBar.vue';
 import PersonaManagementDrawer from './components/NavBar/PersonaManagementDrawer.vue';
 import UserSettingsDrawer from './components/NavBar/UserSettingsDrawer.vue';
 import WorldInfoDrawer from './components/NavBar/WorldInfoDrawer.vue';
 import Popup from './components/Popup/Popup.vue';
 import Sidebar from './components/Shared/Sidebar.vue';
-import ZoomedAvatar from './components/ZoomedAvatar.vue';
 import { useStrictI18n } from './composables/useStrictI18n';
 import { useBackgroundStore } from './stores/background.store';
 import { usePopupStore } from './stores/popup.store';
@@ -36,6 +31,20 @@ const backgroundStyle = computed(() => ({
 
 const isFullScreen = computed(() => settingsStore.settings.account.chatFullScreen);
 
+const currentMainLayoutComponent = computed(() => {
+  return uiStore.getNavBarItem(uiStore.activeMainLayout)?.layoutComponent ?? ChatMainLayout;
+});
+
+const currentMainLayoutProps = computed(() => {
+  return uiStore.getNavBarItem(uiStore.activeMainLayout)?.layoutProps ?? {};
+});
+
+const activeRightSidebars = computed(() =>
+  Array.from(uiStore.rightSidebarRegistry).filter(
+    ([, def]) => (def.layoutId ?? 'chat') === uiStore.activeMainLayout,
+  ),
+);
+
 onMounted(() => {
   settingsStore.initializeSettings();
 
@@ -50,90 +59,154 @@ onMounted(() => {
     'left',
   );
 
-  // Register Right Sidebars
+  uiStore.registerSidebar(
+    'user-settings',
+    {
+      component: UserSettingsDrawer,
+      title: t('navbar.userSettings'),
+      icon: 'fa-user-cog',
+    },
+    'left',
+  );
+
   uiStore.registerSidebar(
     'ai-config',
     {
       component: AiConfigDrawer,
-      title: 'AI Configuration',
+      title: t('navbar.aiConfig'),
       icon: 'fa-sliders',
     },
-    'right',
+    'left',
   );
 
+  uiStore.registerSidebar(
+    'character-side',
+    {
+      component: CharacterPanel,
+      componentProps: { mode: 'side-only' },
+      title: t('navbar.characterManagement'),
+      icon: 'fa-address-card',
+    },
+    'left',
+  );
+
+  uiStore.registerSidebar(
+    'world-info-side',
+    {
+      component: WorldInfoDrawer,
+      componentProps: { mode: 'side-only' },
+      title: t('navbar.worldInfo'),
+      icon: 'fa-book-atlas',
+    },
+    'left',
+  );
+
+  uiStore.registerSidebar(
+    'extensions-side',
+    {
+      component: ExtensionsDrawer,
+      componentProps: { mode: 'side-only' },
+      title: t('navbar.extensions'),
+      icon: 'fa-cubes',
+    },
+    'left',
+  );
+
+  uiStore.registerSidebar(
+    'persona-side',
+    {
+      component: PersonaManagementDrawer,
+      componentProps: { mode: 'side-only' },
+      title: t('navbar.personaManagement'),
+      icon: 'fa-face-smile',
+    },
+    'left',
+  );
+
+  // Register Right Sidebars
   uiStore.registerSidebar(
     'chat-management',
     {
       component: ChatManagement,
       title: t('chat.optionsMenu.manageChats'),
       icon: 'fa-address-book',
+      layoutId: 'chat',
     },
     'right',
   );
 
-  // Register NavBar Items
-  uiStore.registerNavBarItem('ai-config', {
-    icon: 'fa-sliders',
-    title: t('navbar.aiConfig'),
-    component: AiConfigDrawer,
-    layout: 'wide',
-  });
+  uiStore.registerSidebar(
+    'backgrounds',
+    {
+      component: BackgroundsDrawer,
+      title: t('navbar.backgrounds'),
+      icon: 'fa-panorama',
+      layoutId: 'chat',
+    },
+    'right',
+  );
 
-  uiStore.registerNavBarItem('api-status', {
-    icon: 'fa-plug',
-    title: t('navbar.apiConnections'),
-    component: ApiConnectionsDrawer,
-    layout: 'wide',
-  });
-
-  uiStore.registerNavBarItem('formatting', {
-    icon: 'fa-font',
-    title: t('navbar.formatting'),
-    component: FormattingDrawer,
-    layout: 'wide',
-  });
-
-  uiStore.registerNavBarItem('world-info', {
-    icon: 'fa-book-atlas',
-    title: t('navbar.worldInfo'),
-    component: WorldInfoDrawer,
-    layout: 'wide',
-  });
-
-  uiStore.registerNavBarItem('user-settings', {
-    icon: 'fa-user-cog',
-    title: t('navbar.userSettings'),
-    component: UserSettingsDrawer,
-    layout: 'wide',
-  });
-
-  uiStore.registerNavBarItem('backgrounds', {
-    icon: 'fa-panorama',
-    title: t('navbar.backgrounds'),
-    component: BackgroundsDrawer,
-    layout: 'wide',
-  });
-
-  uiStore.registerNavBarItem('extensions', {
-    icon: 'fa-cubes',
-    title: t('navbar.extensions'),
-    component: ExtensionsDrawer,
-    layout: 'wide',
-  });
-
-  uiStore.registerNavBarItem('persona', {
-    icon: 'fa-face-smile',
-    title: t('navbar.personaManagement'),
-    component: PersonaManagementDrawer,
-    layout: 'wide',
+  // Register NavBar Items (Top/Main Layouts)
+  uiStore.registerNavBarItem('chat', {
+    icon: 'fa-comments',
+    title: t('navbar.chat'),
+    section: 'main',
+    layoutComponent: ChatMainLayout,
+    defaultSidebarId: 'recent-chats',
   });
 
   uiStore.registerNavBarItem('character', {
     icon: 'fa-address-card',
     title: t('navbar.characterManagement'),
-    component: CharacterPanel,
-    layout: 'wide',
+    section: 'main',
+    layoutComponent: CharacterPanel,
+    layoutProps: { mode: 'main-only' },
+    defaultSidebarId: 'character-side',
   });
+
+  uiStore.registerNavBarItem('world-info', {
+    icon: 'fa-book-atlas',
+    title: t('navbar.worldInfo'),
+    section: 'main',
+    layoutComponent: WorldInfoDrawer,
+    layoutProps: { mode: 'main-only' },
+    defaultSidebarId: 'world-info-side',
+  });
+
+  uiStore.registerNavBarItem('extensions', {
+    icon: 'fa-cubes',
+    title: t('navbar.extensions'),
+    section: 'main',
+    layoutComponent: ExtensionsDrawer,
+    layoutProps: { mode: 'main-only' },
+    defaultSidebarId: 'extensions-side',
+  });
+
+  uiStore.registerNavBarItem('persona', {
+    icon: 'fa-face-smile',
+    title: t('navbar.personaManagement'),
+    section: 'main',
+    layoutComponent: PersonaManagementDrawer,
+    layoutProps: { mode: 'main-only' },
+    defaultSidebarId: 'persona-side',
+  });
+
+  // Register NavBar Items (Floating sidebars only)
+  uiStore.registerNavBarItem('ai-config-nav', {
+    icon: 'fa-sliders',
+    title: t('navbar.aiConfig'),
+    section: 'floating',
+    targetSidebarId: 'ai-config',
+  });
+
+  uiStore.registerNavBarItem('user-settings-nav', {
+    icon: 'fa-user-cog',
+    title: t('navbar.userSettings'),
+    section: 'floating',
+    targetSidebarId: 'user-settings',
+  });
+
+  uiStore.setActiveMainLayout('chat', 'recent-chats');
 });
 </script>
 
@@ -143,7 +216,7 @@ onMounted(() => {
 
   <Sidebar side="left" :is-open="uiStore.isLeftSidebarOpen" storage-key="leftSidebarWidth">
     <template v-for="[id, def] in uiStore.leftSidebarRegistry" :key="id">
-      <div v-show="uiStore.leftSidebarView === id" style="height: 100%">
+      <div v-show="uiStore.leftSidebarView === id" :id="`sidebar-left-${id}`" style="height: 100%">
         <component :is="def.component" v-bind="def.componentProps" />
       </div>
     </template>
@@ -158,17 +231,11 @@ onMounted(() => {
       'right-open': uiStore.isRightSidebarOpen,
     }"
   >
-    <ChatHeader />
-    <div class="content-wrapper">
-      <ChatInterface />
-    </div>
-    <template v-for="avatar in uiStore.zoomedAvatars" :key="avatar.id">
-      <ZoomedAvatar :avatar="avatar" />
-    </template>
+    <component :is="currentMainLayoutComponent" v-bind="currentMainLayoutProps" />
   </main>
 
   <Sidebar side="right" :is-open="uiStore.isRightSidebarOpen" storage-key="rightSidebarWidth">
-    <template v-for="[id, def] in uiStore.rightSidebarRegistry" :key="id">
+    <template v-for="[id, def] in activeRightSidebars" :key="id">
       <div v-show="uiStore.rightSidebarView === id" style="height: 100%">
         <component :is="def.component" v-bind="def.componentProps" />
       </div>
@@ -183,10 +250,3 @@ onMounted(() => {
     />
   </template>
 </template>
-
-<style lang="scss" scoped>
-.content-wrapper {
-  height: calc(100% - var(--header-height));
-  position: relative;
-}
-</style>

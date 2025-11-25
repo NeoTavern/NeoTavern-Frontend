@@ -1,8 +1,9 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
 import 'cropperjs';
+import DOMPurify from 'dompurify';
 import type { Component, PropType } from 'vue';
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
 import { POPUP_RESULT, POPUP_TYPE, type CustomPopupButton } from '../../types';
@@ -47,6 +48,8 @@ const mainInputComponent = ref<InstanceType<typeof Textarea> | null>(null);
 const cropperSelection = ref<CropperSelectionElement | null>(null);
 const internalInputValue = ref(props.inputValue);
 const generatedButtons = ref<CustomPopupButton[]>([]);
+const sanitizedTitle = computed(() => DOMPurify.sanitize(props.title));
+const sanitizedContent = computed(() => DOMPurify.sanitize(props.content));
 
 function resolveOptions() {
   if (props.customButtons) {
@@ -191,12 +194,16 @@ function handleEnter(evt: KeyboardEvent) {
     @keydown="handleEnter"
   >
     <div class="popup-body">
-      <h3 v-if="title" class="popup-title" v-html="title"></h3>
+      <!-- eslint-disable-next-line vue/no-v-html -->
+      <h3 v-if="title" class="popup-title" v-html="sanitizedTitle"></h3>
+      <!-- title 內容已透過 DOMPurify 消毒 -->
       <div
         class="popup-content"
         :class="{ 'is-input': type === POPUP_TYPE.INPUT, 'is-crop': type === POPUP_TYPE.CROP }"
       >
-        <div v-if="content" class="popup-message" v-html="content"></div>
+        <!-- eslint-disable-next-line vue/no-v-html -->
+        <div v-if="content" class="popup-message" v-html="sanitizedContent"></div>
+        <!-- content 內容已透過 DOMPurify 消毒 -->
 
         <component :is="component" v-if="component" v-bind="componentProps" />
 

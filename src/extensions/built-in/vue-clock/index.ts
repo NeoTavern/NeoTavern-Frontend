@@ -9,10 +9,11 @@ export function activate(api: ExtensionAPI) {
     unmount: () => void;
   } | null = null;
   let container: HTMLElement | null = null;
+  const targetSelector = '.extensions-panel-controls, .extensions-panel-browser-header';
 
   const mountWidget = () => {
     // Target the top of the extensions panel browser list for visibility
-    const targetParent = document.querySelector('.extensions-panel-browser-header');
+    const targetParent = document.querySelector(targetSelector);
 
     if (!targetParent || container) return;
 
@@ -27,7 +28,7 @@ export function activate(api: ExtensionAPI) {
   };
 
   // Attempt to mount immediately or wait for app load
-  if (document.querySelector('.extensions-panel-browser-header')) {
+  if (document.querySelector(targetSelector)) {
     mountWidget();
   } else {
     const unbind = api.events.on('app:loaded', () => {

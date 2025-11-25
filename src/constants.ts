@@ -8,17 +8,6 @@ import {
 } from './types';
 import { NamesBehavior, type InstructTemplate } from './types/instruct';
 
-export enum CustomPromptPostProcessing {
-  NONE = '',
-  MERGE = 'merge',
-  MERGE_TOOLS = 'merge_tools',
-  SEMI = 'semi',
-  SEMI_TOOLS = 'semi_tools',
-  STRICT = 'strict',
-  STRICT_TOOLS = 'strict_tools',
-  SINGLE = 'single',
-}
-
 export enum OpenrouterMiddleoutType {
   AUTO = 'auto',
   ON = 'on',
@@ -384,11 +373,11 @@ export enum WorldInfoSortOption {
   UID_DESC = 'uid:desc',
 }
 export const defaultAccountSettings: Settings['account'] = {
-  characterBrowserExpanded: true,
+  characterBrowserExpanded: false,
   characterBrowserWidth: 300,
   worldinfoBrowserWidth: 300,
   personaBrowserWidth: 300,
-  personaBrowserExpanded: true,
+  personaBrowserExpanded: false,
   characterSortOrder: CharacterSortOption.NAME_ASC,
   worldInfoSortOrder: WorldInfoSortOption.ORDER_ASC,
   extensionsBrowserWidth: 300,
@@ -402,6 +391,7 @@ export const defaultAccountSettings: Settings['account'] = {
   rightSidebarExpanded: true,
   leftSidebarWidth: 300,
   rightSidebarWidth: 300,
+  splitPaneDefaultsMigrated: false,
 };
 
 export enum WorldInfoPosition {

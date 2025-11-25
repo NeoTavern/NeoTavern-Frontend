@@ -9,7 +9,7 @@ import { useSettingsStore } from '../../stores/settings.store';
 import { POPUP_RESULT, POPUP_TYPE, type ChatInfo } from '../../types';
 import { getThumbnailUrl } from '../../utils/character';
 import { formatTimeStamp } from '../../utils/commons';
-import { DrawerHeader, EmptyState, Pagination, SmartAvatar } from '../Common';
+import { EmptyState, Pagination, SidebarHeader, SmartAvatar } from '../common';
 import { Button, ListItem } from '../UI';
 
 const { t } = useStrictI18n();
@@ -134,7 +134,7 @@ onMounted(() => {
 
 <template>
   <div class="recent-chats">
-    <DrawerHeader :title="t('navbar.recentChats')">
+    <SidebarHeader :title="t('navbar.recentChats')">
       <template #actions>
         <Button
           variant="ghost"
@@ -144,7 +144,17 @@ onMounted(() => {
         />
         <Button variant="ghost" icon="fa-rotate-right" :title="t('common.refresh')" @click="refresh" />
       </template>
-    </DrawerHeader>
+    </SidebarHeader>
+
+    <div class="recent-chats-pagination">
+      <Pagination
+        v-if="recentChats.length > 0"
+        v-model:current-page="currentPage"
+        v-model:items-per-page="itemsPerPage"
+        :total-items="recentChats.length"
+        :items-per-page-options="[10, 20, 50]"
+      />
+    </div>
 
     <div v-show="isSelectionMode" class="recent-chats-selection-bar">
       <div class="selection-info">{{ selectedChats.size }} {{ t('common.selected') }}</div>
@@ -189,16 +199,6 @@ onMounted(() => {
       </div>
 
       <EmptyState v-if="recentChats.length === 0" icon="fa-comments" :description="t('chatManagement.noRecentChats')" />
-    </div>
-
-    <div class="recent-chats-pagination">
-      <Pagination
-        v-if="recentChats.length > 0"
-        v-model:current-page="currentPage"
-        v-model:items-per-page="itemsPerPage"
-        :total-items="recentChats.length"
-        :items-per-page-options="[10, 20, 50]"
-      />
     </div>
   </div>
 </template>

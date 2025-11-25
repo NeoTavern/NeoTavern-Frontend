@@ -14,7 +14,6 @@ export { type MessageRole, type ReasoningEffort };
 export interface ApiChatMessage {
   role: MessageRole;
   content: string;
-  name?: string;
 }
 
 export type ChatCompletionPayload = Partial<{

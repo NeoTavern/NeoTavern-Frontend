@@ -24,6 +24,10 @@ const props = defineProps({
     required: false,
     default: null,
   },
+  showHeader: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -114,8 +118,8 @@ const logicOptions = [
 
 <template>
   <div class="world-entry-editor" :class="{ 'is-disabled': modelValue?.disable }">
-    <div class="editor-header">
-      <div class="editor-header-main">
+    <div v-if="props.showHeader" class="main-page-header">
+      <div class="main-page-header-main">
         <!-- Toggle Icon -->
         <div
           class="toggle-icon-wrapper"
@@ -137,7 +141,7 @@ const logicOptions = [
         </div>
       </div>
 
-      <div class="editor-header-actions">
+      <div class="main-page-header-actions">
         <Button variant="ghost" icon="fa-right-left" :title="t('worldInfo.entry.move')" />
         <Button variant="ghost" icon="fa-paste" :title="t('worldInfo.entry.duplicate')" @click="handleDuplicateEntry" />
         <Button icon="fa-trash-can" variant="danger" :title="t('worldInfo.entry.delete')" @click="handleDeleteEntry" />
@@ -145,6 +149,7 @@ const logicOptions = [
     </div>
 
     <div class="world-entry-editor-form">
+      <slot name="inline-header"></slot>
       <!-- Top Grid: State, Position, Order, Probability -->
       <div class="world-entry-editor-grid">
         <FormItem :label="t('worldInfo.entry.entryState')">

@@ -1,11 +1,8 @@
 export type MessageRole = 'user' | 'assistant' | 'system';
 export type DrawerType =
   | 'ai-config'
-  | 'api-status'
-  | 'formatting'
   | 'world-info'
   | 'user-settings'
-  | 'backgrounds'
   | 'extensions'
   | 'persona'
   | 'character';

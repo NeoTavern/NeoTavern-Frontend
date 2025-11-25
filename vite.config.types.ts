@@ -1,3 +1,4 @@
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
@@ -6,6 +7,10 @@ import dts from 'vite-plugin-dts';
 export default defineConfig({
   plugins: [
     vue(),
+    VueI18nPlugin({
+      include: resolve(__dirname, './locales/**'),
+      strictMessage: false,
+    }),
     dts({
       rollupTypes: false,
       beforeWriteFile: (filePath, content) => ({

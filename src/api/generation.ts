@@ -1,6 +1,6 @@
 import { aiConfigDefinition } from '../ai-config-definition';
-import { CustomPromptPostProcessing, ReasoningEffort } from '../constants';
-import type { ApiChatMessage, ApiProvider, ChatCompletionPayload, GenerationResponse, StreamedChunk } from '../types';
+import { ReasoningEffort } from '../constants';
+import type { ApiProvider, ChatCompletionPayload, GenerationResponse, StreamedChunk } from '../types';
 import { api_providers } from '../types';
 import type { BuildChatCompletionPayloadOptions } from '../types/generation';
 import type { SamplerSettings, SettingsPath } from '../types/settings';
@@ -407,31 +407,6 @@ function getStreamingReply(data: any, provider: ApiProvider): { delta: string; r
 }
 
 export class ChatCompletionService {
-  static async formatMessages(messages: ApiChatMessage[], type: CustomPromptPostProcessing): Promise<ApiChatMessage[]> {
-    const payload = {
-      messages,
-      type,
-    };
-
-    const response = await fetch('/api/backends/chat-completions/process', {
-      method: 'POST',
-      headers: getRequestHeaders(),
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to post-process messages: ${response.status} - ${errorText}`);
-    }
-
-    const data = await response.json();
-    if (data.messages && Array.isArray(data.messages)) {
-      return data.messages;
-    }
-
-    return messages;
-  }
-
   static async generate(
     payload: ChatCompletionPayload,
     signal?: AbortSignal,

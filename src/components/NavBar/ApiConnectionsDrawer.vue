@@ -1,30 +1,23 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { apiConnectionDefinition } from '../../api-connection-definition';
-import { PROVIDER_CAPABILITIES } from '../../api/provider-definitions';
 import { useStrictI18n } from '../../composables/useStrictI18n';
-import { CustomPromptPostProcessing, TokenizerType } from '../../constants';
+import { TokenizerType } from '../../constants';
 import { useApiStore } from '../../stores/api.store';
-import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { AiConfigCondition, ConnectionProfile } from '../../types';
 import { api_providers } from '../../types';
-import { POPUP_RESULT, POPUP_TYPE } from '../../types/popup';
 import AiConfigItemRenderer from '../AiConfig/AiConfigItemRenderer.vue';
-import { ConnectionProfileSelector } from '../Common';
+import { ConnectionProfileSelector } from '../common';
 import { Button, FormItem, Select } from '../UI';
 import ConnectionProfilePopup from './ConnectionProfilePopup.vue';
-import InstructTemplatePopup from './InstructTemplatePopup.vue';
 
 const { t } = useStrictI18n();
 
 const apiStore = useApiStore();
 const settingsStore = useSettingsStore();
-const popupStore = usePopupStore();
 
 const isProfilePopupVisible = ref(false);
-const isInstructPopupVisible = ref(false);
-const editingTemplateId = ref<string | undefined>(undefined);
 
 function handleProfileSave(profile: Omit<ConnectionProfile, 'id'>) {
   apiStore.createConnectionProfile(profile);
@@ -69,7 +62,9 @@ const tokenizerOptions = computed(() => [
 const providerOptions = computed(() => [
   {
     label: '',
-    options: [{ label: t('apiConnections.providers.custom'), value: api_providers.CUSTOM }],
+    options: [
+      { label: t('apiConnections.providers.custom'), value: api_providers.CUSTOM },
+    ],
   },
   {
     label: '',
@@ -98,71 +93,6 @@ const providerOptions = computed(() => [
     ],
   },
 ]);
-
-// Instruct Logic
-const currentProviderCaps = computed(() => PROVIDER_CAPABILITIES[settingsStore.settings.api.provider]);
-const showFormatter = computed(() => {
-  const caps = currentProviderCaps.value;
-  return caps && caps.supportsText && caps.supportsChat;
-});
-
-const formatterOptions = computed(() => [
-  { label: t('common.chat'), value: 'chat' },
-  { label: t('common.text'), value: 'text' },
-]);
-
-const instructTemplateOptions = computed(() => {
-  return apiStore.instructTemplates.map((t) => ({ label: t.name, value: t.name }));
-});
-
-const postProcessingOptions = computed(() => [
-  { label: t('apiConnections.postProcessing.prompts.none'), value: CustomPromptPostProcessing.NONE },
-  {
-    label: t('apiConnections.postProcessing.withTools'),
-    options: [
-      { label: t('apiConnections.postProcessing.prompts.merge_tools'), value: CustomPromptPostProcessing.MERGE_TOOLS },
-      { label: t('apiConnections.postProcessing.prompts.semi_tools'), value: CustomPromptPostProcessing.SEMI_TOOLS },
-      {
-        label: t('apiConnections.postProcessing.prompts.strict_tools'),
-        value: CustomPromptPostProcessing.STRICT_TOOLS,
-      },
-    ],
-  },
-  {
-    label: t('apiConnections.postProcessing.noTools'),
-    options: [
-      { label: t('apiConnections.postProcessing.prompts.merge'), value: CustomPromptPostProcessing.MERGE },
-      { label: t('apiConnections.postProcessing.prompts.semi'), value: CustomPromptPostProcessing.SEMI },
-      { label: t('apiConnections.postProcessing.prompts.strict'), value: CustomPromptPostProcessing.STRICT },
-      { label: t('apiConnections.postProcessing.prompts.single'), value: CustomPromptPostProcessing.SINGLE },
-    ],
-  },
-]);
-
-function createTemplate() {
-  editingTemplateId.value = undefined;
-  isInstructPopupVisible.value = true;
-}
-
-function editTemplate() {
-  editingTemplateId.value = settingsStore.settings.api.instructTemplateName;
-  isInstructPopupVisible.value = true;
-}
-
-async function deleteTemplate() {
-  const name = settingsStore.settings.api.instructTemplateName;
-  if (!name) return;
-
-  const { result } = await popupStore.show({
-    title: t('apiConnections.instruct.deleteTitle'),
-    content: t('apiConnections.instruct.deleteContent', { name }),
-    type: POPUP_TYPE.CONFIRM,
-  });
-
-  if (result === POPUP_RESULT.AFFIRMATIVE) {
-    await apiStore.deleteInstructTemplate(name);
-  }
-}
 
 onMounted(() => {
   apiStore.initialize();
@@ -232,66 +162,12 @@ onMounted(() => {
         </div>
       </template>
 
-      <!-- Formatter Selection (Conditional) -->
-      <div v-if="showFormatter" class="api-connections-drawer-section">
-        <FormItem :label="t('apiConnections.formatter')">
-          <Select v-model="settingsStore.settings.api.formatter" :options="formatterOptions" />
-        </FormItem>
-      </div>
-
-      <!-- Instruct Template Manager -->
-      <div v-if="settingsStore.settings.api.formatter === 'text'" class="api-connections-drawer-section">
-        <h3>{{ t('apiConnections.instruct.title') }}</h3>
-        <div class="preset-manager-controls">
-          <!-- @vue-ignore -->
-          <Select v-model="settingsStore.settings.api.instructTemplateName" :options="instructTemplateOptions" />
-          <Button
-            variant="ghost"
-            icon="fa-file-circle-plus"
-            :title="t('apiConnections.instruct.create')"
-            @click="createTemplate"
-          />
-          <Button variant="ghost" icon="fa-pencil" :title="t('apiConnections.instruct.edit')" @click="editTemplate" />
-          <Button
-            variant="ghost"
-            icon="fa-trash-can"
-            :title="t('apiConnections.instruct.delete')"
-            @click="deleteTemplate"
-          />
-          <Button
-            variant="ghost"
-            icon="fa-file-import"
-            :title="t('apiConnections.instruct.import')"
-            @click="apiStore.importInstructTemplate"
-          />
-          <Button
-            variant="ghost"
-            icon="fa-file-export"
-            :title="t('apiConnections.instruct.export')"
-            @click="apiStore.exportInstructTemplate(settingsStore.settings.api.instructTemplateName || '')"
-          />
-        </div>
-      </div>
-
       <!-- Tokenizer Selection -->
       <FormItem :label="t('apiConnections.tokenizer')">
         <Select v-model="settingsStore.settings.api.tokenizer" :options="tokenizerOptions" />
       </FormItem>
 
       <div class="api-connections-drawer-section">
-        <FormItem
-          :label="t('apiConnections.postProcessing.label')"
-          :description="t('apiConnections.postProcessing.description')"
-        >
-          <div id="custom_prompt_post_processing">
-            <Select
-              v-model="settingsStore.settings.api.customPromptPostProcessing"
-              :options="postProcessingOptions"
-              :title="t('apiConnections.postProcessing.tooltip')"
-            />
-          </div>
-        </FormItem>
-
         <div class="api-connections-drawer-actions">
           <Button :loading="apiStore.isConnecting" :disabled="apiStore.isConnecting" @click.prevent="apiStore.connect">
             {{ apiStore.isConnecting ? t('apiConnections.connecting') : t('apiConnections.connect') }}
@@ -310,11 +186,6 @@ onMounted(() => {
       :visible="isProfilePopupVisible"
       @close="isProfilePopupVisible = false"
       @save="handleProfileSave"
-    />
-    <InstructTemplatePopup
-      :visible="isInstructPopupVisible"
-      :template-id="editingTemplateId"
-      @close="isInstructPopupVisible = false"
     />
   </div>
 </template>

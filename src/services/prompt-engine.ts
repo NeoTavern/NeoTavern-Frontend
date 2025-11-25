@@ -17,34 +17,25 @@ import { joinCharacterField } from '../utils/chat';
 import { eventEmitter } from '../utils/extensions';
 import { WorldInfoProcessor } from './world-info';
 
-function substitute(text: string, chars: Character[], persona: Persona): string {
+function sanitizeHandlebarsData(str: string): string {
+  if (!str) return '';
+  return str.replace(/{{/g, '\\{\\{').replace(/}}/g, '\\}\\}');
+}
+
+function substitute(text: string, chars: Character[], user: string): string {
   if (!text) return '';
   if (!text.includes('{{')) return text;
 
   try {
-    const context = {
-      user: persona.name,
-      char: chars.length > 0 ? chars[0].name : '',
-      chars: chars.map((c) => c.name),
+    const template = Handlebars.compile(text, { noEscape: true });
+    const result = template({
+      user: sanitizeHandlebarsData(user),
+      char: chars.length > 0 ? sanitizeHandlebarsData(chars[0].name) : '',
+      chars: chars.map((c) => sanitizeHandlebarsData(c.name)),
       description: chars.length > 0 ? chars[0].description : '',
       personality: chars.length > 0 ? chars[0].personality : '',
       scenario: chars.length > 0 ? chars[0].scenario : '',
-      persona: persona.description,
-    };
-
-    // Register each field as a helper that returns its value
-    Object.entries(context).forEach(([key, value]) => {
-      Handlebars.registerHelper(key, () => value);
     });
-
-    const template = Handlebars.compile(text, { noEscape: true });
-    const result = template(context);
-
-    // Unregister helpers to avoid conflicts
-    Object.keys(context).forEach((key) => {
-      Handlebars.unregisterHelper(key);
-    });
-
     return result;
   } catch (e) {
     console.warn('Failed to compile Handlebars template for prompt:', e);
@@ -187,12 +178,12 @@ export class PromptBuilder {
               content = this.characters
                 .map((c) => {
                   if (!c.mes_example) return null;
-                  return substitute(c.mes_example, [c], this.persona);
+                  return substitute(c.mes_example, [c], this.persona.name);
                 })
                 .filter(Boolean)
                 .join('\n\n');
             } else if (this.character.mes_example) {
-              content = substitute(this.character.mes_example, [this.character], this.persona);
+              content = substitute(this.character.mes_example, [this.character], this.persona.name);
             }
             if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
             break;
@@ -207,7 +198,7 @@ export class PromptBuilder {
         }
       } else {
         if (promptDefinition.content && promptDefinition.role) {
-          const content = substitute(promptDefinition.content, this.characters, this.persona);
+          const content = substitute(promptDefinition.content, this.characters, this.persona.name);
           if (content) fixedPrompts.push({ role: promptDefinition.role, content });
         }
       }
@@ -231,7 +222,6 @@ export class PromptBuilder {
       const apiMsg: ApiChatMessage = {
         role: msg.is_user ? 'user' : 'assistant',
         content: msg.mes,
-        name: msg.name,
       };
 
       if (!msg.is_user && (this.chatMetadata.members?.length ?? 0) > 1) {

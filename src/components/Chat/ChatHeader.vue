@@ -3,17 +3,15 @@ import { computed } from 'vue';
 import { useCharacterUiStore } from '../../stores/character-ui.store';
 import { useCharacterStore } from '../../stores/character.store';
 import { useChatStore } from '../../stores/chat.store';
-import { useSettingsStore } from '../../stores/settings.store';
 import { useUiStore } from '../../stores/ui.store';
 import { getThumbnailUrl } from '../../utils/character';
 import { formatTimeStamp } from '../../utils/commons';
-import { SmartAvatar } from '../Common';
+import { MainContentFullscreenToggle, SmartAvatar } from '../common';
 import { Button } from '../UI';
 
 const uiStore = useUiStore();
 const characterStore = useCharacterStore();
 const characterUiStore = useCharacterUiStore();
-const settingsStore = useSettingsStore();
 const chatStore = useChatStore();
 
 const firstCharacter = computed(() => characterStore.activeCharacters?.[0]);
@@ -34,6 +32,12 @@ const avatarUrls = computed(() => {
   return [getThumbnailUrl('avatar', firstCharacter.value?.avatar || '')];
 });
 
+const rightSidebarItems = computed(() =>
+  Array.from(uiStore.rightSidebarRegistry).filter(
+    ([, def]) => (def.layoutId ?? 'chat') === uiStore.activeMainLayout,
+  ),
+);
+
 const lastMessageDate = computed(() => {
   const messages = chatStore.activeChat?.messages;
   if (!messages || messages.length === 0) return '';
@@ -46,29 +50,15 @@ function handleCharacterClick() {
     uiStore.toggleRightSidebar('chat-management');
   } else if (firstCharacter.value) {
     characterUiStore.selectedCharacterAvatarForEditing = firstCharacter.value.avatar;
-    uiStore.activeDrawer = 'character';
+    uiStore.setActiveMainLayout('character');
   }
-}
-
-function toggleFullScreen() {
-  settingsStore.settings.account.chatFullScreen = !settingsStore.settings.account.chatFullScreen;
 }
 </script>
 
 <template>
-  <header class="chat-header">
+  <header class="main-page-header chat-header">
     <div class="chat-header-group left">
-      <template v-for="[id, def] in uiStore.leftSidebarRegistry" :key="id">
-        <Button
-          v-if="def.icon"
-          variant="ghost"
-          class="chat-header-icon"
-          :icon="def.icon"
-          :active="uiStore.leftSidebarView === id"
-          :title="def.title"
-          @click="uiStore.toggleLeftSidebar(id)"
-        />
-      </template>
+      <MainContentFullscreenToggle class="chat-header-icon" />
     </div>
 
     <div class="chat-header-group center" @click="handleCharacterClick">
@@ -85,15 +75,7 @@ function toggleFullScreen() {
     </div>
 
     <div class="chat-header-group right">
-      <Button
-        class="chat-header-icon"
-        variant="ghost"
-        :icon="settingsStore.settings.account.chatFullScreen ? 'fa-compress' : 'fa-expand'"
-        :active="settingsStore.settings.account.chatFullScreen"
-        title="Toggle Full Screen"
-        @click="toggleFullScreen"
-      />
-      <template v-for="([id, def], index) in uiStore.rightSidebarRegistry" :key="index">
+      <template v-for="[id, def] in rightSidebarItems" :key="id">
         <Button
           v-if="def.icon"
           variant="ghost"

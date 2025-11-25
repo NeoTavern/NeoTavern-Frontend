@@ -4,7 +4,6 @@
   height: 100%;
   z-index: 3000;
   background-color: var(--theme-background-tint);
-  box-shadow: 0 0 12px var(--theme-shadow-color);
   display: flex;
   flex-direction: column;
   transition: transform var(--animation-duration-2x) cubic-bezier(0.25, 1, 0.5, 1);

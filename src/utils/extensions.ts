@@ -153,7 +153,7 @@ function deepClone<T>(obj: T): T {
 }
 
 const mountableComponents: Record<MountableComponent, () => Promise<{ default: Vue.Component }>> = {
-  ConnectionProfileSelector: () => import('../components/Common/ConnectionProfileSelector.vue'),
+  ConnectionProfileSelector: () => import('../components/common/ConnectionProfileSelector.vue'),
   Button: () => import('../components/UI/Button.vue'),
   Checkbox: () => import('../components/UI/Checkbox.vue'),
   FileInput: () => import('../components/UI/FileInput.vue'),
@@ -169,12 +169,12 @@ const mountableComponents: Record<MountableComponent, () => Promise<{ default: V
   CollapsibleSection: () => import('../components/UI/CollapsibleSection.vue'),
   RangeControl: () => import('../components/UI/RangeControl.vue'),
   TagInput: () => import('../components/UI/TagInput.vue'),
-  Pagination: () => import('../components/Common/Pagination.vue'),
-  DraggableList: () => import('../components/Common/DraggableList.vue'),
-  DrawerHeader: () => import('../components/Common/DrawerHeader.vue'),
-  EmptyState: () => import('../components/Common/EmptyState.vue'),
-  SmartAvatar: () => import('../components/Common/SmartAvatar.vue'),
-  SplitPane: () => import('../components/Common/SplitPane.vue'),
+  Pagination: () => import('../components/common/Pagination.vue'),
+  DraggableList: () => import('../components/common/DraggableList.vue'),
+  DrawerHeader: () => import('../components/common/DrawerHeader.vue'),
+  EmptyState: () => import('../components/common/EmptyState.vue'),
+  SmartAvatar: () => import('../components/common/SmartAvatar.vue'),
+  SplitPane: () => import('../components/common/SplitPane.vue'),
 };
 
 let mainAppInstance: App | null = null;
@@ -350,7 +350,13 @@ const baseExtensionAPI: ExtensionAPI = {
       const effectiveProps = component ? options.props : { id, ...options.props };
       useUiStore().registerSidebar(
         id,
-        { component: effectiveComponent, componentProps: effectiveProps, title: options.title, icon: options.icon },
+        {
+          component: effectiveComponent,
+          componentProps: effectiveProps,
+          title: options.title,
+          icon: options.icon,
+          layoutId: options.layoutId,
+        },
         side,
       );
       await Vue.nextTick();
@@ -411,9 +417,6 @@ const baseExtensionAPI: ExtensionAPI = {
         if (profile.sampler) {
           const sampler = apiStore.presets.find((p) => p.name === profile.sampler);
           if (sampler) samplerSettings = { ...sampler.preset, ...(options.samplerOverrides ?? {}) };
-        }
-        if (profile.customPromptPostProcessing) {
-          messages = await ChatCompletionService.formatMessages(messages, profile.customPromptPostProcessing);
         }
       }
       if (!model) throw new Error('No model specified.');
@@ -528,7 +531,13 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
       const effectiveProps = component ? options.props : { id: namespacedId, ...options.props };
       useUiStore().registerSidebar(
         namespacedId,
-        { component: effectiveComponent, componentProps: effectiveProps, title: options.title, icon: options.icon },
+        {
+          component: effectiveComponent,
+          componentProps: effectiveProps,
+          title: options.title,
+          icon: options.icon,
+          layoutId: options.layoutId,
+        },
         side,
       );
       await Vue.nextTick();

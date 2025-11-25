@@ -9,7 +9,6 @@ import {
 } from '../api/settings';
 import { toast } from '../composables/useToast';
 import {
-  CustomPromptPostProcessing,
   DEFAULT_SAVE_EDIT_TIMEOUT,
   defaultAccountSettings,
   defaultPrompts,
@@ -61,7 +60,6 @@ function createDefaultSettings(): Settings {
     selectedProviderModels: structuredClone(defaultProviderModels),
     tokenizer: TokenizerType.AUTO,
     providerSpecific: structuredClone(defaultProviderSpecific),
-    customPromptPostProcessing: CustomPromptPostProcessing.NONE,
   };
   defaultSettings.worldInfo = defaultWorldInfoSettings;
   defaultSettings.account = defaultAccountSettings;
@@ -74,6 +72,25 @@ function createDefaultSettings(): Settings {
   };
 
   return defaultSettings as Settings;
+}
+
+function migrateSplitPaneDefaults(settings: Settings): boolean {
+  const account = settings.account;
+  if (!account || account.splitPaneDefaultsMigrated) return false;
+
+  const paneFlags: Array<'characterBrowserExpanded' | 'personaBrowserExpanded'> = [
+    'characterBrowserExpanded',
+    'personaBrowserExpanded',
+  ];
+
+  for (const flag of paneFlags) {
+    if (account[flag]) {
+      account[flag] = false;
+    }
+  }
+
+  account.splitPaneDefaultsMigrated = true;
+  return true;
 }
 
 function migrateExperimentalPreset(legacyPreset: LegacyOaiPresetSettings): SamplerSettings {
@@ -96,6 +113,11 @@ function migrateExperimentalPreset(legacyPreset: LegacyOaiPresetSettings): Sampl
         });
         definitionMap.delete(item.identifier);
       }
+    }
+
+    // 2. Add remaining prompts
+    for (const def of definitionMap.values()) {
+      migratedPrompts.push({ ...def, content: def.content || '', enabled: false, marker: def.marker ?? false });
     }
   } else {
     // Fallback to default if no valid legacy data
@@ -322,7 +344,6 @@ function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSettingsRes
       connectionProfiles: [],
       selectedConnectionProfile: legacy.extension_settings?.connectionManager?.selected,
       tokenizer: TokenizerType.AUTO,
-      customPromptPostProcessing: oai.custom_prompt_post_processing ?? CustomPromptPostProcessing.NONE,
     },
     account: defaultAccountSettings,
     worldInfo: {
@@ -432,6 +453,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }
 
         settings.value = experimentalSettings;
+        const appliedSplitPaneMigration = migrateSplitPaneDefaults(settings.value);
 
         const uiStore = useUiStore();
         uiStore.activePlayerName = legacySettings.username || null;
@@ -439,6 +461,9 @@ export const useSettingsStore = defineStore('settings', () => {
 
         settingsInitializing.value = false;
         await nextTick();
+        if (appliedSplitPaneMigration) {
+          saveSettingsDebounced();
+        }
         await eventEmitter.emit('app:loaded');
       } catch (error) {
         console.error('Failed to initialize settings:', error);

@@ -1,21 +1,17 @@
 .character-panel {
-  &-browser-header {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding-bottom: 4px;
+  &-controls {
     border-bottom: 1px solid var(--theme-border-color);
+    gap: 4px;
   }
 
   &-actions {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    flex-wrap: wrap;
-
     #extension-buttons-container {
       display: contents;
     }
+  }
+
+  &-search-row {
+    align-items: flex-start;
   }
 
   &-character-list {
@@ -38,6 +34,7 @@
   }
 
   &-editor {
-    height: 100%;
+    flex: 1;
+    min-height: 0;
   }
 }

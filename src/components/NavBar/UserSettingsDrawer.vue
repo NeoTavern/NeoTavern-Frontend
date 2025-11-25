@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { SidebarHeader } from '../common';
 import { Checkbox, CollapsibleSection, FormItem, RangeControl, Search, Select } from '../../components/UI';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -68,9 +69,7 @@ function formatOptions(options: { label: I18nKey; value: string | number }[]) {
 
 <template>
   <div class="user-settings-drawer">
-    <div class="user-settings-drawer-header">
-      <h3>{{ t('userSettings.title') }}</h3>
-    </div>
+    <SidebarHeader class="user-settings-drawer-header" :title="t('navbar.userSettings')" />
 
     <div style="margin-bottom: 10px">
       <Search v-model="searchTerm" :placeholder="t('userSettings.searchPlaceholder')" />

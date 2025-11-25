@@ -51,14 +51,11 @@
   }
 
   .world-info-controls {
-    display: flex;
-    flex-direction: column;
     gap: 4px;
+  }
 
-    &-row {
-      display: flex;
-      gap: 4px;
-      align-items: flex-start;
-    }
+  .world-info-controls-row {
+    gap: 4px;
+    align-items: flex-start;
   }
 }
