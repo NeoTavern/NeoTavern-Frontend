@@ -5,7 +5,7 @@ import type { ChatMessage, ChatMetadata } from './chat';
 import type { MessageRole } from './common';
 import type { InstructTemplate } from './instruct';
 import type { Persona } from './persona';
-import type { ApiFormatter, SamplerSettings, Settings } from './settings';
+import type { ApiFormatter, Proxy, SamplerSettings, Settings } from './settings';
 import type { Tokenizer } from './tokenizer';
 import type { WorldInfoBook, WorldInfoEntry, WorldInfoSettings } from './world-info';
 
@@ -42,6 +42,8 @@ export type ChatCompletionPayload = Partial<{
   seed?: number;
   max_completion_tokens?: number;
   reasoning_effort?: ReasoningEffort | string;
+  reverse_proxy?: string;
+  proxy_password?: string;
 
   // KoboldCpp Specific
   rep_pen?: number;
@@ -101,6 +103,7 @@ export type BuildChatCompletionPayloadOptions = {
   model: string;
   provider: ApiProvider;
   providerSpecific: Settings['api']['providerSpecific'];
+  proxy?: Omit<Proxy, 'id' | 'name'>;
   playerName?: string;
   modelList?: ApiModel[];
   formatter?: ApiFormatter;

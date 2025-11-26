@@ -2,21 +2,24 @@
 import { computed, onMounted, ref } from 'vue';
 import { apiConnectionDefinition } from '../../api-connection-definition';
 import { useStrictI18n } from '../../composables/useStrictI18n';
+import { toast } from '../../composables/useToast';
 import { CustomPromptPostProcessing, TokenizerType } from '../../constants';
 import { useApiStore } from '../../stores/api.store';
+import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
-import type { AiConfigCondition, ConnectionProfile } from '../../types';
-import { api_providers } from '../../types';
+import { type AiConfigCondition, api_providers, type ConnectionProfile, POPUP_RESULT, POPUP_TYPE } from '../../types';
+import { uuidv4 } from '../../utils/commons';
 import AiConfigItemRenderer from '../AiConfig/AiConfigItemRenderer.vue';
 import ApiFormattingPanel from '../AiConfig/ApiFormattingPanel.vue';
 import { ConnectionProfileSelector, PresetControl } from '../common';
-import { Button, FormItem, Select } from '../UI';
+import { Button, CollapsibleSection, FormItem, Input, Select } from '../UI';
 import ConnectionProfilePopup from './ConnectionProfilePopup.vue';
 
 const { t } = useStrictI18n();
 
 const apiStore = useApiStore();
 const settingsStore = useSettingsStore();
+const popupStore = usePopupStore();
 
 const isProfilePopupVisible = ref(false);
 
@@ -117,6 +120,10 @@ const postProcessingOptions = computed(() => [
   },
 ]);
 
+const proxies = computed(() =>
+  (settingsStore.settings.proxies ?? []).map((proxy) => ({ label: proxy.name, value: proxy.id })),
+);
+
 onMounted(() => {
   apiStore.initialize();
 });
@@ -181,6 +188,104 @@ onMounted(() => {
       <FormItem :label="t('apiConnections.tokenizer')">
         <Select v-model="settingsStore.settings.api.tokenizer" :options="tokenizerOptions" />
       </FormItem>
+
+      <!-- Proxy form for custom provider -->
+      <CollapsibleSection
+        v-show="settingsStore.settings.api.provider === 'custom'"
+        :title="t('apiConnections.customProxy.title')"
+      >
+        <PresetControl
+          v-model="settingsStore.settings.api.proxy.id"
+          :options="proxies || []"
+          allow-create
+          allow-delete
+          allow-save
+          allow-edit
+          :create-title="'apiConnections.customProxy.createProfile'"
+          :delete-title="'apiConnections.customProxy.deleteProfile'"
+          :save-title="'apiConnections.customProxy.saveProfile'"
+          :edit-title="'apiConnections.customProxy.renameProfile'"
+          @create="
+            () => {
+              const newProxyId = uuidv4();
+              settingsStore.settings.proxies.push({
+                id: newProxyId,
+                name: 'New Proxy',
+                url: '',
+                password: '',
+              });
+              settingsStore.settings.api.proxy.id = newProxyId;
+              settingsStore.settings.api.proxy.url = '';
+              settingsStore.settings.api.proxy.password = '';
+            }
+          "
+          @delete="
+            async () => {
+              const index = settingsStore.settings.proxies.findIndex(
+                (p) => p.id === settingsStore.settings.api.proxy.id,
+              );
+              if (index !== -1) {
+                const { result } = await popupStore.show({
+                  title: t('apiConnections.customProxy.deleteProfileTitle'),
+                  content: t('apiConnections.customProxy.deleteProfileContent', {
+                    name: settingsStore.settings.proxies[index].name,
+                  }),
+                  type: POPUP_TYPE.CONFIRM,
+                });
+                if (result === POPUP_RESULT.AFFIRMATIVE) {
+                  settingsStore.settings.proxies.splice(index, 1);
+                  if (settingsStore.settings.api.proxy.id === settingsStore.settings.proxies[index]?.id) {
+                    settingsStore.settings.api.proxy.id = '';
+                  }
+                }
+              }
+            }
+          "
+          @save="
+            () => {
+              const proxy = settingsStore.settings.proxies.find((p) => p.id === settingsStore.settings.api.proxy.id);
+              if (proxy) {
+                proxy.url = settingsStore.settings.api.proxy.url;
+                proxy.password = settingsStore.settings.api.proxy.password;
+              }
+            }
+          "
+          @edit="
+            async () => {
+              const proxy = settingsStore.settings.proxies.find((p) => p.id === settingsStore.settings.api.proxy.id);
+              if (proxy) {
+                const { result, value: newName } = await popupStore.show<string>({
+                  title: t('apiConnections.customProxy.renameProfile'),
+                  type: POPUP_TYPE.INPUT,
+                  inputValue: proxy.name,
+                });
+
+                if (result === POPUP_RESULT.AFFIRMATIVE && newName && newName.trim() && newName !== proxy.name) {
+                  try {
+                    proxy.name = newName.trim();
+                  } catch (error) {
+                    toast.error('Failed to rename preset.');
+                    console.error(error);
+                  }
+                }
+              }
+            }
+          "
+        />
+        <FormItem :label="t('apiConnections.customProxy.url')">
+          <Input
+            v-model="settingsStore.settings.api.proxy.url"
+            :placeholder="t('apiConnections.customProxy.urlPlaceholder')"
+          />
+        </FormItem>
+        <FormItem :label="t('apiConnections.customProxy.password')">
+          <Input
+            v-model="settingsStore.settings.api.proxy.password"
+            type="password"
+            :placeholder="t('apiConnections.customProxy.passwordPlaceholder')"
+          />
+        </FormItem>
+      </CollapsibleSection>
 
       <div class="api-connections-drawer-section">
         <FormItem

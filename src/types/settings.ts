@@ -46,6 +46,7 @@ export interface Prompt {
 }
 
 export type Proxy = {
+  id: string;
   name: string;
   url: string;
   password: string;
@@ -283,7 +284,7 @@ export interface Settings {
   prompts: Prompt[];
   api: {
     provider: ApiProvider;
-    proxy?: Proxy;
+    proxy: Omit<Proxy, 'name'>;
     selectedSampler?: string;
     samplers: SamplerSettings;
     connectionProfiles: ConnectionProfile[];
@@ -396,7 +397,7 @@ export interface LegacySettings {
   username?: string;
   user_avatar?: string;
   main_api?: string;
-  proxies?: Proxy[];
+  proxies?: Omit<Proxy, 'id'>[];
   extension_settings?: {
     connectionManager?: {
       profiles?: Record<string, { id: string; mode: 'cc' | 'tc'; api: ApiProvider; model: string }>;

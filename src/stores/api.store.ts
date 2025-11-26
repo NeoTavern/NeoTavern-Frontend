@@ -150,6 +150,24 @@ export const useApiStore = defineStore('api', () => {
     },
   );
 
+  watch(
+    () => settingsStore.settings.api.proxy.id,
+    (newId, oldId) => {
+      if (settingsStore.settingsInitializing) return;
+      if (newId !== oldId) {
+        const proxy = settingsStore.settings.proxies?.find((p) => p.id === newId);
+        if (proxy) {
+          settingsStore.settings.api.proxy.url = proxy.url;
+          settingsStore.settings.api.proxy.password = proxy.password;
+        } else {
+          settingsStore.settings.api.proxy.url = '';
+          settingsStore.settings.api.proxy.password = '';
+        }
+        connect();
+      }
+    },
+  );
+
   async function connect() {
     if (isConnecting.value) return;
 

@@ -868,6 +868,19 @@ export interface MessageSchema {
         single: string;
       };
     };
+    customProxy: {
+      title: string;
+      createProfile: string;
+      deleteProfile: string;
+      saveProfile: string;
+      renameProfile: string;
+      deleteProfileTitle: string;
+      deleteProfileContent: string;
+      url: string;
+      urlPlaceholder: string;
+      password: string;
+      passwordPlaceholder: string;
+    };
   };
   settings: {
     powerUser: {

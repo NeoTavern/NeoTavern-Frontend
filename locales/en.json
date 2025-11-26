@@ -864,6 +864,19 @@
         "strict": "Strict (user first, alternating roles; no tools)",
         "single": "Single user message (no tools)"
       }
+    },
+    "customProxy": {
+      "title": "Proxy Settings",
+      "createProfile": "Create Profile",
+      "deleteProfile": "Delete Profile",
+      "saveProfile": "Save Profile",
+      "renameProfile": "Rename Profile",
+      "deleteProfileTitle": "Delete Proxy Profile",
+      "deleteProfileContent": "Are you sure you want to delete the proxy profile \"<b>{name}</b>\"?",
+      "url": "URL",
+      "urlPlaceholder": "http://localhost:8080",
+      "password": "Password",
+      "passwordPlaceholder": "Optional"
     }
   },
   "settings": {

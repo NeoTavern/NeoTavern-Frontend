@@ -34,6 +34,7 @@ import {
 } from '../types';
 import type { ValueForPath } from '../types/utils';
 import { isMobile } from '../utils/client';
+import { uuidv4 } from '../utils/commons';
 import { eventEmitter } from '../utils/extensions';
 import { useUiStore } from './ui.store';
 
@@ -52,6 +53,11 @@ function createDefaultSettings(): Settings {
   defaultSettings.api = {
     provider: 'openai',
     formatter: 'chat',
+    proxy: {
+      id: '',
+      password: '',
+      url: '',
+    },
     selectedSampler: 'Default',
     samplers: defaultSamplerSettings,
     connectionProfiles: [],
@@ -233,7 +239,7 @@ function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSettingsRes
       provider: oai.chat_completion_source,
       formatter: 'chat',
       proxy: {
-        name: '',
+        id: '',
         url: oai.reverse_proxy || '',
         password: oai.proxy_password || '',
       },
@@ -348,7 +354,11 @@ function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSettingsRes
       maxRecursionSteps:
         legacy.world_info_settings.world_info_max_recursion_steps ?? defaultWorldInfoSettings.maxRecursionSteps,
     },
-    proxies: legacy.proxies || [],
+    proxies:
+      legacy.proxies?.map((p) => ({
+        id: uuidv4(),
+        ...p,
+      })) || [],
     disabledExtensions: [],
     extensionSettings: {}, // Since old extensions not going to work, start fresh
   };

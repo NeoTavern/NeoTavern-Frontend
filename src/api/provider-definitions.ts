@@ -279,11 +279,17 @@ export const PROVIDER_INJECTIONS: Partial<Record<string, InjectionFunction>> = {
     payload.middleout = providerSpecific.openrouter.middleout;
   },
 
-  [api_providers.CUSTOM]: (payload, { providerSpecific }) => {
+  [api_providers.CUSTOM]: (payload, { providerSpecific, proxy }) => {
     payload.custom_url = providerSpecific.custom?.url;
     payload.custom_include_body = providerSpecific.custom?.include_body;
     payload.custom_exclude_body = providerSpecific.custom?.exclude_body;
     payload.custom_include_headers = providerSpecific.custom?.include_headers;
+    if (proxy?.url) {
+      payload.reverse_proxy = proxy.url;
+    }
+    if (proxy?.password) {
+      payload.proxy_password = proxy.password;
+    }
   },
 
   [api_providers.AZURE_OPENAI]: (payload, { providerSpecific }) => {

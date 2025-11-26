@@ -371,6 +371,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         samplerSettings: context.settings.sampler,
         provider: context.settings.provider,
         providerSpecific: context.settings.providerSpecific,
+        proxy: settings.api.proxy,
         playerName: context.playerName,
         modelList: apiStore.modelList,
         formatter: context.settings.formatter,
