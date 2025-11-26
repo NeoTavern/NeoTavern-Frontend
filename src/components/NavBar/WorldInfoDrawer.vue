@@ -187,9 +187,9 @@ const sortOptions = computed(() => [
 
 <template>
   <PanelLayout
+    v-model:collapsed="isBrowserCollapsed"
     :mode="props.mode"
     :title="props.title ?? t('navbar.worldInfo')"
-    v-model:collapsed="isBrowserCollapsed"
     storage-key="worldinfoBrowserWidth"
     :initial-width="350"
     class="character-panel world-info-drawer"

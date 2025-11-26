@@ -29,9 +29,9 @@ function installExtension() {
 
 <template>
   <PanelLayout
+    v-model:collapsed="isBrowserCollapsed"
     :mode="props.mode"
     :title="props.title ?? t('navbar.extensions')"
-    v-model:collapsed="isBrowserCollapsed"
     storage-key="extensionsBrowserWidth"
     :initial-width="250"
     class="extensions-panel"

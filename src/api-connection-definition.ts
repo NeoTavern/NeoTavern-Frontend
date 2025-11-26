@@ -1,4 +1,4 @@
-import { OpenrouterMiddleoutType } from './constants';
+import { OpenrouterMiddleoutType, SECRET_KEYS } from './constants';
 import { api_providers, type AiConfigSection } from './types';
 
 export const apiConnectionDefinition: AiConfigSection[] = [
@@ -7,7 +7,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'openai',
     conditions: { provider: api_providers.OPENAI },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.openaiKey' },
+      { widget: 'key-manager', label: 'apiConnections.openaiKey', secretKey: SECRET_KEYS.OPENAI },
       {
         id: 'api.selectedProviderModels.openai',
         widget: 'model-select',
@@ -20,7 +20,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'claude',
     conditions: { provider: api_providers.CLAUDE },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.claudeKey' },
+      { widget: 'key-manager', label: 'apiConnections.claudeKey', secretKey: SECRET_KEYS.CLAUDE },
       {
         id: 'api.selectedProviderModels.claude',
         widget: 'select',
@@ -38,7 +38,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'openrouter',
     conditions: { provider: api_providers.OPENROUTER },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.openrouterKey' },
+      { widget: 'key-manager', label: 'apiConnections.openrouterKey', secretKey: SECRET_KEYS.OPENROUTER },
       {
         id: 'api.selectedProviderModels.openrouter',
         widget: 'model-select',
@@ -80,7 +80,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'mistral',
     conditions: { provider: api_providers.MISTRALAI },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.mistralaiKey' },
+      { widget: 'key-manager', label: 'apiConnections.mistralaiKey', secretKey: SECRET_KEYS.MISTRALAI },
       {
         id: 'api.selectedProviderModels.mistralai',
         widget: 'select',
@@ -97,7 +97,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'groq',
     conditions: { provider: api_providers.GROQ },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.groqKey' },
+      { widget: 'key-manager', label: 'apiConnections.groqKey', secretKey: SECRET_KEYS.GROQ },
       {
         id: 'api.selectedProviderModels.groq',
         widget: 'select',
@@ -126,7 +126,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
         widget: 'text-input',
         label: 'apiConnections.customModel',
       },
-      { widget: 'key-manager', label: 'apiConnections.customKey' },
+      { widget: 'key-manager', label: 'apiConnections.customKey', secretKey: SECRET_KEYS.CUSTOM },
     ],
   },
   // Azure OpenAI
@@ -134,7 +134,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'azure',
     conditions: { provider: api_providers.AZURE_OPENAI },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.azureKey' },
+      { widget: 'key-manager', label: 'apiConnections.azureKey', secretKey: SECRET_KEYS.AZURE_OPENAI },
       {
         id: 'api.providerSpecific.azure_openai.baseUrl',
         widget: 'text-input',
@@ -163,7 +163,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'deepseek',
     conditions: { provider: api_providers.DEEPSEEK },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.deepseekKey' },
+      { widget: 'key-manager', label: 'apiConnections.deepseekKey', secretKey: SECRET_KEYS.DEEPSEEK },
       {
         id: 'api.selectedProviderModels.deepseek',
         widget: 'select',
@@ -180,7 +180,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'ai21',
     conditions: { provider: api_providers.AI21 },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.ai21Key' },
+      { widget: 'key-manager', label: 'apiConnections.ai21Key', secretKey: SECRET_KEYS.AI21 },
       {
         id: 'api.selectedProviderModels.ai21',
         widget: 'text-input',
@@ -194,8 +194,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'makersuite',
     conditions: { provider: api_providers.MAKERSUITE },
     items: [
-      // TODO: Key manager might need to handle specific auth types for Google? Usually it's an API Key for MakerSuite.
-      { widget: 'key-manager', label: 'apiConnections.googleKey' },
+      { widget: 'key-manager', label: 'apiConnections.googleKey', secretKey: SECRET_KEYS.MAKERSUITE },
       {
         id: 'api.selectedProviderModels.makersuite',
         widget: 'text-input',
@@ -209,8 +208,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'vertexai',
     conditions: { provider: api_providers.VERTEXAI },
     items: [
-      // Vertex AI typically uses ADC or JSON key file content. Using key-manager for now as placeholder for token/key.
-      { widget: 'key-manager', label: 'apiConnections.vertexaiKey' },
+      { widget: 'key-manager', label: 'apiConnections.vertexaiKey', secretKey: SECRET_KEYS.VERTEXAI },
       {
         id: 'api.selectedProviderModels.vertexai',
         widget: 'text-input',
@@ -235,7 +233,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'cohere',
     conditions: { provider: api_providers.COHERE },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.cohereKey' },
+      { widget: 'key-manager', label: 'apiConnections.cohereKey', secretKey: SECRET_KEYS.COHERE },
       {
         id: 'api.selectedProviderModels.cohere',
         widget: 'text-input',
@@ -249,7 +247,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'perplexity',
     conditions: { provider: api_providers.PERPLEXITY },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.perplexityKey' },
+      { widget: 'key-manager', label: 'apiConnections.perplexityKey', secretKey: SECRET_KEYS.PERPLEXITY },
       {
         id: 'api.selectedProviderModels.perplexity',
         widget: 'text-input',
@@ -263,7 +261,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'electronhub',
     conditions: { provider: api_providers.ELECTRONHUB },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.electronhubKey' },
+      { widget: 'key-manager', label: 'apiConnections.electronhubKey', secretKey: SECRET_KEYS.ELECTRONHUB },
       {
         id: 'api.selectedProviderModels.electronhub',
         widget: 'text-input',
@@ -277,7 +275,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'nanogpt',
     conditions: { provider: api_providers.NANOGPT },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.nanogptKey' },
+      { widget: 'key-manager', label: 'apiConnections.nanogptKey', secretKey: SECRET_KEYS.NANOGPT },
       {
         id: 'api.selectedProviderModels.nanogpt',
         widget: 'text-input',
@@ -291,7 +289,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'aimlapi',
     conditions: { provider: api_providers.AIMLAPI },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.aimlapiKey' },
+      { widget: 'key-manager', label: 'apiConnections.aimlapiKey', secretKey: SECRET_KEYS.AIMLAPI },
       {
         id: 'api.selectedProviderModels.aimlapi',
         widget: 'text-input',
@@ -305,7 +303,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'xai',
     conditions: { provider: api_providers.XAI },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.xapiKey' },
+      { widget: 'key-manager', label: 'apiConnections.xapiKey', secretKey: SECRET_KEYS.XAI },
       {
         id: 'api.selectedProviderModels.xai',
         widget: 'text-input',
@@ -319,8 +317,6 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'pollinations',
     conditions: { provider: api_providers.POLLINATIONS },
     items: [
-      // Pollinations might not need a key, but putting it just in case or leaving it out if usually free/no-auth?
-      // Assuming it acts like others for now.
       {
         id: 'api.selectedProviderModels.pollinations',
         widget: 'text-input',
@@ -334,7 +330,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'moonshot',
     conditions: { provider: api_providers.MOONSHOT },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.moonshotKey' },
+      { widget: 'key-manager', label: 'apiConnections.moonshotKey', secretKey: SECRET_KEYS.MOONSHOT },
       {
         id: 'api.selectedProviderModels.moonshot',
         widget: 'text-input',
@@ -348,7 +344,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'fireworks',
     conditions: { provider: api_providers.FIREWORKS },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.fireworksKey' },
+      { widget: 'key-manager', label: 'apiConnections.fireworksKey', secretKey: SECRET_KEYS.FIREWORKS },
       {
         id: 'api.selectedProviderModels.fireworks',
         widget: 'text-input',
@@ -362,7 +358,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'cometapi',
     conditions: { provider: api_providers.COMETAPI },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.cometapiKey' },
+      { widget: 'key-manager', label: 'apiConnections.cometapiKey', secretKey: SECRET_KEYS.COMETAPI },
       {
         id: 'api.selectedProviderModels.cometapi',
         widget: 'text-input',
@@ -376,7 +372,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
     id: 'zai',
     conditions: { provider: api_providers.ZAI },
     items: [
-      { widget: 'key-manager', label: 'apiConnections.zaiKey' },
+      { widget: 'key-manager', label: 'apiConnections.zaiKey', secretKey: SECRET_KEYS.ZAI },
       {
         id: 'api.providerSpecific.zai.endpoint',
         widget: 'text-input',

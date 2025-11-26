@@ -104,6 +104,11 @@ export interface AiConfigValueItem extends AiConfigBase {
    * Common values: '\n' for textareas, ',' for text inputs.
    */
   arraySeparator?: string;
+
+  /**
+   * For widget='key-manager', specifies the SECRET_KEY constant key (e.g. 'api_key_openai')
+   */
+  secretKey?: string;
 }
 
 /**

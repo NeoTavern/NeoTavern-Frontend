@@ -216,9 +216,9 @@ onMounted(() => {
     </SidebarHeader>
 
     <PanelLayout
+      v-model:collapsed="personaUiStore.isBrowserExpanded"
       :mode="props.mode"
       :title="personaHeaderTitle"
-      v-model:collapsed="personaUiStore.isBrowserExpanded"
       storage-key="personaBrowserWidth"
       :initial-width="350"
       class="persona-drawer-split"

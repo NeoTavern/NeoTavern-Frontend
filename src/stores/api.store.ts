@@ -19,12 +19,14 @@ import { api_providers, POPUP_RESULT, POPUP_TYPE } from '../types';
 import type { InstructTemplate } from '../types/instruct';
 import { downloadFile, readFileAsText, uuidv4 } from '../utils/commons';
 import { usePopupStore } from './popup.store';
+import { useSecretStore } from './secret.store';
 import { useSettingsStore } from './settings.store';
 
 export const useApiStore = defineStore('api', () => {
   const { t } = useStrictI18n();
   const settingsStore = useSettingsStore();
   const popupStore = usePopupStore();
+  const secretStore = useSecretStore();
 
   const onlineStatus = ref(t('api.status.notConnected'));
   const isConnecting = ref(false);
@@ -168,16 +170,42 @@ export const useApiStore = defineStore('api', () => {
     },
   );
 
+  async function processPendingSecrets() {
+    const keys = Object.keys(secretStore.pendingSecrets);
+    if (keys.length === 0) return;
+
+    for (const key of keys) {
+      const value = secretStore.pendingSecrets[key]?.trim();
+      if (!value) continue;
+
+      const activeSecret = secretStore.getActiveSecret(key);
+      // Reuse the existing label or default to Manual Entry
+      const label = activeSecret ? activeSecret.label : `Manual Entry ${new Date().toLocaleDateString()}`;
+
+      // Create the new secret
+      const newId = await secretStore.createSecret(key, value, label);
+
+      if (newId) {
+        // Activate it
+        await secretStore.rotateSecret(key, newId);
+        // Clear pending input
+        delete secretStore.pendingSecrets[key];
+      }
+    }
+  }
+
   async function connect() {
     if (isConnecting.value) return;
-
-    modelList.value = [];
-    const apiSettings = settingsStore.settings.api;
 
     isConnecting.value = true;
     onlineStatus.value = t('api.status.connecting');
 
     try {
+      // Process any manual secret keys entered by the user
+      await processPendingSecrets();
+
+      const apiSettings = settingsStore.settings.api;
+
       // TODO: Implement secret management. For now, we pass the key directly.
       const response = await fetchChatCompletionStatus({
         chat_completion_source: apiSettings.provider,

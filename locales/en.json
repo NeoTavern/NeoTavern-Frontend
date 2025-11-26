@@ -471,12 +471,22 @@
     "import": "Import",
     "export": "Export",
     "edit": "Edit",
-    "create": "Create"
+    "create": "Create",
+    "rename": "Rename",
+    "activate": "Activate"
   },
   "popup": {
     "cropAvatar": {
       "title": "Crop Avatar"
     }
+  },
+  "secrets": {
+    "manageKeysFor": "Manage Secret Keys for",
+    "addNewKey": "Add New Key",
+    "keySaved": "Key saved",
+    "noKeysFound": "No keys found.",
+    "labelPlaceholder": "Key Label",
+    "keyPlaceholder": "Key"
   },
   "pagination": {
     "first": "First Page",

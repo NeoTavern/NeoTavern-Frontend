@@ -17,6 +17,7 @@ import { useStrictI18n } from './composables/useStrictI18n';
 import { useBackgroundStore } from './stores/background.store';
 import { useExtensionStore } from './stores/extension.store';
 import { usePopupStore } from './stores/popup.store';
+import { useSecretStore } from './stores/secret.store';
 import { useSettingsStore } from './stores/settings.store';
 import { useUiStore } from './stores/ui.store';
 
@@ -25,6 +26,7 @@ const popupStore = usePopupStore();
 const uiStore = useUiStore();
 const backgroundStore = useBackgroundStore();
 const extensionStore = useExtensionStore();
+const secretStore = useSecretStore();
 const { t } = useStrictI18n();
 
 const backgroundStyle = computed(() => ({
@@ -50,6 +52,7 @@ const activeRightSidebars = computed(() =>
 onMounted(() => {
   settingsStore.initializeSettings();
   extensionStore.initializeExtensions();
+  secretStore.fetchSecrets();
 
   // Register Left Sidebar
   uiStore.registerSidebar(
@@ -233,8 +236,8 @@ onMounted(() => {
     -->
     <div
       v-for="layout in allMainLayouts"
-      :key="layout.id"
       v-show="uiStore.activeMainLayout === layout.id"
+      :key="layout.id"
       style="height: 100%; width: 100%"
     >
       <component :is="layout.component" v-bind="layout.props" />

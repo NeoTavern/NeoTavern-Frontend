@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
+import { usePopupStore } from '../../stores/popup.store';
+import { useSecretStore } from '../../stores/secret.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { AiConfigItem, AiConfigValueItem, ApiProvider } from '../../types';
 import type { I18nKey } from '../../types/i18n';
 import { DraggableList } from '../common';
+import SecretManagerPopup from '../Secrets/SecretManager.vue';
 import {
   Button,
   Checkbox,
@@ -25,6 +28,8 @@ const props = defineProps<{
 }>();
 
 const settingsStore = useSettingsStore();
+const secretStore = useSecretStore();
+const popupStore = usePopupStore();
 const { t } = useStrictI18n();
 
 // Conditions Check
@@ -134,6 +139,23 @@ function getOptionLabel(item: AiConfigItem, value: string | number) {
   const opt = (item as AiConfigValueItem).options?.find((o) => o.value === value);
   return opt ? t(opt.label as I18nKey) : value;
 }
+
+const activeSecretPlaceholder = computed(() => {
+  const item = props.item as AiConfigValueItem;
+  if (!item.secretKey) return '';
+  const active = secretStore.getActiveSecret(item.secretKey);
+  // @vue-ignore
+  return active ? `${t('secrets.keySaved')} (${active.label})` : t('common.none');
+});
+
+function openSecretManager() {
+  const item = props.item as AiConfigValueItem;
+  if (!item.secretKey) return;
+  popupStore.show({
+    component: SecretManagerPopup,
+    componentProps: { secretKey: item.secretKey },
+  });
+}
 </script>
 
 <template>
@@ -241,9 +263,14 @@ function getOptionLabel(item: AiConfigItem, value: string | number) {
     </FormItem>
 
     <!-- Key Manager -->
-    <FormItem v-else-if="item.widget === 'key-manager'" :label="item.label ? t(item.label) : ''">
+    <FormItem v-else-if="item.widget === 'key-manager' && item.secretKey" :label="item.label ? t(item.label) : ''">
       <div class="api-connections-drawer-input-group">
-        <Button icon="fa-key" :title="t('apiConnections.manageKeys')" />
+        <Input
+          v-model="secretStore.pendingSecrets[item.secretKey]"
+          type="password"
+          :placeholder="activeSecretPlaceholder"
+        />
+        <Button icon="fa-key" :title="t('apiConnections.manageKeys')" @click="openSecretManager" />
       </div>
     </FormItem>
 

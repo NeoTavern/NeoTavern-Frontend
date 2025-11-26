@@ -475,11 +475,21 @@ export interface MessageSchema {
     export: string;
     edit: string;
     create: string;
+    rename: string;
+    activate: string;
   };
   popup: {
     cropAvatar: {
       title: string;
     };
+  };
+  secrets: {
+    manageKeysFor: string;
+    addNewKey: string;
+    keySaved: string;
+    noKeysFound: string;
+    labelPlaceholder: string;
+    keyPlaceholder: string;
   };
   pagination: {
     first: string;
