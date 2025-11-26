@@ -4,6 +4,7 @@ import { ref } from 'vue';
 import type { ExtensionPrompt, ItemizedPrompt } from '../types';
 
 const promptStorage = localforage.createInstance({ name: 'SillyTavern_Prompts' });
+const userTypingStorage = localforage.createInstance({ name: 'SillyTavern_UserTyping' });
 
 export const usePromptStore = defineStore('prompt', () => {
   const extensionPrompts = ref<Record<string, ExtensionPrompt>>({});
@@ -17,6 +18,41 @@ export const usePromptStore = defineStore('prompt', () => {
       await promptStorage.setItem(chatId, JSON.parse(JSON.stringify(itemizedPrompts.value)));
     } catch {
       console.log('Error saving itemized prompts for chat', chatId);
+    }
+  }
+
+  async function saveUserTyping(chatId: string, userInput: string) {
+    try {
+      if (!chatId) {
+        return;
+      }
+      await userTypingStorage.setItem(chatId, userInput);
+    } catch {
+      console.log('Error saving user typing for chat', chatId);
+    }
+  }
+
+  async function loadUserTyping(chatId: string): Promise<string> {
+    try {
+      if (!chatId) {
+        return '';
+      }
+      const userInput = (await userTypingStorage.getItem(chatId)) as string | null;
+      return userInput ?? '';
+    } catch {
+      console.log('Error loading user typing for chat', chatId);
+      return '';
+    }
+  }
+
+  async function clearUserTyping(chatId: string) {
+    try {
+      if (!chatId) {
+        return;
+      }
+      await userTypingStorage.removeItem(chatId);
+    } catch {
+      console.log('Error clearing user typing for chat', chatId);
     }
   }
 
@@ -54,5 +90,8 @@ export const usePromptStore = defineStore('prompt', () => {
     loadItemizedPrompts,
     addItemizedPrompt,
     getItemizedPrompt,
+    saveUserTyping,
+    loadUserTyping,
+    clearUserTyping,
   };
 });

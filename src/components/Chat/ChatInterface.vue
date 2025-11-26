@@ -8,6 +8,7 @@ import { convertCharacterBookToWorldInfoBook } from '../../services/world-info';
 import { useCharacterStore } from '../../stores/character.store';
 import { useChatStore } from '../../stores/chat.store';
 import { usePopupStore } from '../../stores/popup.store';
+import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useWorldInfoStore } from '../../stores/world-info.store';
 import { POPUP_RESULT, POPUP_TYPE } from '../../types';
@@ -19,6 +20,7 @@ const settingsStore = useSettingsStore();
 const characterStore = useCharacterStore();
 const worldInfoStore = useWorldInfoStore();
 const popupStore = usePopupStore();
+const promptStore = usePromptStore();
 const { t } = useStrictI18n();
 const userInput = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
@@ -29,6 +31,15 @@ function submitMessage() {
   if (!userInput.value.trim()) return;
   chatStore.sendMessage(userInput.value);
   userInput.value = '';
+
+  if (chatStore.activeChatFile) {
+    promptStore.clearUserTyping(chatStore.activeChatFile);
+  }
+}
+
+function generate() {
+  chatStore.generateResponse(GenerationMode.NEW);
+  isOptionsMenuVisible.value = false;
 }
 
 function regenerate() {
@@ -122,6 +133,32 @@ watch(
   },
   { deep: true }, // Deep watch is necessary to detect streaming updates inside a message.
 );
+
+watch(
+  () => userInput.value,
+  (newInput) => {
+    if (chatStore.activeChatFile) {
+      promptStore.saveUserTyping(chatStore.activeChatFile, newInput);
+    }
+  },
+  { flush: 'post' },
+);
+
+watch(
+  () => chatStore.activeChatFile,
+  async (newFile, oldFile) => {
+    if (oldFile) {
+      await promptStore.clearUserTyping(oldFile);
+    }
+
+    if (newFile) {
+      const savedInput = await promptStore.loadUserTyping(newFile);
+      userInput.value = savedInput;
+    } else {
+      userInput.value = '';
+    }
+  },
+);
 </script>
 
 <template>
@@ -191,6 +228,10 @@ watch(
         </div>
 
         <div v-show="isOptionsMenuVisible" ref="optionsMenu" class="options-menu">
+          <a class="options-menu-item" @click="generate">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>{{ t('chat.optionsMenu.generate') }}</span>
+          </a>
           <a class="options-menu-item" @click="regenerate">
             <i class="fa-solid fa-repeat"></i>
             <span>{{ t('chat.optionsMenu.regenerate') }}</span>

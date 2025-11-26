@@ -536,7 +536,8 @@
     "optionsMenu": {
       "manageChats": "Manage chat files",
       "regenerate": "Regenerate",
-      "continue": "Continue"
+      "continue": "Continue",
+      "generate": "Generate"
     },
     "typingIndicator": "",
     "abort": "Abort generation",

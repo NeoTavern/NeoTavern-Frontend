@@ -540,6 +540,7 @@ export interface MessageSchema {
       manageChats: string;
       regenerate: string;
       continue: string;
+      generate: string;
     };
     typingIndicator: string;
     abort: string;

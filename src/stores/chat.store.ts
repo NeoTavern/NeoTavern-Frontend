@@ -274,6 +274,10 @@ export const useChatStore = defineStore('chat', () => {
     promptStore.extensionPrompts = {};
     promptStore.itemizedPrompts = [];
 
+    if (activeChatFile.value) {
+      promptStore.clearUserTyping(activeChatFile.value);
+    }
+
     await nextTick();
     await eventEmitter.emit('chat:cleared');
 
