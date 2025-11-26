@@ -651,6 +651,7 @@ export const useChatStore = defineStore('chat', () => {
     recentChats,
     activeMessageEditState,
     isGenerating,
+    isChatLoading,
     activeChatFile,
     isGroupChat,
     groupConfig,

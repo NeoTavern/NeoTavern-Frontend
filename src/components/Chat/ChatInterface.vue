@@ -126,6 +126,13 @@ watch(
 
 <template>
   <div class="chat-interface">
+    <div v-show="chatStore.isChatLoading" class="chat-loading-overlay">
+      <div class="loading-spinner">
+        <i class="fa-solid fa-circle-notch fa-spin"></i>
+        <span>{{ t('common.loading') }}</span>
+      </div>
+    </div>
+
     <div id="chat-messages-container" ref="messagesContainer" class="chat-interface-messages">
       <ChatMessage
         v-for="(message, index) in chatStore.activeChat?.messages"
