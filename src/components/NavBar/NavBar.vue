@@ -26,7 +26,18 @@ function handleMainClick(id: string, onClick?: () => void, defaultSidebarId?: st
   if (onClick) {
     onClick();
   }
-  uiStore.setActiveMainLayout(id, defaultSidebarId);
+  const isActive = uiStore.activeMainLayout === id;
+  if (!isActive) {
+    uiStore.setActiveMainLayout(id, defaultSidebarId);
+    return;
+  }
+  const isDefaultSidebarActive =
+    defaultSidebarId && uiStore.leftSidebarView === defaultSidebarId && uiStore.isLeftSidebarOpen;
+  if (isDefaultSidebarActive) {
+    uiStore.closeLeftSidebar();
+  } else if (defaultSidebarId) {
+    uiStore.openFloatingLeftSidebar(defaultSidebarId);
+  }
 }
 
 function handleFloatingClick(targetSidebarId?: string, onClick?: () => void) {
