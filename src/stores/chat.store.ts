@@ -175,7 +175,17 @@ export const useChatStore = defineStore('chat', () => {
         activeChat.value.messages[0].original_avatar === avatar
       ) {
         const updatedChar = { ...characterStore.characters.find((c) => c.avatar === avatar), ...charData } as Character;
-        const newFirstMessageDetails = getFirstMessage(updatedChar);
+        const newFirstMessageDetails = getFirstMessage({
+          activeCharacter: updatedChar,
+          characters: [updatedChar],
+          persona: personaStore.activePersona ?? {
+            avatarId: '',
+            connections: [],
+            lorebooks: [],
+            description: '',
+            name: '',
+          },
+        });
         if (newFirstMessageDetails) {
           await updateMessageObject(0, {
             mes: newFirstMessageDetails.mes,
@@ -321,7 +331,17 @@ export const useChatStore = defineStore('chat', () => {
       const filename = uuidv4();
       const fullFilename = `${filename}.jsonl`;
 
-      const firstMessage = getFirstMessage(character);
+      const firstMessage = getFirstMessage({
+        characters: [character],
+        activeCharacter: character,
+        persona: personaStore.activePersona ?? {
+          avatarId: '',
+          connections: [],
+          lorebooks: [],
+          description: '',
+          name: '',
+        },
+      });
       const metadata: ChatMetadata = {
         members: [character.avatar],
         integrity: uuidv4(),

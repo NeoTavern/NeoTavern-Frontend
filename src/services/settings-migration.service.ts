@@ -167,7 +167,6 @@ export function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSett
       connections: oldPersonaDescriptions[avatarId]?.connections ?? [],
       description: oldPersonaDescriptions[avatarId]?.description ?? '',
       lorebooks: [],
-      title: oldPersonaDescriptions[avatarId]?.title ?? '',
     } as Persona);
   }
 

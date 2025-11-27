@@ -40,7 +40,6 @@ export const usePersonaStore = defineStore('persona', () => {
       description: '',
       lorebooks: [],
       connections: [],
-      title: '',
     };
   }
 

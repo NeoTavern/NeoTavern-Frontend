@@ -4,6 +4,7 @@ import { GroupReplyStrategy, talkativeness_default } from '../constants';
 import { macroService, type MacroContextData } from '../services/macro-service';
 import type { Character, ChatMessage, ChatMetadata } from '../types';
 import { getMessageTimeStamp } from './commons';
+import { scopeHtml } from './style-scoper';
 
 // --- Markdown & Formatting ---
 
@@ -58,14 +59,19 @@ marked.use({
 
 export function formatText(text: string): string {
   if (!text) return '';
+
   const rawHtml = marked.parse(text) as string;
+
   const config: Config = {
     RETURN_DOM: false,
     RETURN_DOM_FRAGMENT: false,
-    ADD_TAGS: ['custom-style', 'q'],
-    ADD_ATTR: ['target'],
+    ADD_TAGS: ['style', 'custom-style', 'q'],
+    ADD_ATTR: ['target', 'class', 'id'],
   };
-  return DOMPurify.sanitize(rawHtml, config);
+
+  const sanitizedHtml = DOMPurify.sanitize(rawHtml, config) as string;
+
+  return scopeHtml(sanitizedHtml);
 }
 
 export function formatMessage(message: ChatMessage): string {

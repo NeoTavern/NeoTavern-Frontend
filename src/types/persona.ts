@@ -6,7 +6,6 @@ export interface PersonaDescription {
   description: string;
   lorebooks: string[];
   connections: PersonaConnection[];
-  title: string;
 }
 
 export interface Persona extends PersonaDescription {
