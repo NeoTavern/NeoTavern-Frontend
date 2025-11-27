@@ -8,10 +8,11 @@ interface PopupPromise<T = unknown> {
   reject: (reason?: unknown) => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const popupPromises = new Map<string, PopupPromise<any>>();
+
 export const usePopupStore = defineStore('popup', () => {
   const popups = ref<PopupState[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const promises = ref<Record<string, PopupPromise<any>>>({});
 
   function show<T = unknown>(options: PopupShowOptions): Promise<{ result: number; value: T }> {
     const id = uuidv4();
@@ -28,7 +29,7 @@ export const usePopupStore = defineStore('popup', () => {
     popups.value.push(newPopup);
 
     return new Promise((resolve, reject) => {
-      promises.value[id] = { resolve, reject };
+      popupPromises.set(id, { resolve, reject });
     });
   }
 
@@ -37,16 +38,22 @@ export const usePopupStore = defineStore('popup', () => {
     if (index > -1) {
       popups.value.splice(index, 1);
     }
-    delete promises.value[id];
+    popupPromises.delete(id);
   }
 
   function confirm<T = unknown>(id: string, payload: { result: number; value: T }) {
-    promises.value[id]?.resolve(payload);
+    const promise = popupPromises.get(id);
+    if (promise) {
+      promise.resolve(payload);
+    }
     hide(id);
   }
 
   function cancel(id: string) {
-    promises.value[id]?.resolve({ result: POPUP_RESULT.CANCELLED, value: null });
+    const promise = popupPromises.get(id);
+    if (promise) {
+      promise.resolve({ result: POPUP_RESULT.CANCELLED, value: null });
+    }
     hide(id);
   }
 

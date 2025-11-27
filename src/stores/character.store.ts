@@ -1,29 +1,17 @@
 import DOMPurify from 'dompurify';
-import { debounce } from 'lodash-es';
 import { defineStore } from 'pinia';
 import { computed, nextTick, ref } from 'vue';
-import {
-  createCharacter as apiCreateCharacter,
-  deleteCharacter as apiDeleteCharacter,
-  importCharacter as apiImportCharacter,
-  saveCharacter as apiSaveCharacter,
-  updateCharacterImage as apiUpdateCharacterImage,
-  fetchAllCharacters,
-} from '../api/characters';
+import { useAutoSave } from '../composables/useAutoSave';
 import { useCharacterTokens } from '../composables/useCharacterTokens';
-import { DEFAULT_PRINT_TIMEOUT, DEFAULT_SAVE_EDIT_TIMEOUT } from '../constants';
+import { characterService } from '../services/character.service';
 import { type Character } from '../types';
-import { createCharacterFormData, getCharacterDifferences, getThumbnailUrl } from '../utils/character';
-import { onlyUnique, uuidv4 } from '../utils/commons';
+import { getCharacterDifferences } from '../utils/character';
+import { onlyUnique } from '../utils/commons';
 import { eventEmitter } from '../utils/extensions';
 import { useSettingsStore } from './settings.store';
 
-const ANTI_TROLL_MAX_TAGS = 50;
-const IMPORT_EXLCUDED_TAGS: string[] = [];
-
 export const useCharacterStore = defineStore('character', () => {
   const settingsStore = useSettingsStore();
-
   const { tokenCounts, totalTokens, permanentTokens, calculateAllTokens } = useCharacterTokens();
 
   const characters = ref<Array<Character>>([]);
@@ -34,22 +22,9 @@ export const useCharacterStore = defineStore('character', () => {
     return characters.value.filter((char) => activeCharacterAvatars.value.has(char.avatar));
   });
 
-  const refreshCharactersDebounced = debounce(() => {
-    refreshCharacters();
-  }, DEFAULT_PRINT_TIMEOUT);
-
   async function refreshCharacters() {
     try {
-      const newCharacters = await fetchAllCharacters();
-
-      for (const char of newCharacters) {
-        char.name = DOMPurify.sanitize(char.name);
-        if (!char.chat) {
-          char.chat = uuidv4();
-        }
-        char.chat = String(char.chat);
-      }
-
+      const newCharacters = await characterService.fetchAll();
       characters.value = newCharacters;
 
       const now = Date.now();
@@ -61,29 +36,44 @@ export const useCharacterStore = defineStore('character', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Failed to fetch characters:', error);
-      // Overflow warning handling should be done by the UI observing the error or a store state
       if (error.message === 'overflow') {
         throw new Error('overflow');
       }
     }
   }
 
+  // Debounced save for a specific character update
+  const { trigger: triggerSave } = useAutoSave(
+    async (payload: { avatar: string; changes: Partial<Character> }) => {
+      await characterService.saveChanges(payload.avatar, payload.changes);
+    },
+    { timeout: 500 },
+  );
+
+  useAutoSave(
+    async () => {
+      await refreshCharacters();
+    },
+    { timeout: 1000 },
+  );
+
   async function updateAndSaveCharacter(avatar: string, changes: Partial<Character>) {
     if (Object.keys(changes).length === 0) return;
 
-    const dataToSave = { ...changes, avatar };
-    await apiSaveCharacter(dataToSave);
-
+    // Optimistic Update
     const index = characters.value.findIndex((c) => c.avatar === avatar);
     if (index !== -1) {
       const updatedCharacter = { ...characters.value[index], ...changes };
       updatedCharacter.name = DOMPurify.sanitize(updatedCharacter.name);
       characters.value[index] = updatedCharacter;
 
+      // Trigger debounced API call
+      triggerSave({ avatar, changes });
+
       await nextTick();
       await eventEmitter.emit('character:updated', updatedCharacter, changes);
     } else {
-      console.warn(`Saved character with avatar ${avatar} not found in local list. Refreshing list.`);
+      console.warn(`Saved character with avatar ${avatar} not found locally.`);
       await refreshCharacters();
     }
   }
@@ -98,7 +88,6 @@ export const useCharacterStore = defineStore('character', () => {
 
   async function saveCharacter(characterData: Character, originalCharacter?: Character) {
     if (!originalCharacter) return;
-
     const changes = getCharacterDifferences(originalCharacter, characterData);
     if (changes) {
       await updateAndSaveCharacter(originalCharacter.avatar, changes);
@@ -108,122 +97,52 @@ export const useCharacterStore = defineStore('character', () => {
     }
   }
 
-  const saveCharacterDebounced = debounce(saveCharacter, DEFAULT_SAVE_EDIT_TIMEOUT);
-
   async function importCharacter(file: File): Promise<string | undefined> {
-    const ext = file.name.split('.').pop()?.toLowerCase();
-    if (!ext || !['json', 'png'].includes(ext)) {
-      throw new Error(`unsupported_type:${ext}`);
-    }
-
     try {
-      const uuid = uuidv4();
-      const newFileName = `${uuid}.${ext}`;
-      const renamedFile = new File([file], newFileName, { type: file.type });
+      const avatarFileName = await characterService.import(file);
+      await refreshCharacters();
 
-      const data = await apiImportCharacter(renamedFile);
-      if (data.file_name) {
-        const avatarFileName = `${data.file_name}.png`;
-
-        await refreshCharacters();
-        const importedChar = characters.value.find((c) => c.avatar === avatarFileName);
-        if (importedChar) {
-          await nextTick();
-          await eventEmitter.emit('character:imported', importedChar);
-        }
-
-        return avatarFileName;
+      const importedChar = characters.value.find((c) => c.avatar === avatarFileName);
+      if (importedChar) {
+        await nextTick();
+        await eventEmitter.emit('character:imported', importedChar);
       }
+      return avatarFileName;
     } catch (error) {
       console.error('Error importing character', error);
       throw error;
     }
   }
 
-  /**
-   * Imports tags for multiple characters based on settings.
-   * Returns a map of Avatar -> ImportedTags[]
-   */
   async function importTagsForCharacters(avatarFileNames: string[]): Promise<Record<string, string[]>> {
     const results: Record<string, string[]> = {};
-    if (settingsStore.settings.character.tagImportSetting === 'none') {
-      return results;
-    }
+    const setting = settingsStore.settings.character.tagImportSetting;
+
+    if (setting === 'none') return results;
 
     for (const avatar of avatarFileNames) {
       const character = characters.value.find((c) => c.avatar === avatar);
       if (character) {
-        const imported = await handleTagImport(character);
-        if (imported.length > 0) {
-          results[avatar] = imported;
+        const tagsToImport = characterService.getImportTags(character, setting);
+        if (tagsToImport.length > 0) {
+          const newTags = [...(character.tags ?? []), ...tagsToImport].filter(onlyUnique);
+          const changes = getCharacterDifferences(character, { ...character, tags: newTags });
+          if (changes) {
+            await updateAndSaveCharacter(character.avatar, changes);
+            results[avatar] = tagsToImport;
+          }
         }
       }
     }
     return results;
   }
 
-  /**
-   * Internal logic to import tags. Returns the list of tags that were added.
-   */
-  async function handleTagImport(character: Character): Promise<string[]> {
-    const setting = settingsStore.settings.character.tagImportSetting;
-
-    const alreadyAssignedTags = character.tags ?? [];
-    const tagsFromCard = (character.tags ?? [])
-      .map((t) => t.trim())
-      .filter(Boolean)
-      .filter((t) => !IMPORT_EXLCUDED_TAGS.includes(t))
-      .filter((t) => !alreadyAssignedTags.includes(t))
-      .slice(0, ANTI_TROLL_MAX_TAGS);
-
-    if (!tagsFromCard.length) return [];
-
-    let tagsToImport: string[] = [];
-
-    switch (setting) {
-      case 'all':
-        tagsToImport = tagsFromCard;
-        break;
-      case 'ask':
-        // TODO: UI should handle 'ask'. For now, we return empty or implement a callback system.
-        // Returning empty to avoid side effects in store.
-        console.warn('Tag import "ask" setting not fully implemented in store refactor.');
-        return [];
-      case 'only_existing':
-        // TODO: Requires global tag list.
-        console.warn('Tag import "only_existing" setting not implemented.');
-        return [];
-      case 'none':
-      default:
-        return [];
-    }
-
-    if (tagsToImport.length > 0) {
-      const newTags = [...alreadyAssignedTags, ...tagsToImport].filter(onlyUnique);
-      const changes = getCharacterDifferences(character, { ...character, tags: newTags });
-      if (!changes) return [];
-      await updateAndSaveCharacter(character.avatar, changes);
-      return tagsToImport;
-    }
-
-    return [];
-  }
-
   async function createNewCharacter(character: Character, file?: File): Promise<string | undefined> {
-    const uuid = uuidv4();
-    const fileName = `${uuid}.png`;
-    const fileToSend = file ? new File([file], fileName, { type: file.type }) : null;
-
-    const formData = createCharacterFormData(character, fileToSend, uuid);
-
-    const result = await apiCreateCharacter(formData);
-
-    if (result && result.file_name) {
+    const result = await characterService.create(character, file);
+    if (result) {
       await refreshCharacters();
-
-      const newCharIndex = characters.value.findIndex((c) => c.avatar === result.file_name);
-      if (newCharIndex !== -1) {
-        const createdChar = characters.value[newCharIndex];
+      const createdChar = characters.value.find((c) => c.avatar === result.avatar);
+      if (createdChar) {
         await nextTick();
         await eventEmitter.emit('character:created', createdChar);
         return createdChar.avatar;
@@ -232,7 +151,7 @@ export const useCharacterStore = defineStore('character', () => {
   }
 
   async function deleteCharacter(avatar: string, deleteChats: boolean) {
-    await apiDeleteCharacter(avatar, deleteChats);
+    await characterService.delete(avatar, deleteChats);
     await eventEmitter.emit('character:deleted', avatar);
 
     const index = characters.value.findIndex((c) => c.avatar === avatar);
@@ -243,9 +162,8 @@ export const useCharacterStore = defineStore('character', () => {
   }
 
   async function updateCharacterImage(avatar: string, imageFile: File) {
-    await apiUpdateCharacterImage(avatar, imageFile);
-    const character = characters.value.find((c) => c.avatar === avatar);
-    if (character) {
+    await characterService.updateImage(avatar, imageFile);
+    if (characters.value.find((c) => c.avatar === avatar)) {
       characterImageTimestamps.value[avatar] = Date.now();
     }
     await refreshCharacters();
@@ -255,17 +173,14 @@ export const useCharacterStore = defineStore('character', () => {
     const character = characters.value.find((c) => c.avatar === avatar);
     if (!character) return;
 
-    const charCopy = { ...character, name: character.name };
-    const uuid = uuidv4();
-    charCopy.chat = uuid;
-    delete charCopy.create_date;
-
-    const url = getThumbnailUrl('avatar', avatar);
-    const res = await fetch(url);
-    const blob = await res.blob();
-    const file = new File([blob], 'avatar.png', { type: blob.type });
-
-    await createNewCharacter(charCopy, file);
+    const result = await characterService.duplicate(character);
+    if (result) {
+      await refreshCharacters();
+      const createdChar = characters.value.find((c) => c.avatar === result.avatar);
+      if (createdChar) {
+        await eventEmitter.emit('character:created', createdChar);
+      }
+    }
   }
 
   function setActiveCharacterAvatars(avatars: string[]) {
@@ -278,9 +193,7 @@ export const useCharacterStore = defineStore('character', () => {
     activeCharacterAvatars,
     characterImageTimestamps,
     refreshCharacters,
-    refreshCharactersDebounced,
     saveCharacter,
-    saveCharacterDebounced,
     tokenCounts,
     totalTokens,
     permanentTokens,

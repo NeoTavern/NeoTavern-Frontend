@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useUiStore } from '../../stores/ui.store';
+import { useComponentRegistryStore } from '../../stores/component-registry.store';
+import { useLayoutStore } from '../../stores/layout.store';
 import type { NavBarItemDefinition } from '../../types';
 import { Button } from '../UI';
 
-const uiStore = useUiStore();
-const navItems = computed(() => Array.from(uiStore.navBarRegistry));
+const layoutStore = useLayoutStore();
+const componentRegistryStore = useComponentRegistryStore();
+const navItems = computed(() => Array.from(componentRegistryStore.navBarRegistry));
 
 const mainNavItems = computed(() => navItems.value.filter(([, item]) => !!item.layoutComponent));
 const floatingNavItems = computed(() =>
@@ -17,16 +19,16 @@ const drawerNavItems = computed(() =>
 
 const isActive = (id: string, item: NavBarItemDefinition) => {
   if (item.targetSidebarId) {
-    return uiStore.isLeftSidebarOpen && uiStore.leftSidebarView === item.targetSidebarId;
+    return layoutStore.isLeftSidebarOpen && layoutStore.leftSidebarView === item.targetSidebarId;
   }
 
   if (!item.layoutComponent) {
-    return uiStore.activeDrawer === id;
+    return layoutStore.activeDrawer === id;
   }
 
-  if (uiStore.activeMainLayout === id) {
-    if (uiStore.isLeftSidebarOpen && item.defaultSidebarId) {
-      return uiStore.leftSidebarView === item.defaultSidebarId;
+  if (layoutStore.activeMainLayout === id) {
+    if (layoutStore.isLeftSidebarOpen && item.defaultSidebarId) {
+      return layoutStore.leftSidebarView === item.defaultSidebarId;
     }
     return true;
   }
@@ -47,7 +49,7 @@ const isActive = (id: string, item: NavBarItemDefinition) => {
               :icon="item.icon"
               :active="isActive(id, item)"
               :title="item.title"
-              @click="uiStore.activateNavBarItem(id)"
+              @click="layoutStore.activateNavBarItem(id)"
             />
           </div>
         </div>
@@ -60,7 +62,7 @@ const isActive = (id: string, item: NavBarItemDefinition) => {
               :icon="item.icon"
               :active="isActive(id, item)"
               :title="item.title"
-              @click="uiStore.activateNavBarItem(id)"
+              @click="layoutStore.activateNavBarItem(id)"
             />
           </div>
         </div>
@@ -73,7 +75,7 @@ const isActive = (id: string, item: NavBarItemDefinition) => {
               :icon="item.icon"
               :active="isActive(id, item)"
               :title="item.title"
-              @click="uiStore.activateNavBarItem(id)"
+              @click="layoutStore.activateNavBarItem(id)"
             />
           </div>
         </div>
@@ -86,7 +88,7 @@ const isActive = (id: string, item: NavBarItemDefinition) => {
         v-show="item.component"
         class="nav-item-content"
         :class="{
-          active: uiStore.activeDrawer === id,
+          active: layoutStore.activeDrawer === id,
           wide: item.layout === 'wide',
         }"
       >

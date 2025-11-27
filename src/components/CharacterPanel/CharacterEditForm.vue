@@ -8,6 +8,7 @@ import { convertWorldInfoBookToCharacterBook } from '../../services/world-info';
 import { useCharacterUiStore } from '../../stores/character-ui.store';
 import { useCharacterStore } from '../../stores/character.store';
 import { useChatStore } from '../../stores/chat.store';
+import { useLayoutStore } from '../../stores/layout.store';
 import { usePersonaStore } from '../../stores/persona.store';
 import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -30,6 +31,7 @@ const chatStore = useChatStore();
 const personaStore = usePersonaStore();
 const worldInfoStore = useWorldInfoStore();
 const uiStore = useUiStore();
+const layoutStore = useLayoutStore();
 
 const tokenCounts = computed(() => characterStore.tokenCounts.fields);
 const isCreating = computed(() => characterUiStore.isCreating);
@@ -90,7 +92,7 @@ watch(
       const original = characterStore.characters.find((c) => c.avatar === newVal.avatar);
       if (original) {
         try {
-          await characterStore.saveCharacterDebounced(newVal, original);
+          await characterStore.saveCharacter(newVal, original);
           characterStore.calculateAllTokens(newVal);
         } catch {
           toast.error(t('character.save.error'));
@@ -252,7 +254,7 @@ async function openLastChat() {
   } else {
     createNewChat();
   }
-  uiStore.activateNavBarItem('chat');
+  layoutStore.activateNavBarItem('chat');
 }
 
 async function createNewChat() {

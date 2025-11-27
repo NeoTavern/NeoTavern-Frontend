@@ -30,3 +30,13 @@ export interface NavBarItemDefinition {
   defaultSidebarId?: string;
   targetSidebarId?: string;
 }
+
+export interface CropData {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotate: number;
+  scaleX: number;
+  scaleY: number;
+}

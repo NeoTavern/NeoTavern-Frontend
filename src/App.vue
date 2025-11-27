@@ -15,15 +15,17 @@ import Popup from './components/Popup/Popup.vue';
 import Sidebar from './components/Shared/Sidebar.vue';
 import { useStrictI18n } from './composables/useStrictI18n';
 import { useBackgroundStore } from './stores/background.store';
+import { useComponentRegistryStore } from './stores/component-registry.store';
 import { useExtensionStore } from './stores/extension.store';
+import { useLayoutStore } from './stores/layout.store';
 import { usePopupStore } from './stores/popup.store';
 import { useSecretStore } from './stores/secret.store';
 import { useSettingsStore } from './stores/settings.store';
-import { useUiStore } from './stores/ui.store';
 
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
-const uiStore = useUiStore();
+const layoutStore = useLayoutStore();
+const registryStore = useComponentRegistryStore();
 const backgroundStore = useBackgroundStore();
 const extensionStore = useExtensionStore();
 const secretStore = useSecretStore();
@@ -63,7 +65,7 @@ const backgroundStyle = computed<CSSProperties>(() => {
 const isFullScreen = computed(() => settingsStore.settings.account.chatFullScreen);
 
 const allMainLayouts = computed(() => {
-  return Array.from(uiStore.navBarRegistry.entries())
+  return Array.from(registryStore.navBarRegistry.entries())
     .filter(([, item]) => !!item.layoutComponent)
     .map(([id, item]) => ({
       id,
@@ -73,7 +75,9 @@ const allMainLayouts = computed(() => {
 });
 
 const activeRightSidebars = computed(() =>
-  Array.from(uiStore.rightSidebarRegistry).filter(([, def]) => (def.layoutId ?? 'chat') === uiStore.activeMainLayout),
+  Array.from(registryStore.rightSidebarRegistry).filter(
+    ([, def]) => (def.layoutId ?? 'chat') === layoutStore.activeMainLayout,
+  ),
 );
 
 onMounted(() => {
@@ -82,7 +86,7 @@ onMounted(() => {
   secretStore.fetchSecrets();
 
   // Register Left Sidebar
-  uiStore.registerSidebar(
+  registryStore.registerSidebar(
     'recent-chats',
     {
       component: RecentChats,
@@ -92,7 +96,7 @@ onMounted(() => {
     'left',
   );
 
-  uiStore.registerSidebar(
+  registryStore.registerSidebar(
     'user-settings',
     {
       component: UserSettingsDrawer,
@@ -102,7 +106,7 @@ onMounted(() => {
     'left',
   );
 
-  uiStore.registerSidebar(
+  registryStore.registerSidebar(
     'ai-config',
     {
       component: AiConfigDrawer,
@@ -112,7 +116,7 @@ onMounted(() => {
     'left',
   );
 
-  uiStore.registerSidebar(
+  registryStore.registerSidebar(
     'character-side',
     {
       component: CharacterPanel,
@@ -123,7 +127,7 @@ onMounted(() => {
     'left',
   );
 
-  uiStore.registerSidebar(
+  registryStore.registerSidebar(
     'world-info-side',
     {
       component: WorldInfoDrawer,
@@ -134,7 +138,7 @@ onMounted(() => {
     'left',
   );
 
-  uiStore.registerSidebar(
+  registryStore.registerSidebar(
     'extensions-side',
     {
       component: ExtensionsDrawer,
@@ -145,7 +149,7 @@ onMounted(() => {
     'left',
   );
 
-  uiStore.registerSidebar(
+  registryStore.registerSidebar(
     'persona-side',
     {
       component: PersonaManagementDrawer,
@@ -157,7 +161,7 @@ onMounted(() => {
   );
 
   // Register Right Sidebars
-  uiStore.registerSidebar(
+  registryStore.registerSidebar(
     'chat-management',
     {
       component: ChatManagement,
@@ -168,7 +172,7 @@ onMounted(() => {
     'right',
   );
 
-  uiStore.registerSidebar(
+  registryStore.registerSidebar(
     'backgrounds',
     {
       component: BackgroundsDrawer,
@@ -180,14 +184,14 @@ onMounted(() => {
   );
 
   // Register NavBar Items (Top/Main Layouts)
-  uiStore.registerNavBarItem('chat', {
+  registryStore.registerNavBarItem('chat', {
     icon: 'fa-comments',
     title: t('navbar.chat'),
     layoutComponent: ChatMainLayout,
     defaultSidebarId: 'recent-chats',
   });
 
-  uiStore.registerNavBarItem('character', {
+  registryStore.registerNavBarItem('character', {
     icon: 'fa-address-card',
     title: t('navbar.characterManagement'),
     layoutComponent: CharacterPanel,
@@ -195,7 +199,7 @@ onMounted(() => {
     defaultSidebarId: 'character-side',
   });
 
-  uiStore.registerNavBarItem('world-info', {
+  registryStore.registerNavBarItem('world-info', {
     icon: 'fa-book-atlas',
     title: t('navbar.worldInfo'),
     layoutComponent: WorldInfoDrawer,
@@ -203,7 +207,7 @@ onMounted(() => {
     defaultSidebarId: 'world-info-side',
   });
 
-  uiStore.registerNavBarItem('extensions', {
+  registryStore.registerNavBarItem('extensions', {
     icon: 'fa-cubes',
     title: t('navbar.extensions'),
     layoutComponent: ExtensionsDrawer,
@@ -211,7 +215,7 @@ onMounted(() => {
     defaultSidebarId: 'extensions-side',
   });
 
-  uiStore.registerNavBarItem('persona', {
+  registryStore.registerNavBarItem('persona', {
     icon: 'fa-face-smile',
     title: t('navbar.personaManagement'),
     layoutComponent: PersonaManagementDrawer,
@@ -220,19 +224,22 @@ onMounted(() => {
   });
 
   // Register NavBar Items (Floating sidebars only)
-  uiStore.registerNavBarItem('ai-config-nav', {
+  registryStore.registerNavBarItem('ai-config-nav', {
     icon: 'fa-sliders',
     title: t('navbar.aiConfig'),
     targetSidebarId: 'ai-config',
   });
 
-  uiStore.registerNavBarItem('user-settings-nav', {
+  registryStore.registerNavBarItem('user-settings-nav', {
     icon: 'fa-user-cog',
     title: t('navbar.userSettings'),
     targetSidebarId: 'user-settings',
   });
 
-  uiStore.activateNavBarItem('chat');
+  // Since ActivateNavBarItem logic now resides in LayoutStore but needs registry access,
+  // we check if we can call it via UIStore facade or LayoutStore directly.
+  // The layoutStore internally uses registryStore.
+  layoutStore.activateNavBarItem('chat');
 });
 </script>
 
@@ -240,9 +247,9 @@ onMounted(() => {
   <div id="background" :style="backgroundStyle"></div>
   <NavBar />
 
-  <Sidebar side="left" :is-open="uiStore.isLeftSidebarOpen" storage-key="leftSidebarWidth">
-    <template v-for="[id, def] in uiStore.leftSidebarRegistry" :key="id">
-      <div v-show="uiStore.leftSidebarView === id" :id="`sidebar-left-${id}`" style="height: 100%">
+  <Sidebar side="left" :is-open="layoutStore.isLeftSidebarOpen" storage-key="leftSidebarWidth">
+    <template v-for="[id, def] in registryStore.leftSidebarRegistry" :key="id">
+      <div v-show="layoutStore.leftSidebarView === id" :id="`sidebar-left-${id}`" style="height: 100%">
         <component :is="def.component" v-bind="{ title: def.title, ...def.componentProps }" />
       </div>
     </template>
@@ -253,8 +260,8 @@ onMounted(() => {
     id="main-content"
     :class="{
       'full-screen': isFullScreen,
-      'left-open': uiStore.isLeftSidebarOpen,
-      'right-open': uiStore.isRightSidebarOpen,
+      'left-open': layoutStore.isLeftSidebarOpen,
+      'right-open': layoutStore.isRightSidebarOpen,
     }"
   >
     <!--
@@ -263,7 +270,7 @@ onMounted(() => {
     -->
     <div
       v-for="layout in allMainLayouts"
-      v-show="uiStore.activeMainLayout === layout.id"
+      v-show="layoutStore.activeMainLayout === layout.id"
       :key="layout.id"
       style="height: 100%; width: 100%"
     >
@@ -271,9 +278,9 @@ onMounted(() => {
     </div>
   </main>
 
-  <Sidebar side="right" :is-open="uiStore.isRightSidebarOpen" storage-key="rightSidebarWidth">
+  <Sidebar side="right" :is-open="layoutStore.isRightSidebarOpen" storage-key="rightSidebarWidth">
     <template v-for="[id, def] in activeRightSidebars" :key="id">
-      <div v-show="uiStore.rightSidebarView === id" style="height: 100%">
+      <div v-show="layoutStore.rightSidebarView === id" style="height: 100%">
         <component :is="def.component" v-bind="{ title: def.title, ...def.componentProps }" />
       </div>
     </template>

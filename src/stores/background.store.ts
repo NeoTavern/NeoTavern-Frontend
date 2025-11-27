@@ -77,7 +77,7 @@ export const useBackgroundStore = defineStore('background', () => {
     }
 
     chatStore.activeChat.metadata.custom_background = url;
-    chatStore.saveChatDebounced();
+    chatStore.triggerSave();
   }
 
   function toggleLock() {
@@ -91,7 +91,7 @@ export const useBackgroundStore = defineStore('background', () => {
     } else {
       chatStore.activeChat.metadata.custom_background = settingsStore.settings.ui.background.url;
     }
-    chatStore.saveChatDebounced();
+    chatStore.triggerSave();
   }
 
   async function handleUpload(file: File) {

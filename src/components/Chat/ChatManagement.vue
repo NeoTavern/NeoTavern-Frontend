@@ -8,9 +8,10 @@ import { DebounceTimeout, GenerationMode, GroupGenerationHandlingMode, GroupRepl
 import { useCharacterUiStore } from '../../stores/character-ui.store';
 import { useCharacterStore } from '../../stores/character.store';
 import { useChatStore } from '../../stores/chat.store';
+import { useGroupChatStore } from '../../stores/group-chat.store';
+import { useLayoutStore } from '../../stores/layout.store';
 import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
-import { useUiStore } from '../../stores/ui.store';
 import { useWorldInfoStore } from '../../stores/world-info.store';
 import { POPUP_RESULT, POPUP_TYPE, type Character, type ChatInfo } from '../../types';
 import { getThumbnailUrl } from '../../utils/character';
@@ -20,11 +21,12 @@ import { Button, Checkbox, CollapsibleSection, FormItem, Input, ListItem, Search
 
 const { t } = useStrictI18n();
 const chatStore = useChatStore();
+const groupChatStore = useGroupChatStore();
 const characterStore = useCharacterStore();
 const characterUiStore = useCharacterUiStore();
 const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
-const uiStore = useUiStore();
+const layoutStore = useLayoutStore();
 const worldInfoStore = useWorldInfoStore();
 
 const activeTab = ref<'chats' | 'members' | 'prompts'>('chats');
@@ -167,7 +169,7 @@ const availableCharactersPaginated = computed(() => {
 });
 
 const groupConfig = computed(() => chatStore.groupConfig);
-const isGroup = computed(() => chatStore.isGroupChat);
+const isGroup = computed(() => groupChatStore.isGroupChat);
 
 // Options for Select
 const replyStrategyOptions = computed(() => [
@@ -188,7 +190,7 @@ const availableLorebooks = computed(() => {
 });
 
 const saveDebounced = debounce(() => {
-  chatStore.saveChatDebounced();
+  chatStore.triggerSave();
 }, DebounceTimeout.RELAXED);
 
 const activeChatLorebooks = computed({
@@ -212,7 +214,7 @@ const activeChatConnectionProfile = computed({
 });
 
 function toggleMute(avatar: string) {
-  chatStore.toggleMemberMute(avatar);
+  groupChatStore.toggleMemberMute(avatar);
 }
 
 function forceTalk(avatar: string) {
@@ -225,21 +227,13 @@ function updateMembersOrder(newMembers: Character[]) {
 
   if (chatStore.activeChat.metadata) {
     chatStore.activeChat.metadata.members = newMemberIds;
-    chatStore.saveChatDebounced();
+    chatStore.triggerSave();
   }
 }
 
 function peekCharacter(avatar: string) {
   characterUiStore.selectCharacterByAvatar(avatar);
-  uiStore.activeDrawer = 'character';
-}
-
-async function addMember(avatar: string) {
-  await chatStore.addMember(avatar);
-}
-
-async function removeMember(avatar: string) {
-  await chatStore.removeMember(avatar);
+  layoutStore.activeDrawer = 'character';
 }
 </script>
 
@@ -368,7 +362,7 @@ async function removeMember(avatar: string) {
                     icon="fa-trash-can"
                     variant="danger"
                     :title="t('common.remove')"
-                    @click="removeMember(member.avatar)"
+                    @click="groupChatStore.removeMember(member.avatar)"
                   />
                 </template>
               </ListItem>
@@ -386,7 +380,7 @@ async function removeMember(avatar: string) {
 
             <div class="add-member-list">
               <div v-for="char in availableCharactersPaginated" :key="char.avatar">
-                <ListItem @click="addMember(char.avatar)">
+                <ListItem @click="groupChatStore.addMember(char.avatar)">
                   <template #start>
                     <img
                       :src="getThumbnailUrl('avatar', char.avatar)"

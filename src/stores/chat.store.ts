@@ -1,16 +1,10 @@
-import { debounce } from 'lodash-es';
 import { defineStore } from 'pinia';
 import { computed, nextTick, ref, watch } from 'vue';
-import { saveChat as apiSaveChat, fetchChat, saveChat } from '../api/chat';
+import { useAutoSave } from '../composables/useAutoSave';
 import { useChatGeneration } from '../composables/useChatGeneration';
 import { useStrictI18n } from '../composables/useStrictI18n';
-import {
-  DEFAULT_SAVE_EDIT_TIMEOUT,
-  EventPriority,
-  GenerationMode,
-  GroupGenerationHandlingMode,
-  GroupReplyStrategy,
-} from '../constants';
+import { EventPriority, GenerationMode, GroupGenerationHandlingMode, GroupReplyStrategy } from '../constants';
+import { chatService } from '../services/chat.service';
 import {
   POPUP_RESULT,
   POPUP_TYPE,
@@ -26,6 +20,8 @@ import { getFirstMessage } from '../utils/chat';
 import { uuidv4 } from '../utils/commons';
 import { eventEmitter } from '../utils/extensions';
 import { useCharacterStore } from './character.store';
+import { useChatSelectionStore } from './chat-selection.store';
+import { useChatUiStore } from './chat-ui.store';
 import { usePersonaStore } from './persona.store';
 import { usePopupStore } from './popup.store';
 import { usePromptStore } from './prompt.store';
@@ -37,28 +33,16 @@ export type ChatStoreState = {
   metadata: ChatMetadata;
 };
 
-export type ChatMessageEditState = {
-  index: number;
-  originalContent: string;
-};
-
-export type SelectionModeType = 'free' | 'range';
-
 export const useChatStore = defineStore('chat', () => {
   const activeChat = ref<ChatStoreState | null>(null);
   const activeChatFile = ref<string | null>(null);
-  const activeMessageEditState = ref<ChatMessageEditState | null>(null);
-  const isChatLoading = ref(false);
   const chatInfos = ref<ChatInfo[]>([]);
   const recentChats = ref<ChatInfo[]>([]);
   const autoModeTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 
-  // Selection Mode State
-  const isSelectionMode = ref(false);
-  const selectionModeType = ref<SelectionModeType>('free');
-  const selectedMessageIndices = ref<Set<number>>(new Set());
-
   const uiStore = useUiStore();
+  const chatUiStore = useChatUiStore();
+  const selectionStore = useChatSelectionStore();
   const personaStore = usePersonaStore();
   const characterStore = useCharacterStore();
   const promptStore = usePromptStore();
@@ -79,16 +63,10 @@ export const useChatStore = defineStore('chat', () => {
     return mapping;
   });
 
-  const isGroupChat = computed(() => {
-    return activeChat.value && (activeChat.value.metadata.members?.length ?? 0) > 1;
-  });
-
   const groupConfig = computed(() => {
     if (!activeChat.value) return null;
-
-    // Initialize defaults if missing
     if (!activeChat.value.metadata.group) {
-      activeChat.value.metadata.group = {
+      return {
         config: {
           replyStrategy: GroupReplyStrategy.NATURAL_ORDER,
           handlingMode: GroupGenerationHandlingMode.SWAP,
@@ -97,42 +75,47 @@ export const useChatStore = defineStore('chat', () => {
         },
         members: {},
       };
-      // Sync members list status
-      activeChat.value.metadata.members?.forEach((avatar) => {
-        if (activeChat.value!.metadata.group) {
-          activeChat.value!.metadata.group.members[avatar] = { muted: false };
-        }
-      });
     }
     return activeChat.value.metadata.group;
   });
+
+  // Consolidated Saving Logic
+  const { trigger: triggerSave } = useAutoSave(
+    async () => {
+      if (!activeChat.value || !activeChatFile.value) return;
+
+      uiStore.isChatSaving = true; // Keep UI store in sync for legacy status bar
+      try {
+        const chatToSave: FullChat = [{ chat_metadata: activeChat.value.metadata }, ...activeChat.value.messages];
+
+        await chatService.save(activeChatFile.value, chatToSave);
+        await promptStore.saveItemizedPrompts(activeChatFile.value);
+
+        // Update local cache of infos
+        const updateInfo = (infos: ChatInfo[]) => {
+          const info = infos.find((c) => c.file_name === activeChatFile.value);
+          if (info && activeChat.value) {
+            info.chat_metadata = activeChat.value.metadata;
+          }
+        };
+        updateInfo(chatInfos.value);
+        updateInfo(recentChats.value);
+      } finally {
+        uiStore.isChatSaving = false;
+      }
+    },
+    { timeout: 1000 },
+  );
 
   async function syncSwipeToMes(messageIndex: number, swipeIndex: number) {
     if (!activeChat.value || messageIndex < 0 || messageIndex >= activeChat.value.messages.length) return;
 
     const message = activeChat.value.messages[messageIndex];
-    if (!message || !Array.isArray(message.swipes) || swipeIndex < 0 || swipeIndex >= message.swipes.length) {
-      return;
-    }
+    chatService.syncSwipe(message, swipeIndex);
 
-    message.swipe_id = swipeIndex;
-    message.mes = message.swipes[swipeIndex];
-
-    const swipeInfo = message.swipe_info?.[swipeIndex];
-    if (swipeInfo) {
-      message.send_date = swipeInfo.send_date;
-      message.gen_started = swipeInfo.gen_started;
-      message.gen_finished = swipeInfo.gen_finished;
-      message.extra = { ...swipeInfo.extra };
-    }
-
-    if (message.extra) {
-      delete message.extra.display_text;
-      delete message.extra.reasoning_display_text;
-    }
     await nextTick();
     await eventEmitter.emit('message:updated', messageIndex, message);
-    saveChatDebounced();
+    triggerSave();
   }
 
   function stopAutoModeTimer() {
@@ -149,58 +132,24 @@ export const useChatStore = defineStore('chat', () => {
     stopAutoModeTimer,
   });
 
-  const saveChatDebounced = debounce(async () => {
-    if (!activeChat.value || !activeChatFile.value) {
-      return;
-    }
-
-    try {
-      uiStore.isChatSaving = true;
-      const chatToSave: FullChat = [
-        {
-          chat_metadata: activeChat.value.metadata,
-        },
-        ...activeChat.value.messages,
-      ];
-      await apiSaveChat(activeChatFile.value, chatToSave);
-
-      await promptStore.saveItemizedPrompts(activeChatFile.value);
-      const chatInfo = chatInfos.value.find((c) => c.file_name === activeChatFile.value);
-      if (chatInfo) {
-        chatInfo.chat_metadata = activeChat.value.metadata;
-      }
-      const recentChatInfo = recentChats.value.find((c) => c.file_name === activeChatFile.value);
-      if (recentChatInfo) {
-        recentChatInfo.chat_metadata = activeChat.value.metadata;
-      }
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      console.error('Failed to save chat:', err);
-    } finally {
-      uiStore.isChatSaving = false;
-    }
-  }, DEFAULT_SAVE_EDIT_TIMEOUT);
-
   eventEmitter.on(
     'generation:finished',
     async () => {
-      saveChatDebounced();
+      triggerSave();
     },
     EventPriority.HIGH,
   );
-
   eventEmitter.on(
     'message:created',
     async () => {
-      saveChatDebounced();
+      triggerSave();
     },
     EventPriority.HIGH,
   );
-
   eventEmitter.on(
     'message:deleted',
     async () => {
-      saveChatDebounced();
+      triggerSave();
     },
     EventPriority.HIGH,
   );
@@ -217,7 +166,6 @@ export const useChatStore = defineStore('chat', () => {
     EventPriority.HIGH,
   );
 
-  // Listen for character updates that affect chat (e.g., first message changed)
   eventEmitter.on(
     'character:first-message-updated',
     async (avatar: string, charData: Character) => {
@@ -267,34 +215,25 @@ export const useChatStore = defineStore('chat', () => {
   function startAutoModeTimer() {
     stopAutoModeTimer();
     if (!groupConfig.value?.config.autoMode) return;
-
     autoModeTimer.value = setTimeout(() => {
       generateResponse(GenerationMode.NEW);
     }, groupConfig.value.config.autoMode * 1000);
   }
 
   async function clearChat(recreateFirstMessage = false) {
-    isChatLoading.value = true;
+    chatUiStore.isChatLoading = true;
+    triggerSave.cancel();
 
-    saveChatDebounced.cancel();
-    if (activeChat.value) {
-      activeChat.value.messages = [];
-    }
-
+    if (activeChat.value) activeChat.value.messages = [];
     activeChatFile.value = null;
     activeChat.value = null;
 
     promptStore.extensionPrompts = {};
     promptStore.itemizedPrompts = [];
+    selectionStore.isSelectionMode = false;
+    selectionStore.selectedMessageIndices.clear();
 
-    // Reset selection mode on clear
-    isSelectionMode.value = false;
-    selectionModeType.value = 'free';
-    selectedMessageIndices.value.clear();
-
-    if (activeChatFile.value) {
-      promptStore.clearUserTyping(activeChatFile.value);
-    }
+    if (activeChatFile.value) promptStore.clearUserTyping(activeChatFile.value);
 
     await nextTick();
     await eventEmitter.emit('chat:cleared');
@@ -311,25 +250,21 @@ export const useChatStore = defineStore('chat', () => {
         };
       }
     }
-
-    isChatLoading.value = false;
+    chatUiStore.isChatLoading = false;
   }
 
   async function setActiveChatFile(chatFile: string) {
     if (activeChatFile.value === chatFile) return;
+
     activeChat.value = null;
     activeChatFile.value = null;
-    saveChatDebounced.cancel();
-
-    // Reset selection mode on chat switch
-    isSelectionMode.value = false;
-    selectionModeType.value = 'free';
-    selectedMessageIndices.value.clear();
-
-    isChatLoading.value = true;
+    triggerSave.cancel();
+    selectionStore.isSelectionMode = false;
+    selectionStore.selectedMessageIndices.clear();
+    chatUiStore.isChatLoading = true;
 
     try {
-      const response = await fetchChat(chatFile);
+      const response = await chatService.fetch(chatFile);
       if (response.length > 0) {
         const metadataItem = response.shift() as ChatHeader;
         activeChatFile.value = chatFile;
@@ -340,6 +275,7 @@ export const useChatStore = defineStore('chat', () => {
       }
 
       if (activeChatFile.value) {
+        // Update character links
         for (const character of characterStore.activeCharacters) {
           const changes = getCharacterDifferences(character, { ...character, chat: activeChatFile.value });
           if (changes) {
@@ -349,7 +285,7 @@ export const useChatStore = defineStore('chat', () => {
 
         await promptStore.loadItemizedPrompts(activeChatFile.value);
 
-        // Persona Switching Logic
+        // Handle Persona linking
         const meta = activeChat.value!.metadata;
         if (meta.active_persona) {
           await personaStore.setActivePersona(meta.active_persona);
@@ -372,46 +308,45 @@ export const useChatStore = defineStore('chat', () => {
       console.error('Failed to refresh chat:', error);
       throw error;
     } finally {
-      isChatLoading.value = false;
+      chatUiStore.isChatLoading = false;
     }
   }
 
   async function createNewChatForCharacter(avatar: string, chatName: string) {
     const character = characterStore.characters.find((c) => c.avatar === avatar);
-    if (!character) {
-      throw new Error('Character not found for creating new chat.');
-    }
+    if (!character) throw new Error('Character not found');
 
     try {
-      isChatLoading.value = true;
-
+      chatUiStore.isChatLoading = true;
       const filename = uuidv4();
       const fullFilename = `${filename}.jsonl`;
 
       const firstMessage = getFirstMessage(character);
-      activeChat.value = {
-        metadata: {
-          members: [character.avatar],
-          integrity: uuidv4(),
-          promptOverrides: { scenario: '' },
-          name: chatName,
-        },
-        messages: firstMessage && firstMessage.mes ? [firstMessage] : [],
+      const metadata: ChatMetadata = {
+        members: [character.avatar],
+        integrity: uuidv4(),
+        promptOverrides: { scenario: '' },
+        name: chatName,
       };
-      const fullChat: FullChat = [{ chat_metadata: activeChat.value.metadata }, ...activeChat.value.messages];
-      await saveChat(filename, fullChat);
-      characterStore.updateAndSaveCharacter(character.avatar, { chat: filename });
+
+      const messages = firstMessage && firstMessage.mes ? [firstMessage] : [];
+      activeChat.value = { metadata, messages };
+
+      const fullChat: FullChat = [{ chat_metadata: metadata }, ...messages];
+      await chatService.create(filename, fullChat);
+      await characterStore.updateAndSaveCharacter(character.avatar, { chat: filename });
 
       activeChatFile.value = filename;
       const cInfo: ChatInfo = {
-        chat_metadata: activeChat.value.metadata,
-        chat_items: activeChat.value.messages.length,
+        chat_metadata: metadata,
+        chat_items: messages.length,
         file_id: filename,
         file_name: fullFilename,
         file_size: JSON.stringify(fullChat).length,
         last_mes: Date.now(),
         mes: firstMessage?.mes || '',
       };
+
       chatInfos.value.push(cInfo);
       recentChats.value.push(cInfo);
 
@@ -424,7 +359,7 @@ export const useChatStore = defineStore('chat', () => {
       console.error('Failed to create new chat:', error);
       throw error;
     } finally {
-      isChatLoading.value = false;
+      chatUiStore.isChatLoading = false;
     }
   }
 
@@ -435,13 +370,13 @@ export const useChatStore = defineStore('chat', () => {
     if (activeChatFile.value === fileId && activeChat.value) {
       activeChat.value.metadata.name = newName;
       chatInfo.chat_metadata.name = newName;
-      saveChatDebounced();
+      triggerSave();
     } else {
-      const response = await fetchChat(fileId);
+      const response = await chatService.fetch(fileId);
       if (response.length > 0) {
         const metadataItem = response[0] as ChatHeader;
         metadataItem.chat_metadata.name = newName;
-        await saveChat(fileId, response as FullChat);
+        await chatService.save(fileId, response as FullChat);
         chatInfo.chat_metadata.name = newName;
       }
     }
@@ -449,7 +384,6 @@ export const useChatStore = defineStore('chat', () => {
 
   async function toggleChatPersona(personaId: string): Promise<'added' | 'removed' | undefined> {
     if (!activeChat.value) return;
-
     let result: 'added' | 'removed';
     if (activeChat.value.metadata.active_persona === personaId) {
       delete activeChat.value.metadata.active_persona;
@@ -458,13 +392,12 @@ export const useChatStore = defineStore('chat', () => {
       activeChat.value.metadata.active_persona = personaId;
       result = 'added';
     }
-    saveChatDebounced();
+    triggerSave();
     return result;
   }
 
   async function syncPersonaName(personaId: string, newName: string): Promise<number> {
     if (!activeChat.value) return 0;
-
     let updatedCount = 0;
     const messages = activeChat.value.messages;
     for (let i = 0; i < messages.length; i++) {
@@ -475,75 +408,25 @@ export const useChatStore = defineStore('chat', () => {
         await eventEmitter.emit('message:updated', i, msg);
       }
     }
-
-    if (updatedCount > 0) {
-      saveChatDebounced();
-    }
+    if (updatedCount > 0) triggerSave();
     return updatedCount;
-  }
-
-  function toggleMemberMute(avatar: string) {
-    if (!activeChat.value?.metadata.group) return;
-    const member = activeChat.value.metadata.group.members[avatar];
-    if (member) {
-      member.muted = !member.muted;
-      saveChatDebounced();
-    }
-  }
-
-  async function addMember(avatar: string) {
-    if (!activeChat.value) return;
-    if (activeChat.value.metadata.members?.includes(avatar)) return;
-
-    activeChat.value.metadata.members?.push(avatar);
-
-    if (!activeChat.value.metadata.group) {
-      activeChat.value.metadata.group = {
-        config: {
-          replyStrategy: GroupReplyStrategy.NATURAL_ORDER,
-          handlingMode: GroupGenerationHandlingMode.SWAP,
-          allowSelfResponses: false,
-          autoMode: 0,
-        },
-        members: {},
-      };
-    }
-    if (!activeChat.value.metadata.group.members[avatar]) {
-      activeChat.value.metadata.group.members[avatar] = { muted: false };
-    }
-
-    saveChatDebounced();
-  }
-
-  async function removeMember(avatar: string) {
-    if (!activeChat.value) return;
-    const index = activeChat.value.metadata.members?.indexOf(avatar) ?? -1;
-    if (index > -1) {
-      activeChat.value.metadata.members?.splice(index, 1);
-      if (activeChat.value.metadata.group?.members[avatar]) {
-        delete activeChat.value.metadata.group.members[avatar];
-      }
-      saveChatDebounced();
-    }
   }
 
   function startEditing(index: number) {
     if (!activeChat.value || index < 0 || index >= activeChat.value.messages.length) return;
-    activeMessageEditState.value = {
-      index,
-      originalContent: activeChat.value.messages[index].mes,
-    };
+    chatUiStore.startEditing(index, activeChat.value.messages[index].mes);
   }
 
   function cancelEditing() {
-    activeMessageEditState.value = null;
+    chatUiStore.cancelEditing();
   }
 
   async function saveMessageEdit(newContent: string, newReasoning?: string) {
-    if (activeMessageEditState.value !== null && activeChat.value) {
-      const index = activeMessageEditState.value.index;
+    if (chatUiStore.activeMessageEditState !== null && activeChat.value) {
+      const index = chatUiStore.activeMessageEditState.index;
       const message = activeChat.value.messages[index];
       message.mes = newContent;
+
       if (message.extra) {
         delete message.extra.display_text;
         delete message.extra.reasoning_display_text;
@@ -552,10 +435,8 @@ export const useChatStore = defineStore('chat', () => {
       if (typeof newReasoning === 'string' && newReasoning.trim() !== '') {
         if (!message.extra) message.extra = {};
         message.extra.reasoning = newReasoning;
-      } else {
-        if (message.extra) {
-          delete message.extra.reasoning;
-        }
+      } else if (message.extra) {
+        delete message.extra.reasoning;
       }
 
       if (message.swipes && typeof message.swipe_id === 'number' && message.swipes[message.swipe_id] !== undefined) {
@@ -575,15 +456,12 @@ export const useChatStore = defineStore('chat', () => {
       cancelEditing();
       await nextTick();
       await eventEmitter.emit('message:updated', index, message);
-      saveChatDebounced();
+      triggerSave();
     }
   }
 
   async function updateMessageObject(index: number, updates: Partial<ChatMessage>): Promise<void> {
-    if (!activeChat.value || index < 0 || index >= activeChat.value.messages.length) {
-      console.warn(`[ChatStore] updateMessageObject: index ${index} out of bounds.`);
-      return;
-    }
+    if (!activeChat.value || index < 0 || index >= activeChat.value.messages.length) return;
     const message = activeChat.value.messages[index];
     Object.assign(message, updates);
 
@@ -595,7 +473,7 @@ export const useChatStore = defineStore('chat', () => {
 
     await nextTick();
     await eventEmitter.emit('message:updated', index, message);
-    saveChatDebounced();
+    triggerSave();
   }
 
   async function swipeMessage(messageIndex: number, direction: 'left' | 'right') {
@@ -622,80 +500,26 @@ export const useChatStore = defineStore('chat', () => {
   async function deleteMessage(index: number) {
     if (!activeChat.value || index < 0 || index >= activeChat.value.messages.length) return;
     activeChat.value.messages.splice(index, 1);
-    if (activeMessageEditState.value?.index === index) {
+    if (chatUiStore.activeMessageEditState?.index === index) {
       cancelEditing();
     }
     await nextTick();
     await eventEmitter.emit('message:deleted', [index]);
-  }
-
-  function toggleSelectionMode() {
-    isSelectionMode.value = !isSelectionMode.value;
-    // Reset selection state when entering/exiting
-    selectedMessageIndices.value.clear();
-    selectionModeType.value = 'free'; // Default to free mode
-  }
-
-  function setSelectionType(type: SelectionModeType) {
-    selectionModeType.value = type;
-    selectedMessageIndices.value.clear();
-  }
-
-  function toggleMessageSelection(index: number) {
-    if (!isSelectionMode.value) return;
-
-    if (selectionModeType.value === 'range') {
-      // Range Mode: Select from index to end of chat
-      selectedMessageIndices.value.clear();
-      if (activeChat.value) {
-        const len = activeChat.value.messages.length;
-        for (let i = index; i < len; i++) {
-          selectedMessageIndices.value.add(i);
-        }
-      }
-    } else {
-      // Free Mode: Toggle individual message
-      if (selectedMessageIndices.value.has(index)) {
-        selectedMessageIndices.value.delete(index);
-      } else {
-        selectedMessageIndices.value.add(index);
-      }
-    }
-  }
-
-  function selectAllMessages() {
-    if (!activeChat.value) return;
-    selectedMessageIndices.value.clear();
-    activeChat.value.messages.forEach((_, idx) => selectedMessageIndices.value.add(idx));
-  }
-
-  function deselectAllMessages() {
-    selectedMessageIndices.value.clear();
+    triggerSave();
   }
 
   async function deleteSelectedMessages() {
-    if (!activeChat.value || selectedMessageIndices.value.size === 0) return;
-
-    // Collect targets based on current selection
-    // Note: If we are in 'Free' mode, we might want to also delete the next message
-    // (typical user expectation for deleting a user query + bot response).
-    // If in 'Range' mode, the user sees exactly what is selected.
+    if (!activeChat.value || selectionStore.selectedMessageIndices.size === 0) return;
 
     const targets = new Set<number>();
     const maxIndex = activeChat.value.messages.length - 1;
 
-    for (const idx of selectedMessageIndices.value) {
+    for (const idx of selectionStore.selectedMessageIndices) {
       targets.add(idx);
-      // Logic from requirements: "Messages that user's selected and next one is deleted."
-      // We apply this generally, as it covers the most common use case.
-      // In Range mode (to bottom), this is redundant but harmless.
-      if (idx + 1 <= maxIndex) {
-        targets.add(idx + 1);
-      }
+      if (idx + 1 <= maxIndex) targets.add(idx + 1);
     }
 
-    const indicesToDelete = Array.from(targets).sort((a, b) => b - a); // Descending order to prevent index shift issues during splice
-
+    const indicesToDelete = Array.from(targets).sort((a, b) => b - a);
     const { result } = await popupStore.show({
       title: t('chat.delete.confirmBulkTitle'),
       content: t('chat.delete.confirmBulkContent', { count: indicesToDelete.length }),
@@ -703,33 +527,26 @@ export const useChatStore = defineStore('chat', () => {
     });
 
     if (result === POPUP_RESULT.AFFIRMATIVE) {
-      // Remove them
       for (const idx of indicesToDelete) {
         if (idx >= 0 && idx < activeChat.value.messages.length) {
           activeChat.value.messages.splice(idx, 1);
         }
       }
-
-      // Cleanup
-      selectedMessageIndices.value.clear();
-      isSelectionMode.value = false;
+      selectionStore.deselectAll();
+      selectionStore.isSelectionMode = false;
       cancelEditing();
 
       await nextTick();
       await eventEmitter.emit('message:deleted', indicesToDelete);
+      triggerSave();
     }
   }
 
   async function deleteSwipe(messageIndex: number, swipeIndex: number) {
     if (!activeChat.value || messageIndex < 0 || messageIndex >= activeChat.value.messages.length) return;
     const message = activeChat.value.messages[messageIndex];
-    if (
-      !message ||
-      !Array.isArray(message.swipes) ||
-      message.swipes.length <= 1 ||
-      swipeIndex < 0 ||
-      swipeIndex >= message.swipes.length
-    ) {
+
+    if (!message || !Array.isArray(message.swipes) || message.swipes.length <= 1) {
       throw new Error('cannot_delete_last_swipe');
     }
 
@@ -744,7 +561,6 @@ export const useChatStore = defineStore('chat', () => {
 
   function moveMessage(index: number, direction: 'up' | 'down') {
     if (!activeChat.value || index < 0 || index >= activeChat.value.messages.length) return;
-
     const newIndex = direction === 'up' ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= activeChat.value.messages.length) return;
 
@@ -753,38 +569,26 @@ export const useChatStore = defineStore('chat', () => {
       activeChat.value.messages[index],
     ];
 
-    if (activeMessageEditState.value) {
-      if (activeMessageEditState.value.index === index) {
-        activeMessageEditState.value.index = newIndex;
-      } else if (activeMessageEditState.value.index === newIndex) {
-        activeMessageEditState.value.index = index;
+    if (chatUiStore.activeMessageEditState) {
+      if (chatUiStore.activeMessageEditState.index === index) {
+        chatUiStore.activeMessageEditState.index = newIndex;
+      } else if (chatUiStore.activeMessageEditState.index === newIndex) {
+        chatUiStore.activeMessageEditState.index = index;
       }
     }
-    saveChatDebounced();
+    triggerSave();
   }
 
   return {
     activeChat,
     chatInfos,
     recentChats,
-    activeMessageEditState,
+    activeMessageEditState: computed(() => chatUiStore.activeMessageEditState),
+    isChatLoading: computed(() => chatUiStore.isChatLoading),
     isGenerating,
-    isChatLoading,
     activeChatFile,
-    isGroupChat,
     groupConfig,
     chatsMetadataByCharacterAvatars,
-    // Selection Mode
-    isSelectionMode,
-    selectionModeType,
-    selectedMessageIndices,
-    toggleSelectionMode,
-    setSelectionType,
-    toggleMessageSelection,
-    selectAllMessages,
-    deselectAllMessages,
-    deleteSelectedMessages,
-    // Actions
     clearChat,
     sendMessage,
     generateResponse,
@@ -799,13 +603,11 @@ export const useChatStore = defineStore('chat', () => {
     moveMessage,
     setActiveChatFile,
     createNewChatForCharacter,
-    toggleMemberMute,
-    addMember,
-    removeMember,
     toggleChatPersona,
     syncPersonaName,
     updateChatName,
     syncSwipeToMes,
-    saveChatDebounced,
+    triggerSave,
+    deleteSelectedMessages,
   };
 });

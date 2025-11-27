@@ -3,20 +3,24 @@ import { computed } from 'vue';
 import { useCharacterUiStore } from '../../stores/character-ui.store';
 import { useCharacterStore } from '../../stores/character.store';
 import { useChatStore } from '../../stores/chat.store';
-import { useUiStore } from '../../stores/ui.store';
+import { useComponentRegistryStore } from '../../stores/component-registry.store';
+import { useGroupChatStore } from '../../stores/group-chat.store';
+import { useLayoutStore } from '../../stores/layout.store';
 import { getThumbnailUrl } from '../../utils/character';
 import { formatTimeStamp } from '../../utils/commons';
 import { MainContentFullscreenToggle, SmartAvatar } from '../common';
 import { Button } from '../UI';
 
-const uiStore = useUiStore();
+const layoutStore = useLayoutStore();
+const componentRegistryStore = useComponentRegistryStore();
 const characterStore = useCharacterStore();
 const characterUiStore = useCharacterUiStore();
 const chatStore = useChatStore();
+const groupChatStore = useGroupChatStore();
 
 const firstCharacter = computed(() => characterStore.activeCharacters?.[0]);
 
-const isGroup = computed(() => chatStore.isGroupChat);
+const isGroup = computed(() => groupChatStore.isGroupChat);
 
 const headerTitle = computed(() => {
   if (isGroup.value) {
@@ -33,7 +37,9 @@ const avatarUrls = computed(() => {
 });
 
 const rightSidebarItems = computed(() =>
-  Array.from(uiStore.rightSidebarRegistry).filter(([, def]) => (def.layoutId ?? 'chat') === uiStore.activeMainLayout),
+  Array.from(componentRegistryStore.rightSidebarRegistry).filter(
+    ([, def]) => (def.layoutId ?? 'chat') === layoutStore.activeMainLayout,
+  ),
 );
 
 const lastMessageDate = computed(() => {
@@ -45,10 +51,10 @@ const lastMessageDate = computed(() => {
 
 function handleCharacterClick() {
   if (isGroup.value) {
-    uiStore.toggleRightSidebar('chat-management');
+    layoutStore.toggleRightSidebar('chat-management');
   } else if (firstCharacter.value) {
     characterUiStore.selectedCharacterAvatarForEditing = firstCharacter.value.avatar;
-    uiStore.activateNavBarItem('character');
+    layoutStore.activateNavBarItem('character');
   }
 }
 </script>
@@ -79,9 +85,9 @@ function handleCharacterClick() {
           variant="ghost"
           class="chat-header-icon"
           :icon="def.icon"
-          :active="uiStore.rightSidebarView === id"
+          :active="layoutStore.rightSidebarView === id"
           :title="def.title"
-          @click="uiStore.toggleRightSidebar(id)"
+          @click="layoutStore.toggleRightSidebar(id)"
         />
       </template>
     </div>

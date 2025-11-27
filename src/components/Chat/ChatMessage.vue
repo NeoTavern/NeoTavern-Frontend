@@ -5,6 +5,7 @@ import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
 import { GenerationMode } from '../../constants';
 import { useCharacterStore } from '../../stores/character.store';
+import { useChatSelectionStore } from '../../stores/chat-selection.store';
 import { useChatStore } from '../../stores/chat.store';
 import { usePopupStore } from '../../stores/popup.store';
 import { usePromptStore } from '../../stores/prompt.store';
@@ -34,6 +35,7 @@ const { t } = useStrictI18n();
 const characterStore = useCharacterStore();
 const uiStore = useUiStore();
 const chatStore = useChatStore();
+const chatSelectionStore = useChatSelectionStore();
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
 const promptStore = usePromptStore();
@@ -47,12 +49,12 @@ const isEditing = computed(() => chatStore.activeMessageEditState?.index === pro
 const hasReasoning = computed(() => props.message.extra?.reasoning && props.message.extra.reasoning.trim().length > 0);
 const hasItemizedPrompt = computed(() => !!promptStore.getItemizedPrompt(props.index));
 
-const isSelectionMode = computed(() => chatStore.isSelectionMode);
-const isSelected = computed(() => chatStore.selectedMessageIndices.has(props.index));
+const isSelectionMode = computed(() => chatSelectionStore.isSelectionMode);
+const isSelected = computed(() => chatSelectionStore.selectedMessageIndices.has(props.index));
 
 function handleSelectionClick() {
   if (isSelectionMode.value) {
-    chatStore.toggleMessageSelection(props.index);
+    chatSelectionStore.toggleMessageSelection(props.index, chatStore.activeChat!.messages.length);
   }
 }
 

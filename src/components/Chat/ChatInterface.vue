@@ -6,6 +6,7 @@ import { toast } from '../../composables/useToast';
 import { GenerationMode } from '../../constants';
 import { convertCharacterBookToWorldInfoBook } from '../../services/world-info';
 import { useCharacterStore } from '../../stores/character.store';
+import { useChatSelectionStore } from '../../stores/chat-selection.store';
 import { useChatStore } from '../../stores/chat.store';
 import { usePopupStore } from '../../stores/popup.store';
 import { usePromptStore } from '../../stores/prompt.store';
@@ -18,6 +19,7 @@ import ChatMessage from './ChatMessage.vue';
 const chatStore = useChatStore();
 const settingsStore = useSettingsStore();
 const characterStore = useCharacterStore();
+const chatSelectionStore = useChatSelectionStore();
 const worldInfoStore = useWorldInfoStore();
 const popupStore = usePopupStore();
 const promptStore = usePromptStore();
@@ -53,21 +55,21 @@ function continueGeneration() {
 }
 
 function toggleSelectionMode() {
-  chatStore.toggleSelectionMode();
+  chatSelectionStore.toggleSelectionMode();
   isOptionsMenuVisible.value = false;
 }
 
 function toggleSelectionType() {
-  const newType = chatStore.selectionModeType === 'free' ? 'range' : 'free';
-  chatStore.setSelectionType(newType);
+  const newType = chatSelectionStore.selectionModeType === 'free' ? 'range' : 'free';
+  chatSelectionStore.setSelectionType(newType);
 }
 
 const selectionModeIcon = computed(() =>
-  chatStore.selectionModeType === 'free' ? 'fa-hand-pointer' : 'fa-arrow-down-long',
+  chatSelectionStore.selectionModeType === 'free' ? 'fa-hand-pointer' : 'fa-arrow-down-long',
 );
 
 const selectionModeTitle = computed(() =>
-  chatStore.selectionModeType === 'free' ? t('chat.selection.modeFree') : t('chat.selection.modeRange'),
+  chatSelectionStore.selectionModeType === 'free' ? t('chat.selection.modeFree') : t('chat.selection.modeRange'),
 );
 
 function handleKeydown(event: KeyboardEvent) {
@@ -204,7 +206,7 @@ watch(
     </div>
     <div class="chat-interface-form-container">
       <!-- Standard Chat Form -->
-      <div v-if="!chatStore.isSelectionMode" id="chat-form" class="chat-form">
+      <div v-if="!chatSelectionStore.isSelectionMode" id="chat-form" class="chat-form">
         <div class="chat-form-inner">
           <div class="chat-form-actions-left">
             <Button
@@ -271,7 +273,9 @@ watch(
       <div v-else class="selection-toolbar">
         <div class="selection-info">
           <span
-            >{{ chatStore.selectedMessageIndices.size }} {{ t('common.selected') }} ({{ t('chat.delete.plusOne') }})
+            >{{ chatSelectionStore.selectedMessageIndices.size }} {{ t('common.selected') }} ({{
+              t('chat.delete.plusOne')
+            }})
           </span>
         </div>
         <div class="selection-actions">
@@ -286,10 +290,10 @@ watch(
 
           <div class="separator-vertical"></div>
 
-          <Button variant="ghost" :title="t('common.selectAll')" @click="chatStore.selectAllMessages">
+          <Button variant="ghost" :title="t('common.selectAll')" @click="chatSelectionStore.selectAll">
             {{ t('common.selectAll') }}
           </Button>
-          <Button variant="ghost" :title="t('common.none')" @click="chatStore.deselectAllMessages">
+          <Button variant="ghost" :title="t('common.none')" @click="chatSelectionStore.deselectAll">
             {{ t('common.none') }}
           </Button>
           <Button variant="danger" icon="fa-trash" @click="chatStore.deleteSelectedMessages">

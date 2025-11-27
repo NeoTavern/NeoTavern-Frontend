@@ -14,13 +14,14 @@ import { PROVIDER_CAPABILITIES } from '../api/provider-definitions';
 import { useStrictI18n } from '../composables/useStrictI18n';
 import { toast } from '../composables/useToast';
 import { defaultPrompts } from '../constants';
+import { migrateExperimentalPreset } from '../services/settings-migration.service';
 import type { ApiModel, ConnectionProfile, LegacyOaiPresetSettings, SamplerSettings } from '../types';
 import { api_providers, POPUP_RESULT, POPUP_TYPE } from '../types';
 import type { InstructTemplate } from '../types/instruct';
 import { downloadFile, readFileAsText, uuidv4 } from '../utils/commons';
 import { usePopupStore } from './popup.store';
 import { useSecretStore } from './secret.store';
-import { migrateExperimentalPreset, useSettingsStore } from './settings.store';
+import { useSettingsStore } from './settings.store';
 
 export const useApiStore = defineStore('api', () => {
   const { t } = useStrictI18n();
@@ -35,7 +36,6 @@ export const useApiStore = defineStore('api', () => {
 
   const instructTemplates = ref<InstructTemplate[]>([]);
 
-  // --- Connection Profiles ---
   const connectionProfiles = computed({
     get: () => settingsStore.settings.api.connectionProfiles,
     set: (value) => (settingsStore.settings.api.connectionProfiles = value),
@@ -55,11 +55,9 @@ export const useApiStore = defineStore('api', () => {
     if (settingsStore.settings.api.provider !== api_providers.OPENROUTER || modelList.value.length === 0) {
       return null;
     }
-    // TODO: implement sorting from settings
     const sortedList = [...modelList.value].sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id));
 
-    // Group by vendor
-    const vendors = sortedList.reduce(
+    return sortedList.reduce(
       (acc, model) => {
         const vendor = model.id.split('/')[0];
         if (!acc[vendor]) {
@@ -70,81 +68,67 @@ export const useApiStore = defineStore('api', () => {
       },
       {} as Record<string, ApiModel[]>,
     );
-
-    return vendors;
   });
 
   async function initialize() {
     await settingsStore.waitForSettings();
-
-    // Auto-connect on start
     await connect();
   }
 
-  // When the user selects a different connection profile, apply its settings as a one-time action.
-  watch(selectedConnectionProfileName, (profileName) => {
-    if (settingsStore.settingsInitializing) return;
+  function selectConnectionProfile(profileName: string) {
+    settingsStore.settings.api.selectedConnectionProfile = profileName;
 
     const profile = connectionProfiles.value.find((p) => p.name === profileName);
-    if (profile) {
-      // Apply profile settings to the main settings state, only overriding defined fields.
-      if (profile.provider) settingsStore.settings.api.provider = profile.provider;
-      if (profile.sampler) settingsStore.settings.api.selectedSampler = profile.sampler;
-      if (profile.model) {
-        const provider = profile.provider ?? settingsStore.settings.api.provider;
-        settingsStore.settings.api.selectedProviderModels[provider] = profile.model;
-      }
-      if (profile.formatter) {
-        settingsStore.settings.api.formatter = profile.formatter;
-      }
-      if (profile.instructTemplate) {
-        settingsStore.settings.api.instructTemplateName = profile.instructTemplate;
-      }
-      if (profile.customPromptPostProcessing !== undefined) {
-        settingsStore.settings.api.customPromptPostProcessing = profile.customPromptPostProcessing;
-      }
+    if (!profile) return;
 
-      const caps = PROVIDER_CAPABILITIES[settingsStore.settings.api.provider];
-      if (caps) {
-        if (!caps.supportsText && settingsStore.settings.api.formatter === 'text') {
-          settingsStore.settings.api.formatter = 'chat';
-        } else if (!caps.supportsChat && settingsStore.settings.api.formatter === 'chat') {
-          settingsStore.settings.api.formatter = 'text';
-        }
-      }
-
-      // After applying, reconnect to validate the new settings.
-      connect();
+    if (profile.provider) settingsStore.settings.api.provider = profile.provider;
+    if (profile.sampler) settingsStore.settings.api.selectedSampler = profile.sampler;
+    if (profile.model) {
+      const provider = profile.provider ?? settingsStore.settings.api.provider;
+      settingsStore.settings.api.selectedProviderModels[provider] = profile.model;
     }
-  });
+    if (profile.formatter) {
+      settingsStore.settings.api.formatter = profile.formatter;
+    }
+    if (profile.instructTemplate) {
+      settingsStore.settings.api.instructTemplateName = profile.instructTemplate;
+    }
+    if (profile.customPromptPostProcessing !== undefined) {
+      settingsStore.settings.api.customPromptPostProcessing = profile.customPromptPostProcessing;
+    }
 
-  // When the main API or provider changes manually, try to reconnect
+    validateFormatterCapabilities(settingsStore.settings.api.provider);
+    connect();
+  }
+
+  function validateFormatterCapabilities(provider: string) {
+    const caps = PROVIDER_CAPABILITIES[provider];
+    if (caps) {
+      if (!caps.supportsText && settingsStore.settings.api.formatter === 'text') {
+        settingsStore.settings.api.formatter = 'chat';
+      } else if (!caps.supportsChat && settingsStore.settings.api.formatter === 'chat') {
+        settingsStore.settings.api.formatter = 'text';
+      }
+    }
+  }
+
+  // Keep watching provider changes from other sources (like UI dropdowns not using profiles)
   watch(
-    () => [settingsStore.settings.api.provider],
-    ([newProvider], [oldProvider]) => {
+    () => settingsStore.settings.api.provider,
+    (newProvider, oldProvider) => {
       if (settingsStore.settingsInitializing) return;
-      // Only connect if the actual values have changed
       if (newProvider !== oldProvider) {
-        const caps = PROVIDER_CAPABILITIES[newProvider];
-        if (caps) {
-          if (!caps.supportsText && settingsStore.settings.api.formatter === 'text') {
-            settingsStore.settings.api.formatter = 'chat';
-          } else if (!caps.supportsChat && settingsStore.settings.api.formatter === 'chat') {
-            settingsStore.settings.api.formatter = 'text';
-          }
-        }
-
+        validateFormatterCapabilities(newProvider);
         connect();
       }
     },
   );
 
-  // When the user selects a different preset, apply its settings
+  // Watch for sampler changes
   watch(
     () => settingsStore.settings.api.selectedSampler,
     (newPresetName) => {
       if (settingsStore.settingsInitializing || !newPresetName) return;
-
       const preset = presets.value.find((p) => p.name === newPresetName);
       if (preset) {
         settingsStore.settings.api.samplers = { ...preset.preset };
@@ -152,6 +136,7 @@ export const useApiStore = defineStore('api', () => {
     },
   );
 
+  // Watch Proxy changes
   watch(
     () => settingsStore.settings.api.proxy.id,
     (newId, oldId) => {
@@ -179,16 +164,12 @@ export const useApiStore = defineStore('api', () => {
       if (!value) continue;
 
       const activeSecret = secretStore.getActiveSecret(key);
-      // Reuse the existing label or default to Manual Entry
       const label = activeSecret ? activeSecret.label : `Manual Entry ${new Date().toLocaleDateString()}`;
 
-      // Create the new secret
       const newId = await secretStore.createSecret(key, value, label);
 
       if (newId) {
-        // Activate it
         await secretStore.rotateSecret(key, newId);
-        // Clear pending input
         delete secretStore.pendingSecrets[key];
       }
     }
@@ -201,12 +182,9 @@ export const useApiStore = defineStore('api', () => {
     onlineStatus.value = t('api.status.connecting');
 
     try {
-      // Process any manual secret keys entered by the user
       await processPendingSecrets();
 
       const apiSettings = settingsStore.settings.api;
-
-      // TODO: Implement secret management. For now, we pass the key directly.
       const response = await fetchChatCompletionStatus({
         chat_completion_source: apiSettings.provider,
         reverse_proxy: apiSettings.proxy?.url,
@@ -219,12 +197,9 @@ export const useApiStore = defineStore('api', () => {
 
       if (response.data && Array.isArray(response.data)) {
         modelList.value = response.data;
-
-        // Check if current model selection is still valid
         const provider = apiSettings.provider;
         const availableModels = modelList.value.map((m) => m.id);
 
-        // TODO: Add dynamic models for other providers
         if (provider === api_providers.OPENAI) {
           const openaiModel = apiSettings.selectedProviderModels.openai;
           if (!availableModels.includes(openaiModel ?? '')) {
@@ -243,10 +218,11 @@ export const useApiStore = defineStore('api', () => {
 
       onlineStatus.value = response.bypass ? t('api.status.bypassed') : t('api.status.valid');
       toast.success(t('api.connectSuccess'));
+    } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
+      const msg = (error as any).message || t('api.connectFailed');
       onlineStatus.value = t('api.status.noConnection');
-      toast.error(error.message || t('api.connectFailed'));
+      toast.error(msg);
       console.error(error);
     } finally {
       isConnecting.value = false;
@@ -264,9 +240,7 @@ export const useApiStore = defineStore('api', () => {
 
   async function saveCurrentPresetAs(name: string) {
     try {
-      // Create a clean preset object from current samplers
       const presetData: SamplerSettings = { ...settingsStore.settings.api.samplers };
-
       await saveExperimentalPreset(name, presetData);
       await loadPresetsForApi();
       settingsStore.settings.api.selectedSampler = name;
@@ -300,7 +274,6 @@ export const useApiStore = defineStore('api', () => {
         const presetToRename = presets.value.find((p) => p.name === oldName);
         if (!presetToRename) throw new Error('Preset not found');
 
-        // Rename is a delete and save operation
         await apideleteExperimentalPreset(oldName);
         await saveExperimentalPreset(newName, presetToRename.preset);
 
@@ -351,9 +324,7 @@ export const useApiStore = defineStore('api', () => {
         let presetData = JSON.parse(content);
         const name = file.name.replace(/\.json$/, '');
 
-        // Detect legacy preset
         if ('openai_max_context' in presetData || 'prompt_order' in presetData) {
-          console.log('Legacy preset detected, migrating...', name);
           try {
             presetData = migrateExperimentalPreset(presetData as LegacyOaiPresetSettings);
             toast.success('Legacy preset migrated successfully.'); // TODO: i18n
@@ -391,7 +362,6 @@ export const useApiStore = defineStore('api', () => {
     downloadFile(content, `${name}.json`, 'application/json');
   }
 
-  // --- Connection Profile Management ---
   async function createConnectionProfile(profileData: Omit<ConnectionProfile, 'id'>) {
     if (connectionProfiles.value.some((p) => p.name === profileData.name)) {
       toast.error(t('apiConnections.profileManagement.errors.nameExists'));
@@ -403,7 +373,7 @@ export const useApiStore = defineStore('api', () => {
       id: uuidv4(),
     };
     connectionProfiles.value = [...connectionProfiles.value, newProfile];
-    selectedConnectionProfileName.value = newProfile.name;
+    selectConnectionProfile(newProfile.name);
   }
 
   async function renameConnectionProfile() {
@@ -423,8 +393,8 @@ export const useApiStore = defineStore('api', () => {
       const profile = connectionProfiles.value.find((p) => p.name === oldName);
       if (profile) {
         profile.name = newName;
-        connectionProfiles.value = [...connectionProfiles.value]; // Trigger reactivity
-        selectedConnectionProfileName.value = newName;
+        connectionProfiles.value = [...connectionProfiles.value];
+        selectConnectionProfile(newName);
       }
     }
   }
@@ -449,7 +419,6 @@ export const useApiStore = defineStore('api', () => {
   }
 
   function importConnectionProfiles() {
-    // TODO: Implement import logic
     toast.info('Importing profiles is not yet implemented.');
   }
 
@@ -465,8 +434,6 @@ export const useApiStore = defineStore('api', () => {
       downloadFile(content, `${name}-profile.json`, 'application/json');
     }
   }
-
-  // --- Prompt Management ---
 
   function updatePromptContent(identifier: string, content: string) {
     const prompt = settingsStore.settings.api.samplers.prompts?.find((p) => p.identifier === identifier);
@@ -556,7 +523,6 @@ export const useApiStore = defineStore('api', () => {
     exportPreset,
     updatePromptContent,
     resetPrompts,
-    // Connection Profiles
     connectionProfiles,
     selectedConnectionProfileName,
     createConnectionProfile,
@@ -564,7 +530,7 @@ export const useApiStore = defineStore('api', () => {
     deleteConnectionProfile,
     importConnectionProfiles,
     exportConnectionProfile,
-    // Instruct
+    selectConnectionProfile,
     instructTemplates,
     loadInstructTemplates,
     saveInstructTemplate,

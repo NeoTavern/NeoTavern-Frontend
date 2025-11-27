@@ -29,6 +29,8 @@ import { useWorldInfoStore } from '../stores/world-info.store';
 import VanillaSidebar from '../components/Shared/VanillaSidebar.vue';
 import { PromptBuilder } from '../services/prompt-engine';
 import { WorldInfoProcessor } from '../services/world-info';
+import { useComponentRegistryStore } from '../stores/component-registry.store';
+import { useLayoutStore } from '../stores/layout.store';
 
 // --- Event Emitter ---
 
@@ -339,16 +341,16 @@ const baseExtensionAPI: ExtensionAPI = {
   ui: {
     showToast: (message, type = 'info') => toast[type](message),
     openDrawer: (panelName) => {
-      useUiStore().activeDrawer = panelName;
+      useLayoutStore().activeDrawer = panelName;
     },
     closePanel: () => {
-      useUiStore().activeDrawer = null;
+      useLayoutStore().activeDrawer = null;
     },
     showPopup: (options) => usePopupStore().show(options),
     registerSidebar: async (id, component, side, options = {}) => {
       const effectiveComponent = component || VanillaSidebar;
       const effectiveProps = component ? options.props : { id, ...options.props };
-      useUiStore().registerSidebar(
+      useComponentRegistryStore().registerSidebar(
         id,
         {
           component: effectiveComponent,
@@ -363,7 +365,7 @@ const baseExtensionAPI: ExtensionAPI = {
       return id;
     },
     registerNavBarItem: async (id, options) => {
-      useUiStore().registerNavBarItem(id, {
+      useComponentRegistryStore().registerNavBarItem(id, {
         icon: options.icon,
         title: options.title,
         component: options.component ?? undefined,
@@ -373,7 +375,7 @@ const baseExtensionAPI: ExtensionAPI = {
       await Vue.nextTick();
       return id;
     },
-    openSidebar: (id) => useUiStore().toggleRightSidebar(id),
+    openSidebar: (id) => useLayoutStore().toggleRightSidebar(id),
     mountComponent: async (container, componentName, props) => {
       if (!container) return;
       const componentLoader = mountableComponents[componentName];
@@ -532,7 +534,7 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
       const namespacedId = id.startsWith(extensionId) ? id : `${extensionId}.${id}`;
       const effectiveComponent = component || VanillaSidebar;
       const effectiveProps = component ? options.props : { id: namespacedId, ...options.props };
-      useUiStore().registerSidebar(
+      useComponentRegistryStore().registerSidebar(
         namespacedId,
         {
           component: effectiveComponent,
@@ -557,7 +559,7 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
       },
     ) => {
       const namespacedId = id.startsWith(extensionId) ? id : `${extensionId}.${id}`;
-      useUiStore().registerNavBarItem(namespacedId, {
+      useComponentRegistryStore().registerNavBarItem(namespacedId, {
         icon: options.icon,
         title: options.title,
         component: options.component ?? undefined,
@@ -568,11 +570,12 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
       return namespacedId;
     },
     openSidebar: (id: string) => {
-      const store = useUiStore();
-      if (store.rightSidebarRegistry.has(id)) store.toggleRightSidebar(id);
+      const layoutStore = useLayoutStore();
+      const componentRegistryStore = useComponentRegistryStore();
+      if (componentRegistryStore.rightSidebarRegistry.has(id)) layoutStore.toggleRightSidebar(id);
       else {
         const namespacedId = `${extensionId}.${id}`;
-        if (store.rightSidebarRegistry.has(namespacedId)) store.toggleRightSidebar(namespacedId);
+        if (componentRegistryStore.rightSidebarRegistry.has(namespacedId)) layoutStore.toggleRightSidebar(namespacedId);
       }
     },
   };
