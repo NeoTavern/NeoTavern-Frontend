@@ -3,7 +3,7 @@ import { cloneDeep } from 'lodash-es';
 import { computed, ref } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
-import type { Prompt } from '../../types';
+import type { KnownPromptIdentifiers, Prompt } from '../../types';
 import { DraggableList, EmptyState } from '../common';
 import { Button, FormItem, Input, Select, Textarea } from '../UI';
 
@@ -29,7 +29,7 @@ function createNewPrompt() {
   const id = `global-${Date.now()}`;
   const newPrompt: Prompt = {
     name: 'New Global Prompt',
-    identifier: id,
+    identifier: id as KnownPromptIdentifiers,
     role: 'system',
     content: '',
     enabled: true,

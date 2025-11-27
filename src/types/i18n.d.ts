@@ -125,18 +125,10 @@ export interface MessageSchema {
     activeWorldsHint: string;
     globalSettings: string;
     activationSettings: string;
-    advancedSettings: string;
     scanDepth: string;
     contextPercent: string;
     budgetCap: string;
     budgetCapHint: string;
-    insertionStrategy: string;
-    insertionStrategyHint: string;
-    insertionStrategies: {
-      sortedEvenly: string;
-      characterLoreFirst: string;
-      globalLoreFirst: string;
-    };
     includeNames: string;
     includeNamesHint: string;
     recursiveScan: string;

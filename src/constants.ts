@@ -1,12 +1,14 @@
 import {
   type ApiProvider,
   type Character,
+  type KnownPromptIdentifiers,
   type Prompt,
   type SamplerSettings,
   type Settings,
   type WorldInfoSettings,
 } from './types';
 import { NamesBehavior, type InstructTemplate } from './types/instruct';
+import { uuidv4 } from './utils/commons';
 
 export enum CustomPromptPostProcessing {
   NONE = '',
@@ -246,7 +248,7 @@ export const FRIENDLY_SECRET_NAMES: Record<string, string> = {
 
 export const defaultPrompts: Prompt[] = [
   {
-    identifier: 'main',
+    identifier: uuidv4() as KnownPromptIdentifiers, // yeah yeah
     name: 'Main Prompt',
     role: 'system',
     content: "Write {{char}}'s next reply in a fictional chat between {{char}} and {{user}}.",
@@ -539,12 +541,6 @@ export enum WorldInfoLogic {
   AND_ALL = 3,
 }
 
-export enum WorldInfoInsertionStrategy {
-  EVENLY = 0,
-  CHARACTER_FIRST = 1,
-  GLOBAL_FIRST = 2,
-}
-
 export enum WorldInfoRole {
   SYSTEM = 0,
   USER = 1,
@@ -562,7 +558,6 @@ export const defaultWorldInfoSettings: WorldInfoSettings = {
   overflowAlert: false,
   caseSensitive: false,
   matchWholeWords: false,
-  characterStrategy: WorldInfoInsertionStrategy.CHARACTER_FIRST,
   budgetCap: 0,
   useGroupScoring: false,
   maxRecursionSteps: 0,

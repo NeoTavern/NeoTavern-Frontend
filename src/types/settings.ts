@@ -36,8 +36,18 @@ export interface LegacyPromptOrderConfig {
   }[];
 }
 
+export type KnownPromptIdentifiers =
+  | 'chatHistory'
+  | 'charDescription'
+  | 'charPersonality'
+  | 'scenario'
+  | 'dialogueExamples'
+  | 'worldInfoBefore'
+  | 'worldInfoAfter'
+  | 'personaDescription'
+  | 'jailbreak';
 export interface Prompt {
-  identifier: string;
+  identifier: string & KnownPromptIdentifiers; // i know
   name: string;
   role?: MessageRole;
   content: string;

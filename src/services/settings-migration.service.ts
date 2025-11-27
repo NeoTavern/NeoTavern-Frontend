@@ -14,6 +14,7 @@ import {
 } from '../constants';
 import { settingsDefinition } from '../settings-definition';
 import {
+  type KnownPromptIdentifiers,
   type LegacyOaiPresetSettings,
   type LegacySettings,
   type Persona,
@@ -76,6 +77,7 @@ export function migrateExperimentalPreset(legacyPreset: LegacyOaiPresetSettings)
       if (def) {
         migratedPrompts.push({
           ...def,
+          identifier: def.identifier as KnownPromptIdentifiers,
           content: def.content || '',
           enabled: item.enabled,
           marker: def.marker ?? false,
@@ -135,6 +137,7 @@ function collectPromptsFromLegacyPresets(presets: LegacyOaiPresetSettings[]): Pr
         }
         promptMap.set(prompt.identifier, {
           ...prompt,
+          identifier: prompt.identifier as KnownPromptIdentifiers,
           content: prompt.content || '',
           enabled: false,
           marker: prompt.marker ?? false,
@@ -328,8 +331,6 @@ export function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSett
       caseSensitive: legacy.world_info_settings.world_info_case_sensitive ?? defaultWorldInfoSettings.caseSensitive,
       matchWholeWords:
         legacy.world_info_settings.world_info_match_whole_words ?? defaultWorldInfoSettings.matchWholeWords,
-      characterStrategy:
-        legacy.world_info_settings.world_info_character_strategy ?? defaultWorldInfoSettings.characterStrategy,
       budgetCap: legacy.world_info_settings.world_info_budget_cap ?? defaultWorldInfoSettings.budgetCap,
       useGroupScoring:
         legacy.world_info_settings.world_info_use_group_scoring ?? defaultWorldInfoSettings.useGroupScoring,

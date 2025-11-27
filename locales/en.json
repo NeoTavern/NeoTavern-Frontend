@@ -122,18 +122,10 @@
     "activeWorldsHint": "These lorebooks will be active in all chats unless overridden by character/chat-specific settings.",
     "globalSettings": "Global Settings",
     "activationSettings": "Activation Settings",
-    "advancedSettings": "Advanced Settings",
     "scanDepth": "Scan Depth",
     "contextPercent": "Context %",
     "budgetCap": "Budget Cap",
     "budgetCapHint": "(0 = disabled)",
-    "insertionStrategy": "Insertion Strategy",
-    "insertionStrategyHint": "Determines the order in which lore from different providers is inserted into the context.",
-    "insertionStrategies": {
-      "sortedEvenly": "Sorted Evenly",
-      "characterLoreFirst": "Character Lore First",
-      "globalLoreFirst": "Global Lore First"
-    },
     "includeNames": "Include Names",
     "includeNamesHint": "Include names with each message into the context for scanning",
     "recursiveScan": "Recursive Scan",

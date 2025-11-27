@@ -5,7 +5,7 @@ import { useStrictI18n } from '../../composables/useStrictI18n';
 import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { MessageRole } from '../../types';
-import type { Prompt } from '../../types/settings';
+import type { KnownPromptIdentifiers, Prompt } from '../../types/settings';
 import { DraggableList, EmptyState } from '../common';
 import { Button, FormItem, Input, Select, Textarea } from '../UI';
 import GlobalPromptManager from './GlobalPromptManager.vue';
@@ -56,7 +56,7 @@ function addFromLibrary(identifier: string) {
   if (!original) return;
 
   const clone: Prompt = cloneDeep(original);
-  clone.identifier = `${original.identifier}-${Date.now()}`;
+  clone.identifier = `${original.identifier}-${Date.now()}` as KnownPromptIdentifiers;
   clone.enabled = true;
 
   presetPrompts.value = [...presetPrompts.value, clone];
@@ -69,7 +69,7 @@ function createNewPrompt() {
   const id = `custom-${Date.now()}`;
   const newPrompt: Prompt = {
     name: 'New Prompt',
-    identifier: id,
+    identifier: id as KnownPromptIdentifiers,
     content: '',
     role: 'system',
     enabled: true,

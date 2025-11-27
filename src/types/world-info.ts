@@ -1,4 +1,4 @@
-import type { WorldInfoInsertionStrategy, WorldInfoLogic, WorldInfoPosition, WorldInfoRole } from '../constants';
+import type { WorldInfoLogic, WorldInfoPosition, WorldInfoRole } from '../constants';
 import type { Character } from './character';
 import type { ChatMessage } from './chat';
 import type { MessageRole } from './common';
@@ -73,7 +73,6 @@ export interface LegacyWorldInfoSettings {
   world_info_overflow_alert: boolean;
   world_info_case_sensitive: boolean;
   world_info_match_whole_words: boolean;
-  world_info_character_strategy: WorldInfoInsertionStrategy;
   world_info_budget_cap: number;
   world_info_use_group_scoring: boolean;
   world_info_max_recursion_steps: number;
@@ -90,7 +89,6 @@ export interface ExperimentalWorldInfoSettings {
   overflowAlert: boolean;
   caseSensitive: boolean;
   matchWholeWords: boolean;
-  characterStrategy: WorldInfoInsertionStrategy;
   budgetCap: number;
   useGroupScoring: boolean;
   maxRecursionSteps: number;

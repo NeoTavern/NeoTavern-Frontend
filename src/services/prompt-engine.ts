@@ -204,6 +204,21 @@ export class PromptBuilder {
           case 'worldInfoAfter':
             if (worldInfoAfter) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content: worldInfoAfter });
             break;
+          case 'personaDescription': {
+            const content = this.persona.description || '';
+            if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
+            break;
+          }
+          case 'jailbreak': {
+            let content = '';
+            if (isGroupContext) {
+              content = this.getContent((c) => c.data?.post_history_instructions ?? '');
+            } else {
+              content = this.character.data?.post_history_instructions || '';
+            }
+            if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
+            break;
+          }
         }
       } else {
         if (promptDefinition.content && promptDefinition.role) {

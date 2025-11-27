@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
-import { defaultWorldInfoSettings, WorldInfoInsertionStrategy } from '../../constants';
+import { defaultWorldInfoSettings } from '../../constants';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useWorldInfoStore } from '../../stores/world-info.store';
 import { Button, Checkbox, FormItem, RangeControl, Select } from '../UI';
@@ -18,12 +18,6 @@ function resetToDefaults() {
     activeBookNames: settingsStore.settings.worldInfo.activeBookNames,
   };
 }
-
-const strategyOptions = computed(() => [
-  { value: WorldInfoInsertionStrategy.EVENLY, label: t('worldInfo.insertionStrategies.sortedEvenly') },
-  { value: WorldInfoInsertionStrategy.CHARACTER_FIRST, label: t('worldInfo.insertionStrategies.characterLoreFirst') },
-  { value: WorldInfoInsertionStrategy.GLOBAL_FIRST, label: t('worldInfo.insertionStrategies.globalLoreFirst') },
-]);
 
 const bookOptions = computed(() => {
   return worldInfoStore.bookInfos.map((bookInfo) => ({
@@ -116,20 +110,6 @@ const bookOptions = computed(() => {
           />
         </div>
       </div>
-    </div>
-
-    <hr />
-
-    <div class="settings-section">
-      <h4>{{ t('worldInfo.advancedSettings') }}</h4>
-      <FormItem>
-        <Select
-          v-model="settingsStore.settings.worldInfo.characterStrategy"
-          :label="t('worldInfo.insertionStrategy')"
-          :title="t('worldInfo.insertionStrategyHint')"
-          :options="strategyOptions"
-        />
-      </FormItem>
     </div>
   </div>
 </template>
