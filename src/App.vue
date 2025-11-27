@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, type CSSProperties } from 'vue';
+import { listChats, listRecentChats } from './api/chat';
 import CharacterPanel from './components/CharacterPanel/CharacterPanel.vue';
 import ChatManagement from './components/Chat/ChatManagement.vue';
 import RecentChats from './components/Chat/RecentChats.vue';
@@ -15,6 +16,7 @@ import Popup from './components/Popup/Popup.vue';
 import Sidebar from './components/Shared/Sidebar.vue';
 import { useStrictI18n } from './composables/useStrictI18n';
 import { useBackgroundStore } from './stores/background.store';
+import { useChatStore } from './stores/chat.store';
 import { useComponentRegistryStore } from './stores/component-registry.store';
 import { useExtensionStore } from './stores/extension.store';
 import { useLayoutStore } from './stores/layout.store';
@@ -29,6 +31,7 @@ const registryStore = useComponentRegistryStore();
 const backgroundStore = useBackgroundStore();
 const extensionStore = useExtensionStore();
 const secretStore = useSecretStore();
+const chatStore = useChatStore();
 const { t } = useStrictI18n();
 
 const backgroundStyle = computed<CSSProperties>(() => {
@@ -80,10 +83,12 @@ const activeRightSidebars = computed(() =>
   ),
 );
 
-onMounted(() => {
+onMounted(async () => {
   settingsStore.initializeSettings();
   extensionStore.initializeExtensions();
   secretStore.fetchSecrets();
+  chatStore.chatInfos = await listChats();
+  chatStore.recentChats = await listRecentChats();
 
   // Register Left Sidebar
   registryStore.registerSidebar(

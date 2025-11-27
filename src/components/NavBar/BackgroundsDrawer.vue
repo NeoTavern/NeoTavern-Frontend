@@ -188,8 +188,6 @@ onMounted(() => {
           </div>
         </div>
       </div>
-
-      <!-- TODO: Implement Chat Backgrounds -->
     </div>
 
     <button class="backgrounds-drawer-scroll-top" :class="{ visible: isScrolled }" @click="scrollToTop">

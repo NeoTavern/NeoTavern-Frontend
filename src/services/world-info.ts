@@ -13,10 +13,18 @@ import type {
   WorldInfoSettings,
 } from '../types';
 import { eventEmitter } from '../utils/extensions';
+import { macroService } from './macro-service';
 
 const DEFAULT_DEPTH = 4;
 const DEFAULT_WEIGHT = 100;
-const MAX_SCAN_DEPTH = 1000;
+const MAX_SCAN_DEPTH = 100;
+
+enum ScanState {
+  NONE = 0,
+  INITIAL = 1,
+  RECURSION = 2,
+  MIN_ACTIVATIONS = 3,
+}
 
 // --- Factory & Conversion Logic ---
 
@@ -166,6 +174,9 @@ export function convertWorldInfoBookToCharacterBook(wiBook: WorldInfoBook): Char
         match_character_depth_prompt: entry.matchCharacterDepthPrompt,
         match_scenario: entry.matchScenario,
         match_creator_notes: entry.matchCreatorNotes,
+        characterFilterNames: entry.characterFilterNames,
+        characterFilterTags: entry.characterFilterTags,
+        characterFilterExclude: entry.characterFilterExclude,
         triggers: entry.triggers,
         ignore_budget: entry.ignoreBudget,
       },
@@ -181,49 +192,14 @@ interface ProcessingEntry extends WorldInfoEntry {
   world: string;
 }
 
-function substitute(text: string, chars: Character[], persona: Persona): string {
-  if (!text) return '';
-  if (!text.includes('{{')) return text;
-
-  try {
-    const context = {
-      user: persona.name,
-      char: chars.length > 0 ? chars[0].name : '',
-      chars: chars.map((c) => c.name),
-      description: chars.length > 0 ? chars[0].description : '',
-      personality: chars.length > 0 ? chars[0].personality : '',
-      scenario: chars.length > 0 ? chars[0].scenario : '',
-      persona: persona.description,
-    };
-
-    // Register each field as a helper that returns its value
-    Object.entries(context).forEach(([key, value]) => {
-      Handlebars.registerHelper(key, () => value);
-    });
-
-    const template = Handlebars.compile(text, { noEscape: true });
-    const result = template(context);
-
-    // Unregister helpers to avoid conflicts
-    Object.keys(context).forEach((key) => {
-      Handlebars.unregisterHelper(key);
-    });
-
-    return result;
-  } catch (e) {
-    console.warn('Failed to compile Handlebars template for prompt:', e);
-    return text;
-  }
-}
-
 class WorldInfoBuffer {
   #depthBuffer: string[] = [];
   #recurseBuffer: string[] = [];
+  #injectBuffer: string[] = [];
   #settings: WorldInfoSettings;
   #character: Character;
   #persona: Persona;
-  #cachedFullString: string | null = null;
-  #cachedRecursionString: string | null = null;
+  #skew = 0;
 
   constructor(chat: ChatMessage[], settings: WorldInfoSettings, characters: Character[], persona: Persona) {
     this.#settings = settings;
@@ -244,31 +220,26 @@ class WorldInfoBuffer {
     return caseSensitive ? str : str.toLowerCase();
   }
 
-  get(entry: WorldInfoEntry): string {
-    const depth = entry.scanDepth ?? this.#settings.depth;
-    let buffer = '';
+  get(entry: WorldInfoEntry, scanState: ScanState): string {
+    const entryScanDepth = entry.scanDepth ?? this.#settings.depth;
+    const depth = entryScanDepth + this.#skew;
 
-    if (depth === this.#settings.depth && this.#cachedFullString !== null) {
-      buffer = this.#cachedFullString;
-    } else {
-      buffer = this.#depthBuffer.slice(0, depth).join('\n');
-      if (entry.matchCharacterDescription) buffer += `\n${this.#character.description ?? ''}`;
-      if (entry.matchCharacterPersonality) buffer += `\n${this.#character.personality ?? ''}`;
-      if (entry.matchCharacterDepthPrompt) buffer += `\n${this.#character.data?.depth_prompt?.prompt ?? ''}`;
-      if (entry.matchCreatorNotes) buffer += `\n${this.#character.data?.creator_notes ?? ''}`;
-      if (entry.matchScenario) buffer += `\n${this.#character.scenario ?? ''}`;
-      if (entry.matchPersonaDescription) buffer += `\n${this.#persona.description ?? ''}`;
+    let buffer = this.#depthBuffer.slice(0, depth).join('\n');
 
-      if (depth === this.#settings.depth) {
-        this.#cachedFullString = buffer;
-      }
+    if (entry.matchCharacterDescription) buffer += `\n${this.#character.description ?? ''}`;
+    if (entry.matchCharacterPersonality) buffer += `\n${this.#character.personality ?? ''}`;
+    if (entry.matchCharacterDepthPrompt) buffer += `\n${this.#character.data?.depth_prompt?.prompt ?? ''}`;
+    if (entry.matchCreatorNotes) buffer += `\n${this.#character.data?.creator_notes ?? ''}`;
+    if (entry.matchScenario) buffer += `\n${this.#character.scenario ?? ''}`;
+    if (entry.matchPersonaDescription) buffer += `\n${this.#persona.description ?? ''}`;
+
+    if (this.#injectBuffer.length > 0) {
+      buffer += `\n${this.#injectBuffer.join('\n')}`;
     }
 
-    if (this.#recurseBuffer.length > 0) {
-      if (!this.#cachedRecursionString) {
-        this.#cachedRecursionString = this.#recurseBuffer.join('\n');
-      }
-      buffer += `\n${this.#cachedRecursionString}`;
+    // Min activations should not include the recursion buffer
+    if (this.#recurseBuffer.length > 0 && scanState !== ScanState.MIN_ACTIVATIONS) {
+      buffer += `\n${this.#recurseBuffer.join('\n')}`;
     }
 
     return buffer;
@@ -302,7 +273,22 @@ class WorldInfoBuffer {
 
   addRecurse(message: string) {
     this.#recurseBuffer.push(message);
-    this.#cachedRecursionString = null;
+  }
+
+  addInject(message: string) {
+    this.#injectBuffer.push(message);
+  }
+
+  hasRecurse() {
+    return this.#recurseBuffer.length > 0;
+  }
+
+  advanceScan() {
+    this.#skew++;
+  }
+
+  getDepth() {
+    return this.#settings.depth + this.#skew;
   }
 }
 
@@ -329,6 +315,69 @@ export class WorldInfoProcessor {
     this.generationId = generationId;
   }
 
+  private checkFilters(entry: ProcessingEntry, scanState: ScanState): boolean {
+    // 0. Disable check
+    if (entry.disable) return false;
+
+    // 1. Decorators
+    // TODO: Implement @@activate and @@dont_activate properly if stored in decorators field.
+    // Assuming decorators are not yet in WorldInfoEntry type explicitly or are part of content parsing.
+    // For now, if content starts with @@dont_activate (hack), skip.
+    if (entry.content.trim().startsWith('@@dont_activate')) return false;
+
+    // 2. Check Delay (Skip if chat length is less than delay)
+    // Note: This is simple delay, not "Timed Effects" persistent delay.
+    if (entry.delay && this.chat.length < entry.delay) {
+      return false;
+    }
+
+    // 3. Recursion Logic
+    // If scanning for recursion, and entry prohibits it
+    if (scanState === ScanState.RECURSION && this.settings.recursive && entry.excludeRecursion) {
+      return false;
+    }
+
+    // If delayUntilRecursion is set, it should only activate during Recursion phase
+    // For simplicity, we treat boolean true as "Level 1" recursion
+    if (entry.delayUntilRecursion) {
+      if (scanState !== ScanState.RECURSION) return false;
+    }
+
+    // 4. Character Filters
+    const hasNameFilter = entry.characterFilterNames && entry.characterFilterNames.length > 0;
+    const hasTagFilter = entry.characterFilterTags && entry.characterFilterTags.length > 0;
+
+    // If no filters are set, we pass
+    if (!hasNameFilter && !hasTagFilter) {
+      return true;
+    }
+
+    let match = false;
+
+    // Name Match
+    if (hasNameFilter) {
+      if (entry.characterFilterNames.includes(this.character.name)) {
+        match = true;
+      }
+    }
+
+    // Tag Match
+    if (!match && hasTagFilter && this.character.tags) {
+      const charTags = this.character.tags.map((t) => t.toLowerCase());
+      const filterTags = entry.characterFilterTags.map((t) => t.toLowerCase());
+      if (filterTags.some((t) => charTags.includes(t))) {
+        match = true;
+      }
+    }
+
+    // Handle Exclude logic
+    if (entry.characterFilterExclude) {
+      return !match;
+    }
+
+    return match;
+  }
+
   public async process(): Promise<ProcessedWorldInfo> {
     const options: WorldInfoOptions = {
       chat: this.chat,
@@ -343,8 +392,9 @@ export class WorldInfoProcessor {
     await eventEmitter.emit('world-info:processing-started', options);
 
     const buffer = new WorldInfoBuffer(this.chat, this.settings, this.characters, this.persona);
-    const allActivatedEntries = new Set<ProcessingEntry>();
-    let continueScanning = true;
+    const allActivatedEntries = new Map<string, ProcessingEntry>(); // Key: world.uid
+
+    let scanState: ScanState = ScanState.INITIAL;
     let loopCount = 0;
     let tokenBudgetOverflowed = false;
 
@@ -358,25 +408,52 @@ export class WorldInfoProcessor {
     );
     const sortedEntries = allEntries.sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
 
-    while (continueScanning && loopCount < (this.settings.maxRecursionSteps || 10) && sortedEntries.length > 0) {
+    // Determine available recursion delay levels
+    const availableRecursionDelayLevels = [
+      ...new Set(
+        sortedEntries
+          .filter((e) => e.delayUntilRecursion)
+          .map((e) => (e.delayUntilRecursion === true ? 1 : (e.delayUntilRecursion as number))),
+      ),
+    ].sort((a, b) => a - b);
+    let currentRecursionDelayLevel = availableRecursionDelayLevels.shift() ?? 0;
+
+    while (scanState !== ScanState.NONE) {
+      if (this.settings.maxRecursionSteps && loopCount >= this.settings.maxRecursionSteps) {
+        break;
+      }
       loopCount++;
+
+      let nextScanState = ScanState.NONE;
       const activatedInThisLoop = new Set<ProcessingEntry>();
-      let newContentForRecursion = '';
-      let currentUsedBudget = 0;
 
       for (const entry of sortedEntries) {
-        if (allActivatedEntries.has(entry) || entry.disable) continue;
+        const uniqueId = `${entry.world}.${entry.uid}`;
+        if (allActivatedEntries.has(uniqueId)) continue;
+
+        if (!this.checkFilters(entry, scanState)) continue;
+
+        // Recursion Level Check
+        if (
+          scanState === ScanState.RECURSION &&
+          entry.delayUntilRecursion &&
+          (entry.delayUntilRecursion === true ? 1 : entry.delayUntilRecursion) > currentRecursionDelayLevel
+        ) {
+          continue;
+        }
+
         if (entry.constant) {
           activatedInThisLoop.add(entry);
           continue;
         }
+
         if (!entry.key || entry.key.length === 0) continue;
 
-        const textToScan = buffer.get(entry);
+        const textToScan = buffer.get(entry, scanState);
         if (!textToScan) continue;
 
         const hasPrimaryKeyMatch = entry.key.some((key) => {
-          const subbedKey = substitute(key, this.characters, this.persona);
+          const subbedKey = macroService.process(key, { characters: this.characters, persona: this.persona });
           return subbedKey && buffer.matchKeys(textToScan, subbedKey, entry);
         });
 
@@ -390,7 +467,7 @@ export class WorldInfoProcessor {
           let hasAnySecondaryMatch = false;
           let hasAllSecondaryMatch = true;
           for (const key of entry.keysecondary) {
-            const subbedKey = substitute(key, this.characters, this.persona);
+            const subbedKey = macroService.process(key, { characters: this.characters, persona: this.persona });
             if (subbedKey && buffer.matchKeys(textToScan, subbedKey, entry)) {
               hasAnySecondaryMatch = true;
             } else {
@@ -420,50 +497,98 @@ export class WorldInfoProcessor {
         }
       }
 
-      if (activatedInThisLoop.size > 0) {
-        const candidates: { entry: ProcessingEntry; content: string; rawContent: string }[] = [];
+      const candidates = Array.from(activatedInThisLoop);
+      const groupFilteredCandidates: ProcessingEntry[] = [];
+      const blockedGroups = new Set<string>();
 
-        for (const entry of activatedInThisLoop) {
-          if (tokenBudgetOverflowed && !entry.ignoreBudget) continue;
-          const roll = Math.random() * 100;
-          if (entry.useProbability && roll > entry.probability) continue;
-
-          const substitutedContent = substitute(entry.content, this.characters, this.persona);
-          const contentForBudget = `\n${substitutedContent}`;
-          candidates.push({ entry, content: contentForBudget, rawContent: substitutedContent });
+      for (const entry of allActivatedEntries.values()) {
+        if (entry.group && entry.groupOverride) {
+          blockedGroups.add(entry.group);
         }
+      }
 
-        if (candidates.length > 0) {
-          const tokenCounts = await Promise.all(candidates.map((c) => this.tokenizer.getTokenCount(c.content)));
+      candidates.sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
 
-          for (let i = 0; i < candidates.length; i++) {
-            const { entry, rawContent } = candidates[i];
-            const entryTokens = tokenCounts[i];
-
-            if (!entry.ignoreBudget && currentUsedBudget + entryTokens > budget) {
-              tokenBudgetOverflowed = true;
-              continue;
-            }
-
-            currentUsedBudget += entryTokens;
-            allActivatedEntries.add(entry);
-            await eventEmitter.emit('world-info:entry-activated', entry, { generationId: this.generationId });
-
-            if (this.settings.recursive && !entry.preventRecursion) {
-              newContentForRecursion += `\n${rawContent}`;
-            }
+      for (const entry of candidates) {
+        if (entry.group) {
+          if (blockedGroups.has(entry.group)) continue;
+          if (entry.groupOverride) {
+            blockedGroups.add(entry.group);
           }
         }
-
-        if (newContentForRecursion) {
-          buffer.addRecurse(newContentForRecursion);
-          continueScanning = true;
-        } else {
-          continueScanning = false;
-        }
-      } else {
-        continueScanning = false;
+        groupFilteredCandidates.push(entry);
       }
+
+      const successfulNewEntries: ProcessingEntry[] = [];
+      let newContentForRecursion = '';
+      let currentUsedBudget = 0;
+
+      for (const entry of groupFilteredCandidates) {
+        if (tokenBudgetOverflowed && !entry.ignoreBudget) continue;
+
+        const roll = Math.random() * 100;
+        if (entry.useProbability && roll > entry.probability) continue;
+
+        const substitutedContent = macroService.process(entry.content, {
+          characters: this.characters,
+          persona: this.persona,
+        });
+
+        const contentForBudget = `\n${substitutedContent}`;
+        const tokens = await this.tokenizer.getTokenCount(contentForBudget);
+
+        if (!entry.ignoreBudget && currentUsedBudget + tokens > budget) {
+          tokenBudgetOverflowed = true;
+          continue;
+        }
+
+        currentUsedBudget += tokens;
+        successfulNewEntries.push(entry);
+        allActivatedEntries.set(`${entry.world}.${entry.uid}`, entry);
+
+        await eventEmitter.emit('world-info:entry-activated', entry, { generationId: this.generationId });
+
+        if (this.settings.recursive && !entry.preventRecursion) {
+          newContentForRecursion += `\n${substitutedContent}`;
+        }
+      }
+
+      // Determine next state
+      if (this.settings.recursive && !tokenBudgetOverflowed && successfulNewEntries.length > 0) {
+        nextScanState = ScanState.RECURSION;
+      }
+
+      // Min Activations Check
+      const minActivationsNotSatisfied =
+        this.settings.minActivations > 0 && allActivatedEntries.size < this.settings.minActivations;
+
+      if (
+        nextScanState === ScanState.NONE &&
+        !tokenBudgetOverflowed &&
+        minActivationsNotSatisfied &&
+        scanState !== ScanState.RECURSION // Don't trigger min activations if we just came from recursion, unless logic dictates
+      ) {
+        const overMax =
+          (this.settings.minActivationsDepthMax > 0 && buffer.getDepth() > this.settings.minActivationsDepthMax) ||
+          buffer.getDepth() > this.chat.length;
+
+        if (!overMax) {
+          nextScanState = ScanState.MIN_ACTIVATIONS;
+          buffer.advanceScan();
+        }
+      }
+
+      // Recursive Delay Level Logic
+      if (nextScanState === ScanState.NONE && availableRecursionDelayLevels.length > 0) {
+        nextScanState = ScanState.RECURSION;
+        currentRecursionDelayLevel = availableRecursionDelayLevels.shift() ?? 0;
+      }
+
+      if (nextScanState !== ScanState.NONE && newContentForRecursion) {
+        buffer.addRecurse(newContentForRecursion);
+      }
+
+      scanState = nextScanState;
     }
 
     const result: ProcessedWorldInfo = {
@@ -478,7 +603,7 @@ export class WorldInfoProcessor {
       triggeredEntries: {},
     };
 
-    const finalEntries = Array.from(allActivatedEntries).sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
+    const finalEntries = Array.from(allActivatedEntries.values()).sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
 
     for (const entry of finalEntries) {
       if (!result.triggeredEntries[entry.world]) {
@@ -486,7 +611,7 @@ export class WorldInfoProcessor {
       }
       result.triggeredEntries[entry.world].push(entry);
 
-      const content = substitute(entry.content, this.characters, this.persona);
+      const content = macroService.process(entry.content, { characters: this.characters, persona: this.persona });
       if (!content) continue;
 
       switch (entry.position) {

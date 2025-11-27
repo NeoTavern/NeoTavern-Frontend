@@ -29,7 +29,7 @@ const settingsStore = useSettingsStore();
 const layoutStore = useLayoutStore();
 const worldInfoStore = useWorldInfoStore();
 
-const activeTab = ref<'chats' | 'members' | 'prompts'>('chats');
+const activeTab = ref<'chats' | 'members' | 'config'>('chats');
 const chatSearchTerm = ref('');
 
 const addMemberSearchTerm = ref('');
@@ -246,7 +246,7 @@ function peekCharacter(avatar: string) {
         :options="[
           { label: t('chatManagement.tabs.chats'), value: 'chats' },
           { label: t('chatManagement.tabs.group'), value: 'members' },
-          { label: t('chatManagement.tabs.prompts'), value: 'prompts' },
+          { label: t('chatManagement.tabs.config'), value: 'config' },
         ]"
       />
     </div>
@@ -446,8 +446,8 @@ function peekCharacter(avatar: string) {
         </CollapsibleSection>
       </div>
 
-      <!-- Tab: Prompt Overrides -->
-      <div v-show="activeTab === 'prompts'" class="chat-management-prompt-tab">
+      <!-- Tab: Config -->
+      <div v-show="activeTab === 'config'" class="chat-management-config-tab">
         <div v-if="chatStore.activeChat?.metadata.promptOverrides">
           <FormItem :label="t('chatManagement.scenarioOverride')">
             <Textarea
@@ -461,15 +461,12 @@ function peekCharacter(avatar: string) {
           <hr />
 
           <FormItem :label="t('chatManagement.connectionProfile')">
-            <!-- ConnectionProfileSelector updates via the computed property which handles the save -->
             <ConnectionProfileSelector v-model="activeChatConnectionProfile" />
           </FormItem>
 
           <hr />
 
-          <!-- TODO: Rename tab name or move to another place -->
           <FormItem :label="t('chatManagement.chatLorebooks')">
-            <!-- activeChatLorebooks setter handles the save -->
             <Select
               v-model="activeChatLorebooks"
               :options="availableLorebooks"

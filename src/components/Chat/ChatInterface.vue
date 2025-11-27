@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { listChats, listRecentChats } from '../../api/chat';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
 import { GenerationMode } from '../../constants';
@@ -114,10 +113,6 @@ async function checkAndImportCharacterBooks() {
 
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside);
-
-  // TODO: We should have a more centralized way to refresh chat lists.
-  chatStore.chatInfos = await listChats();
-  chatStore.recentChats = await listRecentChats();
 });
 
 onUnmounted(() => {

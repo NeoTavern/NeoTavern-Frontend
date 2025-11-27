@@ -327,10 +327,10 @@ export const useApiStore = defineStore('api', () => {
         if ('openai_max_context' in presetData || 'prompt_order' in presetData) {
           try {
             presetData = migrateExperimentalPreset(presetData as LegacyOaiPresetSettings);
-            toast.success('Legacy preset migrated successfully.'); // TODO: i18n
+            toast.success(t('aiConfig.presets.messages.migrateSuccess'));
           } catch (error) {
             console.error('Migration failed:', error);
-            toast.error('Failed to migrate legacy preset.'); // TODO: i18n
+            toast.error(t('aiConfig.presets.errors.migrateFailed'));
             return;
           }
         }

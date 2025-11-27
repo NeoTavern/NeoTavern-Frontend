@@ -1,7 +1,22 @@
-import { defineConfig } from 'vitest/config';
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
+import vue from '@vitejs/plugin-vue';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { defineConfig } from 'vite';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export default defineConfig({
+  plugins: [
+    vue(),
+    VueI18nPlugin({
+      include: resolve(__dirname, './locales/**'),
+      strictMessage: false, //bypassing html error
+    }),
+  ],
   test: {
+    setupFiles: ['./test/vitest.setup.ts'],
     coverage: {
       provider: 'istanbul',
       reporter: ['lcov'],

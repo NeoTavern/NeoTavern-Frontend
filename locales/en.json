@@ -40,7 +40,7 @@
     "tabs": {
       "chats": "Chats",
       "group": "Group",
-      "prompts": "Prompts"
+      "config": "Configuration"
     }
   },
   "group": {
@@ -286,7 +286,11 @@
         "noExportSelected": "No preset selected to export.",
         "exportNotFound": "Preset \"{name}\" not found.",
         "importInvalid": "Failed to import preset. The file might be invalid.",
-        "noPresetName": "Preset name cannot be empty."
+        "noPresetName": "Preset name cannot be empty.",
+        "migrateFailed": "Failed to migrate legacy preset."
+      },
+      "messages": {
+        "migrateSuccess": "Legacy preset migrated successfully."
       }
     },
     "promptManager": {
@@ -501,7 +505,8 @@
       "errorFallback": "Failed to get a response from the AI.",
       "noModelError": "No model selected. Please check your API connection settings.",
       "noPersonaError": "No persona selected. Please check your persona settings.",
-      "noSpeaker": "No valid speaker found for generation."
+      "noSpeaker": "No valid speaker found for generation.",
+      "postProcessError": "Post-processing failed. Check console for details."
     },
     "buttons": {
       "confirmEdit": "Confirm edit",
@@ -533,7 +538,7 @@
       "error": "Failed to copy message."
     },
     "optionsMenu": {
-      "manageChats": "Manage chat files",
+      "manageChats": "Manage chat",
       "regenerate": "Regenerate",
       "continue": "Continue",
       "generate": "Generate",
@@ -699,7 +704,8 @@
       }
     },
     "validation": {
-      "nameRequired": "Character name is required."
+      "nameRequired": "Character name is required.",
+      "avatarRequired": "Please select an avatar."
     },
     "alternateGreetings": {
       "title": "Alternate Greetings",

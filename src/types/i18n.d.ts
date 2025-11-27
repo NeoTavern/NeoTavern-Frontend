@@ -43,7 +43,7 @@ export interface MessageSchema {
     tabs: {
       chats: string;
       group: string;
-      prompts: string;
+      config: string;
     };
   };
   group: {
@@ -290,6 +290,10 @@ export interface MessageSchema {
         exportNotFound: string;
         importInvalid: string;
         noPresetName: string;
+        migrateFailed: string;
+      };
+      messages: {
+        migrateSuccess: string;
       };
     };
     promptManager: {
@@ -505,6 +509,7 @@ export interface MessageSchema {
       noModelError: string;
       noPersonaError: string;
       noSpeaker: string;
+      postProcessError: string;
     };
     buttons: {
       confirmEdit: string;
@@ -703,6 +708,7 @@ export interface MessageSchema {
     };
     validation: {
       nameRequired: string;
+      avatarRequired: string;
     };
     alternateGreetings: {
       title: string;

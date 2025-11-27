@@ -183,7 +183,7 @@ async function handleCreate() {
       const blob = await res.blob();
       selectedAvatarFile.value = new File([blob], 'avatar.png', { type: 'image/png' });
     } catch {
-      alert('Please select an avatar.'); // TODO: Add i18n, use toast, show error
+      toast.error(t('characterEditor.validation.avatarRequired'));
       return;
     }
   }

@@ -1,4 +1,3 @@
-import Handlebars from 'handlebars';
 import { defaultSamplerSettings, GroupGenerationHandlingMode } from '../constants';
 import type {
   ApiChatMessage,
@@ -13,44 +12,9 @@ import type {
   WorldInfoBook,
   WorldInfoSettings,
 } from '../types';
-import { joinCharacterField } from '../utils/chat';
 import { eventEmitter } from '../utils/extensions';
+import { macroService } from './macro-service';
 import { WorldInfoProcessor } from './world-info';
-
-function substitute(text: string, chars: Character[], persona: Persona): string {
-  if (!text) return '';
-  if (!text.includes('{{')) return text;
-
-  try {
-    const context = {
-      user: persona.name,
-      char: chars.length > 0 ? chars[0].name : '',
-      chars: chars.map((c) => c.name),
-      description: chars.length > 0 ? chars[0].description : '',
-      personality: chars.length > 0 ? chars[0].personality : '',
-      scenario: chars.length > 0 ? chars[0].scenario : '',
-      persona: persona.description,
-    };
-
-    // Register each field as a helper that returns its value
-    Object.entries(context).forEach(([key, value]) => {
-      Handlebars.registerHelper(key, () => value);
-    });
-
-    const template = Handlebars.compile(text, { noEscape: true });
-    const result = template(context);
-
-    // Unregister helpers to avoid conflicts
-    Object.keys(context).forEach((key) => {
-      Handlebars.unregisterHelper(key);
-    });
-
-    return result;
-  } catch (e) {
-    console.warn('Failed to compile Handlebars template for prompt:', e);
-    return text;
-  }
-}
 
 export class PromptBuilder {
   public characters: Character[];
@@ -91,11 +55,37 @@ export class PromptBuilder {
     this.maxContext = this.samplerSettings.max_context ?? defaultSamplerSettings.max_context;
   }
 
-  public getContent(fieldGetter: (char: Character) => string | undefined, singleCharContent?: string): string {
+  /**
+   * Helper to process a specific field for all characters in the context.
+   * Replaces macros using each character as the specific 'activeCharacter' context.
+   */
+  private getProcessedContent(
+    fieldGetter: (char: Character) => string | undefined,
+    singleCharContent?: string,
+  ): string {
+    // If it's a group, we iterate all characters and process their specific field with their own context
     if (this.characters.length > 1) {
-      return joinCharacterField(this.characters, fieldGetter);
+      return this.characters
+        .map((c) => {
+          const raw = fieldGetter(c);
+          if (!raw) return null;
+          return macroService.process(raw, {
+            characters: this.characters,
+            persona: this.persona,
+            activeCharacter: c,
+          });
+        })
+        .filter(Boolean)
+        .join('\n');
     }
-    return singleCharContent || '';
+
+    // Single character case
+    const raw = singleCharContent || '';
+    if (!raw) return '';
+    return macroService.process(raw, {
+      characters: this.characters,
+      persona: this.persona,
+    });
   }
 
   public async build(): Promise<ApiChatMessage[]> {
@@ -148,56 +138,48 @@ export class PromptBuilder {
             fixedPrompts.push(historyPlaceholder);
             break;
           case 'charDescription': {
-            let content = '';
-            if (isGroupContext) {
-              content = this.getContent((c) => c.description);
-            } else {
-              content = this.character.description || '';
-            }
+            const content = this.getProcessedContent(
+              (c) => c.description,
+              isGroupContext ? undefined : this.character.description,
+            );
             if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
             break;
           }
           case 'charPersonality': {
-            let content = '';
-            if (isGroupContext) {
-              content = this.getContent((c) => c.personality);
-            } else {
-              content = this.character.personality || '';
-            }
+            const content = this.getProcessedContent(
+              (c) => c.personality,
+              isGroupContext ? undefined : this.character.personality,
+            );
             if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
             break;
           }
           case 'scenario': {
             let content = '';
             if (this.chatMetadata.promptOverrides?.scenario) {
-              content = this.chatMetadata.promptOverrides.scenario;
+              content = macroService.process(this.chatMetadata.promptOverrides.scenario, {
+                characters: this.characters,
+                persona: this.persona,
+              });
             } else {
-              if (isGroupContext) {
-                content = this.getContent((c) => c.scenario);
-              } else {
-                content = this.character.scenario || '';
-              }
+              content = this.getProcessedContent(
+                (c) => c.scenario,
+                isGroupContext ? undefined : this.character.scenario,
+              );
             }
             if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
             break;
           }
           case 'dialogueExamples': {
-            let content = '';
-            if (isGroupContext) {
-              content = this.characters
-                .map((c) => {
-                  if (!c.mes_example) return null;
-                  return substitute(c.mes_example, [c], this.persona);
-                })
-                .filter(Boolean)
-                .join('\n\n');
-            } else if (this.character.mes_example) {
-              content = substitute(this.character.mes_example, [this.character], this.persona);
-            }
-            if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
+            const content = this.getProcessedContent(
+              (c) => c.mes_example,
+              isGroupContext ? undefined : this.character.mes_example,
+            );
+            const formattedContent = content.split('\n').join('\n\n');
+            if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content: formattedContent });
             break;
           }
           case 'worldInfoBefore':
+            // WI processor already handles macros
             if (worldInfoBefore)
               fixedPrompts.push({ role: promptDefinition.role ?? 'system', content: worldInfoBefore });
             break;
@@ -205,24 +187,28 @@ export class PromptBuilder {
             if (worldInfoAfter) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content: worldInfoAfter });
             break;
           case 'personaDescription': {
-            const content = this.persona.description || '';
+            const content = macroService.process(this.persona.description || '', {
+              characters: this.characters,
+              persona: this.persona,
+            });
             if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
             break;
           }
           case 'jailbreak': {
-            let content = '';
-            if (isGroupContext) {
-              content = this.getContent((c) => c.data?.post_history_instructions ?? '');
-            } else {
-              content = this.character.data?.post_history_instructions || '';
-            }
+            const content = this.getProcessedContent(
+              (c) => c.data?.post_history_instructions,
+              isGroupContext ? undefined : this.character.data?.post_history_instructions,
+            );
             if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
             break;
           }
         }
       } else {
         if (promptDefinition.content && promptDefinition.role) {
-          const content = substitute(promptDefinition.content, this.characters, this.persona);
+          const content = macroService.process(promptDefinition.content, {
+            characters: this.characters,
+            persona: this.persona,
+          });
           if (content) fixedPrompts.push({ role: promptDefinition.role, content });
         }
       }
@@ -243,14 +229,19 @@ export class PromptBuilder {
       const msg = this.chatHistory[i];
       if (msg.is_system) continue;
 
+      const processedContent = macroService.process(msg.mes, {
+        characters: this.characters,
+        persona: this.persona,
+      });
+
       const apiMsg: ApiChatMessage = {
         role: msg.is_user ? 'user' : 'assistant',
-        content: msg.mes,
+        content: processedContent,
         name: msg.name,
       };
 
       if (!msg.is_user && (this.chatMetadata.members?.length ?? 0) > 1) {
-        apiMsg.content = `${msg.name}: ${msg.mes}`;
+        apiMsg.content = `${msg.name}: ${processedContent}`;
       }
 
       const msgTokenCount = await this.tokenizer.getTokenCount(apiMsg.content);

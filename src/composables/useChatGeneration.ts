@@ -476,7 +476,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           );
         } catch (e) {
           console.error('Post-processing failed:', e);
-          toast.error('Post-processing failed. Check console for details.'); // TODO: i18n
+          toast.error(t('chat.generate.postProcessError'));
           throw e;
         }
       }

@@ -308,10 +308,6 @@ async function showPromptItemization() {
             :title="t('chat.buttons.itemization')"
             @click="showPromptItemization"
           />
-          <!-- TODO: Implement extra buttons dropdown -->
-          <Button variant="ghost" icon="fa-ellipsis" title="Message Actions" />
-          <!-- TODO: Implement bookmark button -->
-          <Button variant="ghost" icon="fa-flag" title="Bookmark" />
           <Button variant="ghost" icon="fa-pencil" title="Edit" @click="startEditing" />
           <Button
             icon="fa-trash-can"

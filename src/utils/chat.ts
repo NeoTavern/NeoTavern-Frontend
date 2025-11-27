@@ -1,6 +1,7 @@
 import DOMPurify, { type Config } from 'dompurify';
 import { Marked, type TokenizerAndRendererExtension } from 'marked';
 import { GroupReplyStrategy, talkativeness_default } from '../constants';
+import { macroService, type MacroContextData } from '../services/macro-service';
 import type { Character, ChatMessage, ChatMetadata } from '../types';
 import { getMessageTimeStamp } from './commons';
 
@@ -80,33 +81,29 @@ export function formatReasoning(message: ChatMessage): string {
 
 // --- Chat Initialization ---
 
-// Placeholder for regex substitutions (e.g., {{char}} replacement)
-function getRegexedString(str: string): string {
-  return str;
-}
-
-export function getFirstMessage(character?: Character): ChatMessage | null {
-  if (!character) {
+export function getFirstMessage(context: MacroContextData): ChatMessage | null {
+  if (!context.characters) {
     return null;
   }
-  const firstMes = character?.first_mes || '';
-  const alternateGreetings = character?.data?.alternate_greetings;
+  const firstCharacter = context.activeCharacter || context.characters[0];
+  const firstMes = macroService.process(firstCharacter.first_mes || '', context);
+  const alternateGreetings = firstCharacter?.data?.alternate_greetings;
 
   const message: ChatMessage = {
-    name: character.name || '',
+    name: firstCharacter.name || '',
     is_user: false,
     is_system: false,
     send_date: getMessageTimeStamp(),
-    mes: getRegexedString(firstMes),
+    mes: firstMes,
     extra: {},
-    original_avatar: character.avatar,
+    original_avatar: firstCharacter.avatar,
     swipe_id: 0,
-    swipes: firstMes ? [getRegexedString(firstMes)] : [],
+    swipes: firstMes ? [firstMes] : [],
     swipe_info: firstMes ? [{ extra: {}, send_date: getMessageTimeStamp() }] : [],
   };
 
   if (Array.isArray(alternateGreetings) && alternateGreetings.length > 0) {
-    const swipes = [message.mes, ...alternateGreetings.map((greeting) => getRegexedString(greeting))];
+    const swipes = [message.mes, ...alternateGreetings.map((greeting) => macroService.process(greeting, context))];
     if (!message.mes) {
       swipes.shift();
       message.mes = swipes[0] ?? '';
@@ -123,20 +120,6 @@ export function getFirstMessage(character?: Character): ChatMessage | null {
 }
 
 // --- Group Dynamics ---
-
-export function joinCharacterField(
-  characters: Character[],
-  fieldGetter: (char: Character) => string | undefined,
-): string {
-  return characters
-    .map((char) => {
-      const val = fieldGetter(char);
-      if (!val || !val.trim()) return null;
-      return `${char.name}: ${val.trim()}`;
-    })
-    .filter(Boolean)
-    .join('\n\n');
-}
 
 export function getCharactersForContext(
   allMembers: Character[],
