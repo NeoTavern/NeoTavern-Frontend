@@ -118,8 +118,6 @@
   &-edit-actions {
     display: flex;
     align-items: center;
-    // Fade in buttons on hover for cleaner UI
-    opacity: 0;
     transition: opacity var(--animation-duration);
 
     @media (hover: none) {
