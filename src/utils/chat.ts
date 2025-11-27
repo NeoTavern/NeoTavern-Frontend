@@ -20,18 +20,20 @@ const renderer = {
   },
 };
 
-const dialogueExtension: TokenizerAndRendererExtension = {
-  name: 'dialogue',
+const createDialogueExtension = (name: string, startChar: string, endChar: string): TokenizerAndRendererExtension => ({
+  name,
   level: 'inline',
   start(src: string) {
-    return src.indexOf('"');
+    return src.indexOf(startChar);
   },
   tokenizer(src: string) {
-    const rule = /^"([^"]*?)"/;
+    const escapedStart = startChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedEnd = endChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rule = new RegExp(`^${escapedStart}([^${escapedEnd}]*?)${escapedEnd}`);
     const match = rule.exec(src);
     if (match) {
       return {
-        type: 'dialogue',
+        type: name,
         raw: match[0],
         text: match[0],
         tokens: this.lexer.inlineTokens(match[1]),
@@ -40,13 +42,17 @@ const dialogueExtension: TokenizerAndRendererExtension = {
     return undefined;
   },
   renderer(token) {
-    return `<q>"${this.parser.parseInline(token.tokens || [])}"</q>`;
+    return `<q>${startChar}${this.parser.parseInline(token.tokens || [])}${endChar}</q>`;
   },
-};
+});
+
+const dialogue1Extension = createDialogueExtension('dialogue1', '"', '"');
+const dialogue2Extension = createDialogueExtension('dialogue2', '❝', '❞');
+const dialogue3Extension = createDialogueExtension('dialogue3', '“', '”');
 
 marked.use({
   renderer,
-  extensions: [dialogueExtension],
+  extensions: [dialogue1Extension, dialogue2Extension, dialogue3Extension],
 });
 
 export function formatText(text: string): string {
