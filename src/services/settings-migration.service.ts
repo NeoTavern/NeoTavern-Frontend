@@ -57,6 +57,7 @@ export function createDefaultSettings(): Settings {
   defaultSettings.persona = {
     showNotifications: true,
     defaultPersonaId: null,
+    activePersonaId: null,
     personas: [],
   };
 
@@ -218,6 +219,7 @@ export function migrateLegacyToExperimental(userSettingsResponse: ParsedUserSett
       showNotifications: p.persona_show_notifications,
       defaultPersonaId: p.default_persona,
       personas: migratedPersonas,
+      activePersonaId: p.user_avatar || null,
     },
     prompts: allPrompts,
     api: {

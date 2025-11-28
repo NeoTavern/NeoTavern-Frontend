@@ -21,13 +21,19 @@ export const usePersonaStore = defineStore('persona', () => {
   const uiStore = useUiStore();
 
   const allPersonaAvatars = ref<string[]>([]);
-  const activePersonaId = ref<string | null>(null);
   const lastAvatarUpdate = ref(Date.now());
 
   const personas = computed<Persona[]>({
     get: () => settingsStore.settings.persona.personas,
     set: (value) => {
       settingsStore.settings.persona.personas = value;
+    },
+  });
+
+  const activePersonaId = computed<string | null>({
+    get: () => settingsStore.settings.persona.activePersonaId ?? null,
+    set: (value) => {
+      settingsStore.settings.persona.activePersonaId = value;
     },
   });
 
@@ -46,11 +52,16 @@ export const usePersonaStore = defineStore('persona', () => {
   async function initialize() {
     await settingsStore.waitForSettings();
     await refreshPersonas();
-    const defaultPersonaId = settingsStore.settings.persona.defaultPersonaId;
-    if (defaultPersonaId && personas.value.some((p) => p.avatarId === defaultPersonaId)) {
-      await setActivePersona(defaultPersonaId);
-    } else if (personas.value.length > 0) {
-      await setActivePersona(personas.value[0].avatarId);
+
+    if (activePersonaId.value && personas.value.some((p) => p.avatarId === activePersonaId.value)) {
+      await setActivePersona(activePersonaId.value);
+    } else {
+      const defaultPersonaId = settingsStore.settings.persona.defaultPersonaId;
+      if (defaultPersonaId && personas.value.some((p) => p.avatarId === defaultPersonaId)) {
+        await setActivePersona(defaultPersonaId);
+      } else if (personas.value.length > 0) {
+        await setActivePersona(personas.value[0].avatarId);
+      }
     }
   }
 
@@ -90,7 +101,9 @@ export const usePersonaStore = defineStore('persona', () => {
   async function setActivePersona(avatarId: string | null) {
     if (!avatarId) return;
     const persona = personas.value.find((p) => p.avatarId === avatarId);
-    if (activePersonaId.value === avatarId) return;
+
+    if (activePersonaId.value === avatarId && uiStore.activePlayerAvatar === avatarId) return;
+
     if (persona) {
       activePersonaId.value = avatarId;
       uiStore.activePlayerName = persona.name;

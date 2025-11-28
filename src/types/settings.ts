@@ -290,6 +290,7 @@ export interface Settings {
   persona: {
     showNotifications: boolean;
     defaultPersonaId: string | null;
+    activePersonaId: string | null;
     personas: Persona[];
   };
   prompts: Prompt[];
@@ -383,6 +384,7 @@ export interface LegacySettings {
     zoomed_avatar_magnification: boolean;
     personas: Record<string, string>;
     default_persona: string | null;
+    user_avatar?: string;
     persona_descriptions: Record<
       string,
       {
