@@ -9,7 +9,7 @@
 ### Prerequisites
 
 - Node.js (v20 or higher recommended)
-- pnpm (or your package manager of choice)
+- npm
 - A running instance of the SillyTavern backend server. **You need to be on [this](https://github.com/bmen25124/SillyTavern/tree/experimental_ui_server) branch for enabling new sampler presets.**
 
 ### Development
@@ -24,11 +24,11 @@
 2.  **Install dependencies:**
 
     ```bash
-    pnpm install
+    npm install
     ```
 
 3.  **Run the development server:**
     ```bash
-    pnpm dev
+    npm run dev
     ```
     This will start the Vite development server. By default, it proxies API requests to `http://localhost:8000`, which is the standard SillyTavern backend address. You can configure the proxy in `vite.config.ts`.

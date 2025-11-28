@@ -8,6 +8,7 @@ import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
 import { POPUP_RESULT, POPUP_TYPE, type CustomPopupButton } from '../../types';
 import type { I18nKey } from '../../types/i18n';
+import { formatText } from '../../utils/chat';
 import { Button, Textarea } from '../UI';
 
 interface CropperSelectionElement extends HTMLElement {
@@ -49,7 +50,7 @@ const cropperSelection = ref<CropperSelectionElement | null>(null);
 const internalInputValue = ref(props.inputValue);
 const generatedButtons = ref<CustomPopupButton[]>([]);
 const sanitizedTitle = computed(() => DOMPurify.sanitize(props.title));
-const sanitizedContent = computed(() => DOMPurify.sanitize(props.content));
+const formattedContent = computed(() => formatText(props.content));
 
 function resolveOptions() {
   if (props.customButtons) {
@@ -201,7 +202,7 @@ function handleEnter(evt: KeyboardEvent) {
         :class="{ 'is-input': type === POPUP_TYPE.INPUT, 'is-crop': type === POPUP_TYPE.CROP }"
       >
         <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-if="content" class="popup-message" v-html="sanitizedContent"></div>
+        <div v-if="content" class="popup-message" v-html="formattedContent"></div>
 
         <component :is="component" v-if="component" v-bind="componentProps" />
 

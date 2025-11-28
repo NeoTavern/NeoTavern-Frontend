@@ -7,9 +7,9 @@
   "scripts": {
     "i18n": "node manage-i18n.js",
     "i18n:remove": "node manage-i18n.js --remove",
-    "dev": "pnpm i18n && vite",
+    "dev": "npm run i18n && vite",
     "build:types": "vite build --config vite.config.types.ts",
-    "build": "pnpm i18n && vue-tsc --noEmit && vite build && pnpm build:types",
+    "build": "npm run i18n && vue-tsc --noEmit && vite build && npm run build:types",
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

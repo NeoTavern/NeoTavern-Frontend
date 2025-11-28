@@ -17,6 +17,7 @@ import { useWorldInfoStore } from '../../stores/world-info.store';
 import type { Character } from '../../types';
 import { POPUP_RESULT, POPUP_TYPE, type PopupOptions } from '../../types';
 import { getThumbnailUrl } from '../../utils/character';
+import { formatText } from '../../utils/chat';
 import { humanizedDateTime } from '../../utils/commons';
 import Popup from '../Popup/Popup.vue';
 import { Button, CollapsibleSection, FormItem, Input, RangeControl, Select, TagInput, Textarea } from '../UI';
@@ -43,6 +44,10 @@ const areDetailsHidden = computed(() => isSpoilerModeActive.value && !isPeeking.
 const isCreatorNotesOpen = ref(false);
 const isPromptOverridesOpen = ref(false);
 const isMetadataOpen = ref(false);
+
+const formattedCreatorNotes = computed(() => {
+  return formatText(localCharacter.value?.data?.creator_notes || '', settingsStore.settings.ui.chat.forbidExternalMedia);
+});
 
 type EditableField =
   | 'description'
@@ -513,7 +518,7 @@ const embeddedLorebookName = computed({
         </template>
 
         <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-show="localCharacter.data?.creator_notes" v-html="localCharacter?.data?.creator_notes"></div>
+        <div v-show="localCharacter.data?.creator_notes" v-html="formattedCreatorNotes"></div>
         <div v-show="!localCharacter.data?.creator_notes">
           {{ t('characterEditor.noCreatorNotes') }}
         </div>

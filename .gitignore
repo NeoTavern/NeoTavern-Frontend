@@ -12,7 +12,6 @@ docs
 
 dist
 
-package-lock.json
 yarn.lock
 
 repomix-output.xml
