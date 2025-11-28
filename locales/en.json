@@ -208,7 +208,7 @@
         "normal": "🟢 Normal"
       },
       "delay": "Delay (messages)",
-      "outletName": "Outlet Name",
+      "outletName": "Outlet Name (not implemented)",
       "groupSettings": "Group & Budget Settings",
       "group": "Group",
       "groupWeight": "Group Weight",

@@ -34,15 +34,12 @@ export class MacroService {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private buildContext(data: MacroContextData): Record<string, any> {
-    // If activeCharacter is provided, use it as 'char'. Otherwise default to the first in the list.
     const primaryChar = data.activeCharacter || data.characters[0];
 
     return {
-      // User data
       user: data.persona.name,
       persona: data.persona.description,
 
-      // Character data (Primary)
       char: primaryChar?.name || 'Character',
       description: primaryChar?.description || '',
       personality: primaryChar?.personality || '',
@@ -50,7 +47,6 @@ export class MacroService {
       mes_example: primaryChar?.mes_example || '',
       first_mes: primaryChar?.first_mes || '',
 
-      // Group data
       chars: data.characters.map((c) => c.name),
     };
   }
@@ -64,10 +60,6 @@ export class MacroService {
 
     let currentText = text;
     let depth = 0;
-
-    // Compile once if possible, but context might change if we were caching,
-    // here we just re-compile to be safe and simple for recursion.
-    // Handlebars compile is fast enough for small strings.
 
     while (currentText.includes('{{') && depth < this.MAX_RECURSION) {
       try {
@@ -84,7 +76,6 @@ export class MacroService {
         depth++;
       } catch (e) {
         console.warn('MacroService: Failed to process template:', e);
-        // Break to avoid infinite loops on error or return partially processed text
         break;
       }
     }
