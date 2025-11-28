@@ -43,7 +43,6 @@ const mockPersona: Persona = {
   name: 'User',
   avatarId: 'user1',
   description: 'User Description',
-  title: 'User Persona',
   lorebooks: [],
   connections: [],
 };

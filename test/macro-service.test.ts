@@ -13,7 +13,6 @@ const mockCharacter: Character = {
 };
 
 const mockPersona: Persona = {
-  title: 'User',
   name: 'Bob',
   avatarId: 'bob.png',
   description: 'A human user.',
@@ -62,10 +61,9 @@ describe('MacroService', () => {
     const recursiveChar = { ...mockCharacter, name: '{{char}}' };
     const badContext = { ...context, characters: [recursiveChar] };
 
-    // Should stop after max recursion depth (5)
+    // Should stop after max recursion depth (10)
     // 1. {{char}} -> {{char}}
     // ...
-    // 5. {{char}}
     const result = macroService.process('{{char}}', badContext);
     expect(result).toBe('{{char}}');
   });
@@ -81,5 +79,33 @@ describe('MacroService', () => {
     // Should use Eve instead of Alice
     const result = macroService.process('My name is {{char}}', overrideContext);
     expect(result).toBe('My name is Eve');
+  });
+
+  describe('Comments', () => {
+    test('removes simple comments', () => {
+      const template = '{{// This is a comment }}Visible';
+      const result = macroService.process(template, context);
+      expect(result).toBe('Visible');
+    });
+
+    test('removes multiline comments', () => {
+      const template = 'Visible{{// \n multiline \n comment }}';
+      const result = macroService.process(template, context);
+      expect(result).toBe('Visible');
+    });
+
+    test('removes comments mixed with macros', () => {
+      const template = '{{char}} {{// comment }} says hi';
+      const result = macroService.process(template, context);
+      expect(result).toBe('Alice  says hi');
+    });
+
+    test('removes comments that contain macros (stops at first }})', () => {
+      // Logic check: The comment parser is non-greedy and stops at first }}
+      // So {{// {{char}} }} -> removed "{{// {{char}}" -> remains "}}"
+      const template = '{{// comment with {{char}} inside }}';
+      const result = macroService.process(template, context);
+      expect(result).toBe(' inside }}');
+    });
   });
 });

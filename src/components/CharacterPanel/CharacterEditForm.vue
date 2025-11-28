@@ -46,7 +46,10 @@ const isPromptOverridesOpen = ref(false);
 const isMetadataOpen = ref(false);
 
 const formattedCreatorNotes = computed(() => {
-  return formatText(localCharacter.value?.data?.creator_notes || '', settingsStore.settings.ui.chat.forbidExternalMedia);
+  return formatText(
+    localCharacter.value?.data?.creator_notes || '',
+    settingsStore.settings.ui.chat.forbidExternalMedia,
+  );
 });
 
 type EditableField =

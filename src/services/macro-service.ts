@@ -10,6 +10,7 @@ export interface MacroContextData {
 export class MacroService {
   private static instance: MacroService;
   private readonly MAX_RECURSION = 10;
+  private readonly COMMENT_REGEX = /\{\{\/\/[\s\S]*?\}\}/g;
 
   private constructor() {
     this.registerGlobalHelpers();
@@ -54,6 +55,7 @@ export class MacroService {
   /**
    * Processes a string, replacing macros with context data.
    * Recursively processes the result up to MAX_RECURSION times to handle nested macros.
+   * Also strips comments in the format {{// ... }}
    */
   public process(text: string, contextData: MacroContextData): string {
     if (!text) return '';
@@ -62,13 +64,24 @@ export class MacroService {
     let depth = 0;
 
     while (currentText.includes('{{') && depth < this.MAX_RECURSION) {
+      // Remove comments first
+      const textWithoutComments = currentText.replace(this.COMMENT_REGEX, '');
+
+      // If no macros left (Handlebars uses {{), we are done.
+      // But we must return the text without comments.
+      if (!textWithoutComments.includes('{{')) {
+        currentText = textWithoutComments;
+        break;
+      }
+
       try {
-        const template = Handlebars.compile(currentText, { noEscape: true });
+        const template = Handlebars.compile(textWithoutComments, { noEscape: true });
         const context = this.buildContext(contextData);
         const newText = template(context);
 
-        // If text didn't change, we are done (macros resolved or unresolvable)
-        if (newText === currentText) {
+        // If text didn't change (macros resolved or unresolvable)
+        if (newText === textWithoutComments) {
+          currentText = newText;
           break;
         }
 
@@ -76,11 +89,14 @@ export class MacroService {
         depth++;
       } catch (e) {
         console.warn('MacroService: Failed to process template:', e);
+        // If compilation fails, return the text with comments removed
+        currentText = textWithoutComments;
         break;
       }
     }
 
-    return currentText;
+    // Final pass to ensure no comments are left (e.g. if loop exited due to max recursion)
+    return currentText.replace(this.COMMENT_REGEX, '');
   }
 }
 
