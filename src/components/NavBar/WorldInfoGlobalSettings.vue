@@ -76,6 +76,27 @@ const bookOptions = computed(() => {
             :max="65536"
             :title="t('worldInfo.budgetCapHint')"
           />
+          <RangeControl
+            v-model="settingsStore.settings.worldInfo.minActivations"
+            :label="t('worldInfo.minActivations')"
+            :min="0"
+            :max="50"
+            :title="t('worldInfo.minActivationsHint')"
+          />
+          <RangeControl
+            v-model="settingsStore.settings.worldInfo.minActivationsDepthMax"
+            :label="t('worldInfo.minActivationsDepthMax')"
+            :min="0"
+            :max="2000"
+            :title="t('worldInfo.minActivationsDepthMaxHint')"
+          />
+          <RangeControl
+            v-model="settingsStore.settings.worldInfo.maxRecursionSteps"
+            :label="t('worldInfo.maxRecursionSteps')"
+            :min="0"
+            :max="50"
+            :title="t('worldInfo.maxRecursionStepsHint')"
+          />
         </div>
         <div class="wi-settings-grid-checkboxes">
           <Checkbox

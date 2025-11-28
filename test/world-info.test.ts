@@ -19,7 +19,6 @@ const mockCharacter: Character = {
 
 // Mock persona
 const mockPersona: Persona = {
-  title: 'User',
   name: 'User',
   avatarId: 'user',
   description: 'The user.',
@@ -254,6 +253,80 @@ describe('WorldInfoProcessor', () => {
     const result = await processor.process();
     expect(result.worldInfoBefore).toContain('High Priority');
     expect(result.worldInfoBefore).not.toContain('Low Priority');
+  });
+
+  test('Respects Group Weight (High Weight wins over Low Order)', async () => {
+    // Entry A: High Order (priority in sorting if weights equal), Low Weight
+    const entryA = createDefaultEntry(1);
+    entryA.key = ['Hello'];
+    entryA.content = 'Entry A';
+    entryA.order = 10; // Better order
+    entryA.group = 'G1';
+    entryA.groupWeight = 10;
+
+    // Entry B: Low Order, High Weight
+    const entryB = createDefaultEntry(2);
+    entryB.key = ['Hello'];
+    entryB.content = 'Entry B';
+    entryB.order = 20; // Worse order
+    entryB.group = 'G1';
+    entryB.groupWeight = 50;
+
+    const book: WorldInfoBook = { name: 'Test Book', entries: [entryA, entryB] };
+
+    const processor = new WorldInfoProcessor({
+      chat: mockChat,
+      characters: [mockCharacter],
+      settings: mockSettings,
+      books: [book],
+      persona: mockPersona,
+      maxContext: 1000,
+      tokenizer: mockTokenizer,
+      generationId: 'test-group-weight',
+    });
+
+    const result = await processor.process();
+    // Entry B should win because 50 > 10, despite order 20 > 10
+    expect(result.worldInfoBefore).toContain('Entry B');
+    expect(result.worldInfoBefore).not.toContain('Entry A');
+  });
+
+  test('Respects Group Scoring (Longer match wins over High Weight)', async () => {
+    const chatWithKeywords: ChatMessage[] = [{ ...mockChat[0], mes: 'I love apple pie' }];
+
+    // Entry A: "apple" (Short match), High Weight
+    const entryA = createDefaultEntry(1);
+    entryA.key = ['apple'];
+    entryA.content = 'Entry A';
+    entryA.group = 'G1';
+    entryA.groupWeight = 100;
+    entryA.useGroupScoring = true;
+
+    // Entry B: "apple pie" (Long match), Low Weight
+    const entryB = createDefaultEntry(2);
+    entryB.key = ['apple pie'];
+    entryB.content = 'Entry B';
+    entryB.group = 'G1';
+    entryB.groupWeight = 10;
+    entryB.useGroupScoring = true;
+
+    const book: WorldInfoBook = { name: 'Test Book', entries: [entryA, entryB] };
+
+    const processor = new WorldInfoProcessor({
+      chat: chatWithKeywords,
+      characters: [mockCharacter],
+      settings: mockSettings,
+      books: [book],
+      persona: mockPersona,
+      maxContext: 1000,
+      tokenizer: mockTokenizer,
+      generationId: 'test-group-scoring',
+    });
+
+    const result = await processor.process();
+    // Entry B should win because match length "apple pie" (9) > "apple" (5)
+    expect(result.worldInfoBefore).toContain('Entry B');
+    expect(result.worldInfoBefore).not.toContain('Entry A');
   });
 
   test('Respects Delay', async () => {

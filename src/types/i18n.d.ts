@@ -129,6 +129,12 @@ export interface MessageSchema {
     contextPercent: string;
     budgetCap: string;
     budgetCapHint: string;
+    minActivations: string;
+    minActivationsHint: string;
+    minActivationsDepthMax: string;
+    minActivationsDepthMaxHint: string;
+    maxRecursionSteps: string;
+    maxRecursionStepsHint: string;
     includeNames: string;
     includeNamesHint: string;
     recursiveScan: string;
@@ -202,8 +208,24 @@ export interface MessageSchema {
       entryStates: {
         constant: string;
         normal: string;
-        vectorized: string;
       };
+      delay: string;
+      outletName: string;
+      groupSettings: string;
+      group: string;
+      groupWeight: string;
+      groupOverride: string;
+      recursionSettings: string;
+      delayUntilRecursion: string;
+      preventRecursion: string;
+      excludeRecursion: string;
+      characterFilters: string;
+      filterCharNames: string;
+      filterCharTags: string;
+      filterCharExclude: string;
+      ignoreBudget: string;
+      matchWholeWords: string;
+      caseSensitive: string;
     };
     popup: {
       newBookTitle: string;
@@ -444,6 +466,7 @@ export interface MessageSchema {
     close: string;
     no: string;
     none: string;
+    global: string;
     loading: string;
     tokens: string;
     confirm: string;

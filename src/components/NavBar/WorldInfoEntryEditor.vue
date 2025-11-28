@@ -37,6 +37,7 @@ const worldInfoUiStore = useWorldInfoUiStore();
 const popupStore = usePopupStore();
 
 const isAtDepth = computed(() => props.modelValue?.position === WorldInfoPosition.AT_DEPTH);
+const isOutlet = computed(() => props.modelValue?.position === WorldInfoPosition.OUTLET);
 
 function updateValue<K extends keyof WorldInfoEntry>(key: K, value: WorldInfoEntry[K]) {
   if (props.modelValue) {
@@ -47,23 +48,16 @@ function updateValue<K extends keyof WorldInfoEntry>(key: K, value: WorldInfoEnt
 const entryState = computed({
   get() {
     if (props.modelValue?.constant) return 'constant';
-    if (props.modelValue?.vectorized) return 'vectorized';
     return 'normal';
   },
-  set(value: 'constant' | 'normal' | 'vectorized') {
+  set(value: 'constant' | 'normal') {
     switch (value) {
       case 'constant':
         updateValue('constant', true);
-        updateValue('vectorized', false);
-        break;
-      case 'vectorized':
-        updateValue('constant', false);
-        updateValue('vectorized', true);
         break;
       case 'normal':
       default:
         updateValue('constant', false);
-        updateValue('vectorized', false);
         break;
     }
   },
@@ -94,7 +88,6 @@ async function handleDuplicateEntry() {
 const stateOptions = [
   { label: t('worldInfo.entry.entryStates.constant'), value: 'constant' },
   { label: t('worldInfo.entry.entryStates.normal'), value: 'normal' },
-  { label: t('worldInfo.entry.entryStates.vectorized'), value: 'vectorized' },
 ];
 
 const positionOptions = [
@@ -174,6 +167,14 @@ const logicOptions = [
           />
         </FormItem>
 
+        <FormItem v-if="isOutlet" :label="t('worldInfo.entry.outletName')">
+          <Input
+            :model-value="modelValue?.outletName ?? ''"
+            :placeholder="t('worldInfo.entry.outletName')"
+            @update:model-value="(val) => updateValue('outletName', String(val))"
+          />
+        </FormItem>
+
         <FormItem :label="t('worldInfo.entry.order')">
           <Input
             type="number"
@@ -193,6 +194,26 @@ const logicOptions = [
             @update:model-value="(val) => updateValue('probability', Number(val))"
           />
         </FormItem>
+
+        <FormItem :label="t('worldInfo.entry.delay')">
+          <Input
+            type="number"
+            :model-value="modelValue?.delay ?? 0"
+            :placeholder="t('worldInfo.entry.delay')"
+            :min="0"
+            @update:model-value="(val) => updateValue('delay', Number(val))"
+          />
+        </FormItem>
+
+        <FormItem :label="t('worldInfo.scanDepth')">
+          <!-- @vue-ignore -->
+          <Input
+            type="number"
+            :model-value="modelValue?.scanDepth ?? null"
+            :placeholder="t('common.global')"
+            @update:model-value="(val) => updateValue('scanDepth', val === '' ? null : Number(val))"
+          />
+        </FormItem>
       </div>
 
       <!-- Keywords Section -->
@@ -205,6 +226,18 @@ const logicOptions = [
               @update:model-value="(val) => updateValue('key', val)"
             />
           </FormItem>
+          <div class="world-entry-editor-section" style="margin-top: 4px; gap: 12px">
+            <Checkbox
+              :model-value="modelValue?.matchWholeWords ?? false"
+              :label="t('worldInfo.entry.matchWholeWords')"
+              @update:model-value="updateValue('matchWholeWords', $event)"
+            />
+            <Checkbox
+              :model-value="modelValue?.caseSensitive ?? false"
+              :label="t('worldInfo.entry.caseSensitive')"
+              @update:model-value="updateValue('caseSensitive', $event)"
+            />
+          </div>
         </div>
 
         <div class="control-group" style="min-width: 150px">
@@ -244,6 +277,79 @@ const logicOptions = [
         </FormItem>
       </div>
 
+      <!-- Advanced Sections -->
+      <CollapsibleSection :title="t('worldInfo.entry.groupSettings')">
+        <div class="world-entry-editor-grid">
+          <FormItem :label="t('worldInfo.entry.group')">
+            <Input
+              :model-value="modelValue?.group ?? ''"
+              @update:model-value="(val) => updateValue('group', String(val))"
+            />
+          </FormItem>
+          <FormItem :label="t('worldInfo.entry.groupWeight')">
+            <Input
+              type="number"
+              :model-value="modelValue?.groupWeight ?? 100"
+              @update:model-value="(val) => updateValue('groupWeight', Number(val))"
+            />
+          </FormItem>
+          <FormItem>
+            <Checkbox
+              :model-value="modelValue?.groupOverride ?? false"
+              :label="t('worldInfo.entry.groupOverride')"
+              @update:model-value="updateValue('groupOverride', $event)"
+            />
+          </FormItem>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection :title="t('worldInfo.entry.recursionSettings')">
+        <div class="world-entry-editor-section">
+          <FormItem :label="t('worldInfo.entry.delayUntilRecursion')">
+            <Input
+              type="number"
+              :model-value="Number(modelValue?.delayUntilRecursion ?? 0)"
+              :min="0"
+              @update:model-value="(val) => updateValue('delayUntilRecursion', Number(val))"
+            />
+          </FormItem>
+          <div class="control-group">
+            <Checkbox
+              :model-value="modelValue?.preventRecursion ?? false"
+              :label="t('worldInfo.entry.preventRecursion')"
+              @update:model-value="updateValue('preventRecursion', $event)"
+            />
+            <Checkbox
+              :model-value="modelValue?.excludeRecursion ?? false"
+              :label="t('worldInfo.entry.excludeRecursion')"
+              @update:model-value="updateValue('excludeRecursion', $event)"
+            />
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection :title="t('worldInfo.entry.characterFilters')">
+        <div class="world-entry-editor-section--column">
+          <FormItem :label="t('worldInfo.entry.filterCharNames')">
+            <TagInput
+              :model-value="modelValue?.characterFilterNames || []"
+              @update:model-value="(val) => updateValue('characterFilterNames', val)"
+            />
+          </FormItem>
+          <FormItem :label="t('worldInfo.entry.filterCharTags')">
+            <TagInput
+              :model-value="modelValue?.characterFilterTags || []"
+              @update:model-value="(val) => updateValue('characterFilterTags', val)"
+            />
+          </FormItem>
+          <Checkbox
+            :model-value="modelValue?.characterFilterExclude ?? false"
+            :label="t('worldInfo.entry.filterCharExclude')"
+            @update:model-value="updateValue('characterFilterExclude', $event)"
+          />
+        </div>
+      </CollapsibleSection>
+
       <!-- Collapsible Additional Sources -->
       <CollapsibleSection :title="t('worldInfo.entry.additionalSources')">
         <div class="world-entry-editor-checkbox-grid">
@@ -276,6 +382,11 @@ const logicOptions = [
             :model-value="modelValue?.matchCreatorNotes ?? false"
             :label="t('worldInfo.entry.creatorNotes')"
             @update:model-value="updateValue('matchCreatorNotes', $event)"
+          />
+          <Checkbox
+            :model-value="modelValue?.ignoreBudget ?? false"
+            :label="t('worldInfo.entry.ignoreBudget')"
+            @update:model-value="updateValue('ignoreBudget', $event)"
           />
         </div>
       </CollapsibleSection>

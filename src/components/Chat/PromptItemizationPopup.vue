@@ -55,7 +55,6 @@ function toggleWorldInfo() {
 
 function getEntryState(entry: WorldInfoEntry) {
   if (entry.constant) return { label: 'Constant', class: 'constant' };
-  if (entry.vectorized) return { label: 'Vectorized', class: 'vectorized' };
   return { label: 'Normal', class: 'normal' };
 }
 

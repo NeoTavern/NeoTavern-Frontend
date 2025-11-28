@@ -192,6 +192,11 @@ interface ProcessingEntry extends WorldInfoEntry {
   world: string;
 }
 
+interface ScoredEntry {
+  entry: ProcessingEntry;
+  score: number;
+}
+
 class WorldInfoBuffer {
   #depthBuffer: string[] = [];
   #recurseBuffer: string[] = [];
@@ -245,17 +250,27 @@ class WorldInfoBuffer {
     return buffer;
   }
 
-  matchKeys(haystack: string, needle: string, entry: WorldInfoEntry): boolean {
+  /**
+   * Returns a score > 0 if match found.
+   * For regex, returns match length.
+   * For string, returns needle length.
+   */
+  getMatchScore(haystack: string, needle: string, entry: WorldInfoEntry): number {
     const regexMatch = needle.match(/^\/(.+)\/([a-z]*)$/);
     if (regexMatch) {
       try {
         const pattern = regexMatch[1];
         const flags = regexMatch[2];
         const regex = new RegExp(pattern, flags);
-        return regex.test(haystack);
+        const match = regex.exec(haystack);
+        if (match) {
+          // Use length of the full match as score
+          return match[0].length || 1;
+        }
+        return 0;
       } catch (e) {
         console.warn(`Invalid regex in World Info entry: ${needle}`, e);
-        return false;
+        return 0;
       }
     }
 
@@ -266,9 +281,19 @@ class WorldInfoBuffer {
     if (matchWholeWords) {
       const escapedNeedle = transformedNeedle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(`\\b${escapedNeedle}\\b`);
-      return regex.test(transformedHaystack);
+      const match = regex.exec(transformedHaystack);
+      return match ? match[0].length : 0;
     }
-    return transformedHaystack.includes(transformedNeedle);
+
+    if (transformedHaystack.includes(transformedNeedle)) {
+      return transformedNeedle.length;
+    }
+
+    return 0;
+  }
+
+  matchKeys(haystack: string, needle: string, entry: WorldInfoEntry): boolean {
+    return this.getMatchScore(haystack, needle, entry) > 0;
   }
 
   addRecurse(message: string) {
@@ -320,13 +345,9 @@ export class WorldInfoProcessor {
     if (entry.disable) return false;
 
     // 1. Decorators
-    // TODO: Implement @@activate and @@dont_activate properly if stored in decorators field.
-    // Assuming decorators are not yet in WorldInfoEntry type explicitly or are part of content parsing.
-    // For now, if content starts with @@dont_activate (hack), skip.
     if (entry.content.trim().startsWith('@@dont_activate')) return false;
 
     // 2. Check Delay (Skip if chat length is less than delay)
-    // Note: This is simple delay, not "Timed Effects" persistent delay.
     if (entry.delay && this.chat.length < entry.delay) {
       return false;
     }
@@ -378,6 +399,10 @@ export class WorldInfoProcessor {
     return match;
   }
 
+  private shouldUseScoring(entry: WorldInfoEntry): boolean {
+    return entry.useGroupScoring ?? this.settings.useGroupScoring;
+  }
+
   public async process(): Promise<ProcessedWorldInfo> {
     const options: WorldInfoOptions = {
       chat: this.chat,
@@ -425,7 +450,7 @@ export class WorldInfoProcessor {
       loopCount++;
 
       let nextScanState = ScanState.NONE;
-      const activatedInThisLoop = new Set<ProcessingEntry>();
+      const activatedInThisLoop: ScoredEntry[] = [];
 
       for (const entry of sortedEntries) {
         const uniqueId = `${entry.world}.${entry.uid}`;
@@ -443,7 +468,7 @@ export class WorldInfoProcessor {
         }
 
         if (entry.constant) {
-          activatedInThisLoop.add(entry);
+          activatedInThisLoop.push({ entry, score: 0 });
           continue;
         }
 
@@ -452,72 +477,109 @@ export class WorldInfoProcessor {
         const textToScan = buffer.get(entry, scanState);
         if (!textToScan) continue;
 
-        const hasPrimaryKeyMatch = entry.key.some((key) => {
+        const useScoring = this.shouldUseScoring(entry);
+        let entryScore = 0;
+        let hasPrimaryKeyMatch = false;
+
+        // Check Primary Keys
+        for (const key of entry.key) {
           const subbedKey = macroService.process(key, { characters: this.characters, persona: this.persona });
-          return subbedKey && buffer.matchKeys(textToScan, subbedKey, entry);
-        });
+          if (subbedKey) {
+            const score = buffer.getMatchScore(textToScan, subbedKey, entry);
+            if (score > 0) {
+              hasPrimaryKeyMatch = true;
+              entryScore += score;
+              // If not using scoring, we can just stop at first match
+              if (!useScoring) break;
+            }
+          }
+        }
 
         if (hasPrimaryKeyMatch) {
           const hasSecondary = entry.keysecondary && entry.keysecondary.length > 0;
-          if (!hasSecondary) {
-            activatedInThisLoop.add(entry);
-            continue;
-          }
+          let secondaryLogicPassed = true;
 
-          let hasAnySecondaryMatch = false;
-          let hasAllSecondaryMatch = true;
-          for (const key of entry.keysecondary) {
-            const subbedKey = macroService.process(key, { characters: this.characters, persona: this.persona });
-            if (subbedKey && buffer.matchKeys(textToScan, subbedKey, entry)) {
-              hasAnySecondaryMatch = true;
-            } else {
-              hasAllSecondaryMatch = false;
+          if (hasSecondary) {
+            let hasAnySecondaryMatch = false;
+            let hasAllSecondaryMatch = true;
+
+            for (const key of entry.keysecondary) {
+              const subbedKey = macroService.process(key, { characters: this.characters, persona: this.persona });
+              if (subbedKey) {
+                const score = buffer.getMatchScore(textToScan, subbedKey, entry);
+                if (score > 0) {
+                  hasAnySecondaryMatch = true;
+                  if (useScoring) entryScore += score;
+                } else {
+                  hasAllSecondaryMatch = false;
+                }
+              }
+            }
+
+            switch (entry.selectiveLogic as WorldInfoLogic) {
+              case WorldInfoLogic.AND_ANY:
+                secondaryLogicPassed = hasAnySecondaryMatch;
+                break;
+              case WorldInfoLogic.AND_ALL:
+                secondaryLogicPassed = hasAllSecondaryMatch;
+                break;
+              case WorldInfoLogic.NOT_ALL:
+                secondaryLogicPassed = !hasAllSecondaryMatch;
+                break;
+              case WorldInfoLogic.NOT_ANY:
+                secondaryLogicPassed = !hasAnySecondaryMatch;
+                break;
             }
           }
 
-          let secondaryLogicPassed = false;
-          switch (entry.selectiveLogic as WorldInfoLogic) {
-            case WorldInfoLogic.AND_ANY:
-              secondaryLogicPassed = hasAnySecondaryMatch;
-              break;
-            case WorldInfoLogic.AND_ALL:
-              secondaryLogicPassed = hasAllSecondaryMatch;
-              break;
-            case WorldInfoLogic.NOT_ALL:
-              secondaryLogicPassed = !hasAllSecondaryMatch;
-              break;
-            case WorldInfoLogic.NOT_ANY:
-              secondaryLogicPassed = !hasAnySecondaryMatch;
-              break;
-          }
-
           if (secondaryLogicPassed) {
-            activatedInThisLoop.add(entry);
+            activatedInThisLoop.push({ entry, score: entryScore });
           }
         }
       }
 
-      const candidates = Array.from(activatedInThisLoop);
-      const groupFilteredCandidates: ProcessingEntry[] = [];
-      const blockedGroups = new Set<string>();
+      // --- Group Resolution Logic ---
 
+      // 1. Initialize blocked groups from previously activated entries
+      const blockedGroups = new Set<string>();
       for (const entry of allActivatedEntries.values()) {
-        if (entry.group && entry.groupOverride) {
+        if (entry.group) {
           blockedGroups.add(entry.group);
         }
       }
 
-      candidates.sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
+      // 2. Sort current candidates by Priority (Score > Weight > Order)
+      // This ensures that when we process them, the "best" one wins the group slot for this loop.
+      activatedInThisLoop.sort((a, b) => {
+        // Higher Score first
+        if (a.score !== b.score) return b.score - a.score;
+        // Higher Weight first
+        if ((a.entry.groupWeight ?? 100) !== (b.entry.groupWeight ?? 100))
+          return (b.entry.groupWeight ?? 100) - (a.entry.groupWeight ?? 100);
+        // Lower Order first
+        return (a.entry.order ?? 100) - (b.entry.order ?? 100);
+      });
 
-      for (const entry of candidates) {
+      const groupFilteredCandidates: ProcessingEntry[] = [];
+      const processedGroupsInLoop = new Set<string>();
+
+      for (const { entry } of activatedInThisLoop) {
         if (entry.group) {
+          // If blocked by previous loops
           if (blockedGroups.has(entry.group)) continue;
-          if (entry.groupOverride) {
-            blockedGroups.add(entry.group);
-          }
+          // If another entry in this loop already took the spot
+          if (processedGroupsInLoop.has(entry.group)) continue;
+
+          // Claim the group for this loop
+          processedGroupsInLoop.add(entry.group);
         }
         groupFilteredCandidates.push(entry);
       }
+
+      // 3. Restore Insertion Order for Budgeting
+      // We sorted by weight to pick winners, but now we need to insert based on 'order'
+      // so that high-priority (low order) entries get budget first.
+      groupFilteredCandidates.sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
 
       const successfulNewEntries: ProcessingEntry[] = [];
       let newContentForRecursion = '';

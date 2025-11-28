@@ -126,6 +126,12 @@
     "contextPercent": "Context %",
     "budgetCap": "Budget Cap",
     "budgetCapHint": "(0 = disabled)",
+    "minActivations": "Min. Activations",
+    "minActivationsHint": "Minimum number of entries to activate (if possible) regardless of scan depth",
+    "minActivationsDepthMax": "Min. Activations Max Depth",
+    "minActivationsDepthMaxHint": "Maximum scan depth to search for minimum activations",
+    "maxRecursionSteps": "Max Recursion Steps",
+    "maxRecursionStepsHint": "Maximum number of recursion loops to prevent infinite loops",
     "includeNames": "Include Names",
     "includeNamesHint": "Include names with each message into the context for scanning",
     "recursiveScan": "Recursive Scan",
@@ -159,7 +165,7 @@
     "entry": {
       "toggle": "Toggle entry's active state.",
       "titlePlaceholder": "Entry Title/Memo",
-      "keywordsPlaceholder": "Comma separated list",
+      "keywordsPlaceholder": "Type and press Enter...",
       "logic": "Logic",
       "logicOptions": {
         "andAny": "AND ANY",
@@ -198,9 +204,25 @@
       "entryState": "Entry State",
       "entryStates": {
         "constant": "🔵 Constant",
-        "normal": "🟢 Normal",
-        "vectorized": "🔗 Vectorized"
-      }
+        "normal": "🟢 Normal"
+      },
+      "delay": "Delay (messages)",
+      "outletName": "Outlet Name",
+      "groupSettings": "Group & Budget Settings",
+      "group": "Group",
+      "groupWeight": "Group Weight",
+      "groupOverride": "Group Override",
+      "recursionSettings": "Recursion Settings",
+      "delayUntilRecursion": "Delay until Recursion Level",
+      "preventRecursion": "Prevent Recursion",
+      "excludeRecursion": "Exclude from Recursion",
+      "characterFilters": "Character Filters",
+      "filterCharNames": "Filter by Character Name",
+      "filterCharTags": "Filter by Character Tag",
+      "filterCharExclude": "Exclude matching characters",
+      "ignoreBudget": "Ignore Token Budget",
+      "matchWholeWords": "Match Whole Words",
+      "caseSensitive": "Case Sensitive"
     },
     "popup": {
       "newBookTitle": "New Lorebook",
@@ -441,6 +463,7 @@
     "close": "Close",
     "no": "No",
     "none": "None",
+    "global": "Global",
     "loading": "Loading...",
     "tokens": "Tokens",
     "confirm": "Confirm",
