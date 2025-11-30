@@ -7,10 +7,12 @@ import { Button, Icon, Textarea } from '../UI';
 
 const props = defineProps<{
   greetings: string[];
+  firstMes: string;
 }>();
 
 const emit = defineEmits<{
   (e: 'update:greetings', value: string[]): void;
+  (e: 'update:firstMes', value: string): void;
 }>();
 
 const { t } = useStrictI18n();
@@ -28,6 +30,8 @@ const localGreetings = ref<GreetingItem[]>(
   })),
 );
 
+const localFirstMes = ref<string>(props.firstMes);
+
 // Watch for changes in local state and emit updates immediately
 // This ensures live saving as the user types or reorders
 watch(
@@ -40,6 +44,10 @@ watch(
   },
   { deep: true },
 );
+
+watch(localFirstMes, (newVal) => {
+  emit('update:firstMes', newVal);
+});
 
 function addGreeting() {
   localGreetings.value.push({
@@ -54,6 +62,13 @@ function removeGreeting(index: number) {
 
 function updateGreeting(index: number, text: string) {
   localGreetings.value[index].text = text;
+}
+
+function swapWithFirstMes(index: number) {
+  const oldGreeting = localGreetings.value[index].text;
+  const oldFirstMes = localFirstMes.value;
+  localGreetings.value[index].text = oldFirstMes;
+  localFirstMes.value = oldGreeting;
 }
 </script>
 
@@ -77,6 +92,12 @@ function updateGreeting(index: number, text: string) {
               @update:model-value="updateGreeting(index, $event)"
             />
           </div>
+          <Button
+            variant="ghost"
+            icon="fa-right-left"
+            :title="t('characterEditor.alternateGreetings.swapTooltip')"
+            @click="swapWithFirstMes(index)"
+          />
           <Button variant="danger" icon="fa-trash" @click="removeGreeting(index)" />
         </div>
       </template>
@@ -112,6 +133,14 @@ function updateGreeting(index: number, text: string) {
   padding: 8px;
   border-radius: var(--base-border-radius);
   border: 1px solid var(--theme-border-color);
+}
+
+:deep(.swap-button) {
+  opacity: 0.7;
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
 .drag-handle {

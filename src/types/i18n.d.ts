@@ -752,6 +752,7 @@ export interface MessageSchema {
       label: string;
       placeholder: string;
       empty: string;
+      swapTooltip: string;
     };
   };
   extensions: {

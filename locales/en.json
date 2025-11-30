@@ -748,7 +748,8 @@
       "title": "Alternate Greetings",
       "label": "Alternate Greetings",
       "placeholder": "Enter an alternate greeting...",
-      "empty": "No alternate greetings added yet."
+      "empty": "No alternate greetings added yet.",
+      "swapTooltip": "Swap with first message"
     }
   },
   "extensions": {

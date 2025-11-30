@@ -308,12 +308,14 @@ async function openAlternateGreetings() {
     localCharacter.value.data.alternate_greetings = [];
   }
 
-  // We pass a callback to receive live updates from the component.
-  // This allows us to update the character store (via localCharacter watcher)
-  // immediately as the user edits, without waiting for the popup to close.
   const updateGreetings = (newGreetings: string[]) => {
     if (localCharacter.value && localCharacter.value.data) {
       localCharacter.value.data.alternate_greetings = newGreetings;
+    }
+  };
+  const updateFirstMes = (newFirstMes: string) => {
+    if (localCharacter.value) {
+      localCharacter.value.first_mes = newFirstMes;
     }
   };
 
@@ -322,7 +324,9 @@ async function openAlternateGreetings() {
     component: markRaw(AlternateGreetingsModal),
     componentProps: {
       greetings: localCharacter.value.data.alternate_greetings,
+      firstMes: localCharacter.value.first_mes || '',
       'onUpdate:greetings': updateGreetings,
+      'onUpdate:firstMes': updateFirstMes,
     },
     type: POPUP_TYPE.CONFIRM,
     large: true,
