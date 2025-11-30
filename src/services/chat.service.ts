@@ -1,5 +1,15 @@
-import { saveChat as apiSaveChat, fetchChat, saveChat } from '../api/chat';
-import type { ChatMessage, FullChat } from '../types/chat';
+import {
+  saveChat as apiSaveChat,
+  deleteChat,
+  exportChat,
+  fetchChat,
+  importChats,
+  listChats,
+  listRecentChats,
+  saveChat,
+  type ChatExportRequest,
+} from '../api/chat';
+import type { ChatInfo, ChatMessage, FullChat } from '../types/chat';
 
 export const chatService = {
   async fetch(filename: string): Promise<FullChat> {
@@ -13,6 +23,10 @@ export const chatService = {
 
   async create(filename: string, chat: FullChat): Promise<void> {
     await saveChat(filename, chat);
+  },
+
+  async delete(filename: string): Promise<void> {
+    await deleteChat(filename);
   },
 
   // Helpers to keep store clean from deep object mutation logic if needed
@@ -34,5 +48,21 @@ export const chatService = {
       delete message.extra.display_text;
       delete message.extra.reasoning_display_text;
     }
+  },
+
+  async import(file_type: 'jsonl' | 'json', file: File): Promise<{ fileNames: string[] }> {
+    return await importChats(file_type, file);
+  },
+
+  async export(request: ChatExportRequest): Promise<string> {
+    return await exportChat(request);
+  },
+
+  async list(): Promise<ChatInfo[]> {
+    return await listChats();
+  },
+
+  async listRecent(): Promise<ChatInfo[]> {
+    return await listRecentChats();
   },
 };

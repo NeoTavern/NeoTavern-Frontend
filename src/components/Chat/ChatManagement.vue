@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { debounce } from 'lodash-es';
 import { computed, ref } from 'vue';
-import * as api from '../../api/chat';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
 import { DebounceTimeout, GenerationMode, GroupGenerationHandlingMode, GroupReplyStrategy } from '../../constants';
+import { chatService } from '../../services/chat.service';
 import { useCharacterUiStore } from '../../stores/character-ui.store';
 import { useCharacterStore } from '../../stores/character.store';
 import { useChatStore } from '../../stores/chat.store';
@@ -17,7 +17,19 @@ import { POPUP_RESULT, POPUP_TYPE, type Character, type ChatInfo } from '../../t
 import { getThumbnailUrl } from '../../utils/character';
 import { formatTimeStamp, humanizedDateTime } from '../../utils/commons';
 import { ConnectionProfileSelector, DraggableList, EmptyState, Pagination } from '../common';
-import { Button, Checkbox, CollapsibleSection, FormItem, Input, ListItem, Search, Select, Tabs, Textarea } from '../UI';
+import {
+  Button,
+  Checkbox,
+  CollapsibleSection,
+  FileInput,
+  FormItem,
+  Input,
+  ListItem,
+  Search,
+  Select,
+  Tabs,
+  Textarea,
+} from '../UI';
 
 const { t } = useStrictI18n();
 const chatStore = useChatStore();
@@ -118,7 +130,7 @@ async function deleteChat(chatFile: string) {
 
   if (result === POPUP_RESULT.AFFIRMATIVE) {
     try {
-      await api.deleteChat(chatFile);
+      await chatService.delete(chatFile);
       const index = chats.value.findIndex((chat) => chat.file_id === chatFile);
       const isActiveChat = chatStore.activeChatFile === chatFile;
       if (isActiveChat) {
@@ -135,6 +147,31 @@ async function deleteChat(chatFile: string) {
     } catch {
       toast.error(t('chatManagement.errors.delete'));
     }
+  }
+}
+
+async function exportChat() {
+  try {
+    await chatStore.exportActiveChat('jsonl');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    toast.error(error.message || t('chatManagement.errors.export'));
+    console.error('Error exporting chat:', error);
+  }
+}
+
+async function handleImportFiles(files: File[]) {
+  const file = files[0];
+  if (!file) return;
+
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  const fileType = ext === 'json' ? 'json' : 'jsonl';
+
+  try {
+    const result = await chatStore.importChats(fileType, file);
+    toast.success(t('chatManagement.import.success', { count: result.fileNames.length }));
+  } catch (error: unknown) {
+    toast.error((error as Error).message || t('chatManagement.import.error'));
   }
 }
 
@@ -261,6 +298,21 @@ function getCharName(avatar: string) {
         <div class="chat-management-actions">
           <Search v-model="chatSearchTerm" :placeholder="t('common.search')" style="margin-top: 5px">
             <template #actions>
+              <Button
+                :active="!!chatStore.activeChatFile"
+                icon="fa-file-export"
+                variant="ghost"
+                :title="t('chatManagement.actions.export')"
+                style="margin-right: 5px; opacity: 0.7"
+                @click="exportChat()"
+              />
+              <FileInput
+                accept=".jsonl"
+                icon="fa-file-import"
+                :label="t('chatManagement.actions.import')"
+                style="margin-right: 5px"
+                @change="handleImportFiles"
+              />
               <Button v-show="characterStore.activeCharacters.length > 0" icon="fa-plus" @click="createNewChat()">
                 {{ t('chatManagement.newChat') }}
               </Button>

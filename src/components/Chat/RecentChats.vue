@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { deleteChat, listRecentChats } from '../../api/chat';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
+import { chatService } from '../../services/chat.service';
 import { useChatStore } from '../../stores/chat.store';
 import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -123,7 +123,7 @@ async function deleteSelected() {
     try {
       const idsToDelete = Array.from(selectedChats.value);
       for (const id of idsToDelete) {
-        await deleteChat(id);
+        await chatService.delete(id);
       }
       chatStore.recentChats = chatStore.recentChats.filter((c) => !selectedChats.value.has(c.file_id));
       if (chatStore.activeChatFile && selectedChats.value.has(chatStore.activeChatFile)) {
@@ -141,7 +141,7 @@ async function deleteSelected() {
 
 async function refresh() {
   try {
-    chatStore.recentChats = await listRecentChats();
+    chatStore.recentChats = await chatService.listRecent();
   } catch (err) {
     console.error(err);
     toast.error(t('chat.loadError'));

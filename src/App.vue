@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, type CSSProperties } from 'vue';
-import { listChats, listRecentChats } from './api/chat';
 import CharacterPanel from './components/CharacterPanel/CharacterPanel.vue';
 import ChatManagement from './components/Chat/ChatManagement.vue';
 import RecentChats from './components/Chat/RecentChats.vue';
@@ -242,8 +241,7 @@ onMounted(async () => {
 
   await settingsStore.initializeSettings();
   await secretStore.fetchSecrets();
-  chatStore.chatInfos = await listChats();
-  chatStore.recentChats = await listRecentChats();
+  await chatStore.refreshChats();
   await extensionStore.initializeExtensions();
 });
 </script>

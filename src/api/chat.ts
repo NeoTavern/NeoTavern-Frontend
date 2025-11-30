@@ -91,3 +91,49 @@ export async function deleteChat(chatFile: string): Promise<void> {
     throw new Error('Failed to delete chat history');
   }
 }
+
+export interface ChatExportRequest {
+  file: string;
+  exportfilename: string;
+  format: string;
+}
+
+export async function exportChat(body: ChatExportRequest): Promise<string> {
+  const response = await fetch('/api/chats/export', {
+    method: 'POST',
+    headers: getRequestHeaders(),
+    body: JSON.stringify({
+      ...body,
+      avatar_url: '',
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message ?? 'Export failed');
+  }
+  return data.result;
+}
+
+export async function importChats(file_type: 'jsonl' | 'json', file: File): Promise<{ fileNames: string[] }> {
+  const formData = new FormData();
+  formData.append('file_type', file_type);
+  formData.append('avatar_url', '');
+  formData.append('avatar', file);
+  formData.append('user_name', 'dummy'); // backend needs for backward compatibility
+  formData.append('name', 'dummy'); // backend needs for backward compatibility
+
+  const response = await fetch('/api/chats/import', {
+    method: 'POST',
+    headers: getRequestHeaders({ omitContentType: true }),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    throw new Error((data as any).message ?? 'Failed to import chats');
+  }
+
+  return await response.json();
+}

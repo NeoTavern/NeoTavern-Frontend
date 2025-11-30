@@ -30,17 +30,26 @@
     "selectLorebooks": "Select lorebooks...",
     "actions": {
       "rename": "Rename Chat",
+      "export": "Export Chat",
+      "import": "Import Chats",
       "delete": "Delete Chat"
     },
     "errors": {
       "create": "Failed to create new chat.",
       "rename": "Failed to rename chat.",
+      "export": "Failed to export chat.",
+      "noActiveChat": "No active chat selected to export.",
+      "noMessagesToExport": "Cannot export empty chat.",
       "delete": "Failed to delete chat."
     },
     "tabs": {
       "chats": "Chats",
       "group": "Group",
       "config": "Configuration"
+    },
+    "import": {
+      "success": "{count} chat(s) imported successfully",
+      "error": "Failed to import chats"
     }
   },
   "group": {

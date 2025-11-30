@@ -33,17 +33,26 @@ export interface MessageSchema {
     selectLorebooks: string;
     actions: {
       rename: string;
+      export: string;
+      import: string;
       delete: string;
     };
     errors: {
       create: string;
       rename: string;
+      export: string;
+      noActiveChat: string;
+      noMessagesToExport: string;
       delete: string;
     };
     tabs: {
       chats: string;
       group: string;
       config: string;
+    };
+    import: {
+      success: string;
+      error: string;
     };
   };
   group: {

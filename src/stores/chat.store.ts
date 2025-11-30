@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, nextTick, ref, watch } from 'vue';
+import { type ChatExportRequest } from '../api/chat';
 import { useAutoSave } from '../composables/useAutoSave';
 import { useChatGeneration } from '../composables/useChatGeneration';
 import { useStrictI18n } from '../composables/useStrictI18n';
@@ -17,7 +18,7 @@ import {
 } from '../types';
 import { getCharacterDifferences } from '../utils/character';
 import { getFirstMessage } from '../utils/chat';
-import { uuidv4 } from '../utils/commons';
+import { downloadFile, uuidv4 } from '../utils/commons';
 import { eventEmitter } from '../utils/extensions';
 import { useCharacterStore } from './character.store';
 import { useChatSelectionStore } from './chat-selection.store';
@@ -606,6 +607,83 @@ export const useChatStore = defineStore('chat', () => {
     triggerSave();
   }
 
+  async function exportActiveChat(format: string) {
+    if (!activeChat.value || !activeChatFile.value) {
+      throw new Error(t('chatManagement.errors.noActiveChat'));
+    }
+
+    const { metadata, messages } = activeChat.value;
+
+    if (messages.length === 0) {
+      throw new Error(t('chatManagement.errors.noMessagesToExport'));
+    }
+
+    const fullChat: FullChat = [{ chat_metadata: metadata }, ...messages];
+    await chatService.save(activeChatFile.value!, fullChat);
+
+    const filename = metadata.name ? metadata.name.replace(/\\.jsonl?$/g, '') : activeChatFile.value!;
+    const file = `${activeChatFile.value!}.jsonl`;
+    const exportfilename = `${filename}.${format}`;
+
+    const body: ChatExportRequest = {
+      file,
+      exportfilename,
+      format,
+    };
+
+    const content = await chatService.export(body);
+
+    const mimeType = format === 'txt' ? 'text/plain' : 'application/octet-stream';
+    downloadFile(content, exportfilename, mimeType);
+  }
+
+  async function refreshChats() {
+    chatInfos.value = await chatService.list();
+    recentChats.value = await chatService.listRecent();
+  }
+
+  async function importChats(file_type: 'jsonl' | 'json', file: File): Promise<{ fileNames: string[] }> {
+    const result = await chatService.import(file_type, file);
+
+    for (const fileName of result.fileNames) {
+      try {
+        const fileId = fileName.replace(/\.jsonl?$/, '');
+        const fullChat = await chatService.fetch(fileId);
+        if (fullChat.length === 0) {
+          console.warn(`Imported chat ${fileName} is empty.`);
+          continue;
+        }
+        const header = fullChat[0] as ChatHeader;
+        const messages = fullChat.slice(1) as ChatMessage[];
+        const lastMessage = messages[messages.length - 1];
+
+        const chatInfo: ChatInfo = {
+          file_id: fileId,
+          file_name: fileName,
+          file_size: JSON.stringify(fullChat).length,
+          chat_items: messages.length,
+          mes: lastMessage?.mes.slice(0, 100) ?? '',
+          last_mes: lastMessage ? new Date(lastMessage.send_date).getTime() : Date.now(),
+          chat_metadata: header.chat_metadata,
+        };
+
+        if (!chatInfos.value.find((c) => c.file_id === fileId)) {
+          chatInfos.value.push(chatInfo);
+        }
+        if (!recentChats.value.find((c) => c.file_id === fileId)) {
+          recentChats.value.push(chatInfo);
+        }
+      } catch (e) {
+        console.warn(`Failed to fetch imported chat ${fileName}:`, e);
+      }
+    }
+
+    chatInfos.value.sort((a, b) => b.last_mes - a.last_mes);
+    recentChats.value.sort((a, b) => b.last_mes - a.last_mes);
+
+    return result;
+  }
+
   return {
     activeChat,
     chatInfos,
@@ -628,6 +706,7 @@ export const useChatStore = defineStore('chat', () => {
     deleteSwipe,
     swipeMessage,
     moveMessage,
+    exportActiveChat,
     setActiveChatFile,
     createNewChatForCharacter,
     toggleChatPersona,
@@ -636,5 +715,7 @@ export const useChatStore = defineStore('chat', () => {
     syncSwipeToMes,
     triggerSave,
     deleteSelectedMessages,
+    refreshChats,
+    importChats,
   };
 });
