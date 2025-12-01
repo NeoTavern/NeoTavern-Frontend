@@ -87,7 +87,7 @@ function swapWithFirstMes(index: number) {
           <div class="greeting-input-wrapper">
             <Textarea
               :model-value="item.text"
-              :rows="2"
+              :rows="6"
               :placeholder="t('characterEditor.alternateGreetings.placeholder')"
               @update:model-value="updateGreeting(index, $event)"
             />
