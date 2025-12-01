@@ -33,21 +33,19 @@ const formatterOptions = computed(() => [
 
 const supportedFormatterOptions = computed(() => {
   const caps = currentProviderCaps.value;
-  const supportsChat = caps?.supportsChat ?? true;
-  const supportsText = caps?.supportsText ?? true;
 
   const options = [];
-  if (supportsChat || settingsStore.settings.api.formatter === 'chat') {
+  if (caps?.supportsChat || settingsStore.settings.api.formatter === 'chat') {
     options.push(formatterOptions.value[0]);
   }
-  if (supportsText || settingsStore.settings.api.formatter === 'text') {
+  if (caps?.supportsText || settingsStore.settings.api.formatter === 'text') {
     options.push(formatterOptions.value[1]);
   }
 
   return options;
 });
 
-const showFormatter = computed(() => supportedFormatterOptions.value.length > 0);
+const showFormatter = computed(() => supportedFormatterOptions.value.length > 1);
 
 const instructTemplateOptions = computed(() => {
   return apiStore.instructTemplates.map((template) => ({ label: template.name, value: template.name }));
