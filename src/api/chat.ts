@@ -1,5 +1,30 @@
-import type { ChatInfo, FullChat } from '../types';
+import type { ChatInfo, ChatMetadata, FullChat } from '../types';
 import { getRequestHeaders } from '../utils/client';
+import { uuidv4 } from '../utils/commons';
+
+function ensureChatMetadataCorrect(metadata: ChatMetadata | undefined): ChatMetadata {
+  if (!metadata) {
+    return {
+      members: [],
+      promptOverrides: {
+        scenario: '',
+      },
+      integrity: uuidv4(),
+    };
+  }
+  if (!metadata.promptOverrides) {
+    metadata.promptOverrides = {
+      scenario: '',
+    };
+  }
+  if (!metadata.integrity) {
+    metadata.integrity = uuidv4();
+  }
+  if (!metadata.members) {
+    metadata.members = [];
+  }
+  return metadata;
+}
 
 export async function fetchChat(chatFile: string): Promise<FullChat> {
   const response = await fetch('/api/chats/get', {
@@ -15,7 +40,11 @@ export async function fetchChat(chatFile: string): Promise<FullChat> {
     throw new Error('Failed to fetch chat history');
   }
 
-  return await response.json();
+  const chat = await response.json() as FullChat;
+  if (chat) {
+    chat[0].chat_metadata = ensureChatMetadataCorrect(chat[0].chat_metadata);
+  }
+  return chat;
 }
 
 export async function saveChat(chatFile: string, chatToSave?: FullChat): Promise<void> {
@@ -54,7 +83,11 @@ export async function listChats(): Promise<ChatInfo[]> {
     throw new Error('Failed to list chat histories');
   }
 
-  return await response.json();
+  const chatInfos = await response.json();
+  for (let i = 0; i < chatInfos.length; i++) {
+    chatInfos[i].chat_metadata = ensureChatMetadataCorrect(chatInfos[i].chat_metadata);
+  }
+  return chatInfos;
 }
 
 export async function listRecentChats(): Promise<ChatInfo[]> {
@@ -72,7 +105,10 @@ export async function listRecentChats(): Promise<ChatInfo[]> {
   }
 
   let data = (await response.json()) as ChatInfo[];
-  data = data.filter((chat) => chat.chat_metadata !== undefined);
+  data = data.map((chatInfo) => {
+    chatInfo.chat_metadata = ensureChatMetadataCorrect(chatInfo.chat_metadata);
+    return chatInfo;
+  });
   return data;
 }
 
