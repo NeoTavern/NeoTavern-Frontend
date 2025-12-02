@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PropType } from 'vue';
-import { computed, markRaw, onMounted, ref, watch } from 'vue';
+import { computed, markRaw, nextTick, onMounted, ref, watch } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
 import { GenerationMode } from '../../constants';
@@ -44,6 +44,7 @@ const editedContent = ref('');
 const editedReasoning = ref('');
 const isEditingReasoning = ref(false);
 const isReasoningCollapsed = ref(false);
+const editTextarea = ref<InstanceType<typeof Textarea>>();
 
 const isEditing = computed(() => chatStore.activeMessageEditState?.index === props.index);
 const hasReasoning = computed(() => props.message.extra?.reasoning && props.message.extra.reasoning.trim().length > 0);
@@ -62,11 +63,13 @@ onMounted(() => {
   isReasoningCollapsed.value = settingsStore.settings.ui?.chat?.reasoningCollapsed ?? false;
 });
 
-watch(isEditing, (editing) => {
+watch(isEditing, async (editing) => {
   if (editing) {
     editedContent.value = props.message.mes;
     editedReasoning.value = props.message.extra?.reasoning ?? '';
     isEditingReasoning.value = !!props.message.extra?.reasoning;
+    await nextTick();
+    editTextarea.value?.focus();
   } else {
     isEditingReasoning.value = false;
   }
@@ -365,7 +368,7 @@ async function showPromptItemization() {
             <Textarea v-model="editedReasoning" :label="t('chat.reasoning.title')" :rows="3" :resizable="true" />
           </div>
         </transition>
-        <Textarea v-model="editedContent" :rows="5" :resizable="true" @keydown="handleEditKeydown" />
+        <Textarea ref="editTextarea" v-model="editedContent" :rows="5" :resizable="true" @keydown="handleEditKeydown" />
       </div>
 
       <div v-show="canSwipe && !isSelectionMode" class="message-footer">

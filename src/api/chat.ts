@@ -40,7 +40,7 @@ export async function fetchChat(chatFile: string): Promise<FullChat> {
     throw new Error('Failed to fetch chat history');
   }
 
-  const chat = await response.json() as FullChat;
+  const chat = (await response.json()) as FullChat;
   if (chat) {
     chat[0].chat_metadata = ensureChatMetadataCorrect(chat[0].chat_metadata);
   }

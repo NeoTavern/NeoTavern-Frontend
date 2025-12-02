@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
-import { markRaw } from 'vue';
+import { markRaw, ref } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { usePopupStore } from '../../stores/popup.store';
 import { POPUP_TYPE } from '../../types';
@@ -31,9 +31,20 @@ const popupStore = usePopupStore();
 
 const { t } = useStrictI18n();
 
+const textareaRef = ref<HTMLTextAreaElement>();
+
 function onInput(event: Event) {
   emit('update:modelValue', (event.target as HTMLTextAreaElement).value);
 }
+
+defineExpose({
+  focus() {
+    if (textareaRef.value) {
+      textareaRef.value.focus();
+      textareaRef.value.setSelectionRange(textareaRef.value.value.length, textareaRef.value.value.length);
+    }
+  },
+});
 
 async function maximizeEditor() {
   await popupStore.show({
@@ -65,6 +76,7 @@ async function maximizeEditor() {
     </div>
 
     <textarea
+      ref="textareaRef"
       class="text-pole"
       :value="modelValue"
       :rows="rows"
