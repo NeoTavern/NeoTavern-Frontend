@@ -470,6 +470,20 @@
   }
 }
 
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.9em;
+
+  &.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}
+
 // Inline Drawer (Collapsible)
 .inline-drawer {
   width: 100%;

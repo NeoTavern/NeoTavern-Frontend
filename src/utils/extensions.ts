@@ -1,6 +1,6 @@
 import * as Vue from 'vue';
 import { createVNode, render, type App } from 'vue';
-import { EventPriority, GenerationMode, default_avatar } from '../constants';
+import { EventPriority, GenerationMode, GroupGenerationHandlingMode, default_avatar } from '../constants';
 import type {
   ChatMessage,
   ExtensionAPI,
@@ -8,9 +8,10 @@ import type {
   ExtensionMetadata,
   MountableComponent,
   SettingsPath,
+  WorldInfoBook,
 } from '../types';
 import { sanitizeSelector } from './client';
-import { getMessageTimeStamp } from './commons';
+import { getMessageTimeStamp, uuidv4 } from './commons';
 
 // Internal Store Imports
 import { ChatCompletionService, buildChatCompletionPayload } from '../api/generation';
@@ -26,11 +27,14 @@ import { useUiStore } from '../stores/ui.store';
 import { useWorldInfoStore } from '../stores/world-info.store';
 
 // Service Imports
+import { ApiTokenizer } from '../api/tokenizer';
 import VanillaSidebar from '../components/Shared/VanillaSidebar.vue';
+import { macroService } from '../services/macro-service';
 import { PromptBuilder } from '../services/prompt-engine';
 import { WorldInfoProcessor } from '../services/world-info';
 import { useComponentRegistryStore } from '../stores/component-registry.store';
 import { useLayoutStore } from '../stores/layout.store';
+import { getCharactersForContext } from './chat';
 
 // --- Event Emitter ---
 
@@ -264,6 +268,68 @@ const baseExtensionAPI: ExtensionAPI = {
         modelList: apiStore.modelList,
       });
     },
+    buildPrompt: async (options) => {
+      const chatStore = useChatStore();
+      const characterStore = useCharacterStore();
+      const settingsStore = useSettingsStore();
+      const worldInfoStore = useWorldInfoStore();
+      const personaStore = usePersonaStore();
+      const apiStore = useApiStore();
+
+      if (!chatStore.activeChat) throw new Error('No active chat.');
+      if (!personaStore.activePersona) throw new Error('No active persona.');
+
+      // Group Logic
+      const groupData = chatStore.activeChat.metadata.group;
+      const handlingMode = groupData?.config.handlingMode ?? GroupGenerationHandlingMode.SWAP;
+      const mutedMap: Record<string, boolean> = {};
+      if (groupData?.members) {
+        for (const [key, val] of Object.entries(groupData.members)) {
+          mutedMap[key] = val.muted;
+        }
+      }
+
+      // Determine the character context
+      let activeCharacter = characterStore.activeCharacters[0];
+      if (options?.characterAvatar) {
+        const found = characterStore.activeCharacters.find((c) => c.avatar === options.characterAvatar);
+        if (found) activeCharacter = found;
+      }
+      if (!activeCharacter) throw new Error('No active character.');
+
+      const charactersForContext = getCharactersForContext(
+        characterStore.activeCharacters,
+        activeCharacter,
+        handlingMode !== GroupGenerationHandlingMode.SWAP,
+        handlingMode === GroupGenerationHandlingMode.JOIN_INCLUDE_MUTED,
+        mutedMap,
+      );
+
+      const tokenizer = new ApiTokenizer({
+        tokenizerType: settingsStore.settings.api.tokenizer,
+        model: apiStore.activeModel,
+      });
+
+      const books = (
+        await Promise.all(
+          worldInfoStore.activeBookNames.map(async (name) => await worldInfoStore.getBookFromCache(name, true)),
+        )
+      ).filter((book): book is WorldInfoBook => book !== undefined);
+
+      const builder = new PromptBuilder({
+        generationId: options?.generationId ?? uuidv4(),
+        characters: charactersForContext,
+        chatMetadata: chatStore.activeChat.metadata,
+        chatHistory: [...chatStore.activeChat.messages],
+        persona: personaStore.activePersona,
+        samplerSettings: settingsStore.settings.api.samplers,
+        tokenizer,
+        books,
+        worldInfo: settingsStore.settings.worldInfo,
+      });
+
+      return await builder.build();
+    },
     metadata: {
       get: () => deepClone(useChatStore().activeChat?.metadata ?? null),
       set: (metadata) => {
@@ -336,6 +402,24 @@ const baseExtensionAPI: ExtensionAPI = {
         book.entries[index] = { ...entry };
         store.saveBookDebounced(book);
       }
+    },
+  },
+  macro: {
+    process: (text, context) => {
+      const charStore = useCharacterStore();
+      const personaStore = usePersonaStore();
+
+      const characters = context?.characters ?? charStore.activeCharacters;
+      const activeCharacter = context?.activeCharacter ?? characters[0];
+      const persona = context?.persona ?? personaStore.activePersona;
+
+      if (!persona) throw new Error('No active persona found for macro processing.');
+
+      return macroService.process(text, {
+        characters,
+        persona,
+        activeCharacter,
+      });
     },
   },
   ui: {
@@ -411,19 +495,53 @@ const baseExtensionAPI: ExtensionAPI = {
       let model = apiStore.activeModel;
       let samplerSettings = { ...settingsStore.settings.api.samplers, ...(options.samplerOverrides ?? {}) };
 
+      let formatter = settingsStore.settings.api.formatter;
+      let instructTemplateName = settingsStore.settings.api.instructTemplateName;
+
       if (options.connectionProfileName) {
         const profile = apiStore.connectionProfiles.find((p) => p.name === options.connectionProfileName);
         if (!profile) throw new Error(`Profile "${options.connectionProfileName}" not found.`);
         provider = profile.provider ?? provider;
         model = profile.model ?? model;
+        formatter = profile.formatter ?? formatter;
+        instructTemplateName = profile.instructTemplate ?? instructTemplateName;
+
         if (profile.sampler) {
           const sampler = apiStore.presets.find((p) => p.name === profile.sampler);
           if (sampler) samplerSettings = { ...sampler.preset, ...(options.samplerOverrides ?? {}) };
         }
         if (profile.customPromptPostProcessing) {
+          const isPrefill = messages.length > 1 ? messages[messages.length - 1].role === 'assistant' : false;
+          const lastPrefillMessage = isPrefill ? messages.pop() : null;
           messages = await ChatCompletionService.formatMessages(messages, profile.customPromptPostProcessing);
+          if (lastPrefillMessage) {
+            if (!lastPrefillMessage.content.startsWith(`${lastPrefillMessage.name}: `)) {
+              lastPrefillMessage.content = `${lastPrefillMessage.name}: ${lastPrefillMessage.content}`;
+            }
+            messages.push(lastPrefillMessage);
+          }
+
+          if (!samplerSettings?.stop) samplerSettings.stop = [];
+          const characterStore = useCharacterStore();
+          const personaStore = usePersonaStore();
+          const activeCharacters = characterStore.activeCharacters;
+          const persona = personaStore.activePersona;
+          const allNames = [
+            ...activeCharacters.map((c) => c.name),
+            persona ? persona.name : 'User',
+            persona?.name || '',
+          ];
+          samplerSettings.stop.push(...allNames.map((n) => `\n${n}:`));
+          samplerSettings.stop = Array.from(new Set(samplerSettings.stop.filter((s) => s && s.trim().length > 0)));
         }
       }
+
+      if (options.instructTemplateName) {
+        instructTemplateName = options.instructTemplateName;
+      }
+
+      const instructTemplate = apiStore.instructTemplates.find((t) => t.name === instructTemplateName);
+
       if (!model) throw new Error('No model specified.');
 
       const payload = buildChatCompletionPayload({
@@ -433,6 +551,8 @@ const baseExtensionAPI: ExtensionAPI = {
         provider: provider,
         providerSpecific: settingsStore.settings.api.providerSpecific,
         modelList: apiStore.modelList,
+        formatter,
+        instructTemplate,
       });
       return await ChatCompletionService.generate(payload, options.signal);
     },

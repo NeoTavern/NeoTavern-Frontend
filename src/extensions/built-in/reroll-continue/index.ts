@@ -1,28 +1,51 @@
 import { type StrictT } from '../../../composables/useStrictI18n';
 import { GenerationMode } from '../../../constants';
 import i18n from '../../../i18n';
-import type { ExtensionAPI, GenerationContext } from '../../../types';
+import type { ApiChatMessage, ExtensionAPI, GenerationContext } from '../../../types';
 import { manifest } from './manifest';
-import type { RerollSnapshot } from './types';
+import SettingsPanel from './SettingsPanel.vue';
+import { DEFAULT_IMPERSONATE_PROMPT, type ExtensionSettings, type RerollSnapshot } from './types';
 
 export { manifest };
 
-export function activate(api: ExtensionAPI) {
+const DEFAULT_SETTINGS: ExtensionSettings = {
+  rerollContinueEnabled: true,
+  impersonateEnabled: true,
+  impersonateConnectionProfile: undefined,
+  impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
+};
+
+function getSettings(api: ExtensionAPI<ExtensionSettings>): ExtensionSettings {
+  return api.settings.get() ?? DEFAULT_SETTINGS;
+}
+
+export function activate(api: ExtensionAPI<ExtensionSettings>) {
   let snapshot: RerollSnapshot | null = null;
-  const BUTTON_ID = 'reroll-continue-button';
+  let settingsApp: { unmount: () => void } | null = null;
+
+  const settingsContainer = document.getElementById(api.meta.containerId);
+  if (settingsContainer) {
+    settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
+  }
+
+  const REROLL_CONTINUE_BUTTON_ID = 'reroll-continue-button';
+  const IMPERSONATE_BUTTON_ID = 'impersonate-button';
 
   // @ts-expect-error 'i18n.global' is of type 'unknown'
   const t = i18n.global.t as StrictT;
 
   // Helper to toggle button visibility based on state
   const updateButtonState = () => {
-    const btn = document.getElementById(BUTTON_ID);
-    if (!btn) return;
+    const settings = getSettings(api);
 
-    if (snapshot) {
-      btn.style.display = 'flex';
-    } else {
-      btn.style.display = 'none';
+    const rerollBtn = document.getElementById(REROLL_CONTINUE_BUTTON_ID);
+    if (rerollBtn) {
+      rerollBtn.style.display = snapshot && settings.rerollContinueEnabled ? 'flex' : 'none';
+    }
+
+    const impBtn = document.getElementById(IMPERSONATE_BUTTON_ID);
+    if (impBtn) {
+      impBtn.style.display = settings.impersonateEnabled ? 'flex' : 'none';
     }
   };
 
@@ -51,6 +74,13 @@ export function activate(api: ExtensionAPI) {
 
   // 2. Reroll Action
   const rerollContinue = async () => {
+    const settings = getSettings(api);
+
+    if (!settings.rerollContinueEnabled) {
+      api.ui.showToast(t('extensionsBuiltin.rerollContinue.rerollDisabled'), 'info');
+      return;
+    }
+
     if (!snapshot) {
       api.ui.showToast(t('extensionsBuiltin.rerollContinue.noSnapshot'), 'info');
       return;
@@ -97,19 +127,110 @@ export function activate(api: ExtensionAPI) {
     }
   };
 
+  // Impersonate Action
+  const impersonate = async () => {
+    const settings = getSettings(api);
+
+    if (!settings.impersonateEnabled) {
+      api.ui.showToast(t('extensionsBuiltin.rerollContinue.impersonateDisabled'), 'info');
+      return;
+    }
+
+    const persone = api.persona.getActive();
+    if (!persone) {
+      api.ui.showToast(t('extensionsBuiltin.rerollContinue.noPersona'), 'error');
+      return;
+    }
+
+    let contextMessages: ApiChatMessage[] = [];
+    try {
+      contextMessages = await api.chat.buildPrompt();
+    } catch (err) {
+      console.error('[Impersonate] Failed to build prompt:', err);
+      api.ui.showToast(t('extensionsBuiltin.rerollContinue.buildPromptFailed'), 'error');
+      return;
+    }
+
+    const chatInputElement = document.querySelector('#chat-input') as HTMLTextAreaElement | null;
+    const chatInput = chatInputElement?.value.trim() ?? '';
+
+    const genMessages: ApiChatMessage[] = [...contextMessages];
+    if (settings.impersonatePrompt) {
+      const impersonateContent = api.macro.process(settings.impersonatePrompt);
+      genMessages.push({
+        role: 'system',
+        content: impersonateContent,
+        name: 'System',
+      });
+    }
+
+    const newMessage: ApiChatMessage = {
+      role: 'assistant',
+      content: '',
+      name: persone.name,
+    };
+    if (chatInput) {
+      newMessage.content += chatInput;
+    }
+    genMessages.push(newMessage);
+
+    if (!settings.impersonateConnectionProfile) {
+      api.ui.showToast(t('extensionsBuiltin.rerollContinue.noConnectionProfile'), 'error');
+      return;
+    }
+
+    api.ui.showToast(t('extensionsBuiltin.rerollContinue.impersonating'), 'info');
+
+    try {
+      const response = await api.llm.generate(genMessages, {
+        connectionProfileName: settings.impersonateConnectionProfile,
+      });
+
+      let generated = chatInput;
+
+      if (typeof response === 'function') {
+        const generator = response();
+        for await (const chunk of generator) {
+          generated += chunk.delta ?? '';
+          if (chatInputElement) {
+            chatInputElement.value = generated;
+            chatInputElement.dispatchEvent(new Event('input', { bubbles: true }));
+            chatInputElement.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+      } else {
+        generated = response.content;
+        if (chatInputElement) {
+          chatInputElement.value = generated;
+          chatInputElement.dispatchEvent(new Event('input', { bubbles: true }));
+          chatInputElement.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    } catch (error) {
+      console.error('[Impersonate] Failed:', error);
+      api.ui.showToast(t('extensionsBuiltin.rerollContinue.impersonationFailed'), 'error');
+    }
+  };
+
   // 3. UI Injection
   const injectButton = () => {
     const optionsMenu = document.querySelector('.options-menu');
 
-    // If menu doesn't exist yet (rare, but possible depending on mount timing) or button exists, skip
-    if (!optionsMenu || document.getElementById(BUTTON_ID)) return;
+    // If menu doesn't exist or buttons exist, skip
+    if (
+      !optionsMenu ||
+      document.getElementById(REROLL_CONTINUE_BUTTON_ID) ||
+      document.getElementById(IMPERSONATE_BUTTON_ID)
+    )
+      return;
 
-    const btn = document.createElement('a');
-    btn.id = BUTTON_ID;
-    btn.className = 'options-menu-item';
-    // Start hidden until we have a snapshot
-    btn.style.display = 'none';
-    btn.style.cursor = 'pointer';
+    updateButtonState(); // Pre-compute displays
+
+    // Reroll button
+    const rerollBtn = document.createElement('a');
+    rerollBtn.id = REROLL_CONTINUE_BUTTON_ID;
+    rerollBtn.className = 'options-menu-item';
+    rerollBtn.style.cursor = 'pointer';
 
     const icon = document.createElement('i');
     icon.className = 'fa-solid fa-rotate-right';
@@ -117,25 +238,39 @@ export function activate(api: ExtensionAPI) {
     const span = document.createElement('span');
     span.textContent = t('extensionsBuiltin.rerollContinue.buttonLabel');
 
-    btn.appendChild(icon);
-    btn.appendChild(span);
+    rerollBtn.appendChild(icon);
+    rerollBtn.appendChild(span);
 
-    btn.onclick = (e) => {
+    rerollBtn.onclick = (e) => {
       e.stopPropagation();
-      // Simulate clicking the background to close the menu (handled by ChatInterface's clickOutside)
       document.body.click();
       rerollContinue();
     };
 
-    // Insert before the <hr> if it exists, or just append
-    const hr = optionsMenu.querySelector('hr');
-    if (hr) {
-      optionsMenu.insertBefore(btn, hr);
-    } else {
-      optionsMenu.appendChild(btn);
-    }
+    // Impersonate button
+    const impersonateBtn = document.createElement('a');
+    impersonateBtn.id = IMPERSONATE_BUTTON_ID;
+    impersonateBtn.className = 'options-menu-item';
+    impersonateBtn.style.cursor = 'pointer';
 
-    // Apply initial state
+    const icon2 = document.createElement('i');
+    icon2.className = 'fa-solid fa-user-secret';
+
+    const span2 = document.createElement('span');
+    span2.textContent = t('extensionsBuiltin.rerollContinue.impersonateButtonLabel');
+
+    impersonateBtn.appendChild(icon2);
+    impersonateBtn.appendChild(span2);
+
+    impersonateBtn.onclick = (e) => {
+      e.stopPropagation();
+      document.body.click();
+      impersonate();
+    };
+
+    optionsMenu.appendChild(rerollBtn);
+    optionsMenu.appendChild(impersonateBtn);
+
     updateButtonState();
   };
 
@@ -161,8 +296,11 @@ export function activate(api: ExtensionAPI) {
   }
 
   return () => {
+    settingsApp?.unmount();
     unbinds.forEach((u) => u());
-    const btn = document.getElementById(BUTTON_ID);
-    if (btn) btn.remove();
+    const rerollBtn = document.getElementById(REROLL_CONTINUE_BUTTON_ID);
+    if (rerollBtn) rerollBtn.remove();
+    const impBtn = document.getElementById(IMPERSONATE_BUTTON_ID);
+    if (impBtn) impBtn.remove();
   };
 }

@@ -321,18 +321,24 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
     if (deps.activeChat.value !== chatContext) throw new Error('Context switched');
 
-    // Trim history for Continue/Swipe
+    // Trim history for Swipe
     const lastMessage = context.history.length > 0 ? context.history[context.history.length - 1] : null;
-    if (mode === GenerationMode.ADD_SWIPE || mode === GenerationMode.CONTINUE) {
+    if (mode === GenerationMode.ADD_SWIPE) {
       if (lastMessage && !lastMessage.is_user) {
-        context.history.pop(); // Remove the message being continued/swiped from prompt history
+        context.history.pop();
       }
+    }
+
+    let effectivePostProcessing = settings.api.customPromptPostProcessing;
+    if (profileSettings?.customPromptPostProcessing) {
+      effectivePostProcessing = profileSettings.customPromptPostProcessing;
     }
 
     // Handle "Stop if line starts with non-active character" logic
     const stopOnNameHijack = settings.chat.stopOnNameHijack ?? 'all';
     const isGroupChat = groupChatStore.isGroupChat;
     const shouldCheckHijack =
+      effectivePostProcessing || // Post processing already prefixing names
       stopOnNameHijack === 'all' ||
       (stopOnNameHijack === 'group' && isGroupChat) ||
       (stopOnNameHijack === 'single' && !isGroupChat);
@@ -390,6 +396,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       messages.push({
         role: 'assistant',
         content: `${activeCharacter.name}: `,
+        name: activeCharacter.name,
       });
     }
 
@@ -587,18 +594,16 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       }
     };
 
-    // Execute Request
-    let effectivePostProcessing = settings.api.customPromptPostProcessing;
-    if (profileSettings?.customPromptPostProcessing) {
-      effectivePostProcessing = profileSettings.customPromptPostProcessing;
-    }
-
     if (effectivePostProcessing) {
       try {
+        const isPrefill = messages.length > 1 ? messages[messages.length - 1].role === 'assistant' : false;
+        const lastPrefillMessage = isPrefill ? messages.pop() : null;
         payload.messages = await ChatCompletionService.formatMessages(payload.messages || [], effectivePostProcessing);
-        // Prefill
-        if (payload.messages.length === 1 && (mode === GenerationMode.CONTINUE || groupChatStore.isGroupChat)) {
-          payload.messages[0].role = 'assistant';
+        if (lastPrefillMessage) {
+          if (!lastPrefillMessage.content.startsWith(`${lastPrefillMessage.name}: `)) {
+            lastPrefillMessage.content = `${lastPrefillMessage.name}: ${lastPrefillMessage.content}`;
+          }
+          payload.messages.push(lastPrefillMessage);
         }
       } catch (e) {
         console.error('Post-processing failed:', e);

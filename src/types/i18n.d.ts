@@ -1046,6 +1046,24 @@ export interface MessageSchema {
       swipeError: string;
       reverting: string;
       error: string;
+      rerollDisabled: string;
+      impersonateButtonLabel: string;
+      impersonateDisabled: string;
+      noPersona: string;
+      buildPromptFailed: string;
+      noConnectionProfile: string;
+      impersonating: string;
+      impersonationFailed: string;
+      settings: {
+        rerollEnabled: string;
+        impersonateEnabled: string;
+        impersonateTitle: string;
+        connectionProfileLabel: string;
+        connectionProfileDesc: string;
+        promptDesc: string;
+        promptLabel: string;
+        reset: string;
+      };
     };
   };
   persona: {

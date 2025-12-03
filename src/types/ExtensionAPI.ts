@@ -16,6 +16,7 @@ import type { WorldInfoBook, WorldInfoEntry, WorldInfoHeader, WorldInfoSettings 
 export interface LlmGenerationOptions {
   connectionProfileName?: string;
   samplerOverrides?: Partial<SamplerSettings>;
+  instructTemplateName?: string;
   signal?: AbortSignal;
   generationId?: string;
 }
@@ -240,6 +241,13 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
     ) => Promise<GenerationResponse | (() => AsyncGenerator<StreamedChunk>)>;
     buildPayload: (messages: ApiChatMessage[], samplerOverrides?: Partial<SamplerSettings>) => ChatCompletionPayload;
 
+    /**
+     * Builds the prompt messages for the current active chat context, applying
+     * world info, character definitions, persona, and history processing.
+     * This replicates the internal prompt building logic used during generation.
+     */
+    buildPrompt: (options?: { generationId?: string; characterAvatar?: string }) => Promise<ApiChatMessage[]>;
+
     metadata: {
       get: () => Readonly<ChatMetadata> | null;
       set: (metadata: ChatMetadata) => void;
@@ -307,6 +315,17 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
     getActiveBookNames: () => readonly string[];
     setGlobalBookNames: (names: string[]) => void;
     updateEntry: (bookName: string, entry: WorldInfoEntry) => Promise<void>;
+  };
+  macro: {
+    /**
+     * Processes a string replacing macros (e.g. {{user}}, {{char}}) with context data.
+     * @param text The text to process.
+     * @param context Optional context overrides. If not provided, active context is used.
+     */
+    process: (
+      text: string,
+      context?: { activeCharacter?: Character; characters?: Character[]; persona?: Persona },
+    ) => string;
   };
   ui: {
     showToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;

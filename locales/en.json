@@ -1042,7 +1042,25 @@
       "divergenceError": "Message content divergence detected. Aborting reroll.",
       "swipeError": "Swipe changed. Cannot reroll previous swipe state.",
       "reverting": "Reverting and rerolling...",
-      "error": "Failed to reroll continue."
+      "error": "Failed to reroll continue.",
+      "rerollDisabled": "Reroll/Continue is disabled in settings",
+      "impersonateButtonLabel": "Impersonate",
+      "impersonateDisabled": "Impersonate is disabled in settings",
+      "noPersona": "No active persona for impersonation",
+      "buildPromptFailed": "Failed to build prompt",
+      "noConnectionProfile": "No connection profile selected for impersonate",
+      "impersonating": "Impersonating user...",
+      "impersonationFailed": "Impersonation failed",
+      "settings": {
+        "rerollEnabled": "Enable Reroll/Continue",
+        "impersonateEnabled": "Enable Impersonate",
+        "impersonateTitle": "Impersonate Settings",
+        "connectionProfileLabel": "Connection Profile",
+        "connectionProfileDesc": "Select LLM profile for impersonation generation",
+        "promptDesc": "Custom prompt template for impersonation. Supports {'{{user}}'} and {'{{char}}'} placeholders.",
+        "promptLabel": "Prompt Template",
+        "reset": "Reset"
+      }
     }
   },
   "persona": {

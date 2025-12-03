@@ -64,7 +64,7 @@ export class Translator {
       });
 
       // Call LLM
-      const messages: ApiChatMessage[] = [{ role: 'user', content: prompt }];
+      const messages: ApiChatMessage[] = [{ role: 'system', content: prompt, name: 'System' }];
 
       // Use type assertion if 'system' isn't strictly allowed in ApiChatMessage yet,
       // but usually translation is a direct instruction.

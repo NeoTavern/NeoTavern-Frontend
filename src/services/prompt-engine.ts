@@ -126,12 +126,19 @@ export class PromptBuilder {
       console.warn('No enabled prompts found in sampler settings.');
       return [];
     }
-    const historyPlaceholder = { role: 'system', content: '[[CHAT_HISTORY_PLACEHOLDER]]' } as const;
+    const historyPlaceholder = { role: 'system', content: '[[CHAT_HISTORY_PLACEHOLDER]]', name: 'system' } as const;
 
     const handlingMode = this.chatMetadata.group?.config?.handlingMode ?? GroupGenerationHandlingMode.SWAP;
     const isGroupContext = this.characters.length > 1 || handlingMode !== GroupGenerationHandlingMode.SWAP;
 
     for (const promptDefinition of enabledPrompts) {
+      const role = promptDefinition.role ?? 'system';
+      const name =
+        role === 'user'
+          ? this.persona.name || 'User'
+          : role === 'assistant'
+            ? this.character.name || 'Character'
+            : 'System';
       if (promptDefinition.marker) {
         switch (promptDefinition.identifier) {
           case 'chatHistory':
@@ -142,7 +149,7 @@ export class PromptBuilder {
               (c) => c.description,
               isGroupContext ? undefined : this.character.description,
             );
-            if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
+            if (content) fixedPrompts.push({ role, content, name });
             break;
           }
           case 'charPersonality': {
@@ -150,7 +157,7 @@ export class PromptBuilder {
               (c) => c.personality,
               isGroupContext ? undefined : this.character.personality,
             );
-            if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
+            if (content) fixedPrompts.push({ role, content, name });
             break;
           }
           case 'scenario': {
@@ -166,13 +173,13 @@ export class PromptBuilder {
                 isGroupContext ? undefined : this.character.scenario,
               );
             }
-            if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
+            if (content) fixedPrompts.push({ role, content, name });
             break;
           }
           case 'dialogueExamples': {
             if (emBefore && emBefore.length > 0) {
               for (const em of emBefore) {
-                fixedPrompts.push({ role: promptDefinition.role ?? 'system', content: em });
+                fixedPrompts.push({ role, content: em, name });
               }
             }
 
@@ -181,29 +188,28 @@ export class PromptBuilder {
               isGroupContext ? undefined : this.character.mes_example,
             );
             const formattedContent = content.split('\n').join('\n\n');
-            if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content: formattedContent });
+            if (content) fixedPrompts.push({ role, content: formattedContent, name });
 
             if (emAfter && emAfter.length > 0) {
               for (const em of emAfter) {
-                fixedPrompts.push({ role: promptDefinition.role ?? 'system', content: em });
+                fixedPrompts.push({ role, content: em, name });
               }
             }
             break;
           }
           case 'worldInfoBefore':
             // WI processor already handles macros
-            if (worldInfoBefore)
-              fixedPrompts.push({ role: promptDefinition.role ?? 'system', content: worldInfoBefore });
+            if (worldInfoBefore) fixedPrompts.push({ role, content: worldInfoBefore, name });
             break;
           case 'worldInfoAfter':
-            if (worldInfoAfter) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content: worldInfoAfter });
+            if (worldInfoAfter) fixedPrompts.push({ role, content: worldInfoAfter, name });
             break;
           case 'personaDescription': {
             const content = macroService.process(this.persona.description || '', {
               characters: this.characters,
               persona: this.persona,
             });
-            if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
+            if (content) fixedPrompts.push({ role, content, name });
             break;
           }
           case 'jailbreak': {
@@ -211,7 +217,7 @@ export class PromptBuilder {
               (c) => c.data?.post_history_instructions,
               isGroupContext ? undefined : this.character.data?.post_history_instructions,
             );
-            if (content) fixedPrompts.push({ role: promptDefinition.role ?? 'system', content });
+            if (content) fixedPrompts.push({ role, content, name });
             break;
           }
         }
@@ -221,7 +227,7 @@ export class PromptBuilder {
             characters: this.characters,
             persona: this.persona,
           });
-          if (content) fixedPrompts.push({ role: promptDefinition.role, content });
+          if (content) fixedPrompts.push({ role, content, name });
         }
       }
     }
@@ -257,6 +263,7 @@ export class PromptBuilder {
         const msgs: ApiChatMessage[] = entryItem.entries.map((content) => ({
           role: entryItem.role,
           content,
+          name: entryItem.role,
         }));
         const list = depthEntriesMap.get(entryItem.depth) || [];
         depthEntriesMap.set(entryItem.depth, [...list, ...msgs]);
