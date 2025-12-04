@@ -3,10 +3,12 @@ import { computed, ref } from 'vue';
 import type { WorldInfoBook, WorldInfoEntry } from '../types';
 import { useSettingsStore } from './settings.store';
 import { useWorldInfoStore } from './world-info.store';
+import { useLayoutStore } from './layout.store';
 
 export const useWorldInfoUiStore = defineStore('world-info-ui', () => {
   const settingsStore = useSettingsStore();
   const worldInfoStore = useWorldInfoStore();
+  const layoutStore = useLayoutStore();
 
   const isPanelPinned = ref(false);
   const selectedItemId = ref<'global-settings' | string | null>('global-settings');
@@ -56,6 +58,7 @@ export const useWorldInfoUiStore = defineStore('world-info-ui', () => {
       }
     }
     selectedItemId.value = id;
+    layoutStore.autoCloseLeftSidebarOnMobile();
   }
 
   function filteredAndSortedEntries(filename: string): WorldInfoEntry[] {
