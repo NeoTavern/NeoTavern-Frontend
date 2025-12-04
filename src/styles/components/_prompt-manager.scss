@@ -158,6 +158,12 @@
   }
 }
 
+.animations-disabled {
+  .slideDown {
+    animation: none !important;
+  }
+}
+
 .prompt-manager-header {
   display: flex;
   flex-direction: column;

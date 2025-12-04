@@ -1,5 +1,6 @@
 <script setup lang="ts" generic="T">
 import { nextTick, ref } from 'vue';
+import { useAnimationControl } from '../../composables/useAnimationControl';
 
 const props = defineProps<{
   items: T[];
@@ -16,6 +17,8 @@ const emit = defineEmits<{
   (e: 'update:items', items: T[]): void;
   (e: 'reorder', payload: { from: number; to: number }): void;
 }>();
+
+const { animationsDisabled } = useAnimationControl();
 
 const draggedIndex = ref<number | null>(null);
 const dropTargetIndex = ref<number | null>(null);
@@ -159,7 +162,7 @@ function resetState() {
 </script>
 
 <template>
-  <div class="draggable-list" @dragover="onContainerDragOver">
+  <div class="draggable-list" :class="{ 'animations-disabled': animationsDisabled }" @dragover="onContainerDragOver">
     <div
       v-for="(item, index) in items"
       :key="itemKey ? String(item[itemKey]) : index"

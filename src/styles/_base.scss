@@ -223,6 +223,20 @@ select.text-pole {
 // =============================================================================
 // Animations
 // =============================================================================
+
+@keyframes flash {
+  0%,
+  50%,
+  100% {
+    opacity: 1;
+  }
+
+  25%,
+  75% {
+    opacity: 0.2;
+  }
+}
+
 .animated {
   -webkit-animation-duration: var(--animation-duration, 3s);
   animation-duration: var(--animation-duration, 3s);
@@ -235,6 +249,7 @@ select.text-pole {
   animation-name: flash;
 }
 
+// Keyframe animations used throughout the app
 @keyframes flash {
   0%,
   50%,
@@ -245,6 +260,79 @@ select.text-pole {
   25%,
   75% {
     opacity: 0.2;
+  }
+}
+
+@keyframes typing-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInQuick {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animations-disabled {
+  animation: none !important;
+  transition: none !important;
+}
+
+.animations-disabled .animated {
+  animation: none !important;
+}
+
+.animations-disabled .flash {
+  animation: none !important;
+}
+
+.animations-disabled {
+  .typing-bounce {
+    animation: none !important;
+  }
+
+  .slideUp {
+    animation: none !important;
+  }
+
+  .fadeIn {
+    animation: none !important;
+  }
+
+  .fadeInQuick {
+    animation: none !important;
   }
 }
 

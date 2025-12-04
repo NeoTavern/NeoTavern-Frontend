@@ -164,14 +164,3 @@
   opacity: 0.5;
   color: var(--theme-text-color);
 }
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}

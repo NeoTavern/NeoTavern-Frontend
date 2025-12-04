@@ -208,6 +208,7 @@ export function migrateLegacyToExperimental(
         reasoningCollapsed: false,
         forbidExternalMedia: p.forbid_external_media ?? true,
       },
+      disableAnimations: false,
     },
     chat: {
       sendOnEnter: p.send_on_enter,

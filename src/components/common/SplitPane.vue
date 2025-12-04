@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useAnimationControl } from '../../composables/useAnimationControl';
 import { useResizable } from '../../composables/useResizable';
 import type { Settings } from '../../types';
 
@@ -15,6 +16,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:collapsed', value: boolean): void;
 }>();
+
+const { animationsDisabled } = useAnimationControl();
 
 const paneRef = ref<HTMLElement | null>(null);
 const handleRef = ref<HTMLElement | null>(null);
@@ -36,7 +39,7 @@ function toggleCollapse() {
 </script>
 
 <template>
-  <div class="split-pane" :class="{ 'is-collapsed': collapsed }">
+  <div class="split-pane" :class="{ 'is-collapsed': collapsed, 'animations-disabled': animationsDisabled }">
     <div ref="paneRef" class="split-pane-panel split-pane-panel--side">
       <slot name="side" />
     </div>

@@ -137,4 +137,13 @@ export const settingsDefinition: SettingDefinition[] = [
     widget: 'checkbox',
     defaultValue: false,
   },
+  {
+    id: 'ui.disableAnimations',
+    label: 'settings.ui.disableAnimations.label',
+    description: 'settings.ui.disableAnimations.description',
+    category: 'Appearance',
+    type: 'boolean',
+    widget: 'checkbox',
+    defaultValue: false,
+  },
 ];

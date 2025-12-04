@@ -2,7 +2,7 @@
 // handles dynamic content (e.g., lazy-loading or filtering).
 .grid-slide-enter-active,
 .grid-slide-leave-active {
-  transition: grid-template-rows 0.3s ease-in-out;
+  transition: grid-template-rows var(--animation-duration) ease-in-out;
   display: grid; // Must be a grid container for the animation to work
 }
 
@@ -27,7 +27,17 @@
 .slide-js-enter-active,
 .slide-js-leave-active {
   transition:
-    height 0.3s ease-in-out,
-    opacity 0.3s ease-in-out;
+    height var(--animation-duration) ease-in-out,
+    opacity var(--animation-duration) ease-in-out;
   overflow: hidden;
+}
+
+.animations-disabled .grid-slide-enter-active,
+.animations-disabled .grid-slide-leave-active {
+  transition: none !important;
+}
+
+.animations-disabled .slide-js-enter-active,
+.animations-disabled .slide-js-leave-active {
+  transition: none !important;
 }

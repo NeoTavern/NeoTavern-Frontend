@@ -57,17 +57,6 @@
       animation-delay: -0.16s;
     }
   }
-
-  @keyframes typing-bounce {
-    0%,
-    80%,
-    100% {
-      transform: scale(0);
-    }
-    40% {
-      transform: scale(1);
-    }
-  }
 }
 
 .chat-loading-overlay {
@@ -229,26 +218,6 @@
   .selection-actions {
     display: flex;
     gap: 8px;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 0.7;
   }
 }
 

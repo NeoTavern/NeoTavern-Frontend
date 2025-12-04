@@ -995,6 +995,10 @@
       }
     },
     "ui": {
+      "disableAnimations": {
+        "label": "Disable all animations",
+        "description": "Disables CSS transitions, Vue transitions, and other animations for better performance and accessibility"
+      },
       "chat": {
         "reasoningCollapsed": {
           "label": "Collapse Reasoning by Default",

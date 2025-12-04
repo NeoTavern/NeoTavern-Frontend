@@ -998,6 +998,10 @@ export interface MessageSchema {
       };
     };
     ui: {
+      disableAnimations: {
+        label: string;
+        description: string;
+      };
       chat: {
         reasoningCollapsed: {
           label: string;

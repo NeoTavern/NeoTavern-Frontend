@@ -51,6 +51,18 @@
     }
   }
 
+  &.animations-disabled {
+    transition: none !important;
+
+    .message-buttons {
+      transition: none !important;
+    }
+
+    .selection-checkbox {
+      transition: none !important;
+    }
+  }
+
   // --- Standard Layout ---
 
   &-avatar-wrapper {

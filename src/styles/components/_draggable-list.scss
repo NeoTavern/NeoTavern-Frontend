@@ -10,6 +10,7 @@
   border-radius: var(--base-border-radius, 2px);
   // Using translate instead of default layout helps performance
   will-change: transform, opacity;
+  transition: transform var(--animation-duration);
 
   // Default cursor behavior
   cursor: default;
@@ -48,6 +49,11 @@
     display: block;
     bottom: -4px;
   }
+}
+
+.draggable-list.animations-disabled .draggable-item-wrapper {
+  transition: none;
+  will-change: auto;
 }
 
 /* 

@@ -278,6 +278,7 @@ export interface Settings {
       reasoningCollapsed: boolean;
       forbidExternalMedia: boolean;
     };
+    disableAnimations: boolean;
   };
   chat: {
     sendOnEnter: SendOnEnterOptions;

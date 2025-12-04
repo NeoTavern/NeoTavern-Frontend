@@ -258,3 +258,9 @@
     transform: scale(1);
   }
 }
+
+.animations-disabled {
+  .typing-dot-animation {
+    animation: none !important;
+  }
+}

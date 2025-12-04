@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { PropType } from 'vue';
 import { computed, markRaw, nextTick, onMounted, ref, watch } from 'vue';
+import { useAnimationControl } from '../../composables/useAnimationControl';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
 import { GenerationMode } from '../../constants';
@@ -39,6 +40,7 @@ const chatSelectionStore = useChatSelectionStore();
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
 const promptStore = usePromptStore();
+const { animationsDisabled } = useAnimationControl();
 
 const editedContent = ref('');
 const editedReasoning = ref('');
@@ -278,6 +280,7 @@ async function showPromptItemization() {
       'is-bot': !message.is_user,
       'is-selected': isSelected,
       'is-selection-mode': isSelectionMode,
+      'animations-disabled': animationsDisabled,
     }"
     :data-message-index="index"
     @click="handleSelectionClick"

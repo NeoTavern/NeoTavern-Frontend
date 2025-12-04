@@ -732,6 +732,10 @@
           opacity var(--animation-duration-2x) ease-in-out;
       }
     }
+
+    &.animations-disabled .split-pane-panel--side {
+      transition: none !important;
+    }
   }
 
   &-divider {
