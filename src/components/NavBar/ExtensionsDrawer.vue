@@ -30,7 +30,7 @@ function installExtension() {
 
 function handleExtensionSelect(extension: Extension) {
   extensionStore.selectExtension(extension.id);
-  layoutStore.autoCloseLeftSidebarOnMobile();
+  layoutStore.autoCloseSidebarsOnMobile();
 }
 </script>
 

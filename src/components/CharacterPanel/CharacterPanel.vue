@@ -43,7 +43,7 @@ function createNew() {
 
 function handleCharacterSelect(character: Character) {
   characterUiStore.selectCharacterByAvatar(character.avatar);
-  layoutStore.autoCloseLeftSidebarOnMobile();
+  layoutStore.autoCloseSidebarsOnMobile();
 }
 
 async function handleFileImport(files: File[]) {

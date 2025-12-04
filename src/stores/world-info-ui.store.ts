@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { WorldInfoBook, WorldInfoEntry } from '../types';
+import { useLayoutStore } from './layout.store';
 import { useSettingsStore } from './settings.store';
 import { useWorldInfoStore } from './world-info.store';
-import { useLayoutStore } from './layout.store';
 
 export const useWorldInfoUiStore = defineStore('world-info-ui', () => {
   const settingsStore = useSettingsStore();
@@ -58,7 +58,7 @@ export const useWorldInfoUiStore = defineStore('world-info-ui', () => {
       }
     }
     selectedItemId.value = id;
-    layoutStore.autoCloseLeftSidebarOnMobile();
+    layoutStore.autoCloseSidebarsOnMobile();
   }
 
   function filteredAndSortedEntries(filename: string): WorldInfoEntry[] {

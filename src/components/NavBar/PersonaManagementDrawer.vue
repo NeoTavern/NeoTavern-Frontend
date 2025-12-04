@@ -99,7 +99,7 @@ watch(
 function selectPersona(id: string) {
   personaUiStore.viewMode = 'editor';
   personaStore.setActivePersona(id);
-  layoutStore.autoCloseLeftSidebarOnMobile();
+  layoutStore.autoCloseSidebarsOnMobile();
 }
 
 function selectGlobalSettings() {

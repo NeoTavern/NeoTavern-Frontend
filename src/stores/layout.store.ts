@@ -48,10 +48,14 @@ export const useLayoutStore = defineStore('layout', () => {
     leftSidebarView.value = null;
   }
 
-  function autoCloseLeftSidebarOnMobile() {
-    if (isMobile.value && isLeftSidebarOpen.value) {
-      isLeftSidebarOpen.value = false;
-      leftSidebarView.value = null;
+  function autoCloseSidebarsOnMobile() {
+    if (isMobile.value) {
+      if (isLeftSidebarOpen.value) {
+        closeLeftSidebar();
+      }
+      if (isRightSidebarOpen.value) {
+        closeRightSidebar();
+      }
     }
   }
 
@@ -145,7 +149,7 @@ export const useLayoutStore = defineStore('layout', () => {
     rightSidebarView,
     toggleLeftSidebar,
     closeLeftSidebar,
-    autoCloseLeftSidebarOnMobile,
+    autoCloseSidebarsOnMobile,
     toggleRightSidebar,
     closeRightSidebar,
     cleanupRightSidebarForLayout,

@@ -83,7 +83,7 @@ async function onItemClick(chat: ChatInfo) {
     toggleSelection(chat.file_id);
   } else {
     chatStore.setActiveChatFile(chat.file_id);
-    layoutStore.autoCloseLeftSidebarOnMobile();
+    layoutStore.autoCloseSidebarsOnMobile();
   }
 }
 

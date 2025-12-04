@@ -75,7 +75,8 @@ const chats = computed<ChatInfo[]>(() => {
 
 async function selectChat(chatFile: string) {
   try {
-    await chatStore.setActiveChatFile(chatFile);
+    chatStore.setActiveChatFile(chatFile);
+    layoutStore.autoCloseSidebarsOnMobile();
   } catch {
     toast.error(t('chat.loadError'));
   }
