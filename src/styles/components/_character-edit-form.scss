@@ -1,25 +1,26 @@
+@use '../mixins' as *;
+
 .character-edit-form {
-  display: flex;
-  flex-direction: column;
+  @include flex-container(column);
   height: 100%;
   overflow-y: auto;
-  padding: 0 4px;
-  gap: 12px;
+  padding: 0 var(--spacing-xs);
+  gap: var(--spacing-md);
 
   form {
     display: flex;
     flex-direction: column;
     min-height: 100%;
-    gap: 12px;
+    gap: var(--spacing-md);
   }
 
   &-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 8px;
-    margin-top: 5px;
-    padding: 0 4px;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
+    padding: 0 var(--spacing-xs);
 
     &-main {
       flex-grow: 1;
@@ -40,7 +41,7 @@
   &-header-info {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--spacing-sm);
     flex-shrink: 0;
 
     .result_info {
@@ -72,7 +73,7 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: flex-start;
-    gap: 12px;
+    gap: var(--spacing-md);
   }
 
   &-avatar-area {
@@ -93,27 +94,27 @@
   }
 
   &-avatar-img {
-    width: 96px;
-    height: 96px;
+    width: calc(var(--avatar-width) * 2);
+    height: calc(var(--avatar-height) * 2);
     object-position: center center;
     object-fit: cover;
     border-radius: var(--avatar-border-radius-round);
     border: 1px solid var(--theme-border-color);
-    box-shadow: 0 0 5px var(--black-50a);
+    @include subtle-shadow();
   }
 
   &-controls {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--spacing-sm);
     min-width: 0;
   }
 
   &-buttons {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: var(--spacing-xs);
 
     .menu-button {
       padding: 0;
@@ -130,7 +131,7 @@
   .character-note-container {
     display: flex;
     flex-direction: row;
-    gap: 8px;
+    gap: var(--spacing-sm);
   }
 
   .slider-hint {
@@ -138,27 +139,27 @@
     justify-content: space-between;
     font-size: 0.8em;
     opacity: 0.7;
-    padding: 0 4px;
+    padding: 0 var(--spacing-xs);
   }
 
   .token-counter {
     font-size: 0.8em;
     text-align: right;
     opacity: 0.6;
-    margin-top: 4px;
+    margin-top: var(--spacing-xs);
   }
 
   .inline-drawer-content--column {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--spacing-sm);
   }
 
   hr {
     border: none;
     border-top: 1px solid var(--theme-border-color);
     width: 100%;
-    margin: 4px 0;
+    margin: var(--spacing-xs) 0;
   }
 }
 
@@ -178,10 +179,10 @@
 .first-message-header {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 4px;
+  margin-bottom: var(--spacing-xs);
 }
 
 .count-badge {
-  margin-left: 4px;
+  margin-left: var(--spacing-xs);
   opacity: 0.7;
 }

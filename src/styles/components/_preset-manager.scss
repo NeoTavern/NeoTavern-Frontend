@@ -1,17 +1,20 @@
+@use '../mixins' as *;
+
 .standout-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: var(--spacing-xs);
   font-size: 1.1em;
   color: var(--theme-text-color);
+  @include flex-container(row, space-between, center);
 }
 
 .preset-manager {
-  margin-bottom: 20px;
+  margin-bottom: var(--spacing-xl);
 
   &-actions {
     display: flex;
-    gap: 4px;
+    gap: var(--spacing-xs);
   }
 }

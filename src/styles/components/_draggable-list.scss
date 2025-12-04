@@ -1,7 +1,7 @@
 .draggable-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--spacing-xs);
   padding-block: 4px;
 }
 
@@ -22,7 +22,7 @@
 
   &.is-dragging-active {
     opacity: 0.4;
-    background: #f9f9f9;
+    background: var(--white-30a);
     cursor: grabbing;
   }
 
@@ -36,18 +36,18 @@
     background-color: var(--theme-quote-color, #e18a24);
     display: none;
     pointer-events: none;
-    z-index: 10;
-    border-radius: 2px;
+    z-index: var(--z-dropdown);
+    border-radius: var(--base-border-radius);
   }
 
   &.drop-target-top::before {
     display: block;
-    top: -4px;
+    top: calc(var(--spacing-xs) * -1);
   }
 
   &.drop-target-bottom::after {
     display: block;
-    bottom: -4px;
+    bottom: calc(var(--spacing-xs) * -1);
   }
 }
 

@@ -1,18 +1,18 @@
 .prompt-itemization {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   width: 100%;
   font-size: 0.95em;
 
   .pi-header {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--spacing-xs);
     opacity: 0.8;
 
     .separator {
-      margin: 0 4px;
+      margin: 0 var(--spacing-xs);
       opacity: 0.5;
     }
   }
@@ -28,12 +28,12 @@
     width: 100%;
     border: 0;
     border-top: 1px solid var(--theme-border-color);
-    margin: 4px 0;
+    margin: var(--spacing-xs) 0;
   }
 
   .pi-content {
     display: flex;
-    gap: 12px;
+    gap: var(--spacing-md);
 
     @media (max-width: 700px) {
       flex-direction: column;
@@ -45,7 +45,7 @@
     width: 64px;
     background-color: var(--black-30a);
     border-radius: var(--base-border-radius);
-    padding: 4px;
+    padding: var(--spacing-xs);
     flex-shrink: 0;
 
     @media (max-width: 700px) {
@@ -103,7 +103,7 @@
   .pi-details-section {
     flex-grow: 1;
     display: flex;
-    gap: 12px;
+    gap: var(--spacing-md);
     overflow-y: auto;
 
     @media (max-width: 700px) {
@@ -115,7 +115,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--spacing-xs);
   }
 
   .pi-row {
@@ -124,7 +124,7 @@
 
     &.header {
       font-weight: bold;
-      margin-top: 4px;
+      margin-top: var(--spacing-xs);
 
       &.system {
         color: grey;
@@ -145,7 +145,7 @@
 
     &.sub {
       font-size: 0.85em;
-      padding-left: 12px;
+      padding-left: var(--spacing-md);
       opacity: 0.7;
     }
   }
@@ -153,28 +153,28 @@
   .pi-footer {
     display: flex;
     justify-content: space-between;
-    margin-top: 4px;
+    margin-top: var(--spacing-xs);
 
     .pi-stat {
       display: flex;
-      gap: 4px;
+      gap: var(--spacing-xs);
     }
   }
 
   .pi-actions {
     display: flex;
-    gap: 8px;
-    margin-top: 12px;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
     flex-wrap: wrap;
   }
 
   .pi-raw-viewer,
   .pi-wi-viewer {
-    margin-top: 12px;
+    margin-top: var(--spacing-md);
     background-color: var(--black-50a);
     border: 1px solid var(--theme-border-color);
     border-radius: var(--base-border-radius);
-    padding: 12px;
+    padding: var(--spacing-md);
     max-height: 300px;
     overflow: auto;
 
@@ -189,13 +189,13 @@
 
   .pi-wi-viewer {
     .pi-wi-book {
-      margin-bottom: 16px;
+      margin-bottom: var(--spacing-lg);
 
       h4 {
-        margin: 0 0 4px 0;
+        margin: 0 0 var(--spacing-xs) 0;
         opacity: 0.9;
         border-bottom: 1px solid var(--white-20a);
-        padding-bottom: 4px;
+        padding-bottom: var(--spacing-xs);
       }
 
       ul {
@@ -205,17 +205,17 @@
 
         li {
           background-color: var(--white-20a);
-          margin-bottom: 4px;
-          padding: 4px;
+          margin-bottom: var(--spacing-xs);
+          padding: var(--spacing-xs);
           border-radius: var(--base-border-radius);
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: var(--spacing-xs);
 
           .pi-wi-entry-header {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--spacing-sm);
             font-size: 0.95em;
 
             .uid {
@@ -233,8 +233,8 @@
 
             .badge {
               font-size: 0.75em;
-              padding: 2px 4px;
-              border-radius: 4px;
+              padding: var(--spacing-xxs) var(--spacing-xs);
+              border-radius: var(--base-border-radius);
               background-color: var(--black-50a);
               color: var(--theme-text-color);
               text-transform: uppercase;

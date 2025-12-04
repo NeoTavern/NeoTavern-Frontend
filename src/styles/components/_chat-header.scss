@@ -1,21 +1,20 @@
+@use '../mixins' as *;
+
 .chat-header {
   width: 100%;
   height: var(--header-height);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
+  @include flex-container(row, space-between, center);
+  padding: 0 var(--spacing-lg);
   background-color: var(--theme-background-tint);
   border-bottom: 1px solid var(--theme-border-color);
-  z-index: 100; // High enough to stay above content
+  z-index: var(--z-navbar);
   position: relative;
   flex-shrink: 0;
   box-shadow: 0 1px 3px var(--theme-shadow-color);
 
   &-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    @include flex-container(row, flex-start, center);
+    gap: var(--spacing-sm);
 
     &.left,
     &.right {
@@ -24,9 +23,9 @@
 
     &.center {
       flex-grow: 1;
-      justify-content: center;
+      @include flex-container(row, center, center);
       overflow: hidden;
-      padding: 0 8px;
+      padding: 0 var(--spacing-sm);
     }
   }
 
@@ -34,10 +33,9 @@
     font-size: 1.2em;
     cursor: pointer;
     opacity: 0.7;
-    transition:
-      opacity var(--animation-duration),
-      color var(--animation-duration);
-    padding: 4px;
+    @include transition-base(opacity, var(--animation-duration-sm), ease-in-out);
+    @include transition-base(color, var(--animation-duration-sm), ease-in-out);
+    padding: var(--spacing-xs);
     border-radius: var(--base-border-radius);
 
     &:hover,
@@ -47,13 +45,12 @@
   }
 
   &-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    @include flex-container(row, center, center);
+    gap: var(--spacing-sm);
     cursor: pointer;
-    padding: 4px 8px;
+    padding: var(--spacing-xs) var(--spacing-sm);
     border-radius: var(--base-border-radius);
-    transition: background-color var(--animation-duration);
+    @include transition-base(background-color, var(--animation-duration-sm), ease-in-out);
     max-width: 100%;
 
     &:hover {
@@ -97,6 +94,6 @@
     max-width: 150px;
   }
   .chat-header {
-    padding: 0 12px;
+    padding: 0 var(--spacing-md);
   }
 }

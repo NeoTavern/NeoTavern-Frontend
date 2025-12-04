@@ -59,13 +59,17 @@ $base-border-radius-rounded: 8px;
 
   // Accents & Status
   --color-accent-red: #{$red};
+  --color-accent-green: #5d9e5d;
   --color-accent-crimson-70a: #{rgba(100, 0, 0, 0.7)};
   --color-accent-crimson-hover: #{rgba(150, 50, 50, 0.5)};
   --color-accent-green-70a: #{rgba($green, 0.7)};
   --color-accent-cobalt-30a: #{rgba($blue, 0.3)};
   --color-golden: #{$golden};
   --color-warning: #{rgba($red, 0.9)};
+  --color-warning-amber: #e29325;
   --color-preferred: rgb(244, 67, 54);
+  --color-info-cobalt: #4092aa;
+  --color-error-crimson: #a83c36;
 
   // --- Default Theme ---
   --theme-text-color: #{$ivory};
@@ -115,6 +119,14 @@ $base-border-radius-rounded: 8px;
   --header-height: 48px;
   --layout-message-right-spacing: 32px;
 
+  --spacing-xxs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 32px;
+
   --base-border-radius: #{$base-border-radius};
   --base-border-radius-round: #{$base-border-radius-round};
   --base-border-radius-rounded: #{$base-border-radius-rounded};
@@ -147,6 +159,12 @@ $base-border-radius-rounded: 8px;
   --avatar-border-radius-rounded: #{$base-border-radius-rounded};
   --avatar-inline-small-factor: 0.6;
 
+  // Component Sizing
+  --textarea-padding-y: var(--spacing-sm);
+  --textarea-padding-x: var(--spacing-md);
+
+  --scrollbar-width: var(--spacing-xs);
+
   // --- Effects ---
   --blur-strength: 10; // Unitless value for slider controls
   --blur-radius: calc(var(--blur-strength) * 1px);
@@ -154,13 +172,25 @@ $base-border-radius-rounded: 8px;
   --shadow-blur-radius: calc(var(--shadow-width) * 1px);
 
   // --- Animations ---
-  --animation-duration: #{$base-animation-duration};
-  --animation-duration-2x: calc(var(--animation-duration) * 2);
-  --animation-duration-3x: calc(var(--animation-duration) * 3);
+  --animation-duration-xs: 60ms; // For fast interactions
+  --animation-duration-sm: 125ms; // Base animation duration
+  --animation-duration-md: 250ms; // For moderate transitions
+  --animation-duration-lg: 500ms; // For major transitions
+  --animation-duration-2x: calc(var(--animation-duration-sm) * 2);
+  --animation-duration-3x: calc(var(--animation-duration-sm) * 3);
 
   // --- Interactables ---
   --interactable-outline-color: var(--white-100);
   --interactable-outline-color-faint: var(--white-20a);
+
+  // --- Z-Index Scale ---
+  --z-drawer: 1000;
+  --z-sidebar: 900;
+  --z-navbar: 800;
+  --z-modal: 700;
+  --z-tooltip: 600;
+  --z-dropdown: 500;
+  --z-sticky: 100;
 
   // --- Text Formatting ---
   --theme-reasoning-saturation-factor: 0.5;

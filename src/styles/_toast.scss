@@ -4,7 +4,7 @@
 
 #toast-container {
   position: fixed;
-  z-index: 999999;
+  z-index: var(--z-tooltip);
   pointer-events: none;
   width: 320px;
   max-width: calc(100% - 32px);
@@ -20,10 +20,10 @@
   pointer-events: auto;
   position: relative;
   overflow: hidden;
-  margin: 0 0 4px;
-  padding: 12px 12px 12px 26px;
+  margin: 0 0 var(--spacing-xs);
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 26px;
   width: 100%;
-  border-radius: 4px;
+  border-radius: var(--base-border-radius);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   color: #fff;
   opacity: 0;
@@ -42,15 +42,15 @@
 
 button.toast-close-button {
   position: absolute;
-  right: 8px;
-  top: 8px;
+  right: var(--spacing-sm);
+  top: var(--spacing-sm);
   font-size: 1.2em;
   font-weight: bold;
   color: #fff;
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 0 4px 0 0;
+  padding: 0 var(--spacing-xs) 0 0;
   text-shadow: 0 1px 0 #fff;
   opacity: 0.8;
 
@@ -70,17 +70,17 @@ button.toast-close-button {
 }
 
 .toast-success {
-  background-color: #5d9e5d;
+  background-color: var(--color-accent-green);
 }
 
 .toast-error {
-  background-color: #a83c36;
+  background-color: var(--color-error-crimson);
 }
 
 .toast-info {
-  background-color: #4092aa;
+  background-color: var(--color-info-cobalt);
 }
 
 .toast-warning {
-  background-color: #e29325;
+  background-color: var(--color-warning-amber);
 }

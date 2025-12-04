@@ -15,17 +15,17 @@
   max-height: 90vh;
   display: flex;
   align-items: flex-start;
-  z-index: 5000;
+  z-index: var(--z-modal);
 
   .panel-control-bar {
     position: absolute;
     right: 5px;
     top: 5px;
-    z-index: 1; // Above the image
+    z-index: var(--z-tooltip); // Above the image
     min-width: 55px;
     display: flex;
     justify-content: flex-end;
-    gap: 4px;
+    gap: var(--spacing-xs);
     transition: all var(--animation-duration-2x);
 
     .drag-grabber {

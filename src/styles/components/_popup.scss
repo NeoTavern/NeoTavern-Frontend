@@ -1,9 +1,11 @@
+@use '../mixins' as *;
+
 .popup {
   background-color: var(--theme-background-tint);
   color: var(--theme-text-color);
   border: 1px solid var(--theme-border-color);
   border-radius: var(--base-border-radius-rounded);
-  padding: 20px;
+  padding: var(--spacing-xl);
   min-width: 320px;
   width: 500px;
   box-shadow: 0 4px 16px var(--black-50a);
@@ -42,10 +44,12 @@
       flex-grow: 1;
       display: flex;
       flex-direction: column;
+      @include hide-desktop();
 
       textarea {
         flex-grow: 1;
         height: 100%;
+        @include textarea-base();
       }
     }
   }
@@ -54,7 +58,7 @@
 .popup-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md);
   height: 100%;
   max-height: 95dvh;
 }
@@ -81,13 +85,14 @@
 .popup-controls {
   display: flex;
   align-self: center;
-  gap: 8px;
-  margin-top: 16px;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
   flex-wrap: wrap;
   justify-content: center;
 
   .menu-button {
     min-width: 80px;
+    @include button-base();
   }
 }
 
@@ -98,22 +103,22 @@
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--spacing-md);
 }
 
 .checkbox-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding-top: 20px;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-xl);
 }
 
 .mt-2 {
-  margin-top: 8px;
+  margin-top: var(--spacing-sm);
 }
 
 .template-form {
   max-height: 70vh;
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: var(--spacing-sm);
 }

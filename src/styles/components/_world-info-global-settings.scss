@@ -1,10 +1,10 @@
 .world-info-global-settings {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--spacing-lg);
   height: 100%;
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: var(--spacing-sm);
 }
 
 .world-info-global-settings .main-page-header {
@@ -27,25 +27,25 @@ hr {
 .settings-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .wi-settings-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
-  gap: 20px;
+  gap: var(--spacing-lg);
 }
 
 .wi-settings-grid-sliders {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--spacing-md);
 }
 
 .wi-settings-grid-checkboxes {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   justify-content: center;
 }
 
@@ -55,10 +55,10 @@ select[multiple] {
 
 .global-token-stat {
   background: var(--black-30a);
-  padding: 8px 12px;
-  border-radius: 4px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--base-border-radius);
   border: 1px solid var(--theme-border-color);
-  margin-bottom: 8px;
+  margin-bottom: var(--spacing-sm);
   display: flex;
   justify-content: space-between;
   align-items: center;

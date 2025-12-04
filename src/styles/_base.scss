@@ -2,8 +2,10 @@
 // Custom Scrollbar
 // =============================================================================
 
+@use 'mixins' as *;
+
 ::-webkit-scrollbar {
-  width: 0.7rem;
+  width: var(--scrollbar-width);
   scrollbar-gutter: stable;
 }
 
@@ -90,7 +92,7 @@ textarea {
   color: var(--theme-text-color);
   font-family: var(--font-family-main);
   font-size: var(--font-size-main);
-  padding: 4px 8px;
+  padding: var(--textarea-padding-y) var(--textarea-padding-x);
 }
 
 input[type='range'] {
@@ -114,11 +116,11 @@ select {
   -moz-appearance: none;
   -webkit-appearance: none;
   appearance: none;
-  padding: 4px;
+  padding: var(--spacing-xs);
   background-color: var(--black-30a);
   border: 1px solid var(--theme-border-color);
   border-radius: var(--base-border-radius);
-  margin-bottom: 4px;
+  margin-bottom: var(--spacing-xs);
   background-image: url('/img/down-arrow.svg');
   background-repeat: no-repeat;
   background-position: right 4px center;
@@ -147,13 +149,14 @@ select option[disabled]:not(:checked) {
   border: 1px solid var(--theme-border-color);
   border-radius: var(--base-border-radius);
   font-family: var(--font-family-main);
-  padding: 4px;
+  padding: var(--spacing-xs);
   width: 100%;
-  margin: 4px 0;
+  margin: var(--spacing-xs) 0;
+  @include input-base();
 }
 
 select.text-pole {
-  padding-right: 20px;
+  padding-right: calc(var(--spacing-md) + var(--spacing-xs));
 }
 
 .menu-button {
@@ -161,7 +164,7 @@ select.text-pole {
   background-color: var(--theme-background-tint);
   border: 1px solid var(--theme-border-color);
   border-radius: var(--base-border-radius);
-  padding: 4px;
+  padding: var(--spacing-xs);
   cursor: pointer;
   transition: background-color var(--animation-duration-2x);
   display: flex;

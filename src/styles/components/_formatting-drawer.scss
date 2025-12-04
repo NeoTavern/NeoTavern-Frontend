@@ -1,15 +1,18 @@
+@use '../mixins' as *;
+
 .formatting-drawer {
   display: flex;
   flex-direction: column;
   height: 100%;
   width: 100%;
-  padding: 12px;
-  gap: 8px;
+  padding: var(--spacing-md);
+  gap: var(--spacing-sm);
 
   &-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    @include flex-container(row, space-between, center);
 
     h3 {
       margin: 0;
@@ -23,6 +26,6 @@
   &-content {
     flex-grow: 1;
     overflow-y: auto;
-    padding-right: 4px;
+    padding-right: var(--spacing-xs);
   }
 }

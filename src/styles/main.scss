@@ -1,18 +1,12 @@
-// Variables: SCSS variables and CSS custom properties.
+// Global imports - available everywhere
 @use 'variables';
+@use 'mixins' as *;
 
-// Base: Global resets, typography, and base element styles.
+// Components with scoped imports
 @use 'base';
-
-// Transitions: Reusable animation classes.
 @use 'transitions';
-
 @use 'ui-components';
-
-// Components: Styles for specific Vue components.
 @use 'components';
-
-// Toast notifications (high z-index).
 @use 'toast';
 
 #background {

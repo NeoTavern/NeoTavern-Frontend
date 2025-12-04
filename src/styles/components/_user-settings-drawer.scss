@@ -1,3 +1,5 @@
+@use '../mixins' as *;
+
 .user-settings-drawer {
   display: flex;
   flex-direction: column;
@@ -5,7 +7,7 @@
   width: 100%;
 
   &-header {
-    margin-bottom: 8px;
+    margin-bottom: var(--spacing-sm);
     h3 {
       margin: 0;
     }
@@ -14,26 +16,24 @@
   &-content {
     flex-grow: 1;
     overflow-y: auto;
-    padding-right: 4px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 8px 12px;
+    padding-right: var(--spacing-xs);
+    @include flex-container(column);
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
   }
 
   &-no-results {
     text-align: center;
     opacity: 0.7;
-    margin-top: 20px;
+    margin-top: var(--spacing-xl);
   }
 
   &-category {
-    margin-bottom: 4px;
+    margin-bottom: var(--spacing-xs);
   }
 
   .user-settings-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    @include flex-container(column);
+    gap: var(--spacing-sm);
   }
 }

@@ -1,11 +1,12 @@
+@use '../mixins' as *;
+
 .sidebar {
   position: fixed;
   top: 0;
   height: 100%;
-  z-index: 3000;
-  background-color: var(--theme-background-tint);
-  display: flex;
-  flex-direction: column;
+  z-index: var(--z-sidebar);
+  @include card-base();
+  @include flex-container(column, stretch, stretch);
   transition: transform var(--animation-duration-2x) cubic-bezier(0.25, 1, 0.5, 1);
 
   width: var(--sidebar-width);
@@ -35,6 +36,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     position: relative;
+    @include hardware-accelerate();
   }
 
   &-resizer {
@@ -43,7 +45,7 @@
     bottom: 0;
     width: 4px;
     cursor: ew-resize;
-    z-index: 3001;
+    z-index: var(--z-sidebar);
     background-color: transparent;
     transition: background-color var(--animation-duration);
 
@@ -85,5 +87,5 @@
 .vanilla-sidebar-header-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }

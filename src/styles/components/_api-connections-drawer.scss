@@ -1,18 +1,18 @@
+@use '../mixins' as *;
+
 .api-connections-drawer {
   overflow-y: auto;
   height: 100%;
   width: 100%;
 
   &-wrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    @include flex-container(column);
+    gap: var(--spacing-md);
   }
 
   &-section {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    @include flex-container(column);
+    gap: var(--spacing-xs);
   }
 
   h3 {
@@ -20,7 +20,7 @@
   }
 
   h4 {
-    margin: 4px 0;
+    margin: var(--spacing-xs) 0;
   }
 
   hr {
@@ -33,8 +33,8 @@
   .online_status {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-top: 12px;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
   }
 
   .online_status_indicator {
@@ -45,32 +45,33 @@
     transition: background-color var(--animation-duration-2x);
 
     &.success {
-      background-color: #5d9e5d;
+      background-color: var(--color-accent-green);
     }
   }
 
   &-input-group {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--spacing-xs);
     width: 100%;
 
     .menu-button {
       flex-shrink: 0;
+      @include button-base();
     }
   }
 
   &-actions {
     display: flex;
     align-items: center;
-    margin-top: 16px;
+    margin-top: var(--spacing-lg);
   }
 }
 
 .preset-manager-controls {
   display: flex;
   align-items: flex-start;
-  gap: 4px;
+  gap: var(--spacing-xs);
 
   .select-wrapper {
     flex-grow: 1;

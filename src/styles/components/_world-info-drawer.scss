@@ -1,8 +1,10 @@
+@use '../mixins' as *;
+
 .world-info-drawer {
   .panel-divider {
     border: none;
     border-top: 1px solid var(--theme-border-color);
-    margin: 4px 0;
+    margin: var(--spacing-xs) 0;
   }
 
   .browser-item-chevron {
@@ -22,7 +24,7 @@
   .book-token-count {
     font-size: 0.8em;
     opacity: 0.6;
-    margin-right: 8px;
+    margin-right: var(--spacing-sm);
     font-family: var(--font-family-mono);
     white-space: nowrap;
   }
@@ -36,6 +38,7 @@
     .menu-button {
       font-size: 1em;
       opacity: 0.7;
+      @include button-base();
 
       &:hover {
         opacity: 1;
@@ -49,27 +52,28 @@
   }
 
   .lorebook-group-entries {
-    padding-left: 8px;
+    padding-left: var(--spacing-sm);
     border-left: 1px solid var(--black-50a);
-    margin-left: 12px;
+    margin-left: var(--spacing-md);
     display: grid;
-    margin-top: 4px;
+    margin-top: var(--spacing-xs);
   }
 
   .lorebook-group-loading {
     text-align: center;
-    padding: 8px;
+    padding: var(--spacing-sm);
     opacity: 0.7;
     font-size: 0.9em;
   }
 
   .world-info-controls {
-    gap: 4px;
+    gap: var(--spacing-xs);
   }
 
   .world-info-controls-row {
-    gap: 4px;
+    gap: var(--spacing-xs);
     align-items: flex-start;
+    @include flex-container(row, flex-start, flex-start);
   }
 }
 
@@ -85,5 +89,6 @@
 
   &:hover {
     opacity: 0.8;
+    @include glow(var(--color-accent-green), 3px);
   }
 }

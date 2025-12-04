@@ -1,7 +1,10 @@
+@use '../mixins' as *;
+
 .preset-control {
   display: flex;
-  gap: 4px;
+  gap: var(--spacing-xs);
   align-items: center;
+  @include flex-container(row, flex-start, center);
 
   &-selector {
     flex-grow: 1;
@@ -13,6 +16,6 @@
 
   &-actions {
     display: flex;
-    gap: 4px;
+    gap: var(--spacing-xs);
   }
 }

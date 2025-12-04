@@ -1,3 +1,5 @@
+@use '../mixins' as *;
+
 .backgrounds-drawer {
   display: flex;
   flex-direction: column;
@@ -7,17 +9,16 @@
 
   &-header {
     flex-shrink: 0;
-    padding: 4px;
+    padding: var(--spacing-xs);
     background-color: var(--theme-background-tint);
     border-bottom: 1px solid var(--theme-border-color);
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    @include flex-container(column);
+    gap: var(--spacing-xs);
   }
 
   &-header-row {
     display: flex;
-    gap: 4px;
+    gap: var(--spacing-xs);
     align-items: center;
 
     .expander {
@@ -34,7 +35,7 @@
   &-scrollable-content {
     flex-grow: 1;
     overflow-y: auto;
-    padding: 9px 4px 16px;
+    padding: var(--spacing-md) var(--spacing-xs) var(--spacing-lg);
     position: relative;
   }
 
@@ -43,7 +44,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 12px 0;
+    margin: var(--spacing-md) 0;
 
     h3 {
       margin: 0;
@@ -53,33 +54,34 @@
       position: absolute;
       right: 0;
       display: flex;
-      gap: 4px;
+      gap: var(--spacing-xs);
 
       .menu-button {
-        padding: 4px;
+        padding: var(--spacing-xs);
+        @include button-base();
       }
     }
   }
 
   &-grid {
     display: grid;
-    gap: 4px;
+    gap: var(--spacing-xs);
     width: 100%;
     grid-template-columns: repeat(var(--bg-thumb-columns, 5), 1fr);
   }
 
   &-scroll-top {
     position: absolute;
-    bottom: 24px;
-    right: 24px;
+    bottom: var(--spacing-lg);
+    right: var(--spacing-lg);
     width: 48px;
     height: 48px;
     background: var(--theme-background-tint);
     color: var(--theme-text-color);
     border: 1px solid var(--theme-border-color);
-    border-radius: 50%;
+    border-radius: var(--base-border-radius-round);
     cursor: pointer;
-    z-index: 10;
+    z-index: var(--z-drawer);
     font-size: 18px;
     display: inline-flex;
     align-items: center;
@@ -101,10 +103,10 @@
 
 .background-item {
   cursor: pointer;
-  box-shadow: 0 0px 8px var(--black-50a);
+  @include subtle-shadow();
   position: relative;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--base-border-radius-rounded);
   outline: 2px solid var(--theme-border-color);
   outline-offset: -1px;
   aspect-ratio: 16 / 9;
@@ -126,9 +128,9 @@
       font-family: 'Font Awesome 6 Free';
       font-weight: 900;
       position: absolute;
-      bottom: 4px;
-      right: 4px;
-      z-index: 4;
+      bottom: var(--spacing-xs);
+      right: var(--spacing-xs);
+      z-index: var(--z-tooltip);
       color: var(--color-golden);
       filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
       font-size: calc(var(--font-size-main) * 0.8);
@@ -144,9 +146,9 @@
       font-family: 'Font Awesome 6 Free';
       font-weight: 900;
       position: absolute;
-      top: 4px;
-      left: 4px;
-      z-index: 4;
+      top: var(--spacing-xs);
+      left: var(--spacing-xs);
+      z-index: var(--z-tooltip);
       color: var(--white-100);
       filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
       font-size: calc(var(--font-size-main) * 0.9);
@@ -175,7 +177,7 @@
     color: var(--theme-text-color);
     font-size: 0.9em;
     font-weight: 600;
-    padding: 0px 4px 4px;
+    padding: 0 var(--spacing-xs) var(--spacing-xs);
     text-align: center;
     white-space: nowrap;
     overflow: hidden;
@@ -183,21 +185,21 @@
     opacity: 0;
     transition: opacity var(--animation-duration) ease-in-out;
     pointer-events: none;
-    border-radius: 0 0 8px 8px;
+    border-radius: 0 0 var(--base-border-radius-rounded) var(--base-border-radius-rounded);
   }
 
   &-menu {
     display: flex;
     position: absolute;
-    top: 4px;
-    right: 4px;
+    top: var(--spacing-xs);
+    right: var(--spacing-xs);
     background-color: var(--black-60a);
     backdrop-filter: blur(4px);
-    border-radius: 4px;
-    padding: 4px;
-    z-index: 3;
+    border-radius: var(--base-border-radius);
+    padding: var(--spacing-xs);
+    z-index: var(--z-tooltip);
     border: 1px solid var(--theme-border-color);
-    gap: 4px;
+    gap: var(--spacing-xs);
 
     opacity: 0;
     visibility: hidden;
@@ -211,6 +213,8 @@
       font-size: 0.9em;
       margin: 0;
       padding: 0;
+      @include button-base();
+      @include focus-visible();
 
       &:hover {
         background-color: var(--white-20a);

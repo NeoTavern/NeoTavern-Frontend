@@ -1,8 +1,11 @@
+@use '../mixins' as *;
+
 .message {
   display: flex;
   position: relative;
   transition: background-color var(--animation-duration);
   border-radius: var(--base-border-radius);
+  z-index: var(--z-sticky);
 
   // --- Selection Mode Styles ---
   &.is-selection-mode {
@@ -24,22 +27,17 @@
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: 10;
+      z-index: var(--z-dropdown);
       pointer-events: none; // Allow clicks to bubble up to the container
       display: flex;
       align-items: flex-start;
       justify-content: flex-end;
-      padding: 10px;
+      padding: var(--spacing-md);
 
       .selection-checkbox {
-        width: 24px;
-        height: 24px;
-        background-color: var(--theme-background-tint);
-        border: 2px solid var(--theme-border-color);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        @include checkbox-base();
+        width: var(--spacing-lg);
+        height: var(--spacing-lg);
         transition: all 0.2s;
 
         &.checked {
@@ -99,7 +97,7 @@
   &-main {
     flex-grow: 1;
     min-width: 0; // Prevent flexbox overflow
-    padding-left: 12px;
+    padding-left: var(--spacing-md);
     border-radius: var(--base-border-radius-rounded);
     position: relative;
   }
@@ -108,13 +106,13 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
+    margin-bottom: var(--spacing-xs);
   }
 
   &-name-block {
     display: flex;
     align-items: baseline;
-    gap: 8px;
+    gap: var(--spacing-xs);
   }
 
   &-name {
@@ -138,7 +136,7 @@
 
     .menu-button {
       font-size: 1em;
-      padding: 4px;
+      padding: var(--spacing-xs);
       opacity: 0.5;
 
       &.delete:hover,
@@ -212,16 +210,16 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-top: 4px;
+    margin-top: var(--spacing-xs);
   }
 
   &-swipe-controls {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--spacing-sm);
     background-color: var(--black-30a);
-    border-radius: 16px;
-    padding: 4px;
+    border-radius: var(--base-border-radius-rounded);
+    padding: var(--spacing-xs);
 
     .swipe-arrow {
       cursor: pointer;
@@ -241,13 +239,13 @@
   &-edit-area {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--spacing-xs);
   }
 
   &-reasoning {
-    margin-bottom: 12px;
-    padding: 8px 12px;
-    border-radius: 8px;
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--base-border-radius-rounded);
     background-color: var(--black-30a);
     border: 1px solid var(--theme-border-color);
     font-size: 0.9em;
@@ -260,7 +258,7 @@
       cursor: pointer;
       font-weight: bold;
       opacity: 0.8;
-      margin-bottom: 4px;
+      margin-bottom: var(--spacing-xs);
 
       &:hover {
         opacity: 1;
@@ -309,10 +307,10 @@
   }
 
   &-reasoning-edit-area {
-    margin-bottom: 12px;
+    margin-bottom: var(--spacing-md);
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--spacing-xs);
 
     label {
       font-weight: bold;

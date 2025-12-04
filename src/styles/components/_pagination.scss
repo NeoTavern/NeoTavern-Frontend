@@ -2,7 +2,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 4px;
+  padding: var(--spacing-xs);
   font-size: 0.9em;
 
   &-nav {

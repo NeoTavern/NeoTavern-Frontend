@@ -1,0 +1,278 @@
+// =============================================================================
+// Layout & Positioning Mixins
+// =============================================================================
+
+/// Creates a flexbox container with optional direction and alignment
+/// @param {string} $direction - flex direction (row, column, etc.)
+/// @param {string} $justify - justify-content value
+/// @param {string} $align - align-items value
+@mixin flex-container($direction: row, $justify: flex-start, $align: stretch) {
+  display: flex;
+  flex-direction: $direction;
+  justify-content: $justify;
+  align-items: $align;
+}
+
+// =============================================================================
+// Visual & Effect Mixins
+// =============================================================================
+
+/// Creates a card-like container with consistent styling
+@mixin card-base(
+  $background-color: var(--theme-background-tint),
+  $border: 1px solid var(--theme-border-color),
+  $border-radius: var(--base-border-radius)
+) {
+  background-color: $background-color;
+  border: $border;
+  border-radius: $border-radius;
+}
+
+/// Creates a button base style with consistent theming
+@mixin button-base() {
+  border: 1px solid var(--theme-border-color);
+  border-radius: var(--base-border-radius);
+  background-color: var(--black-30a);
+  color: var(--theme-text-color);
+  transition: background-color var(--animation-duration-sm) ease-in-out;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--black-50a);
+  }
+
+  &:active {
+    background-color: var(--black-60a);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/// Creates a button variant with danger styling
+@mixin button-danger() {
+  background-color: var(--color-accent-crimson-70a);
+  border-color: var(--color-accent-red);
+  color: var(--theme-text-color);
+
+  &:hover:not(:disabled) {
+    background-color: var(--color-accent-crimson-hover);
+  }
+}
+
+/// Creates a button variant with confirm styling
+@mixin button-confirm() {
+  background-color: var(--color-accent-green-70a);
+  border-color: var(--color-accent-green);
+  color: var(--theme-text-color);
+
+  &:hover:not(:disabled) {
+    background-color: var(--color-accent-green);
+  }
+}
+
+/// Creates a ghost button (transparent background)
+@mixin button-ghost() {
+  background-color: transparent;
+  border-color: var(--theme-border-color);
+  color: var(--theme-text-color);
+
+  &:hover:not(:disabled) {
+    background-color: var(--black-30a);
+  }
+}
+
+/// Adds hardware acceleration for smoother animations
+@mixin hardware-accelerate() {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/// Creates a subtle shadow effect
+@mixin subtle-shadow() {
+  box-shadow: 0 2px 8px var(--theme-shadow-color);
+}
+
+/// Creates a glow effect
+@mixin glow($color: var(--theme-underline-color), $strength: 4px) {
+  box-shadow: 0 0 $strength $strength $color;
+}
+
+// =============================================================================
+// Transition & Animation Mixins
+// =============================================================================
+
+/// Base transition mixin
+/// @param {string} $property - CSS property to transition
+/// @param {string} $duration - transition duration
+/// @param {string} $timing - timing function
+@mixin transition-base($property: all, $duration: var(--animation-duration-sm), $timing: ease-in-out) {
+  transition: $property $duration $timing;
+}
+
+// =============================================================================
+// Responsive Design Mixins
+// =============================================================================
+
+/// Breakpoint mixin for responsive design
+/// @param {string} $breakpoint - breakpoint name (xs, sm, md, lg, xl, xxl)
+@mixin breakpoint($breakpoint) {
+  $breakpoints: (
+    xs: 0,
+    sm: 576px,
+    md: 768px,
+    lg: 992px,
+    xl: 1200px,
+    xxl: 1400px,
+  );
+
+  $min-width: map-get($breakpoints, $breakpoint);
+
+  @if $min-width {
+    @media (min-width: $min-width) {
+      @content;
+    }
+  }
+}
+
+/// Hide element on mobile devices
+@mixin hide-mobile() {
+  @include breakpoint(sm) {
+    @content;
+  }
+}
+
+/// Hide element on desktop devices
+@mixin hide-desktop() {
+  @include breakpoint(xl) {
+    display: none;
+  }
+}
+
+// =============================================================================
+// Form & Input Mixins
+// =============================================================================
+
+/// Base input styling with consistent theming
+@mixin input-base() {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--theme-border-color);
+  border-radius: var(--base-border-radius);
+  background-color: var(--black-30a);
+  color: var(--theme-text-color);
+  font-family: var(--font-family-main);
+  font-size: var(--font-size-main);
+  transition:
+    border-color var(--animation-duration-sm) ease-in-out,
+    background-color var(--animation-duration-sm) ease-in-out;
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-underline-color);
+    background-color: var(--black-50a);
+  }
+
+  &::placeholder {
+    color: var(--theme-emphasis-color);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/// Textarea specific styling
+@mixin textarea-base() {
+  min-height: 80px;
+  padding: var(--textarea-padding-y) var(--textarea-padding-x);
+  resize: vertical;
+  font-family: var(--font-family-main);
+  line-height: 1.5;
+}
+
+/// Checkbox base styling
+@mixin checkbox-base() {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--theme-border-color);
+  background-color: var(--black-30a);
+  border-radius: var(--base-border-radius-xs);
+  position: relative;
+  cursor: pointer;
+  transition: all var(--animation-duration-sm) ease-in-out;
+
+  &:checked {
+    background-color: var(--theme-checkbox-bg-r) var(--theme-checkbox-bg-g) var(--theme-checkbox-bg-b);
+    border-color: var(--theme-underline-color);
+  }
+
+  &:checked::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    background-color: var(--theme-checkbox-tick-color);
+    mask: url("data:image/svg+xml;charset=UTF-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/></svg>")
+      no-repeat 50% 50%;
+    mask-size: contain;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--theme-underline-color);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// =============================================================================
+// Typography Mixins
+// =============================================================================
+
+/// Heading styles with consistent sizing
+/// @param {number} $size-multiplier - multiplier for base font size
+@mixin heading($size-multiplier: 1.5) {
+  font-size: calc(var(--font-size-main) * #{$size-multiplier});
+  font-weight: 600;
+  color: var(--theme-text-color);
+  margin: 0 0 var(--spacing-md) 0;
+  line-height: 1.2;
+}
+
+/// Text emphasis with theme colors
+/// @param {string} $color - color variable to use
+@mixin text-emphasis($color: var(--theme-underline-color)) {
+  color: $color;
+  font-weight: 600;
+}
+
+/// Monospace text styling
+@mixin monospace-text() {
+  font-family: var(--font-family-mono);
+  font-size: calc(var(--font-size-main) * 0.9);
+  background-color: var(--black-30a);
+  padding: var(--spacing-xxs) var(--spacing-sm);
+  border-radius: 3px;
+  border: 1px solid var(--theme-border-color);
+}
+
+// =============================================================================
+// Utility Mixins
+// =============================================================================
+/// Focus styles for accessibility
+@mixin focus-visible() {
+  &:focus-visible {
+    outline: 2px solid var(--interactable-outline-color);
+    outline-offset: 2px;
+  }
+}

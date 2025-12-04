@@ -338,7 +338,7 @@ onBeforeUnmount(() => {
   background-color: #fff;
   border: 1px solid #000;
   border-radius: 50%;
-  z-index: 10;
+  z-index: var(--z-dropdown);
 
   &.nw {
     top: -6px;

@@ -1,35 +1,36 @@
+@use '../mixins' as *;
+
 .extensions-panel {
   &-controls {
-    gap: 4px;
+    gap: var(--spacing-xs);
   }
 
   &-list {
     flex-grow: 1;
     overflow-y: auto;
     height: 100%;
-    margin-top: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+    margin-top: var(--spacing-md);
+    @include flex-container(column);
+    gap: var(--spacing-xs);
   }
 }
 
 .extension-content {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
 
   &-header {
     border-bottom: 1px solid var(--theme-border-color);
-    padding-bottom: 12px;
-    margin-bottom: 12px;
-    padding-left: 20px;
+    padding-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    padding-left: var(--spacing-xl);
 
     h3 {
       margin: 0;
       display: flex;
       align-items: baseline;
-      gap: 8px;
+      gap: var(--spacing-sm);
     }
 
     .version {
@@ -44,10 +45,8 @@
 }
 
 .extension_container {
-  border-radius: var(--base-border-radius-rounded);
-  border: 1px solid var(--theme-border-color);
-  background-color: var(--black-30a);
-  padding: 12px;
+  @include card-base(var(--black-30a), 1px solid var(--theme-border-color), var(--base-border-radius-rounded));
+  padding: var(--spacing-md);
 
   .inline-drawer-header {
     background-color: transparent;

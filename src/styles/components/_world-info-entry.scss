@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  gap: 12px;
+  gap: var(--spacing-md);
   transition:
     opacity var(--animation-duration-3x),
     filter var(--animation-duration-3x);
@@ -18,7 +18,7 @@
     &-main {
       flex-grow: 1;
       align-items: center;
-      gap: 8px;
+      gap: var(--spacing-xs);
     }
 
     .toggle-icon-wrapper {
@@ -34,29 +34,29 @@
 
     &-actions {
       display: flex;
-      gap: 4px;
+      gap: var(--spacing-xs);
     }
   }
 
   &-form {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--spacing-xs);
     height: 100%;
     overflow-y: auto;
-    padding-right: 4px;
+    padding-right: var(--spacing-xs);
   }
 
   &-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 8px;
+    gap: var(--spacing-xs);
     align-items: flex-end;
   }
 
   &-section {
     display: flex;
-    gap: 8px;
+    gap: var(--spacing-xs);
     flex-wrap: wrap;
 
     .flex-1 {
@@ -67,7 +67,7 @@
     .control-group {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: var(--spacing-xs);
     }
 
     &--column {
@@ -81,14 +81,14 @@
   &-checkbox-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 12px 20px;
+    gap: var(--spacing-md) var(--spacing-lg);
   }
 
   .footer-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 2px;
+    margin-top: var(--spacing-xs);
   }
 
   .uid-label {

@@ -1,9 +1,11 @@
+@use '../mixins' as *;
+
 .persona-drawer {
   display: flex;
   flex-direction: column;
   height: 100%;
   width: 100%;
-  gap: 8px;
+  gap: var(--spacing-sm);
 
   &-header {
     .note-link-span {
@@ -12,7 +14,7 @@
       justify-content: center;
       width: 32px;
       height: 32px;
-      padding: 6px;
+      padding: var(--spacing-sm);
       border-radius: var(--base-border-radius);
       border: 1px solid transparent;
       font-size: 1.1em;
@@ -42,7 +44,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    gap: 8px;
+    gap: var(--spacing-sm);
     min-width: 0;
   }
 
@@ -55,7 +57,7 @@
 
   &-controls {
     width: 100%;
-    gap: 4px;
+    gap: var(--spacing-xs);
     align-items: flex-start;
   }
 
@@ -74,8 +76,8 @@
   flex-grow: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding-right: 4px;
+  gap: var(--spacing-xs);
+  padding-right: var(--spacing-xs);
 
   &.grid-view {
     flex-direction: row;
@@ -97,22 +99,23 @@
 .persona-editor {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--spacing-sm);
   overflow-y: auto;
-  padding: 0 12px 12px 12px;
+  padding: 0 var(--spacing-md) var(--spacing-md) var(--spacing-md);
   height: 100%;
 
   .standoutHeader {
+    @include heading();
     margin-bottom: 0;
     border-bottom: 1px solid var(--theme-border-color);
-    padding-bottom: 4px;
-    margin-top: 8px;
+    padding-bottom: var(--spacing-xs);
+    margin-top: var(--spacing-sm);
   }
 
   &-controls {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--spacing-sm);
   }
 
   &-name {
@@ -127,20 +130,20 @@
 
   .buttons_block {
     display: flex;
-    gap: 4px;
+    gap: var(--spacing-xs);
     flex-shrink: 0;
   }
 
   &-connections {
     display: flex;
-    gap: 4px;
+    gap: var(--spacing-xs);
     flex-wrap: wrap;
   }
 
   &-global-settings {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--spacing-xs);
   }
 }
 
@@ -151,7 +154,7 @@
 .persona-name-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   width: 100%;
 }
 
@@ -177,28 +180,28 @@
 .panel-divider {
   border: none;
   border-top: 1px solid var(--theme-border-color);
-  margin: 4px 0;
+  margin: var(--spacing-xs) 0;
 }
 
 .connected-characters-list {
-  margin-top: 10px;
+  margin-top: var(--spacing-md);
 }
 
 .chips-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 5px;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
 }
 
 .character-chip {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--spacing-xs);
   background-color: var(--black-30a);
   border: 1px solid var(--theme-border-color);
-  border-radius: 15px;
-  padding: 2px 8px 2px 2px;
+  border-radius: var(--base-border-radius-rounded);
+  padding: var(--spacing-xxs) var(--spacing-sm) var(--spacing-xxs) var(--spacing-xxs);
   font-size: 0.9em;
 }
 
@@ -212,7 +215,7 @@
 .chip-remove {
   cursor: pointer;
   opacity: 0.6;
-  margin-left: 2px;
+  margin-left: var(--spacing-xxs);
 }
 
 .chip-remove:hover {
@@ -230,18 +233,18 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: var(--spacing-md);
 }
 
 .buttons_block {
   display: flex;
-  gap: 4px;
+  gap: var(--spacing-xs);
 }
 
 .persona-editor-connections {
   display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
 }
 
 .persona-drawer-main {
@@ -252,7 +255,7 @@
 }
 
 .persona-section-title {
-  margin: 16px 0 10px;
+  margin: var(--spacing-lg) 0 var(--spacing-md);
   border-bottom: 1px solid var(--theme-border-color);
-  padding-bottom: 5px;
+  padding-bottom: var(--spacing-xs);
 }
