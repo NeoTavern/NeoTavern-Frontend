@@ -131,7 +131,6 @@
   justify-content: center;
   font-size: 0.7em;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-  z-index: var(--z-tooltip);
   border: 2px solid var(--theme-background-tint);
 }
 
@@ -150,7 +149,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  z-index: var(--z-tooltip);
 }
 
 .recent-chat-preview {

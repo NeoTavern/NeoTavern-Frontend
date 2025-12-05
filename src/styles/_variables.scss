@@ -185,11 +185,11 @@ $base-border-radius-rounded: 8px;
   --interactable-outline-color-faint: var(--white-20a);
 
   // --- Z-Index Scale ---
-  --z-drawer: 1000;
-  --z-navbar: 900;
-  --z-sidebar: 800;
-  --z-modal: 700;
-  --z-tooltip: 600;
+  --z-tooltip: 1000;
+  --z-drawer: 900;
+  --z-navbar: 800;
+  --z-sidebar: 700;
+  --z-modal: 600;
   --z-dropdown: 500;
   --z-sticky: 100;
 
