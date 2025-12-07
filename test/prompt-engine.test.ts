@@ -152,7 +152,7 @@ describe('PromptBuilder', () => {
     const messages = await builder.build();
 
     // Expect char description
-    expect(messages).toContainEqual({ role: 'system', content: 'I am Char1.' });
+    expect(messages).toContainEqual({ role: 'system', content: 'I am Char1.', name: 'System' });
     // Expect chat history (User: Hello, Char1: Hi) - mapped to api roles
     expect(messages).toContainEqual({ role: 'user', content: 'Hello', name: 'User' });
     expect(messages).toContainEqual({ role: 'assistant', content: 'Hi', name: 'Char1' });
@@ -335,7 +335,7 @@ describe('PromptBuilder', () => {
 
     const messages = await builder.build();
     // {{char}} should be replaced by 'Char1'
-    expect(messages).toContainEqual({ role: 'system', content: 'I am Char1.' });
+    expect(messages).toContainEqual({ role: 'system', content: 'I am Char1.', name: 'System' });
   });
 
   it('processes macros in chat history', async () => {
