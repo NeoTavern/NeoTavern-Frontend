@@ -1,6 +1,6 @@
 import { cloneDeep, get, set } from 'lodash-es';
 import { defineStore } from 'pinia';
-import { computed, nextTick, ref } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { fetchAllExperimentalPresets } from '../api/presets';
 import { fetchUserSettings, fetchV2Settings, saveV2Settings } from '../api/settings';
 import { useAutoSave } from '../composables/useAutoSave';
@@ -115,7 +115,20 @@ export const useSettingsStore = defineStore('settings', () => {
 
   async function waitForSettings() {
     if (!settingsInitializing.value) return;
-    await initializeSettings();
+
+    if (initializationPromise) {
+      await initializationPromise;
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      const stop = watch(settingsInitializing, (val) => {
+        if (!val) {
+          stop();
+          resolve();
+        }
+      });
+    });
   }
 
   return {

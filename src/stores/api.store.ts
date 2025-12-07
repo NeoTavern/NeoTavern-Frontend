@@ -36,6 +36,8 @@ export const useApiStore = defineStore('api', () => {
 
   const instructTemplates = ref<InstructTemplate[]>([]);
 
+  const watchersInitialized = ref(false);
+
   const connectionProfiles = computed({
     get: () => settingsStore.settings.api.connectionProfiles,
     set: (value) => (settingsStore.settings.api.connectionProfiles = value),
@@ -72,7 +74,68 @@ export const useApiStore = defineStore('api', () => {
 
   async function initialize() {
     await settingsStore.waitForSettings();
+
+    // Setup watchers only after settings are ready
+    setupWatchers();
+
     await connect();
+  }
+
+  function setupWatchers() {
+    // Prevent multiple initializations
+    if (watchersInitialized.value) return;
+    watchersInitialized.value = true;
+
+    // Keep watching provider changes from other sources (like UI dropdowns not using profiles)
+    watch(
+      () => settingsStore.settings.api.provider,
+      (newProvider, oldProvider) => {
+        if (newProvider !== oldProvider) {
+          validateFormatterCapabilities(newProvider);
+          connect();
+        }
+      },
+    );
+
+    // Watch for sampler changes
+    watch(
+      () => settingsStore.settings.api.selectedSampler,
+      (newPresetName) => {
+        if (!newPresetName) return;
+        const preset = presets.value.find((p) => p.name === newPresetName);
+        if (preset) {
+          settingsStore.settings.api.samplers = { ...preset.preset };
+        }
+      },
+    );
+
+    // Watch Proxy changes
+    watch(
+      () => settingsStore.settings.api.proxy.id,
+      (newId, oldId) => {
+        if (newId !== oldId) {
+          const proxy = settingsStore.settings.proxies?.find((p) => p.id === newId);
+          if (proxy) {
+            settingsStore.settings.api.proxy.url = proxy.url;
+            settingsStore.settings.api.proxy.password = proxy.password;
+          } else {
+            settingsStore.settings.api.proxy.url = '';
+            settingsStore.settings.api.proxy.password = '';
+          }
+          connect();
+        }
+      },
+    );
+
+    // Watch connection profile changes
+    watch(
+      () => settingsStore.settings.api.selectedConnectionProfile,
+      (newProfile, oldProfile) => {
+        if (newProfile !== oldProfile && newProfile) {
+          selectConnectionProfile(newProfile);
+        }
+      },
+    );
   }
 
   function selectConnectionProfile(profileName: string) {
@@ -122,60 +185,6 @@ export const useApiStore = defineStore('api', () => {
       }
     }
   }
-
-  // Keep watching provider changes from other sources (like UI dropdowns not using profiles)
-  watch(
-    () => settingsStore.settings.api.provider,
-    (newProvider, oldProvider) => {
-      if (settingsStore.settingsInitializing) return;
-      if (newProvider !== oldProvider) {
-        validateFormatterCapabilities(newProvider);
-        connect();
-      }
-    },
-  );
-
-  // Watch for sampler changes
-  watch(
-    () => settingsStore.settings.api.selectedSampler,
-    (newPresetName) => {
-      if (settingsStore.settingsInitializing || !newPresetName) return;
-      const preset = presets.value.find((p) => p.name === newPresetName);
-      if (preset) {
-        settingsStore.settings.api.samplers = { ...preset.preset };
-      }
-    },
-  );
-
-  // Watch Proxy changes
-  watch(
-    () => settingsStore.settings.api.proxy.id,
-    (newId, oldId) => {
-      if (settingsStore.settingsInitializing) return;
-      if (newId !== oldId) {
-        const proxy = settingsStore.settings.proxies?.find((p) => p.id === newId);
-        if (proxy) {
-          settingsStore.settings.api.proxy.url = proxy.url;
-          settingsStore.settings.api.proxy.password = proxy.password;
-        } else {
-          settingsStore.settings.api.proxy.url = '';
-          settingsStore.settings.api.proxy.password = '';
-        }
-        connect();
-      }
-    },
-  );
-
-  // Watch connection profile changes
-  watch(
-    () => settingsStore.settings.api.selectedConnectionProfile,
-    (newProfile, oldProfile) => {
-      if (settingsStore.settingsInitializing) return;
-      if (newProfile !== oldProfile && newProfile) {
-        selectConnectionProfile(newProfile);
-      }
-    },
-  );
 
   async function processPendingSecrets() {
     const keys = Object.keys(secretStore.pendingSecrets);

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { discoverExtensions, fetchManifest } from '../api/extensions';
 import { builtInExtensions } from '../extensions/built-in';
 import type { BuiltInExtensionModule, ExtensionManifest } from '../types';
@@ -57,21 +57,7 @@ export const useExtensionStore = defineStore('extension', () => {
   async function initializeExtensions() {
     if (Object.keys(extensions.value).length > 0) return; // Already initialized
 
-    if (settingsStore.settingsInitializing) {
-      await new Promise<void>((resolve) => {
-        const stop = watch(
-          () => settingsStore.settingsInitializing,
-          (initializing) => {
-            if (!initializing) {
-              stop();
-              resolve();
-            }
-          },
-          { immediate: true },
-        );
-        settingsStore.initializeSettings();
-      });
-    }
+    await settingsStore.waitForSettings();
 
     // 1. Load Built-ins
     for (const module of builtInExtensions) {
