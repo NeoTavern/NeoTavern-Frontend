@@ -7,7 +7,7 @@ A modern, experimental frontend for SillyTavern, built with Vue 3 and Vite.
 ## Prerequisites
 
 - **Node.js:** Version 20 or higher is required.
-- **SillyTavern Backend:** You must have a running instance of the [SillyTavern backend](https://github.com/SillyTavern/SillyTavern).
+- **SillyTavern:** You must have a running instance of the [SillyTavern](https://github.com/SillyTavern/SillyTavern). Make sure the branch is set to `staging`.
 - **V2-Server Plugin:** You must install the [V2-Server](https://github.com/bmen25124/SillyTavern-V2-Server) plugin.
 
 ## Installation and Usage
@@ -36,6 +36,69 @@ The script will automatically install dependencies, build the project, and launc
    ./start.sh
    ```
 
+### Android (Termux)
+
+This guide is containing from scratch installation of SillyTavern, V2-Server Plugin, and Experimental Frontend unlike others. Because mobile users are something special.
+
+#### 1. Prepare Termux
+1. Install Termux from [GitHub releases](https://github.com/termux/termux-app/releases) or **F-Droid**. (the Google Play Store version is outdated).
+2. Open Termux and install the required packages:
+   ```bash
+   pkg update && pkg upgrade
+   pkg install git nodejs
+   ```
+
+#### 2. Install SillyTavern
+1. Clone the main repository:
+   ```bash
+   cd ~
+   git clone --branch staging https://github.com/SillyTavern/SillyTavern
+   cd SillyTavern
+   ```
+2. Run the server once to generate the configuration files:
+   ```bash
+   chmod +x start.sh
+   ./start.sh
+   ```
+3. Once you see `SillyTavern is listening on port 8000`, press **CTRL + C** to stop the server.
+
+#### 3. Install V2-Server Plugin
+1. Enter the plugins folder and clone the V2 Server:
+   ```bash
+   cd plugins
+   git clone https://github.com/bmen25124/SillyTavern-V2-Server
+   ```
+2. Go back to the main folder:
+   ```bash
+   cd ..
+   ```
+3. Enable plugins in the configuration file automatically:
+   ```bash
+   sed -i 's/enableServerPlugins: false/enableServerPlugins: true/' config.yaml
+   ```
+4. Start the Backend again:
+   ```bash
+   ./start.sh
+   ```
+
+#### 4. Install & Run the Frontend
+**Do not close the Backend.** You need to open a second terminal session.
+
+1. Swipe from the **left edge** of the screen to open the Termux drawer.
+2. Tap **"New Session"**.
+3. In this new session, clone and run the Experimental Frontend:
+   ```bash
+   cd ~
+   git clone https://github.com/bmen25124/SillyTavern-Experimental-Frontend.git
+   cd SillyTavern-Experimental-Frontend
+   chmod +x start.sh
+   ./start.sh
+   ```
+
+#### 5. Access the App
+Open your mobile browser and go to:
+`http://localhost:4173`
+
 ## Development
 
 If you wish to modify the code or run in development mode:
@@ -52,6 +115,6 @@ If you wish to modify the code or run in development mode:
 
 ## Configuration
 
-By default, the application expects the SillyTavern backend to be running on **port 8000**.
+By default, the application expects the SillyTavern to be running on **port 8000**.
 
 If your backend is running on a different port, open `vite.config.ts` and update the `target` URLs in the `proxyRules` object. You must restart the application for these changes to take effect.
