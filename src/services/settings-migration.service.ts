@@ -181,7 +181,7 @@ function collectPromptsFromLegacyPresets(presets: LegacyOaiPresetSettings[]): Pr
 
 export function migrateLegacyToExperimental(
   userSettingsResponse: ParsedUserSettingsResponse,
-  v2samplerPresets: Preset[],
+  v2samplerPresets: Preset<SamplerSettings>[],
 ): Settings {
   const legacy = userSettingsResponse.settings;
   const p = legacy.power_user || ({} as LegacySettings['power_user']);

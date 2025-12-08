@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+import type { Preset } from '../api/presets';
 import * as api from '../api/presets';
 import { toast } from '../composables/useToast';
 import type { Theme, ThemeVariables } from '../types/theme';
@@ -9,7 +10,7 @@ import { downloadFile } from '../utils/commons';
 // TODO: i18n
 
 export const useThemeStore = defineStore('theme', () => {
-  const themes = ref<Theme[]>([]);
+  const themes = ref<Preset<Theme>[]>([]);
   const activeThemeName = ref<string>('Default');
 
   // The current working state of variables (what is seen on screen)
@@ -71,7 +72,7 @@ export const useThemeStore = defineStore('theme', () => {
     const found = themes.value.find((t) => t.name === name);
     if (found) {
       activeThemeName.value = name;
-      currentVariables.value = { ...found.variables };
+      currentVariables.value = { ...found.preset.variables };
       applyToDOM(currentVariables.value);
     }
   }
@@ -85,7 +86,6 @@ export const useThemeStore = defineStore('theme', () => {
     if (!name) return;
 
     const newTheme: Theme = {
-      name,
       variables: { ...currentVariables.value },
     };
 
@@ -116,16 +116,20 @@ export const useThemeStore = defineStore('theme', () => {
 
   function exportTheme() {
     const themeToExport: Theme = {
-      name: activeThemeName.value,
       variables: currentVariables.value,
     };
 
-    downloadFile(JSON.stringify(themeToExport, null, 2), `${activeThemeName.value || 'theme'}.json`, 'application/json');
+    downloadFile(
+      JSON.stringify(themeToExport, null, 2),
+      `${activeThemeName.value || 'theme'}.json`,
+      'application/json',
+    );
   }
 
   async function importTheme(file: File) {
     try {
       const text = await file.text();
+      const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
       const json = JSON.parse(text) as Theme;
 
       if (!json.variables || typeof json.variables !== 'object') {
@@ -135,10 +139,10 @@ export const useThemeStore = defineStore('theme', () => {
       // Apply immediately
       currentVariables.value = json.variables;
       applyToDOM(json.variables);
-      activeThemeName.value = json.name || 'Imported';
+      activeThemeName.value = fileNameWithoutExt || 'Imported';
 
       // Auto save? Or let user save? Let's auto save for convenience
-      await saveTheme(json.name || 'Imported Theme');
+      await saveTheme(fileNameWithoutExt || 'Imported Theme');
     } catch (error) {
       console.error(error);
       toast.error('Failed to import theme');

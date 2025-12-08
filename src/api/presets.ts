@@ -4,12 +4,12 @@ import type { Theme } from '../types/theme';
 import { getRequestHeaders } from '../utils/client';
 import { fetchUserSettings } from './settings';
 
-export interface Preset {
+export interface Preset<T> {
   name: string;
-  preset: SamplerSettings;
+  preset: T;
 }
 
-export async function fetchAllExperimentalPresets(): Promise<Preset[]> {
+export async function fetchAllExperimentalPresets(): Promise<Preset<SamplerSettings>[]> {
   const response = await fetch('/api/plugins/v2/v2ExperimentalSamplerPreset', {
     method: 'GET',
     headers: getRequestHeaders(),
@@ -22,7 +22,7 @@ export async function fetchAllExperimentalPresets(): Promise<Preset[]> {
   return await response.json();
 }
 
-export async function fetchExperimentalPreset(name: string): Promise<Preset> {
+export async function fetchExperimentalPreset(name: string): Promise<Preset<SamplerSettings>> {
   const response = await fetch(`/api/plugins/v2/v2ExperimentalSamplerPreset/${encodeURIComponent(name)}`, {
     method: 'GET',
     headers: getRequestHeaders(),
@@ -58,7 +58,7 @@ export async function deleteExperimentalPreset(name: string): Promise<void> {
   }
 }
 
-export async function fetchAllThemes(): Promise<Theme[]> {
+export async function fetchAllThemes(): Promise<Preset<Theme>[]> {
   const response = await fetch('/api/plugins/v2/themes', {
     method: 'GET',
     headers: getRequestHeaders(),
@@ -71,7 +71,7 @@ export async function fetchAllThemes(): Promise<Theme[]> {
   return await response.json();
 }
 
-export async function fetchTheme(name: string): Promise<Theme> {
+export async function fetchTheme(name: string): Promise<Preset<Theme>> {
   const response = await fetch(`/api/plugins/v2/themes/${encodeURIComponent(name)}`, {
     method: 'GET',
     headers: getRequestHeaders(),

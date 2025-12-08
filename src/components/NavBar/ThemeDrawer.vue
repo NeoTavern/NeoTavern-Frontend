@@ -103,7 +103,6 @@ function onImport(files: File[]) {
           allow-save
           allow-delete
           allow-export
-          allow-import
           @update:model-value="onThemeChange"
           @create="onCreate"
           @save="onSave"

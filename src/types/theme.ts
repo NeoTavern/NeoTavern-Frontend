@@ -27,7 +27,6 @@ export interface ThemeVariables {
 }
 
 export interface Theme {
-  name: string;
   isSystem?: boolean; // Prevent deletion of defaults
   variables: Partial<ThemeVariables>;
 }

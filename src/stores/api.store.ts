@@ -32,7 +32,7 @@ export const useApiStore = defineStore('api', () => {
   const onlineStatus = ref(t('api.status.notConnected'));
   const isConnecting = ref(false);
   const modelList = ref<ApiModel[]>([]);
-  const presets = ref<Preset[]>([]);
+  const presets = ref<Preset<SamplerSettings>[]>([]);
 
   const instructTemplates = ref<InstructTemplate[]>([]);
 
