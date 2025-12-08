@@ -9,6 +9,7 @@ import BackgroundsDrawer from './components/NavBar/BackgroundsDrawer.vue';
 import ExtensionsDrawer from './components/NavBar/ExtensionsDrawer.vue';
 import NavBar from './components/NavBar/NavBar.vue';
 import PersonaManagementDrawer from './components/NavBar/PersonaManagementDrawer.vue';
+import ThemeDrawer from './components/NavBar/ThemeDrawer.vue';
 import UserSettingsDrawer from './components/NavBar/UserSettingsDrawer.vue';
 import WorldInfoDrawer from './components/NavBar/WorldInfoDrawer.vue';
 import Popup from './components/Popup/Popup.vue';
@@ -22,6 +23,7 @@ import { useLayoutStore } from './stores/layout.store';
 import { usePopupStore } from './stores/popup.store';
 import { useSecretStore } from './stores/secret.store';
 import { useSettingsStore } from './stores/settings.store';
+import { useThemeStore } from './stores/theme.store';
 
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
@@ -31,6 +33,7 @@ const backgroundStore = useBackgroundStore();
 const extensionStore = useExtensionStore();
 const secretStore = useSecretStore();
 const chatStore = useChatStore();
+const themeStore = useThemeStore();
 const { t } = useStrictI18n();
 
 const isInitializing = ref(true);
@@ -102,6 +105,17 @@ onMounted(async () => {
       component: UserSettingsDrawer,
       title: t('navbar.userSettings'),
       icon: 'fa-user-cog',
+    },
+    'left',
+  );
+
+  // Register Theme Drawer
+  registryStore.registerSidebar(
+    'themes',
+    {
+      component: ThemeDrawer,
+      title: 'Themes', // TODO: i18n
+      icon: 'fa-palette',
     },
     'left',
   );
@@ -236,6 +250,12 @@ onMounted(async () => {
     targetSidebarId: 'user-settings',
   });
 
+  registryStore.registerNavBarItem('themes-nav', {
+    icon: 'fa-palette',
+    title: 'Themes',
+    targetSidebarId: 'themes',
+  });
+
   // Since ActivateNavBarItem logic now resides in LayoutStore but needs registry access,
   // we check if we can call it via UIStore facade or LayoutStore directly.
   // The layoutStore internally uses registryStore.
@@ -245,6 +265,8 @@ onMounted(async () => {
   await secretStore.fetchSecrets();
   await chatStore.refreshChats();
   await extensionStore.initializeExtensions();
+
+  await themeStore.fetchThemes();
 
   // Mark initialization as complete
   isInitializing.value = false;

@@ -1,5 +1,6 @@
 import type { SamplerSettings } from '../types';
 import type { InstructTemplate } from '../types/instruct';
+import type { Theme } from '../types/theme';
 import { getRequestHeaders } from '../utils/client';
 import { fetchUserSettings } from './settings';
 
@@ -54,6 +55,55 @@ export async function deleteExperimentalPreset(name: string): Promise<void> {
 
   if (!response.ok) {
     throw new Error('Failed to delete preset');
+  }
+}
+
+export async function fetchAllThemes(): Promise<Theme[]> {
+  const response = await fetch('/api/plugins/v2/themes', {
+    method: 'GET',
+    headers: getRequestHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch themes');
+  }
+
+  return await response.json();
+}
+
+export async function fetchTheme(name: string): Promise<Theme> {
+  const response = await fetch(`/api/plugins/v2/themes/${encodeURIComponent(name)}`, {
+    method: 'GET',
+    headers: getRequestHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch theme');
+  }
+
+  return await response.json();
+}
+
+export async function saveTheme(name: string, preset: Theme): Promise<void> {
+  const response = await fetch('/api/plugins/v2/themes', {
+    method: 'POST',
+    headers: getRequestHeaders(),
+    body: JSON.stringify({ name, preset }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to save theme');
+  }
+}
+
+export async function deleteTheme(name: string): Promise<void> {
+  const response = await fetch(`/api/plugins/v2/themes/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+    headers: getRequestHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete theme');
   }
 }
 
