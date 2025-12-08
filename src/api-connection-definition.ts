@@ -23,7 +23,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       { widget: 'key-manager', label: 'apiConnections.claudeKey', secretKey: SECRET_KEYS.CLAUDE },
       {
         id: 'api.selectedProviderModels.claude',
-        widget: 'select',
+        widget: 'model-select',
         label: 'apiConnections.claudeModel',
         options: [
           { label: 'claude-3-5-sonnet-20240620', value: 'claude-3-5-sonnet-20240620' },
@@ -83,7 +83,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       { widget: 'key-manager', label: 'apiConnections.mistralaiKey', secretKey: SECRET_KEYS.MISTRALAI },
       {
         id: 'api.selectedProviderModels.mistralai',
-        widget: 'select',
+        widget: 'model-select',
         label: 'apiConnections.mistralaiModel',
         options: [
           { label: 'mistral-large-latest', value: 'mistral-large-latest' },
@@ -100,7 +100,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       { widget: 'key-manager', label: 'apiConnections.groqKey', secretKey: SECRET_KEYS.GROQ },
       {
         id: 'api.selectedProviderModels.groq',
-        widget: 'select',
+        widget: 'model-select',
         label: 'apiConnections.groqModel',
         options: [
           { label: 'llama3-70b-8192', value: 'llama3-70b-8192' },
@@ -123,7 +123,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       },
       {
         id: 'api.selectedProviderModels.custom',
-        widget: 'text-input',
+        widget: 'model-select',
         label: 'apiConnections.customModel',
       },
       { widget: 'key-manager', label: 'apiConnections.customKey', secretKey: SECRET_KEYS.CUSTOM },
@@ -152,7 +152,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       },
       {
         id: 'api.selectedProviderModels.azure_openai',
-        widget: 'text-input',
+        widget: 'model-select',
         label: 'apiConnections.azureModel',
         placeholder: 'This is the model name inside your deployment',
       },
@@ -166,7 +166,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       { widget: 'key-manager', label: 'apiConnections.deepseekKey', secretKey: SECRET_KEYS.DEEPSEEK },
       {
         id: 'api.selectedProviderModels.deepseek',
-        widget: 'select',
+        widget: 'model-select',
         label: 'apiConnections.deepseekModel',
         options: [
           { label: 'deepseek-chat', value: 'deepseek-chat' },
@@ -183,7 +183,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       { widget: 'key-manager', label: 'apiConnections.ai21Key', secretKey: SECRET_KEYS.AI21 },
       {
         id: 'api.selectedProviderModels.ai21',
-        widget: 'text-input',
+        widget: 'model-select',
         label: 'apiConnections.ai21Model',
         placeholder: 'jamba-1.5-large',
       },
@@ -197,7 +197,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       { widget: 'key-manager', label: 'apiConnections.googleKey', secretKey: SECRET_KEYS.MAKERSUITE },
       {
         id: 'api.selectedProviderModels.makersuite',
-        widget: 'text-input',
+        widget: 'model-select',
         label: 'apiConnections.googleModel',
         placeholder: 'gemini-2.0-flash',
       },
@@ -211,7 +211,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       { widget: 'key-manager', label: 'apiConnections.vertexaiKey', secretKey: SECRET_KEYS.VERTEXAI },
       {
         id: 'api.selectedProviderModels.vertexai',
-        widget: 'text-input',
+        widget: 'model-select',
         label: 'apiConnections.vertexaiModel',
         placeholder: 'gemini-2.0-flash',
       },
@@ -236,7 +236,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       { widget: 'key-manager', label: 'apiConnections.cohereKey', secretKey: SECRET_KEYS.COHERE },
       {
         id: 'api.selectedProviderModels.cohere',
-        widget: 'text-input',
+        widget: 'model-select',
         label: 'apiConnections.cohereModel',
         placeholder: 'command-r-plus',
       },
@@ -250,7 +250,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       { widget: 'key-manager', label: 'apiConnections.perplexityKey', secretKey: SECRET_KEYS.PERPLEXITY },
       {
         id: 'api.selectedProviderModels.perplexity',
-        widget: 'text-input',
+        widget: 'model-select',
         label: 'apiConnections.perplexityModel',
         placeholder: 'llama-3-70b-instruct',
       },
@@ -264,7 +264,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       { widget: 'key-manager', label: 'apiConnections.electronhubKey', secretKey: SECRET_KEYS.ELECTRONHUB },
       {
         id: 'api.selectedProviderModels.electronhub',
-        widget: 'text-input',
+        widget: 'model-select',
         label: 'apiConnections.electronhubModel',
         placeholder: 'gpt-4o-mini',
       },
@@ -278,7 +278,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
       { widget: 'key-manager', label: 'apiConnections.nanogptKey', secretKey: SECRET_KEYS.NANOGPT },
       {
         id: 'api.selectedProviderModels.nanogpt',
-        widget: 'text-input',
+        widget: 'model-select',
         label: 'apiConnections.nanogptModel',
         placeholder: 'gpt-4o-mini',
       },

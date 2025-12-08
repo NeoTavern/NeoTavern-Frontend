@@ -228,23 +228,8 @@ export const useApiStore = defineStore('api', () => {
 
       if (response.data && Array.isArray(response.data)) {
         modelList.value = response.data;
-        const provider = apiSettings.provider;
-        const availableModels = modelList.value.map((m) => m.id);
-
-        if (provider === api_providers.OPENAI) {
-          const openaiModel = apiSettings.selectedProviderModels.openai;
-          if (!availableModels.includes(openaiModel ?? '')) {
-            apiSettings.selectedProviderModels.openai = availableModels.length > 0 ? availableModels[0] : 'gpt-4o';
-          }
-        } else if (provider === api_providers.OPENROUTER) {
-          if (
-            apiSettings.selectedProviderModels.openrouter !== 'OR_Website' &&
-            !availableModels.includes(apiSettings.selectedProviderModels.openrouter ?? '')
-          ) {
-            apiSettings.selectedProviderModels.openrouter =
-              availableModels.length > 0 ? availableModels[0] : 'OR_Website';
-          }
-        }
+      } else {
+        modelList.value = [];
       }
 
       onlineStatus.value = response.bypass ? t('api.status.bypassed') : t('api.status.valid');
@@ -255,6 +240,7 @@ export const useApiStore = defineStore('api', () => {
       onlineStatus.value = t('api.status.noConnection');
       toast.error(msg);
       console.error(error);
+      modelList.value = [];
     } finally {
       isConnecting.value = false;
     }

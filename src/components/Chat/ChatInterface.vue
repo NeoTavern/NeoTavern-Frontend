@@ -168,7 +168,7 @@ watch(lastMessageContent, () => {
 
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside);
-  if (!isMobile) {
+  if (!isMobile.value) {
     await nextTick();
     chatInput.value?.focus();
   }
@@ -208,7 +208,7 @@ watch(
       const savedInput = await promptStore.loadUserTyping(newFile);
       userInput.value = savedInput;
 
-      if (!isMobile) {
+      if (!isMobile.value) {
         await nextTick();
         chatInput.value?.focus();
       }

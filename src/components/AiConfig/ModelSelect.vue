@@ -21,33 +21,14 @@ const modelValue = computed({
   set: (val) => settingsStore.setSetting(props.item.id!, String(val)),
 });
 
-// OpenAI Options
-const staticOpenAIModels = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'];
-const dynamicOpenAIModels = computed(() => {
-  return apiStore.modelList.filter((model) => !staticOpenAIModels.includes(model.id));
+const modelOptions = computed(() => {
+  return apiStore.modelList.map((modelGroup) => {
+    return {
+      label: modelGroup.name || modelGroup.id,
+      value: modelGroup.id,
+    };
+  });
 });
-
-const openAIModelOptions = computed(() => [
-  {
-    label: t('apiConnections.modelGroups.gpt4o'),
-    options: [
-      { label: 'gpt-4o', value: 'gpt-4o' },
-      { label: 'gpt-4o-mini', value: 'gpt-4o-mini' },
-    ],
-  },
-  {
-    label: t('apiConnections.modelGroups.gpt4turbo'),
-    options: [{ label: 'gpt-4-turbo', value: 'gpt-4-turbo' }],
-  },
-  ...(dynamicOpenAIModels.value.length > 0
-    ? [
-        {
-          label: t('apiConnections.modelGroups.other'),
-          options: dynamicOpenAIModels.value.map((m) => ({ label: m.id, value: m.id })),
-        },
-      ]
-    : []),
-]);
 
 // OpenRouter Options
 const hasOpenRouterGroupedModels = computed(() => {
@@ -73,15 +54,13 @@ const provider = computed(() => settingsStore.settings.api.provider);
 </script>
 
 <template>
-  <template v-if="provider === api_providers.OPENAI">
-    <Select v-model="modelValue" :options="openAIModelOptions" searchable />
-  </template>
-
-  <template v-else-if="provider === api_providers.OPENROUTER">
+  <template v-if="provider === api_providers.OPENROUTER">
     <Select v-show="hasOpenRouterGroupedModels" v-model="modelValue" :options="openRouterModelOptions" searchable />
     <Input v-show="!hasOpenRouterGroupedModels" v-model="modelValue" :placeholder="item.placeholder" />
   </template>
-
+  <template v-else-if="modelOptions.length > 0">
+    <Select v-model="modelValue" :options="modelOptions" searchable />
+  </template>
   <template v-else>
     <Input v-model="modelValue" :placeholder="item.placeholder" />
   </template>

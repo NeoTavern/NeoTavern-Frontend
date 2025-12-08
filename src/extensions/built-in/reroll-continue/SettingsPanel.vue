@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const settings = ref<ExtensionSettings>({
   rerollContinueEnabled: true,
-  impersonateEnabled: false,
+  impersonateEnabled: true,
   impersonateConnectionProfile: undefined,
   impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
 });

@@ -300,7 +300,6 @@
     "promptsTitle": "Prompt Manager",
     "manualInputNote": "Click slider numbers to input manually.",
     "docsLinkTooltip": "Documentation on sampling parameters.",
-    "formattingUnavailable": "Response formatting is unavailable for the selected provider.",
     "presets": {
       "sampler": {
         "label": "Sampler Presets"

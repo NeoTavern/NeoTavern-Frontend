@@ -85,10 +85,6 @@ async function deleteTemplate() {
       </FormItem>
     </div>
 
-    <div v-show="!showFormatter" class="api-connections-drawer-section neutral_warning">
-      {{ t('aiConfig.formattingUnavailable') }}
-    </div>
-
     <div v-show="settingsStore.settings.api.formatter === 'text'" class="api-connections-drawer-section">
       <h3>{{ t('apiConnections.instruct.title') }}</h3>
       <PresetControl

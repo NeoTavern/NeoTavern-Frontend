@@ -1,6 +1,7 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts" generic="T extends string | number">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useMobile } from '../../composables/useMobile';
 import Icon from './Icon.vue';
 
 export interface Option<T> {
@@ -43,20 +44,37 @@ const emit = defineEmits<{
 
 const isOpen = ref(false);
 const containerRef = ref<HTMLElement | null>(null);
+const dropdownRef = ref<HTMLElement | null>(null);
 const searchInputRef = ref<HTMLInputElement | null>(null);
 const searchQuery = ref('');
+const { isMobile } = useMobile();
 
 function toggleOpen() {
   if (props.disabled) return;
   isOpen.value = !isOpen.value;
 
-  if (isOpen.value && props.searchable) {
+  if (isOpen.value) {
     nextTick(() => {
-      searchInputRef.value?.focus();
+      scrollToSelectedOption();
+      if (props.searchable && !isMobile.value) {
+        searchInputRef.value?.focus();
+      }
     });
   } else {
     // Reset search on close
     searchQuery.value = '';
+  }
+}
+
+function scrollToSelectedOption() {
+  if (!dropdownRef.value) return;
+
+  const selectedElement = dropdownRef.value.querySelector('.select-option.is-selected');
+  if (selectedElement) {
+    selectedElement.scrollIntoView({
+      block: 'center',
+      inline: 'center',
+    });
   }
 }
 
@@ -197,7 +215,7 @@ watch(
     </div>
 
     <Transition name="fade-fast">
-      <div v-if="isOpen" class="select-dropdown">
+      <div v-if="isOpen" ref="dropdownRef" class="select-dropdown">
         <!-- Search Input -->
         <div v-if="searchable" class="select-search-container" @click.stop>
           <input

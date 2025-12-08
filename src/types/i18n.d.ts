@@ -303,7 +303,6 @@ export interface MessageSchema {
     promptsTitle: string;
     manualInputNote: string;
     docsLinkTooltip: string;
-    formattingUnavailable: string;
     presets: {
       sampler: {
         label: string;
