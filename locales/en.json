@@ -80,9 +80,8 @@
   },
   "personaManagement": {
     "title": "Persona Management",
-    "usageStats": "Usage Stats",
-    "backup": "Backup",
-    "restore": "Restore",
+    "export": "Export",
+    "import": "Import",
     "create": "Create",
     "activated": "Persona {name} activated.",
     "noDescription": "[No description]",

@@ -3,6 +3,7 @@ import { debounce } from 'lodash-es';
 import { computed, onMounted, ref, watch } from 'vue';
 import { ApiTokenizer } from '../../api/tokenizer';
 import { useStrictI18n } from '../../composables/useStrictI18n';
+import { toast } from '../../composables/useToast';
 import { DebounceTimeout } from '../../constants';
 import { useCharacterStore } from '../../stores/character.store';
 import { useChatStore } from '../../stores/chat.store';
@@ -14,7 +15,7 @@ import { useSettingsStore } from '../../stores/settings.store';
 import { useWorldInfoStore } from '../../stores/world-info.store';
 import { POPUP_RESULT, POPUP_TYPE, type Character, type CropData } from '../../types';
 import { getThumbnailUrl } from '../../utils/character';
-import { getBase64Async } from '../../utils/commons';
+import { downloadFile, getBase64Async, uuidv4 } from '../../utils/commons';
 import { EmptyState, Pagination, PanelLayout, SidebarHeader } from '../common';
 import { Button, Checkbox, FileInput, FormItem, ListItem, Search, Select, Textarea } from '../UI';
 
@@ -106,8 +107,43 @@ function selectGlobalSettings() {
   personaUiStore.viewMode = 'settings';
 }
 
-function handleFileImport(files: File[]) {
-  console.log('Restore from backup clicked', files);
+function handleExport() {
+  // Export all personas as JSON
+  const personasData = personaStore.personas;
+  const dataStr = JSON.stringify(personasData, null, 2);
+  const fileName = `personas_export_${new Date().toISOString().slice(0, 10)}.json`;
+  downloadFile(dataStr, fileName, 'application/json');
+}
+
+async function handleFileImport(files: File[]) {
+  if (!files || files.length === 0) return;
+
+  const file = files[0];
+  try {
+    const content = await file.text();
+    const importedPersonas = JSON.parse(content);
+
+    // Validate the imported data
+    if (!Array.isArray(importedPersonas)) {
+      toast.error('Invalid file format. Expected an array of personas.'); // TODO: i18n
+      return;
+    }
+
+    // Import the personas
+    for (const persona of importedPersonas) {
+      // Check if persona with same avatarId already exists
+      if (personaStore.personas.some((p) => p.avatarId === persona.avatarId)) {
+        // Generate a new avatarId to avoid conflicts
+        persona.avatarId = `${uuidv4()}.png`;
+      }
+
+      // Add the persona to the store
+      personaStore.personas.push(persona);
+    }
+  } catch (error) {
+    console.error('Failed to import personas:', error);
+    toast.error('Failed to import personas. Please check the file format.'); // TODO: i18n
+  }
 }
 
 async function handleDelete() {
@@ -240,13 +276,12 @@ function handleClose() {
         <div class="persona-drawer-sidebar">
           <div class="sidebar-controls persona-drawer-controls">
             <div class="sidebar-controls-row persona-drawer-actions-row">
-              <Button icon="fa-ranking-star">{{ t('personaManagement.usageStats') }}</Button>
-              <Button icon="fa-file-export">{{ t('personaManagement.backup') }}</Button>
+              <Button icon="fa-file-export" @click="handleExport">{{ t('personaManagement.export') }}</Button>
               <FileInput
                 accept=".json"
                 icon="fa-file-import"
                 type="button"
-                :label="t('personaManagement.restore')"
+                :label="t('personaManagement.import')"
                 @change="handleFileImport"
               />
             </div>

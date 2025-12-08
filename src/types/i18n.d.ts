@@ -83,9 +83,8 @@ export interface MessageSchema {
   };
   personaManagement: {
     title: string;
-    usageStats: string;
-    backup: string;
-    restore: string;
+    export: string;
+    import: string;
     create: string;
     activated: string;
     noDescription: string;

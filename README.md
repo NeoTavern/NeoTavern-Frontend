@@ -41,6 +41,7 @@ The script will automatically install dependencies, build the project, and launc
 This guide is containing from scratch installation of SillyTavern, V2-Server Plugin, and Experimental Frontend unlike others. Because mobile users are something special.
 
 #### 1. Prepare Termux
+
 1. Install Termux from [GitHub releases](https://github.com/termux/termux-app/releases) or **F-Droid**. (the Google Play Store version is outdated).
 2. Open Termux and install the required packages:
    ```bash
@@ -49,6 +50,7 @@ This guide is containing from scratch installation of SillyTavern, V2-Server Plu
    ```
 
 #### 2. Install SillyTavern
+
 1. Clone the main repository:
    ```bash
    cd ~
@@ -63,6 +65,7 @@ This guide is containing from scratch installation of SillyTavern, V2-Server Plu
 3. Once you see `SillyTavern is listening on port 8000`, press **CTRL + C** to stop the server.
 
 #### 3. Install V2-Server Plugin
+
 1. Enter the plugins folder and clone the V2 Server:
    ```bash
    cd plugins
@@ -82,6 +85,7 @@ This guide is containing from scratch installation of SillyTavern, V2-Server Plu
    ```
 
 #### 4. Install & Run the Frontend
+
 **Do not close the Backend.** You need to open a second terminal session.
 
 1. Swipe from the **left edge** of the screen to open the Termux drawer.
@@ -96,6 +100,7 @@ This guide is containing from scratch installation of SillyTavern, V2-Server Plu
    ```
 
 #### 5. Access the App
+
 Open your mobile browser and go to:
 `http://localhost:4173`
 
