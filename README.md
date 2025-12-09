@@ -30,8 +30,11 @@ Why another frontend for SillyTavern? For detailed reasoning, see the hackmd pos
 
 **Thing that not implemented fully:**
 
+- Mobile Support: Basic layout is responsive, but there are still some rough edges.
+- UI/UX: It needs polish and improvements.
 - World Info: Outlets and timed effects are not implemented.
 - Local Providers: Currently there is only koboldcpp support. There is no Text Completion provider. Ollama/LM Studio support is planned.
+- Instruct Templates: We can import/edit/use them. But we are not implemented the whole fields such as `wrap`.
 
 **For extension developers:**
 
