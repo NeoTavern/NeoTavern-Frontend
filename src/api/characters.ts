@@ -129,3 +129,19 @@ export async function updateCharacterImage(avatar: string, imageFile: File, crop
     throw new Error('Failed to update avatar image');
   }
 }
+
+export async function exportCharacter(avatar: string, format: 'json' | 'png'): Promise<Blob> {
+  const body = { format, avatar_url: avatar };
+
+  const response = await fetch(`${API_BASE}/export`, {
+    method: 'POST',
+    headers: getRequestHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to export character');
+  }
+
+  return await response.blob();
+}

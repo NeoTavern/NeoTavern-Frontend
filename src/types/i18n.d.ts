@@ -627,6 +627,9 @@ export interface MessageSchema {
     save: {
       error: string;
     };
+    export: {
+      error: string;
+    };
     fetch: {
       overflowWarning: string;
     };
@@ -671,9 +674,6 @@ export interface MessageSchema {
   characterEditor: {
     avatar: string;
     favorite: string;
-    lore: string;
-    chatLore: string;
-    personas: string;
     export: string;
     duplicate: string;
     delete: string;

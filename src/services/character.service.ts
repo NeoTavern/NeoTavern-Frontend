@@ -5,6 +5,7 @@ import {
   importCharacter as apiImportCharacter,
   saveCharacter as apiSaveCharacter,
   updateCharacterImage as apiUpdateCharacterImage,
+  exportCharacter,
   fetchAllCharacters,
 } from '../api/characters';
 import type { CropData } from '../types';
@@ -65,6 +66,10 @@ export const characterService = {
       return `${data.file_name}.png`;
     }
     throw new Error('Import failed: No filename returned');
+  },
+
+  async export(avatar: string, format: 'json' | 'png'): Promise<Blob> {
+    return await exportCharacter(avatar, format);
   },
 
   async updateImage(avatar: string, imageFile: File, cropData?: CropData): Promise<void> {

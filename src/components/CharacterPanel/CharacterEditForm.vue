@@ -4,6 +4,7 @@ import { computed, markRaw, onUnmounted, ref, watch } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
 import { default_avatar, DEFAULT_CHARACTER } from '../../constants';
+import { characterService } from '../../services/character.service';
 import { convertWorldInfoBookToCharacterBook } from '../../services/world-info';
 import { useCharacterUiStore } from '../../stores/character-ui.store';
 import { useCharacterStore } from '../../stores/character.store';
@@ -304,6 +305,23 @@ async function createNewChat() {
   }
 }
 
+async function handleExport() {
+  if (!localCharacter.value) return;
+  try {
+    const blob = await characterService.export(localCharacter.value.avatar, 'png');
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${localCharacter.value.name || 'character'}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch {
+    toast.error(t('character.export.error'));
+  }
+}
+
 async function handleDuplicate() {
   if (!localCharacter.value) return;
   try {
@@ -522,8 +540,8 @@ const embeddedLorebookName = computed({
               :title="t('characterEditor.favorite')"
               @click="toggleFavorite"
             />
-            <!-- TODO: Implement export -->
-            <Button variant="ghost" icon="fa-file-export" :title="t('characterEditor.export')" />
+            <!-- TODO: Implement export as png/json options -->
+            <Button variant="ghost" icon="fa-file-export" :title="t('characterEditor.export')" @click="handleExport" />
             <Button variant="ghost" icon="fa-clone" :title="t('characterEditor.duplicate')" @click="handleDuplicate" />
             <Button icon="fa-skull" variant="danger" :title="t('characterEditor.delete')" @click="handleDelete" />
           </div>

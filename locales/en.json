@@ -624,6 +624,9 @@
     "save": {
       "error": "Failed to save character."
     },
+    "export": {
+      "error": "Failed to export character."
+    },
     "fetch": {
       "overflowWarning": "Character data length limit reached. To resolve this, set \"performance.lazyLoadCharacters\" to \"true\" in config.yaml and restart the server."
     },
@@ -668,9 +671,6 @@
   "characterEditor": {
     "avatar": "Click to select a new avatar for this character",
     "favorite": "Add to Favorites",
-    "lore": "Character Lore",
-    "chatLore": "Chat Lore",
-    "personas": "Connected Personas",
     "export": "Export and Download",
     "duplicate": "Duplicate",
     "delete": "Delete",
