@@ -672,6 +672,8 @@
     "avatar": "Click to select a new avatar for this character",
     "favorite": "Add to Favorites",
     "export": "Export and Download",
+    "exportAsPng": "Export as PNG",
+    "exportAsJson": "Export as JSON",
     "duplicate": "Duplicate",
     "delete": "Delete",
     "more": "More...",

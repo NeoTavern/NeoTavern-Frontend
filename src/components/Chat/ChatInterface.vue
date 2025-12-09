@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useMobile } from '../../composables/useMobile';
 import { useStrictI18n } from '../../composables/useStrictI18n';
@@ -30,9 +31,18 @@ const { t } = useStrictI18n();
 
 const userInput = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
-const isOptionsMenuVisible = ref(false);
-const optionsMenu = ref<HTMLElement | null>(null);
 const chatInput = ref<HTMLTextAreaElement | null>(null);
+
+const isOptionsMenuVisible = ref(false);
+const optionsButtonRef = ref<HTMLElement | null>(null);
+const optionsMenuRef = ref<HTMLElement | null>(null);
+
+const { floatingStyles: optionsMenuStyles } = useFloating(optionsButtonRef, optionsMenuRef, {
+  placement: 'top-start',
+  open: isOptionsMenuVisible,
+  whileElementsMounted: autoUpdate,
+  middleware: [offset(8), flip(), shift({ padding: 10 })],
+});
 
 function submitMessage() {
   if (!userInput.value.trim()) return;
@@ -94,11 +104,13 @@ function handleKeydown(event: KeyboardEvent) {
 }
 
 function handleClickOutside(event: MouseEvent) {
-  if (optionsMenu.value && !optionsMenu.value.contains(event.target as Node)) {
-    const optionsButton = document.getElementById('chat-options-button');
-    if (optionsButton && !optionsButton.contains(event.target as Node)) {
-      isOptionsMenuVisible.value = false;
-    }
+  const target = event.target as Node;
+
+  const isOutsideMenu = optionsMenuRef.value && !optionsMenuRef.value.contains(target);
+  const isOutsideButton = optionsButtonRef.value && !optionsButtonRef.value.contains(target);
+
+  if (isOutsideMenu && isOutsideButton) {
+    isOptionsMenuVisible.value = false;
   }
 }
 
@@ -253,7 +265,7 @@ watch(
         class="chat-form"
       >
         <div class="chat-form-inner">
-          <div class="chat-form-actions-left">
+          <div ref="optionsButtonRef" class="chat-form-actions-left">
             <Button
               id="chat-options-button"
               class="chat-form-button"
@@ -294,7 +306,7 @@ watch(
           </div>
         </div>
 
-        <div v-show="isOptionsMenuVisible" ref="optionsMenu" class="options-menu">
+        <div v-show="isOptionsMenuVisible" ref="optionsMenuRef" class="options-menu" :style="optionsMenuStyles">
           <a class="options-menu-item" @click="generate">
             <i class="fa-solid fa-paper-plane"></i>
             <span>{{ t('chat.optionsMenu.generate') }}</span>

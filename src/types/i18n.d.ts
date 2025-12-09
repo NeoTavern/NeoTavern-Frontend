@@ -675,6 +675,8 @@ export interface MessageSchema {
     avatar: string;
     favorite: string;
     export: string;
+    exportAsPng: string;
+    exportAsJson: string;
     duplicate: string;
     delete: string;
     more: string;

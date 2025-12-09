@@ -62,8 +62,6 @@
 
     &.is-open {
       border-color: var(--theme-quote-color);
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0;
     }
 
     .selected-text {
@@ -87,16 +85,12 @@
 
   .select-dropdown {
     position: absolute;
-    top: 100%;
-    left: 0;
-    width: 100%;
+
     max-height: 250px;
     overflow-y: auto;
-    background-color: var(--theme-background-tint); // Or a specific dropdown bg
+    background-color: var(--theme-background-tint);
     border: 1px solid var(--theme-border-color);
-    border-top: none;
-    border-bottom-left-radius: var(--base-border-radius);
-    border-bottom-right-radius: var(--base-border-radius);
+    border-radius: var(--base-border-radius);
     z-index: var(--z-drawer);
     box-shadow: 0 4px 6px var(--theme-shadow-color);
 

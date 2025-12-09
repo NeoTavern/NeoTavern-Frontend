@@ -29,12 +29,6 @@
     &.is-open {
       transform: translateX(0);
     }
-    // Do not touch it unless you know what are you doing. It is a desktop bug fix.
-    // To reproduce, refresh the page, open the character edit form, click `more` dropdown, you'll notice the right sidebar suddenly shows up.
-    &:not(.is-open) {
-      position: sticky;
-      border: 0;
-    }
   }
 
   &-content {

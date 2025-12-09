@@ -1,5 +1,6 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts" generic="T extends string | number">
+import { autoUpdate, flip, offset, shift, size, useFloating } from '@floating-ui/vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useMobile } from '../../composables/useMobile';
 import Icon from './Icon.vue';
@@ -44,10 +45,29 @@ const emit = defineEmits<{
 
 const isOpen = ref(false);
 const containerRef = ref<HTMLElement | null>(null);
+const triggerRef = ref<HTMLElement | null>(null);
 const dropdownRef = ref<HTMLElement | null>(null);
 const searchInputRef = ref<HTMLInputElement | null>(null);
 const searchQuery = ref('');
 const { isMobile } = useMobile();
+
+const { floatingStyles } = useFloating(triggerRef, dropdownRef, {
+  placement: 'bottom-start',
+  open: isOpen,
+  whileElementsMounted: autoUpdate,
+  middleware: [
+    offset(4),
+    flip({ padding: 10 }),
+    shift({ padding: 10 }),
+    size({
+      apply({ rects, elements }) {
+        Object.assign(elements.floating.style, {
+          width: `${rects.reference.width}px`,
+        });
+      },
+    }),
+  ],
+});
 
 function toggleOpen() {
   if (props.disabled) return;
@@ -178,7 +198,12 @@ const displayValue = computed(() => {
 });
 
 function onClickOutside(event: MouseEvent) {
-  if (containerRef.value && !containerRef.value.contains(event.target as Node)) {
+  const target = event.target as Node;
+
+  const isOutsideContainer = containerRef.value && !containerRef.value.contains(target);
+  const isOutsideDropdown = dropdownRef.value && !dropdownRef.value.contains(target);
+
+  if (isOutsideContainer && isOutsideDropdown) {
     close();
   }
 }
@@ -205,6 +230,7 @@ watch(
     <label v-if="label" class="select-label">{{ label }}</label>
 
     <div
+      ref="triggerRef"
       class="select-trigger text-pole"
       :class="{ 'is-open': isOpen, 'is-disabled': disabled }"
       :title="title"
@@ -215,7 +241,7 @@ watch(
     </div>
 
     <Transition name="fade-fast">
-      <div v-show="isOpen" ref="dropdownRef" class="select-dropdown">
+      <div v-if="isOpen" ref="dropdownRef" class="select-dropdown" :style="floatingStyles">
         <!-- Search Input -->
         <div v-show="searchable" class="select-search-container" @click.stop>
           <input

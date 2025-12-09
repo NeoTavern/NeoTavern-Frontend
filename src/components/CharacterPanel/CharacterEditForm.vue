@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 import { cloneDeep, set } from 'lodash-es';
-import { computed, markRaw, onUnmounted, ref, watch } from 'vue';
+import { computed, markRaw, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
 import { default_avatar, DEFAULT_CHARACTER } from '../../constants';
@@ -41,6 +42,17 @@ const isCreating = computed(() => characterUiStore.isCreating);
 const isPeeking = ref(false);
 const isSpoilerModeActive = computed(() => settingsStore.settings.character.spoilerFreeMode);
 const areDetailsHidden = computed(() => isSpoilerModeActive.value && !isPeeking.value && !isCreating.value);
+
+const isExportMenuVisible = ref(false);
+const exportButtonRef = ref<HTMLElement | null>(null);
+const exportMenuRef = ref<HTMLElement | null>(null);
+
+const { floatingStyles: exportMenuStyles } = useFloating(exportButtonRef, exportMenuRef, {
+  placement: 'bottom-start',
+  open: isExportMenuVisible,
+  whileElementsMounted: autoUpdate,
+  middleware: [offset(8), flip(), shift({ padding: 10 })],
+});
 
 const isCreatorNotesOpen = ref(false);
 const isPromptOverridesOpen = ref(false);
@@ -153,6 +165,25 @@ function revokePreviewUrl() {
     avatarPreviewUrl.value = null;
   }
 }
+
+function handleClickOutside(event: MouseEvent) {
+  const target = event.target as Node;
+
+  const isOutsideMenu = exportMenuRef.value && !exportMenuRef.value.contains(target);
+  const isOutsideButton = exportButtonRef.value && !exportButtonRef.value.contains(target);
+
+  if (isOutsideMenu && isOutsideButton) {
+    isExportMenuVisible.value = false;
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside);
+});
 
 async function handleAvatarFileChange(event: Event) {
   if (!localCharacter.value) return;
@@ -305,14 +336,14 @@ async function createNewChat() {
   }
 }
 
-async function handleExport() {
+async function handleExport(format: 'png' | 'json' = 'png') {
   if (!localCharacter.value) return;
   try {
-    const blob = await characterService.export(localCharacter.value.avatar, 'png');
+    const blob = await characterService.export(localCharacter.value.avatar, format);
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${localCharacter.value.name || 'character'}.png`;
+    link.download = `${localCharacter.value.name || 'character'}.${format}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -320,6 +351,16 @@ async function handleExport() {
   } catch {
     toast.error(t('character.export.error'));
   }
+}
+
+function handleExportPng() {
+  handleExport('png');
+  isExportMenuVisible.value = false;
+}
+
+function handleExportJson() {
+  handleExport('json');
+  isExportMenuVisible.value = false;
 }
 
 async function handleDuplicate() {
@@ -540,8 +581,25 @@ const embeddedLorebookName = computed({
               :title="t('characterEditor.favorite')"
               @click="toggleFavorite"
             />
-            <!-- TODO: Implement export as png/json options -->
-            <Button variant="ghost" icon="fa-file-export" :title="t('characterEditor.export')" @click="handleExport" />
+            <div ref="exportButtonRef">
+              <Button
+                variant="ghost"
+                icon="fa-file-export"
+                :title="t('characterEditor.export')"
+                @click.stop="isExportMenuVisible = !isExportMenuVisible"
+              />
+            </div>
+
+            <div v-show="isExportMenuVisible" ref="exportMenuRef" class="export-menu" :style="exportMenuStyles">
+              <a class="export-menu-item" @click="handleExportPng">
+                <i class="fa-solid fa-file-image"></i>
+                <span>{{ t('characterEditor.exportAsPng') }}</span>
+              </a>
+              <a class="export-menu-item" @click="handleExportJson">
+                <i class="fa-solid fa-file-code"></i>
+                <span>{{ t('characterEditor.exportAsJson') }}</span>
+              </a>
+            </div>
             <Button variant="ghost" icon="fa-clone" :title="t('characterEditor.duplicate')" @click="handleDuplicate" />
             <Button icon="fa-skull" variant="danger" :title="t('characterEditor.delete')" @click="handleDelete" />
           </div>
