@@ -18,7 +18,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run --coverage"
   },
-  "author": "Your Name",
+  "author": "bmen25124",
   "license": "AGPL-3.0",
   "engines": {
     "node": ">=20"
