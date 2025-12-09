@@ -2,7 +2,8 @@
 
 A modern, experimental frontend for SillyTavern.
 
-**Note:** This is a pre-alpha release. Features may be incomplete and bugs are expected.
+> [!IMPORTANT]  
+> This is a pre-alpha release. Features may be incomplete and bugs are expected.
 
 ## Prerequisites
 
