@@ -114,7 +114,7 @@ onMounted(async () => {
     'themes',
     {
       component: ThemeDrawer,
-      title: 'Themes', // TODO: i18n
+      title: t('themes.title'),
       icon: 'fa-palette',
     },
     'left',

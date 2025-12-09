@@ -120,7 +120,7 @@ function onImport(files: File[]) {
             <div v-for="key in vars" :key="key" class="theme-var-item">
               <!-- Colors -->
               <div v-if="isColor(key)" class="color-picker-row">
-                <label>{{ VARIABLE_LABELS[key] }}</label>
+                <label>{{ t(VARIABLE_LABELS[key]) }}</label>
                 <div class="color-input-wrapper">
                   <input
                     type="color"
@@ -134,7 +134,7 @@ function onImport(files: File[]) {
               <!-- Numbers (Sliders) -->
               <div v-else-if="isNumber(key)">
                 <RangeControl
-                  :label="VARIABLE_LABELS[key]"
+                  :label="t(VARIABLE_LABELS[key])"
                   :model-value="parseFloat(getVariable(key)) || 0"
                   :min="0"
                   :max="50"
@@ -144,7 +144,7 @@ function onImport(files: File[]) {
 
               <!-- Text / generic -->
               <div v-else>
-                <FormItem :label="VARIABLE_LABELS[key]">
+                <FormItem :label="t(VARIABLE_LABELS[key])">
                   <Input :model-value="getVariable(key)" @update:model-value="(val) => setVariable(key, val)" />
                 </FormItem>
               </div>

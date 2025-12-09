@@ -129,6 +129,10 @@ export interface MessageSchema {
     lorebooks: {
       label: string;
     };
+    errors: {
+      invalidFileFormat: string;
+      importFailed: string;
+    };
   };
   worldInfo: {
     activeWorlds: string;
@@ -302,6 +306,7 @@ export interface MessageSchema {
     promptsTitle: string;
     manualInputNote: string;
     docsLinkTooltip: string;
+    topPMinP: string;
     presets: {
       sampler: {
         label: string;
@@ -761,6 +766,59 @@ export interface MessageSchema {
     placeholder: {
       title: string;
       text: string;
+    };
+  };
+  themes: {
+    title: string;
+    errors: {
+      loadFailed: string;
+      saveFailed: string;
+      deleteFailed: string;
+      importFailed: string;
+    };
+    variables: {
+      colors: {
+        textColor: string;
+        emphasisColor: string;
+        underlineColor: string;
+        quoteColor: string;
+        backgroundTint: string;
+        chatTint: string;
+        userMessageTint: string;
+        botMessageTint: string;
+        shadowColor: string;
+        borderColor: string;
+        accentRed: string;
+        accentGreen: string;
+        warningColor: string;
+        errorColor: string;
+      };
+      scrollbar: {
+        width: string;
+        thumbColor: string;
+        trackColor: string;
+        thumbRadius: string;
+        trackRadius: string;
+        thumbBorderWidth: string;
+        thumbShadowColor: string;
+      };
+      typography: {
+        fontSize: string;
+        fontFamily: string;
+        fontFamilyMono: string;
+        borderRadius: string;
+        blurStrength: string;
+        shadowWidth: string;
+      };
+      layout: {
+        panelWidth: string;
+        sidebarWidth: string;
+      };
+      avatars: {
+        width: string;
+        height: string;
+        borderRadius: string;
+      };
     };
   };
   apiConnections: {

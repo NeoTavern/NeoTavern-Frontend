@@ -499,7 +499,7 @@ export const aiConfigDefinition: AiConfigSection[] = [
             options: [
               { value: 0, label: 'aiConfig.topK.label' },
               { value: 1, label: 'aiConfig.topA.label' },
-              { value: 2, label: 'Top P & Min P' }, // TODO i18n
+              { value: 2, label: 'aiConfig.topPMinP' },
               { value: 3, label: 'aiConfig.koboldcpp.groups.tfs' },
               { value: 4, label: 'aiConfig.koboldcpp.typical' },
               { value: 5, label: 'aiConfig.temperature.label' },

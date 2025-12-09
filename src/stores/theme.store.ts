@@ -2,15 +2,15 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { Preset } from '../api/presets';
 import * as api from '../api/presets';
+import { useStrictI18n } from '../composables/useStrictI18n';
 import { toast } from '../composables/useToast';
 import type { Theme, ThemeVariables } from '../types/theme';
 import { VARIABLE_TYPES } from '../types/theme';
 import { downloadFile } from '../utils/commons';
 import { useSettingsStore } from './settings.store';
 
-// TODO: i18n
-
 export const useThemeStore = defineStore('theme', () => {
+  const { t } = useStrictI18n();
   const themes = ref<Preset<Theme>[]>([]);
   const activeThemeName = ref<string>('Default');
 
@@ -59,7 +59,7 @@ export const useThemeStore = defineStore('theme', () => {
       // Ensure there is at least a default if API returns empty or specific logic needed
     } catch (error) {
       console.error('Failed to fetch themes', error);
-      toast.error('Failed to load themes');
+      toast.error(t('themes.errors.loadFailed'));
     }
   }
 
@@ -103,7 +103,7 @@ export const useThemeStore = defineStore('theme', () => {
       toast.success(`Theme "${name}" saved`);
     } catch (error) {
       console.error(error);
-      toast.error('Failed to save theme');
+      toast.error(t('themes.errors.saveFailed'));
     }
   }
 
@@ -117,7 +117,7 @@ export const useThemeStore = defineStore('theme', () => {
       toast.success('Theme deleted');
     } catch (error) {
       console.error(error);
-      toast.error('Failed to delete theme');
+      toast.error(t('themes.errors.deleteFailed'));
     }
   }
 
@@ -152,7 +152,7 @@ export const useThemeStore = defineStore('theme', () => {
       await saveTheme(fileNameWithoutExt || 'Imported Theme');
     } catch (error) {
       console.error(error);
-      toast.error('Failed to import theme');
+      toast.error(t('themes.errors.importFailed'));
     }
   }
 

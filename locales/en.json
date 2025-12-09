@@ -125,6 +125,10 @@
     },
     "lorebooks": {
       "label": "Lorebooks"
+    },
+    "errors": {
+      "invalidFileFormat": "Invalid file format. Expected an array of personas.",
+      "importFailed": "Failed to import personas. Please check the file format."
     }
   },
   "worldInfo": {
@@ -299,6 +303,7 @@
     "promptsTitle": "Prompt Manager",
     "manualInputNote": "Click slider numbers to input manually.",
     "docsLinkTooltip": "Documentation on sampling parameters.",
+    "topPMinP": "Top P & Min P",
     "presets": {
       "sampler": {
         "label": "Sampler Presets"
@@ -758,6 +763,59 @@
     "placeholder": {
       "title": "Select an Extension",
       "text": "Select an extension from the list on the left to view its details and settings."
+    }
+  },
+  "themes": {
+    "title": "Themes",
+    "errors": {
+      "loadFailed": "Failed to load themes",
+      "saveFailed": "Failed to save theme",
+      "deleteFailed": "Failed to delete theme",
+      "importFailed": "Failed to import theme"
+    },
+    "variables": {
+      "colors": {
+        "textColor": "Text Color",
+        "emphasisColor": "Emphasis Color",
+        "underlineColor": "Underline Color",
+        "quoteColor": "Quote Color",
+        "backgroundTint": "Background Tint",
+        "chatTint": "Chat Container Tint",
+        "userMessageTint": "User Message Bubble",
+        "botMessageTint": "Bot Message Bubble",
+        "shadowColor": "Shadow Color",
+        "borderColor": "Border Color",
+        "accentRed": "Accent Red",
+        "accentGreen": "Accent Green",
+        "warningColor": "Warning Color",
+        "errorColor": "Error Color"
+      },
+      "scrollbar": {
+        "width": "Width",
+        "thumbColor": "Thumb Color",
+        "trackColor": "Track Color",
+        "thumbRadius": "Thumb Radius",
+        "trackRadius": "Track Radius",
+        "thumbBorderWidth": "Thumb Border Spacing",
+        "thumbShadowColor": "Thumb Inner Shadow"
+      },
+      "typography": {
+        "fontSize": "Base Font Size",
+        "fontFamily": "Main Font Family",
+        "fontFamilyMono": "Monospace Font Family",
+        "borderRadius": "Global Border Radius",
+        "blurStrength": "Blur Strength (px)",
+        "shadowWidth": "Shadow Size (px)"
+      },
+      "layout": {
+        "panelWidth": "Main Panel Width",
+        "sidebarWidth": "Sidebar Width"
+      },
+      "avatars": {
+        "width": "Avatar Width",
+        "height": "Avatar Height",
+        "borderRadius": "Avatar Radius"
+      }
     }
   },
   "apiConnections": {

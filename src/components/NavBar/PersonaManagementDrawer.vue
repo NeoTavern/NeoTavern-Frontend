@@ -125,7 +125,7 @@ async function handleFileImport(files: File[]) {
 
     // Validate the imported data
     if (!Array.isArray(importedPersonas)) {
-      toast.error('Invalid file format. Expected an array of personas.'); // TODO: i18n
+      toast.error(t('personaManagement.errors.invalidFileFormat'));
       return;
     }
 
@@ -142,7 +142,7 @@ async function handleFileImport(files: File[]) {
     }
   } catch (error) {
     console.error('Failed to import personas:', error);
-    toast.error('Failed to import personas. Please check the file format.'); // TODO: i18n
+    toast.error(t('personaManagement.errors.importFailed'));
   }
 }
 

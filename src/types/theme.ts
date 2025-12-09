@@ -1,3 +1,5 @@
+import type { I18nKey } from './i18n';
+
 export interface ThemeVariables {
   // Colors
   '--theme-text-color': string;
@@ -82,43 +84,43 @@ export const THEME_CATEGORIES: Record<string, (keyof ThemeVariables)[]> = {
   Avatars: ['--avatar-width', '--avatar-height', '--avatar-border-radius'],
 };
 
-export const VARIABLE_LABELS: Record<keyof ThemeVariables, string> = {
-  '--theme-text-color': 'Text Color',
-  '--theme-emphasis-color': 'Emphasis Color',
-  '--theme-underline-color': 'Underline Color',
-  '--theme-quote-color': 'Quote Color',
-  '--theme-background-tint': 'Background Tint',
-  '--theme-chat-tint': 'Chat Container Tint',
-  '--theme-user-message-tint': 'User Message Bubble',
-  '--theme-bot-message-tint': 'Bot Message Bubble',
-  '--theme-shadow-color': 'Shadow Color',
-  '--theme-border-color': 'Border Color',
-  '--color-accent-red': 'Accent Red',
-  '--color-accent-green': 'Accent Green',
-  '--color-warning': 'Warning Color',
-  '--color-error-crimson': 'Error Color',
+export const VARIABLE_LABELS: Record<keyof ThemeVariables, I18nKey> = {
+  '--theme-text-color': 'themes.variables.colors.textColor',
+  '--theme-emphasis-color': 'themes.variables.colors.emphasisColor',
+  '--theme-underline-color': 'themes.variables.colors.underlineColor',
+  '--theme-quote-color': 'themes.variables.colors.quoteColor',
+  '--theme-background-tint': 'themes.variables.colors.backgroundTint',
+  '--theme-chat-tint': 'themes.variables.colors.chatTint',
+  '--theme-user-message-tint': 'themes.variables.colors.userMessageTint',
+  '--theme-bot-message-tint': 'themes.variables.colors.botMessageTint',
+  '--theme-shadow-color': 'themes.variables.colors.shadowColor',
+  '--theme-border-color': 'themes.variables.colors.borderColor',
+  '--color-accent-red': 'themes.variables.colors.accentRed',
+  '--color-accent-green': 'themes.variables.colors.accentGreen',
+  '--color-warning': 'themes.variables.colors.warningColor',
+  '--color-error-crimson': 'themes.variables.colors.errorColor',
 
-  '--scrollbar-width': 'Width',
-  '--scrollbar-thumb-color': 'Thumb Color',
-  '--scrollbar-track-color': 'Track Color',
-  '--scrollbar-thumb-radius': 'Thumb Radius',
-  '--scrollbar-track-radius': 'Track Radius',
-  '--scrollbar-thumb-border-width': 'Thumb Border Spacing',
-  '--scrollbar-thumb-shadow-color': 'Thumb Inner Shadow',
+  '--scrollbar-width': 'themes.variables.scrollbar.width',
+  '--scrollbar-thumb-color': 'themes.variables.scrollbar.thumbColor',
+  '--scrollbar-track-color': 'themes.variables.scrollbar.trackColor',
+  '--scrollbar-thumb-radius': 'themes.variables.scrollbar.thumbRadius',
+  '--scrollbar-track-radius': 'themes.variables.scrollbar.trackRadius',
+  '--scrollbar-thumb-border-width': 'themes.variables.scrollbar.thumbBorderWidth',
+  '--scrollbar-thumb-shadow-color': 'themes.variables.scrollbar.thumbShadowColor',
 
-  '--font-size-main': 'Base Font Size',
-  '--font-family-main': 'Main Font Family',
-  '--font-family-mono': 'Monospace Font Family',
-  '--base-border-radius': 'Global Border Radius',
-  '--blur-strength': 'Blur Strength (px)',
-  '--shadow-width': 'Shadow Size (px)',
+  '--font-size-main': 'themes.variables.typography.fontSize',
+  '--font-family-main': 'themes.variables.typography.fontFamily',
+  '--font-family-mono': 'themes.variables.typography.fontFamilyMono',
+  '--base-border-radius': 'themes.variables.typography.borderRadius',
+  '--blur-strength': 'themes.variables.typography.blurStrength',
+  '--shadow-width': 'themes.variables.typography.shadowWidth',
 
-  '--panel-width': 'Main Panel Width',
-  '--sidebar-width': 'Sidebar Width',
+  '--panel-width': 'themes.variables.layout.panelWidth',
+  '--sidebar-width': 'themes.variables.layout.sidebarWidth',
 
-  '--avatar-width': 'Avatar Width',
-  '--avatar-height': 'Avatar Height',
-  '--avatar-border-radius': 'Avatar Radius',
+  '--avatar-width': 'themes.variables.avatars.width',
+  '--avatar-height': 'themes.variables.avatars.height',
+  '--avatar-border-radius': 'themes.variables.avatars.borderRadius',
 };
 
 export const VARIABLE_TYPES: Record<keyof ThemeVariables, 'color' | 'text' | 'number'> = {

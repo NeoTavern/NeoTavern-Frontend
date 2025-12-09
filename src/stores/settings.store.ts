@@ -2,7 +2,7 @@ import { cloneDeep, get, set } from 'lodash-es';
 import { defineStore } from 'pinia';
 import { computed, nextTick, ref, watch } from 'vue';
 import { fetchAllSamplerPresets } from '../api/presets';
-import { fetchUserSettings, fetchNeoSettings, saveNeoSettings } from '../api/settings';
+import { fetchNeoSettings, fetchUserSettings, saveNeoSettings } from '../api/settings';
 import { useAutoSave } from '../composables/useAutoSave';
 import { useMobile } from '../composables/useMobile';
 import { toast } from '../composables/useToast';
