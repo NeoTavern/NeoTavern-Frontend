@@ -63,9 +63,8 @@ export default defineConfig(({ mode }) => {
       }),
       VitePWA({
         registerType: 'autoUpdate',
-        devOptions: {
-          enabled: true,
-        },
+        devOptions: { enabled: true },
+        minify: false,
         includeAssets: ['favicon.ico', 'img/*.svg'],
         manifest: {
           name: 'NeoTavern',
@@ -90,6 +89,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           navigateFallbackDenylist: [/^\/api/, /^\/characters/, /^\/backgrounds/, /^\/personas/],
+          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         },
       }),
       {
@@ -122,6 +122,28 @@ export default defineConfig(({ mode }) => {
     build: {
       minify: !isDevBuild,
       sourcemap: isDevBuild,
+      chunkSizeWarningLimit: 2000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('vue') || id.includes('pinia') || id.includes('@intlify')) {
+                return 'vendor-core';
+              }
+              if (id.includes('codemirror') || id.includes('@codemirror')) {
+                return 'vendor-editor';
+              }
+              if (id.includes('marked') || id.includes('dompurify') || id.includes('yaml')) {
+                return 'vendor-utils';
+              }
+              if (id.includes('fortawesome')) {
+                return 'vendor-icons';
+              }
+              return 'vendor-common';
+            }
+          },
+        },
+      },
     },
   };
 });

@@ -157,18 +157,20 @@ To update to the latest version, we provide a helper script that pulls the lates
 NeoTavern supports **Progressive Web App (PWA)** functionality. This allows you to install it as a native application on your device, removing the browser address bar and giving you a full-screen experience.
 
 **On Android:**
+
 1. Start the app and open Chrome to `http://localhost:4173`.
 2. Tap the **Three Dots Menu** (top right).
 3. Tap **"Add to Home screen"** or **"Install App"**.
 4. The NeoTavern icon will appear in your app drawer. You can now launch it directly without opening Chrome first.
 
 **On Desktop (Chrome/Edge):**
+
 1. Open the app in your browser.
 2. Click the **Install icon** in the right side of the address bar.
 
 ## FAQ
 
->Can I use my existing ST backend?
+> Can I use my existing ST backend?
 
 Yes. NeoTavern-Frontend is not overriding the existing `settings.json`. However; using the same characters, instruct templates, backgrounds, and WI folders. If you are worried about your data, feel free to use a fresh ST backend.
 

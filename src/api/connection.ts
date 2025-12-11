@@ -17,7 +17,9 @@ export async function fetchChatCompletionStatus(settings: {
   if (!response.ok) {
     const errorText = await response.text();
     console.error('Error response text:', errorText);
-    throw new Error(`Can't connect to ${settings.chat_completion_source} provider. Make sure AI Configuration is correct.`);
+    throw new Error(
+      `Can't connect to ${settings.chat_completion_source} provider. Make sure AI Configuration is correct.`,
+    );
   }
 
   return await response.json();
