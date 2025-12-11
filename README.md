@@ -28,6 +28,7 @@ Why another frontend for [SillyTavern?](https://github.com/SillyTavern/SillyTave
 - NovelAI/Horde/KoboldClassic. If they have OpenAI compatible API, we can add later. If not, we are not planning to add them.
 - Reasoning for text completion.
 - Media attachments. Such as images, files, audio, video.
+- Tool calling / structured outputs.
 
 **Thing that not implemented fully:**
 
