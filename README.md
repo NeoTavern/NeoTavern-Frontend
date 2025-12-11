@@ -1,4 +1,6 @@
-A modern, experimental frontend for SillyTavern.
+A modern, experimental frontend for [SillyTavern](https://github.com/SillyTavern/SillyTavern).
+
+[![Discord](https://img.shields.io/badge/Discord-SillyTavern-5865F2?logo=discord&logoColor=white)](https://discord.gg/sillytavern)
 
 > [!IMPORTANT]  
 > This is a pre-alpha release. Features may be incomplete, and bugs are expected.
@@ -8,7 +10,7 @@ A modern, experimental frontend for SillyTavern.
 
 ## Intro
 
-Why another frontend for SillyTavern? For detailed reasoning, see the hackmd post: [NeoTavern](https://hackmd.io/@NlF71k9KQAS4hhlzE42UJQ/SJ3UMOGbbl)
+Why another frontend for [SillyTavern?](https://github.com/SillyTavern/SillyTavern) For detailed reasoning, see the hackmd post: [NeoTavern](https://hackmd.io/@NlF71k9KQAS4hhlzE42UJQ/SJ3UMOGbbl)
 
 **Features compared to the SillyTavern:**
 
