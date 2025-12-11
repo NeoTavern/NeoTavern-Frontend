@@ -464,8 +464,8 @@ export class ChatCompletionService {
       const reasoning = extractReasoning(responseData, provider);
 
       return {
-        content: messageContent,
-        reasoning: reasoning,
+        content: messageContent.trim(),
+        reasoning: reasoning?.trim(),
       };
     }
 
@@ -488,6 +488,7 @@ export class ChatCompletionService {
     return async function* streamData(): AsyncGenerator<StreamedChunk> {
       let reasoning = '';
       let buffer = '';
+      let isFirstChunk = true;
 
       try {
         while (true) {
@@ -521,10 +522,16 @@ export class ChatCompletionService {
 
                 if (hasNewReasoning) {
                   reasoning += chunk.reasoning;
+                  reasoning.trim();
                 }
 
                 if (hasNewDelta || hasNewReasoning) {
-                  yield { delta: chunk.delta || '', reasoning: reasoning };
+                  let delta = chunk.delta || '';
+                  if (isFirstChunk && delta) {
+                    delta = delta.trimStart();
+                    isFirstChunk = false;
+                  }
+                  yield { delta, reasoning: reasoning };
                 }
               } catch (e) {
                 console.error('Error parsing stream chunk:', data, e);

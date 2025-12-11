@@ -145,7 +145,6 @@ async function deleteChat(chatFile: string) {
         }
       }
       chatStore.chatInfos = chatStore.chatInfos.filter((chat) => chat.file_id !== chatFile);
-      chatStore.recentChats = chatStore.recentChats.filter((chat) => chat.file_id !== chatFile);
       nextTick().then(() => {
         eventEmitter.emit('chat:deleted', chatFile);
       });

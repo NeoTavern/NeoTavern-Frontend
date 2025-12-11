@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
 import { chatService } from '../../services/chat.service';
@@ -32,7 +32,7 @@ watch(itemsPerPage, (newVal) => {
   currentPage.value = 1;
 });
 
-const recentChats = computed(() => chatStore.recentChats);
+const recentChats = computed(() => chatStore.chatInfos);
 
 const paginatedRecentChats = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value;
@@ -129,7 +129,7 @@ async function deleteSelected() {
       for (const id of idsToDelete) {
         await chatService.delete(id);
       }
-      chatStore.recentChats = chatStore.recentChats.filter((c) => !selectedChats.value.has(c.file_id));
+      chatStore.chatInfos = chatStore.chatInfos.filter((c) => !selectedChats.value.has(c.file_id));
       if (chatStore.activeChatFile && selectedChats.value.has(chatStore.activeChatFile)) {
         chatStore.activeChatFile = null;
         await chatStore.clearChat(false);
@@ -150,18 +150,12 @@ async function deleteSelected() {
 
 async function refresh() {
   try {
-    chatStore.recentChats = await chatService.listRecent();
+    await chatStore.refreshChats();
   } catch (err) {
     console.error(err);
     toast.error(t('chat.loadError'));
   }
 }
-
-onMounted(() => {
-  if (chatStore.recentChats.length === 0) {
-    refresh();
-  }
-});
 </script>
 
 <template>

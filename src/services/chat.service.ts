@@ -5,7 +5,6 @@ import {
   fetchChat,
   importChats,
   listChats,
-  listRecentChats,
   saveChat,
   type ChatExportRequest,
 } from '../api/chat';
@@ -60,9 +59,5 @@ export const chatService = {
 
   async list(): Promise<ChatInfo[]> {
     return await listChats();
-  },
-
-  async listRecent(): Promise<ChatInfo[]> {
-    return await listRecentChats();
   },
 };

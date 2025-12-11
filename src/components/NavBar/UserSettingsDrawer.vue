@@ -134,7 +134,7 @@ function formatOptions(options: (SettingOption | GroupedSettingOption)[]) {
 
                   <!-- Text/Number Input -->
                   <div v-if="setting.widget === 'text'" style="width: 220px">
-                  <!-- If we remove brackets, vue type checker thinks we are using vue filter. So I added bracket to bypass this. However prettier removig the brackets. So we need to find a solution. Maybe 2 different input blocks? -->
+                    <!-- If we remove brackets, vue type checker thinks we are using vue filter. So I added bracket to bypass this. However prettier removig the brackets. So we need to find a solution. Maybe 2 different input blocks? -->
                     <Input
                       :model-value="(getSettingValue(setting.id) as string | number)"
                       :type="setting.type === 'number' ? 'number' : 'text'"

@@ -368,10 +368,7 @@ const baseExtensionAPI: ExtensionAPI = {
         mes: last?.mes || '',
       };
 
-      chatStore.chatInfos.push(info);
-      chatStore.recentChats.push(info);
-      chatStore.chatInfos.sort((a, b) => a.last_mes.localeCompare(b.last_mes));
-      chatStore.recentChats.sort((a, b) => a.last_mes.localeCompare(b.last_mes));
+      chatStore.chatInfos.unshift(info);
 
       return finalFilename;
     },

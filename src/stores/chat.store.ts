@@ -38,7 +38,6 @@ export const useChatStore = defineStore('chat', () => {
   const activeChat = ref<ChatStoreState | null>(null);
   const activeChatFile = ref<string | null>(null);
   const chatInfos = ref<ChatInfo[]>([]);
-  const recentChats = ref<ChatInfo[]>([]);
   const autoModeTimer = ref<ReturnType<typeof setTimeout> | null>(null);
 
   const uiStore = useUiStore();
@@ -100,7 +99,6 @@ export const useChatStore = defineStore('chat', () => {
           }
         };
         updateInfo(chatInfos.value);
-        updateInfo(recentChats.value);
       } finally {
         uiStore.isChatSaving = false;
       }
@@ -370,10 +368,7 @@ export const useChatStore = defineStore('chat', () => {
         mes: firstMessage?.mes || '',
       };
 
-      chatInfos.value.push(cInfo);
-      recentChats.value.push(cInfo);
-      chatInfos.value.sort((a, b) => a.last_mes.localeCompare(b.last_mes));
-      recentChats.value.sort((a, b) => a.last_mes.localeCompare(b.last_mes));
+      chatInfos.value.unshift(cInfo);
 
       chatUiStore.resetRenderedMessagesCount(settingsStore.settings.ui.chat.messagesToLoad || 100);
 
@@ -644,8 +639,9 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function refreshChats() {
-    chatInfos.value = await chatService.list();
-    recentChats.value = await chatService.listRecent();
+    const chats = await chatService.list();
+    chats.sort((a, b) => a.last_mes.localeCompare(b.last_mes));
+    chatInfos.value = chats;
   }
 
   async function importChats(file_type: 'jsonl' | 'json', file: File): Promise<{ fileNames: string[] }> {
@@ -675,11 +671,6 @@ export const useChatStore = defineStore('chat', () => {
 
         if (!chatInfos.value.find((c) => c.file_id === fileId)) {
           chatInfos.value.push(chatInfo);
-          chatInfos.value.sort((a, b) => a.last_mes.localeCompare(b.last_mes));
-        }
-        if (!recentChats.value.find((c) => c.file_id === fileId)) {
-          recentChats.value.push(chatInfo);
-          recentChats.value.sort((a, b) => a.last_mes.localeCompare(b.last_mes));
         }
       } catch (e) {
         console.warn(`Failed to fetch imported chat ${fileName}:`, e);
@@ -687,7 +678,6 @@ export const useChatStore = defineStore('chat', () => {
     }
 
     chatInfos.value.sort((a, b) => a.last_mes.localeCompare(b.last_mes));
-    recentChats.value.sort((a, b) => a.last_mes.localeCompare(b.last_mes));
 
     return result;
   }
@@ -695,7 +685,6 @@ export const useChatStore = defineStore('chat', () => {
   return {
     activeChat,
     chatInfos,
-    recentChats,
     activeMessageEditState: computed(() => chatUiStore.activeMessageEditState),
     isChatLoading: computed(() => chatUiStore.isChatLoading),
     isGenerating,
