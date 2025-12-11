@@ -1,9 +1,26 @@
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 import vue from '@vitejs/plugin-vue';
+import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// Android 14+ blocks /proc/stat, causing os.cpus() to return empty.
+// This crashes Terser/Rollup. We fake a single CPU core to fix it.
+try {
+  if (!os.cpus() || os.cpus().length === 0) {
+    os.cpus = () => [
+      {
+        model: 'Termux Fix',
+        speed: 1000,
+        times: { user: 100, nice: 0, sys: 100, idle: 100, irq: 0 },
+      },
+    ];
+  }
+} catch (e) {
+  console.warn('Failed to apply Termux CPU fix:', e);
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -63,7 +80,6 @@ export default defineConfig(({ mode }) => {
       }),
       VitePWA({
         registerType: 'autoUpdate',
-        devOptions: { enabled: true },
         minify: false,
         includeAssets: ['favicon.ico', 'img/*.svg'],
         manifest: {
@@ -89,7 +105,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           navigateFallbackDenylist: [/^\/api/, /^\/characters/, /^\/backgrounds/, /^\/personas/],
-          maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
         },
       }),
       {
@@ -120,7 +136,7 @@ export default defineConfig(({ mode }) => {
       proxy: proxyRules,
     },
     build: {
-      minify: !isDevBuild,
+      minify: isDevBuild ? false : 'esbuild',
       sourcemap: isDevBuild,
       chunkSizeWarningLimit: 2000,
       rollupOptions: {
