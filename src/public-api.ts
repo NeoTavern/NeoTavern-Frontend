@@ -20,6 +20,7 @@ import type * as Vue from 'vue';
 import type { ExtensionAPI } from './types';
 
 declare global {
+  // TODO: Rename with NeoTavern?
   var SillyTavern: {
     /**
      * The instance of Vue being used by the main application.
@@ -28,7 +29,7 @@ declare global {
     vue: typeof Vue;
 
     /**
-     * The entry point for an extension to register itself with SillyTavern.
+     * The entry point for an extension to register itself with NeoTavern.
      * @param extensionName A unique name for your extension.
      * @param initCallback The function that will be called to initialize your extension.
      */

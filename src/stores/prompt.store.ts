@@ -3,8 +3,8 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { ExtensionPrompt, ItemizedPrompt } from '../types';
 
-const promptStorage = localforage.createInstance({ name: 'SillyTavern_Prompts' });
-const userTypingStorage = localforage.createInstance({ name: 'SillyTavern_UserTyping' });
+const promptStorage = localforage.createInstance({ name: 'NeoTavern_Prompts' });
+const userTypingStorage = localforage.createInstance({ name: 'NeoTavern_UserTyping' });
 
 export const usePromptStore = defineStore('prompt', () => {
   const extensionPrompts = ref<Record<string, ExtensionPrompt>>({});

@@ -23,7 +23,7 @@ export default defineConfig({
     outDir: 'dist/types',
     lib: {
       entry: resolve(__dirname, 'src/public-api.ts'),
-      name: 'SillyTavernAPI', // A name for the library
+      name: 'NeoTavernAPI',
       formats: ['es'],
       fileName: 'public-api',
     },

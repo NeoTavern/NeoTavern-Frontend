@@ -5,5 +5,5 @@ export const manifest: ExtensionManifest = {
   display_name: 'Chat Branching',
   description: 'Adds an option to branch the chat from a specific message.',
   version: '1.0.0',
-  author: 'SillyTavern Team',
+  author: 'NeoTavern Team',
 };

@@ -11,6 +11,7 @@ compiled
 docs
 
 dist
+dev-dist
 
 yarn.lock
 

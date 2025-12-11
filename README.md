@@ -52,6 +52,8 @@ Why another frontend for [SillyTavern?](https://github.com/SillyTavern/SillyTave
 
 ### Windows
 
+Make sure [SillyTavern(staging branch)](https://github.com/SillyTavern/SillyTavern) is running in the background and [NeoTavern-Server-Plugin](https://github.com/NeoTavern/NeoTavern-Server-Plugin) installed.
+
 1. Clone the repository or download the source code.
    ```bash
    git clone https://github.com/NeoTavern/NeoTavern-Frontend.git
@@ -62,6 +64,8 @@ Why another frontend for [SillyTavern?](https://github.com/SillyTavern/SillyTave
 The script will automatically install dependencies, build the project, and launch the server at `http://localhost:4173`.
 
 ### Linux / macOS
+
+Make sure [SillyTavern(staging branch)](https://github.com/SillyTavern/SillyTavern) is running in the background and [NeoTavern-Server-Plugin](https://github.com/NeoTavern/NeoTavern-Server-Plugin) installed.
 
 1. Clone the repository.
    ```bash
@@ -137,10 +141,30 @@ This guide contains from scratch installation of SillyTavern, NeoTavern-Server-P
    ./start.sh
    ```
 
-#### 5. Access the App
+## Updating
 
-Open your mobile browser and go to:
-`http://localhost:4173`
+To update to the latest version, we provide a helper script that pulls the latest code and rebuilds the application automatically.
+
+- **Windows**: Double-click `update-and-start.bat`.
+- **Linux / macOS / Android**: Run the updater script:
+  ```bash
+  chmod +x update-and-start.sh
+  ./update-and-start.sh
+  ```
+
+## Installing as an App (PWA)
+
+NeoTavern supports **Progressive Web App (PWA)** functionality. This allows you to install it as a native application on your device, removing the browser address bar and giving you a full-screen experience.
+
+**On Android:**
+1. Start the app and open Chrome to `http://localhost:4173`.
+2. Tap the **Three Dots Menu** (top right).
+3. Tap **"Add to Home screen"** or **"Install App"**.
+4. The NeoTavern icon will appear in your app drawer. You can now launch it directly without opening Chrome first.
+
+**On Desktop (Chrome/Edge):**
+1. Open the app in your browser.
+2. Click the **Install icon** in the right side of the address bar.
 
 ## FAQ
 

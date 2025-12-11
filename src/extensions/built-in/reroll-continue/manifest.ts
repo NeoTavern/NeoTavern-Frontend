@@ -5,5 +5,5 @@ export const manifest: ExtensionManifest = {
   display_name: 'Reroll/Continue & Impersonate',
   description: 'Adds Reroll/Continue and User Impersonate buttons to the chat options menu.',
   version: '1.0.0',
-  author: 'SillyTavern Team',
+  author: 'NeoTavern Team',
 };

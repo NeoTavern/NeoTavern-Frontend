@@ -5,5 +5,5 @@ export const manifest: ExtensionManifest = {
   display_name: 'Chat Translation',
   description: 'Translate chat messages using an LLM connection profile.',
   version: '1.0.0',
-  author: 'SillyTavern Team',
+  author: 'NeoTavern Team',
 };

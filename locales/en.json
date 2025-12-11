@@ -253,7 +253,7 @@
       "importEmbeddedContent": "This character has an embedded lorebook named \"{name}\". Do you want to import it into your World Info library?"
     },
     "errors": {
-      "loadListFailed": "Failed to load lorebooks.",
+      "loadListFailed": "Failed to load lorebooks. Make sure you are on the staging branch on SillyTavern.",
       "loadFailed": "Could not load lorebook: {name}.",
       "saveFailed": "Failed to save lorebook.",
       "createFailed": "Failed to create lorebook.",
@@ -468,7 +468,7 @@
     }
   },
   "errors": {
-    "csrfToken": "Couldn't get CSRF token. Please refresh the page."
+    "csrfToken": "Couldn't get CSRF token. Make sure SillyTavern is running in the background. Then refresh the page."
   },
   "common": {
     "ok": "OK",
