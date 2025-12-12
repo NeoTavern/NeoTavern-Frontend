@@ -10,10 +10,12 @@ export interface Toast {
   message: string;
   title?: string;
   timeout?: number;
+  count: number;
 }
 
 export interface ToastOptions {
   timeout?: number;
+  preventDuplicates?: boolean;
 }
 
 const toasts = reactive<Toast[]>([]);
@@ -41,13 +43,27 @@ function init() {
 
 function show(type: ToastType, message: string, title?: string, options?: ToastOptions) {
   init();
+
+  const timeout = options?.timeout ?? 4000;
+  const preventDuplicates = options?.preventDuplicates ?? true;
+
+  if (preventDuplicates) {
+    const existingToast = toasts.find((t) => t.type === type && t.message === message && t.title === title);
+    if (existingToast) {
+      existingToast.count++;
+      existingToast.timeout = timeout;
+      return;
+    }
+  }
+
   const id = uuidv4();
   toasts.push({
     id,
     type,
     message,
     title,
-    timeout: options?.timeout ?? 4000,
+    timeout,
+    count: 1,
   });
 }
 

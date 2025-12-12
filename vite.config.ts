@@ -1,8 +1,26 @@
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 import vue from '@vitejs/plugin-vue';
+import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
+
+// Android 14+ blocks /proc/stat, causing os.cpus() to return empty.
+// This crashes Terser/Rollup. We fake a single CPU core to fix it.
+try {
+  if (!os.cpus() || os.cpus().length === 0) {
+    os.cpus = () => [
+      {
+        model: 'Termux Fix',
+        speed: 1000,
+        times: { user: 100, nice: 0, sys: 100, idle: 100, irq: 0 },
+      },
+    ];
+  }
+} catch (e) {
+  console.warn('Failed to apply Termux CPU fix:', e);
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -60,6 +78,36 @@ export default defineConfig(({ mode }) => {
         include: resolve(__dirname, './locales/**'),
         strictMessage: false,
       }),
+      VitePWA({
+        registerType: 'autoUpdate',
+        minify: false,
+        includeAssets: ['favicon.ico', 'img/*.svg'],
+        manifest: {
+          name: 'NeoTavern',
+          short_name: 'NeoTavern',
+          description: 'A modern, experimental frontend for SillyTavern',
+          theme_color: '#171717',
+          background_color: '#171717',
+          display: 'standalone',
+          orientation: 'portrait',
+          icons: [
+            {
+              src: 'pwa-192x192.png',
+              sizes: '192x192',
+              type: 'image/png',
+            },
+            {
+              src: 'pwa-512x512.png',
+              sizes: '512x512',
+              type: 'image/png',
+            },
+          ],
+        },
+        workbox: {
+          navigateFallbackDenylist: [/^\/api/, /^\/characters/, /^\/backgrounds/, /^\/personas/],
+          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
+        },
+      }),
       {
         name: 'basic-auth',
         configureServer(server) {
@@ -88,8 +136,30 @@ export default defineConfig(({ mode }) => {
       proxy: proxyRules,
     },
     build: {
-      minify: !isDevBuild,
+      minify: isDevBuild ? false : 'esbuild',
       sourcemap: isDevBuild,
+      chunkSizeWarningLimit: 2000,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('vue') || id.includes('pinia') || id.includes('@intlify')) {
+                return 'vendor-core';
+              }
+              if (id.includes('codemirror') || id.includes('@codemirror')) {
+                return 'vendor-editor';
+              }
+              if (id.includes('marked') || id.includes('dompurify') || id.includes('yaml')) {
+                return 'vendor-utils';
+              }
+              if (id.includes('fortawesome')) {
+                return 'vendor-icons';
+              }
+              return 'vendor-common';
+            }
+          },
+        },
+      },
     },
   };
 });

@@ -1,6 +1,6 @@
-# SillyTavern - Role-Playing AI Chat Platform
+# NeoTavern - Role-Playing AI Chat Platform
 
-SillyTavern is a modern, extensible Vue.js/TypeScript web app for AI-driven role-playing (RP) chats. Features character management, multi-model LLM integrations (via API providers), world-info, personas, extensions, i18n, and responsive UI (drawers, sidebars, toasts).
+NeoTavern is a modern, extensible Vue.js/TypeScript web app for AI-driven role-playing (RP) chats. Features character management, multi-model LLM integrations (via API providers), world-info, personas, extensions, i18n, and responsive UI (drawers, sidebars, toasts).
 
 Built with Vue 3, Pinia, Vite, SCSS, vue-i18n.
 
