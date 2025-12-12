@@ -131,7 +131,7 @@ const isLastMessage = computed(
   () => !!chatStore.activeChat?.messages.length && props.index === chatStore.activeChat?.messages.length - 1,
 );
 const hasSwipes = computed(() => Array.isArray(props.message.swipes) && props.message.swipes.length >= 1);
-const canSwipe = computed(() => !props.message.is_user && hasSwipes.value && isLastMessage.value);
+const canSwipe = computed(() => !props.message.is_user && hasSwipes.value);
 
 function swipe(direction: 'left' | 'right') {
   chatStore.swipeMessage(props.index, direction);

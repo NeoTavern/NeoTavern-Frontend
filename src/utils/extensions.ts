@@ -364,6 +364,7 @@ const baseExtensionAPI: ExtensionAPI = {
         file_id: finalFilename,
         file_name: `${finalFilename}.jsonl`,
         file_size: formatFileSize(JSON.stringify(chat).length),
+        tree_size: formatFileSize(0),
         last_mes: getMessageTimeStamp(),
         mes: last?.mes || '',
       };
