@@ -40,7 +40,7 @@ const tokenCounts = computed(() => characterStore.tokenCounts.fields);
 const isCreating = computed(() => characterUiStore.isCreating);
 
 const isPeeking = ref(false);
-const isSpoilerModeActive = computed(() => settingsStore.settings.character.spoilerFreeMode);
+const isSpoilerModeActive = computed(() => !settingsStore.settings.character.spoilerFreeMode);
 const areDetailsHidden = computed(() => isSpoilerModeActive.value && !isPeeking.value && !isCreating.value);
 
 const isExportMenuVisible = ref(false);

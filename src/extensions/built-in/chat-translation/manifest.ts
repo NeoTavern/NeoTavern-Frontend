@@ -6,5 +6,5 @@ export const manifest: ExtensionManifest = {
   description: 'Translate chat messages using an LLM connection profile.',
   version: '1.0.0',
   author: 'NeoTavern Team',
-  icon: 'fa-solid fa-language'
+  icon: 'fa-solid fa-language',
 };

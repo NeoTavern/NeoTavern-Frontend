@@ -48,7 +48,7 @@ export function createDefaultSettings(): Settings {
       instructTemplateName: '',
     },
     character: {
-      spoilerFreeMode: false,
+      spoilerFreeMode: true,
       worldImportDialog: true,
       tagImportSetting: TagImportSetting.ASK,
     },
