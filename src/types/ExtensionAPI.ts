@@ -9,12 +9,13 @@ import type { ExtensionEventMap } from './events';
 import type { ApiChatMessage, ChatCompletionPayload, GenerationResponse, StreamedChunk } from './generation';
 import type { Persona, PersonaDescription } from './persona';
 import type { PopupShowOptions } from './popup';
-import type { SamplerSettings, Settings, SettingsPath } from './settings';
+import type { ApiFormatter, SamplerSettings, Settings, SettingsPath } from './settings';
 import type { Path, ValueForPath } from './utils';
 import type { WorldInfoBook, WorldInfoEntry, WorldInfoHeader, WorldInfoSettings } from './world-info';
 
 export interface LlmGenerationOptions {
   connectionProfileName?: string;
+  formatter?: ApiFormatter;
   samplerOverrides?: Partial<SamplerSettings>;
   instructTemplateName?: string;
   signal?: AbortSignal;
@@ -304,6 +305,7 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
     abortGeneration: () => void;
     generate: (
       payload: ChatCompletionPayload,
+      formatter: ApiFormatter,
       signal?: AbortSignal,
     ) => Promise<GenerationResponse | (() => AsyncGenerator<StreamedChunk>)>;
     buildPayload: (messages: ApiChatMessage[], samplerOverrides?: Partial<SamplerSettings>) => ChatCompletionPayload;

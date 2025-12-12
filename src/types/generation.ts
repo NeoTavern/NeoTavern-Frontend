@@ -85,6 +85,32 @@ export type ChatCompletionPayload = Partial<{
 
   // Mistral-specific
   safe_prompt?: boolean;
+
+  // Ollama-specific & Generic Options
+  options?: Record<string, unknown>;
+  ollama_server?: string;
+  api_type?: string;
+  api_server?: string;
+  koboldcpp_server?: string;
+
+  // Custom Provider
+  custom_url?: string;
+  custom_include_body?: string;
+  custom_exclude_body?: string[];
+  custom_include_headers?: Record<string, string>;
+
+  // Azure
+  azure_base_url?: string;
+  azure_deployment_name?: string;
+  azure_api_version?: string;
+
+  // ZAI
+  zai_endpoint?: string;
+
+  // Vertex
+  vertexai_auth_mode?: string;
+  vertexai_region?: string;
+  vertexai_express_project_id?: string;
 }>;
 
 export interface GenerationResponse {

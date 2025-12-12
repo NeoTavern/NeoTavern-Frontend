@@ -450,6 +450,17 @@
         "tfs": "Tail Free Sampling & Typical",
         "grammar": "Grammar & Banned Tokens"
       }
+    },
+    "ollama": {
+      "header": "Ollama Settings",
+      "groups": {
+        "advanced": "Advanced"
+      },
+      "repeatLastN": "Repeat Last N",
+      "numBatch": "Batch Size",
+      "numKeep": "Keep Context",
+      "tfsZ": "TFS Z",
+      "typicalP": "Typical P"
     }
   },
   "userSettings": {
@@ -868,10 +879,13 @@
     "fireworksModel": "Model",
     "googleKey": "API Key",
     "googleModel": "Model",
+    "koboldModel": "Kobold Model",
     "moonshotKey": "Moonshot API Key",
     "moonshotModel": "Model",
     "nanogptKey": "NanoGPT API Key",
     "nanogptModel": "Model",
+    "ollamaModel": "Model",
+    "ollamaUrl": "Ollama Server URL",
     "perplexityKey": "Perplexity API Key",
     "perplexityModel": "Model",
     "pollinationsModel": "Model",
@@ -911,6 +925,7 @@
       "mistralai": "MistralAI",
       "moonshot": "Moonshot AI",
       "nanogpt": "NanoGPT",
+      "ollama": "Ollama",
       "perplexity": "Perplexity",
       "pollinations": "Pollinations",
       "xai": "xAI (Grok)",

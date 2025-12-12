@@ -26,6 +26,7 @@ export const api_providers = {
   AZURE_OPENAI: 'azure_openai',
   ZAI: 'zai',
   KOBOLDCPP: 'koboldcpp',
+  OLLAMA: 'ollama',
 } as const;
 
 export type ApiProvider = (typeof api_providers)[keyof typeof api_providers];
@@ -50,6 +51,7 @@ export interface ApiModel {
 
 export interface AiConfigCondition {
   provider?: ApiProvider | ApiProvider[];
+  formatter?: ApiFormatter | ApiFormatter[];
 }
 
 /**
@@ -61,7 +63,7 @@ interface AiConfigBase {
   description?: I18nKey;
   infoTooltip?: I18nKey;
   infoLink?: string;
-  conditions?: AiConfigCondition;
+  conditions?: AiConfigCondition | AiConfigCondition[];
   cssClass?: string;
 }
 
@@ -141,6 +143,6 @@ export type AiConfigItem = AiConfigValueItem | AiConfigStructuralItem;
 
 export interface AiConfigSection {
   id: string;
-  conditions?: AiConfigCondition;
+  conditions?: AiConfigCondition | AiConfigCondition[];
   items: AiConfigItem[];
 }

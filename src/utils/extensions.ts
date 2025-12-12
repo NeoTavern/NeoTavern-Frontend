@@ -267,8 +267,8 @@ const baseExtensionAPI: ExtensionAPI = {
     abortGeneration: () => {
       useChatStore().abortGeneration();
     },
-    generate: async (payload, signal) => {
-      return await ChatCompletionService.generate(payload, signal);
+    generate: async (payload, formatter, signal) => {
+      return await ChatCompletionService.generate(payload, formatter, signal);
     },
     buildPayload: (messages, samplerOverrides) => {
       const settingsStore = useSettingsStore();
@@ -583,6 +583,7 @@ const baseExtensionAPI: ExtensionAPI = {
           samplerSettings.stop = Array.from(new Set(samplerSettings.stop.filter((s) => s && s.trim().length > 0)));
         }
       }
+      formatter = options.formatter ?? formatter;
 
       if (options.instructTemplateName) {
         instructTemplateName = options.instructTemplateName;
@@ -602,7 +603,7 @@ const baseExtensionAPI: ExtensionAPI = {
         formatter,
         instructTemplate,
       });
-      return await ChatCompletionService.generate(payload, options.signal);
+      return await ChatCompletionService.generate(payload, formatter, options.signal);
     },
   },
 };

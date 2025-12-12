@@ -103,6 +103,14 @@ export interface KoboldCppSettings {
   typical?: number;
 }
 
+export interface OllamaSettings {
+  num_batch?: number;
+  num_keep?: number;
+  repeat_last_n?: number;
+  tfs_z?: number;
+  typical_p?: number;
+}
+
 export interface ProviderSettings {
   claude: {
     use_sysprompt?: boolean;
@@ -113,6 +121,7 @@ export interface ProviderSettings {
     use_makersuite_sysprompt?: boolean;
   };
   koboldcpp: KoboldCppSettings;
+  ollama: OllamaSettings;
   disabled_fields?: Partial<Record<ApiProvider, string[]>>;
 }
 
@@ -163,6 +172,7 @@ export interface LegacyOaiSettings {
   pollinations_model?: string;
   xai_model?: string;
   zai_model?: string;
+  ollama_model?: string;
   reverse_proxy: string;
   proxy_password: string;
   custom_url?: string;
@@ -229,6 +239,7 @@ export interface LegacyOaiPresetSettings {
   pollinations_model?: string;
   xai_model?: string;
   zai_model?: string;
+  ollama_model?: string;
   reverse_proxy: string;
   proxy_password: string;
   temperature?: number;
@@ -358,6 +369,9 @@ export interface Settings {
         endpoint?: string;
       };
       koboldcpp: {
+        url: string;
+      };
+      ollama: {
         url: string;
       };
     };

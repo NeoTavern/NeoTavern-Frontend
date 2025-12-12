@@ -454,6 +454,17 @@ export interface MessageSchema {
         grammar: string;
       };
     };
+    ollama: {
+      header: string;
+      groups: {
+        advanced: string;
+      };
+      repeatLastN: string;
+      numBatch: string;
+      numKeep: string;
+      tfsZ: string;
+      typicalP: string;
+    };
   };
   userSettings: {
     searchPlaceholder: string;
@@ -871,10 +882,13 @@ export interface MessageSchema {
     fireworksModel: string;
     googleKey: string;
     googleModel: string;
+    koboldModel: string;
     moonshotKey: string;
     moonshotModel: string;
     nanogptKey: string;
     nanogptModel: string;
+    ollamaModel: string;
+    ollamaUrl: string;
     perplexityKey: string;
     perplexityModel: string;
     pollinationsModel: string;
@@ -914,6 +928,7 @@ export interface MessageSchema {
       mistralai: string;
       moonshot: string;
       nanogpt: string;
+      ollama: string;
       perplexity: string;
       pollinations: string;
       xai: string;

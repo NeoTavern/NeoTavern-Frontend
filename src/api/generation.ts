@@ -1,30 +1,19 @@
 import { aiConfigDefinition } from '../ai-config-definition';
-import { CustomPromptPostProcessing, ReasoningEffort } from '../constants';
+import { CustomPromptPostProcessing } from '../constants';
 import type { ApiChatMessage, ApiProvider, ChatCompletionPayload, GenerationResponse, StreamedChunk } from '../types';
 import { api_providers } from '../types';
 import type { BuildChatCompletionPayloadOptions } from '../types/generation';
-import type { SamplerSettings, SettingsPath } from '../types/settings';
+import type { ApiFormatter, SamplerSettings, SettingsPath } from '../types/settings';
 import { getRequestHeaders } from '../utils/client';
 import { convertMessagesToInstructString } from '../utils/instruct';
 import {
+  getProviderHandler,
   MODEL_INJECTIONS,
   PARAMETER_DEFINITIONS,
+  PROVIDER_CONFIG,
   PROVIDER_INJECTIONS,
   type ParamHandling,
 } from './provider-definitions';
-
-const REASONING_EFFORT_PROVIDERS: ApiProvider[] = [
-  api_providers.OPENAI,
-  api_providers.AZURE_OPENAI,
-  api_providers.CUSTOM,
-  api_providers.XAI,
-  api_providers.AIMLAPI,
-  api_providers.OPENROUTER,
-  api_providers.POLLINATIONS,
-  api_providers.PERPLEXITY,
-  api_providers.COMETAPI,
-  api_providers.ELECTRONHUB,
-];
 
 const PARAM_TO_GROUP_MAP: Record<string, string> = {};
 let isMapInitialized = false;
@@ -69,6 +58,20 @@ function isParameterDisabled(
   return false;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function setDeep(obj: any, path: string, value: any) {
+  const keys = path.split('.');
+  let current = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const key = keys[i];
+    if (!current[key] || typeof current[key] !== 'object') {
+      current[key] = {};
+    }
+    current = current[key];
+  }
+  current[keys[keys.length - 1]] = value;
+}
+
 export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOptions): ChatCompletionPayload {
   const { samplerSettings, messages, model, provider, formatter, instructTemplate, playerName, activeCharacter } =
     options;
@@ -91,6 +94,8 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
     if (provider === api_providers.OPENROUTER) {
       // @ts-expect-error for openrouter
       payload.messages = prompt;
+    } else {
+      payload.prompt = prompt;
     }
 
     // Inject stopping strings from template
@@ -136,25 +141,43 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
     }
 
     const config = PARAMETER_DEFINITIONS[samplerKey];
+    if (!config) continue;
 
-    let rule: ParamHandling | null | undefined = config?.defaults;
+    const providerRule = config.providers?.[provider];
+    if (providerRule === undefined || providerRule === null) {
+      // Not allowed for this provider
+      continue;
+    }
 
-    // Apply provider specific overrides
-    if (config?.providers && provider in config.providers) {
-      const providerRule = config.providers[provider];
-      if (providerRule === null) {
-        rule = null;
-      } else if (providerRule) {
-        rule = { ...rule, ...providerRule };
+    let rule: ParamHandling = config.defaults || {};
+    rule = { ...rule, ...providerRule };
+
+    // Apply Formatter-specific overrides
+    if (config.formatterRules && formatter) {
+      for (const fmtRule of config.formatterRules) {
+        if (fmtRule.formatter.includes(formatter)) {
+          // If providers constraint is present, check it
+          if (fmtRule.providers && !fmtRule.providers.includes(provider)) {
+            continue;
+          }
+
+          if (fmtRule.rule === null) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            rule = null as any; // Treat as disabled
+          } else if (fmtRule.rule) {
+            rule = { ...rule, ...fmtRule.rule };
+          }
+        }
       }
     }
 
     // Apply model specific overrides
-    if (config?.modelRules) {
+    if (config.modelRules) {
       for (const modelRule of config.modelRules) {
         if (modelRule.pattern.test(model)) {
           if (modelRule.rule === null) {
-            rule = null;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            rule = null as any;
           } else if (modelRule.rule) {
             rule = { ...rule, ...modelRule.rule };
           }
@@ -162,27 +185,31 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
       }
     }
 
-    // If the rule is explicitly null (either via defaults or override), skip this parameter.
+    // If the rule is explicitly null (via formatter/model override), skip this parameter.
     if (rule === null) continue;
 
     let value = samplerSettings[samplerKey];
 
     // Transform / Validation
-    if (rule?.transform) {
+    if (rule.transform) {
       value = rule.transform(value, options);
     }
 
     // Clamping
-    if (typeof value === 'number' && rule) {
+    if (typeof value === 'number') {
       if (rule.min !== undefined) value = Math.max(value, rule.min);
       if (rule.max !== undefined) value = Math.min(value, rule.max);
     }
 
     // Assignment (ignoring undefined)
     if (value !== undefined) {
-      const payloadKey = (rule?.remoteKey || samplerKey) as keyof ChatCompletionPayload;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (payload as any)[payloadKey] = value;
+      const payloadKey = (rule.remoteKey || samplerKey) as string;
+      if (payloadKey.includes('.')) {
+        setDeep(payload, payloadKey, value);
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload as any)[payloadKey] = value;
+      }
     }
   }
 
@@ -192,73 +219,17 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
     providerInject(payload, options);
   }
 
-  // 3. Apply Model Specific Injections (O1 role swaps, GPT-5 cleanups)
+  // 3. Apply Model Specific Injections (O1 role swaps, GPT-5 cleanups, Reasoning Effort)
   for (const rule of MODEL_INJECTIONS) {
     if (rule.pattern.test(model)) {
       rule.inject(payload, options);
     }
   }
 
-  // 4. Apply Reasoning Effort Logic (Shared logic)
-  applyReasoningEffort(payload, options);
-
-  // 5. TODO: ToolManager integration
+  // 4. ToolManager integration (placeholder)
   // if (!canMultiSwipe && ToolManager.canPerformToolCalls(type)) { ... }
 
   return payload;
-}
-
-function applyReasoningEffort(payload: ChatCompletionPayload, options: BuildChatCompletionPayloadOptions) {
-  const { samplerSettings, provider, model, modelList } = options;
-
-  if (!samplerSettings.reasoning_effort) return;
-  if (!REASONING_EFFORT_PROVIDERS.includes(provider)) {
-    payload.reasoning_effort = samplerSettings.reasoning_effort;
-    return;
-  }
-
-  // Azure Specific Constraint: Reasoning effort not supported on older GPT-3/4 models
-  if (provider === api_providers.AZURE_OPENAI && /^gpt-[34]/.test(model)) {
-    return;
-  }
-  // XAI Constraint: only grok-3-mini supports reasoning effort currently
-  if (provider === api_providers.XAI && !model.includes('grok-3-mini')) {
-    return;
-  }
-
-  let reasoningEffort: ReasoningEffort | string | undefined = samplerSettings.reasoning_effort;
-
-  switch (samplerSettings.reasoning_effort) {
-    case ReasoningEffort.AUTO:
-      reasoningEffort = undefined;
-      break;
-    case ReasoningEffort.MIN:
-      // Special case for GPT-5 on OpenAI/Azure
-      if ((provider === api_providers.OPENAI || provider === api_providers.AZURE_OPENAI) && /^gpt-5/.test(model)) {
-        reasoningEffort = ReasoningEffort.MIN;
-      } else {
-        reasoningEffort = ReasoningEffort.LOW;
-      }
-      break;
-    case ReasoningEffort.MAX:
-      reasoningEffort = ReasoningEffort.HIGH;
-      break;
-    default:
-      reasoningEffort = samplerSettings.reasoning_effort;
-  }
-
-  // ElectronHub specific validation
-  if (provider === api_providers.ELECTRONHUB && Array.isArray(modelList) && reasoningEffort) {
-    const currentModel = modelList.find((m) => m.id === model);
-    const supportedEfforts = currentModel?.metadata?.supported_reasoning_efforts;
-    if (Array.isArray(supportedEfforts) && !supportedEfforts.includes(reasoningEffort as string)) {
-      reasoningEffort = undefined;
-    }
-  }
-
-  if (reasoningEffort) {
-    payload.reasoning_effort = reasoningEffort;
-  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -269,143 +240,6 @@ function handleApiError(data: any): void {
       throw new Error('You have exceeded your current quota. Please check your plan and billing details.');
     }
     throw new Error(errorMessage);
-  }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractMessage(data: any, provider: ApiProvider): string {
-  if (typeof data === 'string') {
-    return data;
-  }
-
-  switch (provider) {
-    case api_providers.CLAUDE:
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return data?.content?.find((p: any) => p.type === 'text')?.text ?? '';
-    case api_providers.OPENAI:
-    case api_providers.OPENROUTER:
-    case api_providers.KOBOLDCPP:
-    // Fallback for most OpenAI-compatible APIs
-    default:
-      return (
-        data?.choices?.[0]?.message?.content ??
-        data?.choices?.[0]?.text ??
-        data?.results?.[0]?.output?.text ??
-        data?.content?.[0]?.text ??
-        ''
-      );
-  }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractReasoning(data: any, provider: ApiProvider): string | undefined {
-  switch (provider) {
-    case api_providers.CLAUDE:
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return data?.content?.find((p: any) => p.type === 'thinking')?.thinking;
-    case api_providers.MAKERSUITE:
-    case api_providers.VERTEXAI:
-      return (
-        data?.responseContent?.parts
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ?.filter((p: any) => p.thought)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ?.map((p: any) => p.text)
-          ?.join('\n\n') ?? ''
-      );
-    case api_providers.MISTRALAI:
-      return (
-        data?.choices?.[0]?.message?.content?.[0]?.thinking
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ?.map((p: any) => p.text)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ?.filter((x: any) => x)
-          ?.join('\n\n') ?? ''
-      );
-    case api_providers.OPENROUTER:
-    case api_providers.DEEPSEEK:
-    case api_providers.XAI:
-    case api_providers.AIMLAPI:
-    case api_providers.POLLINATIONS:
-    case api_providers.MOONSHOT:
-    case api_providers.COMETAPI:
-    case api_providers.ELECTRONHUB:
-    case api_providers.NANOGPT:
-    case api_providers.ZAI:
-    case api_providers.CUSTOM:
-      return data?.choices?.[0]?.message?.reasoning_content ?? data?.choices?.[0]?.message?.reasoning;
-    default:
-      return undefined;
-  }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getStreamingReply(data: any, provider: ApiProvider): { delta: string; reasoning?: string } {
-  switch (provider) {
-    case api_providers.CLAUDE:
-      return {
-        delta: data?.delta?.text || '',
-        reasoning: data?.delta?.thinking || '',
-      };
-    case api_providers.MAKERSUITE:
-    case api_providers.VERTEXAI:
-      return {
-        delta:
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          data?.candidates?.[0]?.content?.parts?.filter((x: any) => !x.thought)?.map((x: any) => x.text)?.[0] || '',
-        reasoning:
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          data?.candidates?.[0]?.content?.parts?.filter((x: any) => x.thought)?.map((x: any) => x.text)?.[0] || '',
-      };
-    case api_providers.MISTRALAI:
-      return {
-        delta:
-          data.choices?.[0]?.delta?.content
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            ?.map((x: any) => x.text)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .filter((x: any) => x)
-            .join('') || '',
-        reasoning:
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          data.choices?.filter((x: any) => x?.delta?.content?.[0]?.thinking)?.[0]?.delta?.content?.[0]?.thinking?.[0]
-            ?.text || '',
-      };
-    case api_providers.OPENROUTER:
-      return {
-        delta:
-          data.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        reasoning: data.choices?.filter((x: any) => x?.delta?.reasoning)?.[0]?.delta?.reasoning || '',
-      };
-    case api_providers.DEEPSEEK:
-    case api_providers.XAI:
-    case api_providers.CUSTOM:
-    case api_providers.POLLINATIONS:
-    case api_providers.AIMLAPI:
-    case api_providers.MOONSHOT:
-    case api_providers.COMETAPI:
-    case api_providers.ELECTRONHUB:
-    case api_providers.NANOGPT:
-    case api_providers.ZAI:
-      return {
-        delta:
-          data.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '',
-        reasoning:
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          data.choices?.filter((x: any) => x?.delta?.reasoning_content)?.[0]?.delta?.reasoning_content ??
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          data.choices?.filter((x: any) => x?.delta?.reasoning)?.[0]?.delta?.reasoning ??
-          '',
-      };
-    // Fallback for OpenAI and compatible APIs
-    case api_providers.KOBOLDCPP:
-    case api_providers.OPENAI:
-    default:
-      return {
-        delta:
-          data.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '',
-      };
   }
 }
 
@@ -437,17 +271,35 @@ export class ChatCompletionService {
 
   static async generate(
     payload: ChatCompletionPayload,
+    formatter: ApiFormatter,
     signal?: AbortSignal,
   ): Promise<GenerationResponse | (() => AsyncGenerator<StreamedChunk>)> {
+    let endpoint = '/api/backends/chat-completions/generate';
+    let body: string = JSON.stringify(payload);
+
+    const providerKey = payload.chat_completion_source as ApiProvider;
+    const providerConfig = PROVIDER_CONFIG[providerKey];
+
+    if (providerConfig?.textCompletionEndpoint && formatter === 'text') {
+      endpoint = providerConfig.textCompletionEndpoint;
+      const genericPayload = {
+        ...payload,
+        api_type: providerKey, // 'ollama', 'koboldcpp', etc.
+        api_server: payload.api_server || payload.ollama_server || payload.koboldcpp_server,
+      };
+      body = JSON.stringify(genericPayload);
+    }
+
     const commonOptions = {
       method: 'POST',
       headers: getRequestHeaders(),
-      body: JSON.stringify(payload),
+      body: body,
       cache: 'no-cache',
       signal,
     } satisfies RequestInit;
 
-    const endpoint = '/api/backends/chat-completions/generate';
+    // Response Handling Helpers
+    const responseHandler = getProviderHandler(providerKey);
 
     if (!payload.stream) {
       const response = await fetch(endpoint, commonOptions);
@@ -459,9 +311,8 @@ export class ChatCompletionService {
       }
       handleApiError(responseData);
 
-      const provider = payload.chat_completion_source as ApiProvider;
-      const messageContent = extractMessage(responseData, provider);
-      const reasoning = extractReasoning(responseData, provider);
+      const messageContent = responseHandler.extractMessage(responseData);
+      const reasoning = responseHandler.extractReasoning ? responseHandler.extractReasoning(responseData) : undefined;
 
       return {
         content: messageContent.trim(),
@@ -514,8 +365,7 @@ export class ChatCompletionService {
                   throw new Error(parsed.error.message || 'Unknown stream error');
                 }
 
-                const provider = payload.chat_completion_source as ApiProvider;
-                const chunk = getStreamingReply(parsed, provider);
+                const chunk = responseHandler.getStreamingReply(parsed, formatter);
 
                 const hasNewReasoning = chunk.reasoning && chunk.reasoning.length > 0;
                 const hasNewDelta = chunk.delta && chunk.delta.length > 0;

@@ -35,13 +35,27 @@ const { t } = useStrictI18n();
 // Conditions Check
 const isVisible = computed(() => {
   if (!props.item.conditions) return true;
-  const { provider } = props.item.conditions;
-  if (provider) {
-    const providers = Array.isArray(provider) ? provider : [provider];
-    const current = settingsStore.settings.api.provider;
-    if (!current || !providers.includes(current)) return false;
-  }
-  return true;
+  const conditionsList = Array.isArray(props.item.conditions) ? props.item.conditions : [props.item.conditions];
+
+  // OR Logic: If ANY condition object in the list matches, return true.
+  return conditionsList.some((cond) => {
+    // AND Logic within object
+    const { provider, formatter } = cond;
+
+    if (provider) {
+      const providers = Array.isArray(provider) ? provider : [provider];
+      const current = settingsStore.settings.api.provider;
+      if (!current || !providers.includes(current)) return false;
+    }
+
+    if (formatter) {
+      const formatters = Array.isArray(formatter) ? formatter : [formatter];
+      const current = settingsStore.settings.api.formatter;
+      if (!current || !formatters.includes(current)) return false;
+    }
+
+    return true;
+  });
 });
 
 // Group Enable/Disable Logic

@@ -365,6 +365,13 @@ export const defaultSamplerSettings: SamplerSettings = {
       banned_tokens: [],
       grammar: '',
     },
+    ollama: {
+      num_keep: 0,
+      num_batch: 512,
+      repeat_last_n: 64,
+      tfs_z: 1,
+      typical_p: 1,
+    },
   },
   reasoning_effort: ReasoningEffort.AUTO,
 };
@@ -393,6 +400,7 @@ export const defaultProviderModels: Record<ApiProvider, string> = {
   xai: 'grok-3-beta',
   zai: 'glm-4.6',
   koboldcpp: '',
+  ollama: 'llama3.2',
 };
 
 export const defaultProviderSpecific: Settings['api']['providerSpecific'] = {
@@ -420,6 +428,9 @@ export const defaultProviderSpecific: Settings['api']['providerSpecific'] = {
   },
   koboldcpp: {
     url: 'http://localhost:5001/v1',
+  },
+  ollama: {
+    url: 'http://localhost:11434/v1',
   },
 };
 

@@ -398,6 +398,31 @@ export const apiConnectionDefinition: AiConfigSection[] = [
         label: 'apiConnections.koboldUrl',
         placeholder: 'http://localhost:5001/v1/chat/completions',
       },
+      {
+        id: 'api.selectedProviderModels.koboldcpp',
+        widget: 'model-select',
+        label: 'apiConnections.koboldModel',
+        placeholder: 'Select a model',
+      },
+    ],
+  },
+  // Ollama
+  {
+    id: 'ollama',
+    conditions: { provider: api_providers.OLLAMA },
+    items: [
+      {
+        id: 'api.providerSpecific.ollama.url',
+        widget: 'text-input',
+        label: 'apiConnections.ollamaUrl',
+        placeholder: 'http://localhost:11434/v1',
+      },
+      {
+        id: 'api.selectedProviderModels.ollama',
+        widget: 'model-select',
+        label: 'apiConnections.ollamaModel',
+        placeholder: 'llama3.2',
+      },
     ],
   },
 ];

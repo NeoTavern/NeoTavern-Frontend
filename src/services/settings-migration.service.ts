@@ -152,6 +152,7 @@ export function migrateLegacyOaiPreset(legacyPreset: LegacyOaiPresetSettings): S
         use_makersuite_sysprompt: legacyPreset.use_makersuite_sysprompt,
       },
       koboldcpp: structuredClone(defaultSamplerSettings.providers.koboldcpp),
+      ollama: structuredClone(defaultSamplerSettings.providers.ollama),
     },
     show_thoughts: legacyPreset.show_thoughts ?? defaultSamplerSettings.show_thoughts,
     reasoning_effort: legacyPreset.reasoning_effort ?? defaultSamplerSettings.reasoning_effort ?? 'auto',
@@ -303,6 +304,7 @@ export function migrateLegacyUserSettings(
         xai: oai.xai_model || defaultProviderModels.xai,
         zai: oai.zai_model || defaultProviderModels.zai,
         koboldcpp: defaultProviderModels.koboldcpp,
+        ollama: oai.ollama_model || defaultProviderModels.ollama,
       },
       providerSpecific: {
         openrouter: {
@@ -329,6 +331,9 @@ export function migrateLegacyUserSettings(
         },
         koboldcpp: {
           url: defaultProviderSpecific.koboldcpp.url,
+        },
+        ollama: {
+          url: defaultProviderSpecific.ollama.url,
         },
       },
       samplers: {
@@ -358,6 +363,7 @@ export function migrateLegacyUserSettings(
             use_makersuite_sysprompt: oai.use_makersuite_sysprompt,
           },
           koboldcpp: structuredClone(defaultSamplerSettings.providers.koboldcpp),
+          ollama: structuredClone(defaultSamplerSettings.providers.ollama),
         },
         reasoning_effort: oai.reasoning_effort ?? defaultSamplerSettings.reasoning_effort,
       },

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
-import { fetchChatCompletionStatus } from '../api/connection';
+import { fetchChatCompletionStatus, fetchTextCompletionStatus } from '../api/connection';
 import {
   deleteInstructTemplate as apiDeleteInstructTemplate,
   deleteSamplerPreset as apideleteSamplerPreset,
@@ -216,11 +216,27 @@ export const useApiStore = defineStore('api', () => {
       await processPendingSecrets();
 
       const apiSettings = settingsStore.settings.api;
-      const response = await fetchChatCompletionStatus({
-        chat_completion_source: apiSettings.provider,
-        reverse_proxy: apiSettings.proxy?.url,
-        proxy_password: apiSettings.proxy?.password,
-      });
+      let response;
+
+      if (apiSettings.provider === api_providers.KOBOLDCPP) {
+        // We could use kobold CC models endpoint too. It's just a preference.
+        const baseUrl = apiSettings.providerSpecific.koboldcpp.url.replace(/\/v1(?:.*)?$/, '');
+        response = await fetchTextCompletionStatus({
+          api_type: 'koboldcpp',
+          api_server: baseUrl,
+        });
+      } else if (apiSettings.provider === api_providers.OLLAMA) {
+        response = await fetchChatCompletionStatus({
+          chat_completion_source: 'custom',
+          custom_url: apiSettings.providerSpecific.ollama.url,
+        });
+      } else {
+        response = await fetchChatCompletionStatus({
+          chat_completion_source: apiSettings.provider,
+          reverse_proxy: apiSettings.proxy?.url,
+          proxy_password: apiSettings.proxy?.password,
+        });
+      }
 
       if (response.error) {
         throw new Error(response.error);
@@ -230,6 +246,16 @@ export const useApiStore = defineStore('api', () => {
         modelList.value = response.data;
       } else {
         modelList.value = [];
+      }
+
+      if (
+        (apiSettings.provider === api_providers.KOBOLDCPP || apiSettings.provider === api_providers.OLLAMA) &&
+        modelList.value.length > 0
+      ) {
+        const currentModel = apiSettings.selectedProviderModels[apiSettings.provider];
+        if (!currentModel) {
+          apiSettings.selectedProviderModels[apiSettings.provider] = modelList.value[0].id;
+        }
       }
 
       onlineStatus.value = response.bypass ? t('api.status.bypassed') : t('api.status.valid');

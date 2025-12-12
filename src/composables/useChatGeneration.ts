@@ -261,8 +261,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       effectiveModel = settings.api.selectedProviderModels[effectiveProvider] || apiStore.activeModel || '';
     }
 
-    // TODO: Make generic
-    if (!effectiveModel && effectiveProvider !== 'koboldcpp') throw new Error(t('chat.generate.noModelError'));
+    if (!effectiveModel) throw new Error(t('chat.generate.noModelError'));
 
     // Sampler
     let effectiveSamplerSettings = settings.api.samplers;
@@ -477,8 +476,30 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     };
     promptStore.addItemizedPrompt(itemizedPrompt);
 
-    const payload = buildChatCompletionPayload({
-      messages,
+    let effectiveMessages = [...messages];
+    if (effectivePostProcessing) {
+      try {
+        const isPrefill = messages.length > 1 ? messages[messages.length - 1].role === 'assistant' : false;
+        const lastPrefillMessage = isPrefill ? messages.pop() : null;
+        effectiveMessages = await ChatCompletionService.formatMessages(
+          effectiveMessages || [],
+          effectivePostProcessing,
+        );
+        if (lastPrefillMessage) {
+          if (!lastPrefillMessage.content.startsWith(`${lastPrefillMessage.name}: `)) {
+            lastPrefillMessage.content = `${lastPrefillMessage.name}: ${lastPrefillMessage.content}`;
+          }
+          effectiveMessages.push(lastPrefillMessage);
+        }
+      } catch (e) {
+        console.error('Post-processing failed:', e);
+        toast.error(t('chat.generate.postProcessError'));
+        throw e;
+      }
+    }
+
+    const payloadRaw = {
+      messages: effectiveMessages,
       model: context.settings.model,
       samplerSettings: context.settings.sampler,
       provider: context.settings.provider,
@@ -489,7 +510,9 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       formatter: context.settings.formatter,
       instructTemplate: context.settings.instructTemplate,
       activeCharacter: activeCharacter,
-    });
+    };
+
+    const payload = buildChatCompletionPayload(payloadRaw);
 
     const payloadController = new AbortController();
     await eventEmitter.emit('process:request-payload', payload, {
@@ -596,26 +619,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       }
     };
 
-    if (effectivePostProcessing) {
-      try {
-        const isPrefill = messages.length > 1 ? messages[messages.length - 1].role === 'assistant' : false;
-        const lastPrefillMessage = isPrefill ? messages.pop() : null;
-        payload.messages = await ChatCompletionService.formatMessages(payload.messages || [], effectivePostProcessing);
-        if (lastPrefillMessage) {
-          if (!lastPrefillMessage.content.startsWith(`${lastPrefillMessage.name}: `)) {
-            lastPrefillMessage.content = `${lastPrefillMessage.name}: ${lastPrefillMessage.content}`;
-          }
-          payload.messages.push(lastPrefillMessage);
-        }
-      } catch (e) {
-        console.error('Post-processing failed:', e);
-        toast.error(t('chat.generate.postProcessError'));
-        throw e;
-      }
-    }
     if (!payload.stream) {
       const response = (await ChatCompletionService.generate(
         payload,
+        effectiveFormatter,
         generationController.value!.signal,
       )) as GenerationResponse;
 
@@ -634,6 +641,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       // Streaming
       const streamGenerator = (await ChatCompletionService.generate(
         payload,
+        effectiveFormatter,
         generationController.value!.signal,
       )) as unknown as () => AsyncGenerator<StreamedChunk>;
 

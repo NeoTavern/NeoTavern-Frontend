@@ -18,14 +18,29 @@ const settingsStore = useSettingsStore();
 const activeTab = ref<'connections' | 'sampler' | 'prompts'>('connections');
 const isPanelPinned = ref(false);
 
-function checkConditions(conditions?: AiConfigCondition): boolean {
+function checkConditions(conditions?: AiConfigCondition | AiConfigCondition[]): boolean {
   if (!conditions) return true;
-  if (conditions.provider) {
-    const providers = Array.isArray(conditions.provider) ? conditions.provider : [conditions.provider];
-    const current = settingsStore.settings.api.provider;
-    if (!current || !providers.includes(current)) return false;
-  }
-  return true;
+  const conditionsList = Array.isArray(conditions) ? conditions : [conditions];
+
+  // OR Logic: If ANY condition object in the list matches, return true.
+  return conditionsList.some((cond) => {
+    // AND Logic within object
+    const { provider, formatter } = cond;
+
+    if (provider) {
+      const providers = Array.isArray(provider) ? provider : [provider];
+      const current = settingsStore.settings.api.provider;
+      if (!current || !providers.includes(current)) return false;
+    }
+
+    if (formatter) {
+      const formatters = Array.isArray(formatter) ? formatter : [formatter];
+      const current = settingsStore.settings.api.formatter;
+      if (!current || !formatters.includes(current)) return false;
+    }
+
+    return true;
+  });
 }
 
 const visibleSections = computed(() => {
