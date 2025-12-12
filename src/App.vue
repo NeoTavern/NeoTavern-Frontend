@@ -5,15 +5,18 @@ import Popup from './components/Popup/Popup.vue';
 import SidebarHost from './components/Shared/SidebarHost.vue';
 import { useAppRegistration } from './composables/useAppRegistration';
 import { useStrictI18n } from './composables/useStrictI18n';
+import { useApiStore } from './stores/api.store';
 import { useBackgroundStore } from './stores/background.store';
 import { useChatStore } from './stores/chat.store';
 import { useComponentRegistryStore } from './stores/component-registry.store';
 import { useExtensionStore } from './stores/extension.store';
 import { useLayoutStore } from './stores/layout.store';
+import { usePersonaStore } from './stores/persona.store';
 import { usePopupStore } from './stores/popup.store';
 import { useSecretStore } from './stores/secret.store';
 import { useSettingsStore } from './stores/settings.store';
 import { useThemeStore } from './stores/theme.store';
+import { useWorldInfoStore } from './stores/world-info.store';
 
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
@@ -21,6 +24,9 @@ const layoutStore = useLayoutStore();
 const registryStore = useComponentRegistryStore();
 const backgroundStore = useBackgroundStore();
 const extensionStore = useExtensionStore();
+const apiStore = useApiStore();
+const personaStore = usePersonaStore();
+const worldInfoStore = useWorldInfoStore();
 const secretStore = useSecretStore();
 const chatStore = useChatStore();
 const themeStore = useThemeStore();
@@ -76,12 +82,21 @@ onMounted(async () => {
   registerCoreComponents();
 
   await settingsStore.initializeSettings();
-  await secretStore.fetchSecrets();
-  await chatStore.refreshChats();
-  await extensionStore.initializeExtensions();
 
+  await Promise.all([
+    secretStore.fetchSecrets(),
+    chatStore.refreshChats(),
+    apiStore.initialize(),
+    apiStore.loadPresetsForApi(),
+    apiStore.loadInstructTemplates(),
+    backgroundStore.initialize(),
+    worldInfoStore.initialize(),
+    personaStore.initialize(),
+    themeStore.fetchThemes(),
+  ]);
   themeStore.loadCurrentDOMStyles();
-  await themeStore.fetchThemes();
+
+  await extensionStore.initializeExtensions();
 
   // Mark initialization as complete
   isInitializing.value = false;

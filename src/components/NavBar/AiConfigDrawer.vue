@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { aiConfigDefinition } from '../../ai-config-definition';
 import { Button, Tabs } from '../../components/UI';
 import { useStrictI18n } from '../../composables/useStrictI18n';
-import { useApiStore } from '../../stores/api.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { AiConfigCondition } from '../../types';
 import AiConfigItemRenderer from '../AiConfig/AiConfigItemRenderer.vue';
@@ -12,7 +11,6 @@ import { SidebarHeader } from '../common';
 import ApiConnectionsDrawer from './ApiConnectionsDrawer.vue';
 
 const { t } = useStrictI18n();
-const apiStore = useApiStore();
 const settingsStore = useSettingsStore();
 
 const activeTab = ref<'connections' | 'sampler' | 'prompts'>('connections');
@@ -59,11 +57,6 @@ const sectionsFromPostProcessing = computed(() => {
   const ppIndex = sections.findIndex((s) => s.id === 'post_processing');
   if (ppIndex === -1) return [];
   return sections.slice(ppIndex);
-});
-
-onMounted(() => {
-  apiStore.loadPresetsForApi();
-  apiStore.loadInstructTemplates();
 });
 </script>
 

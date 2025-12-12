@@ -56,7 +56,6 @@ export const useWorldInfoStore = defineStore('world-info', () => {
   }
 
   async function initialize() {
-    await settingsStore.waitForSettings();
     try {
       bookInfos.value = (await api.listAllWorldInfoBooks()).sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {

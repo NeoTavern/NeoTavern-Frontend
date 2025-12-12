@@ -57,8 +57,6 @@ export const useExtensionStore = defineStore('extension', () => {
   async function initializeExtensions() {
     if (Object.keys(extensions.value).length > 0) return; // Already initialized
 
-    await settingsStore.waitForSettings();
-
     // 1. Load Built-ins
     for (const module of builtInExtensions) {
       const id = module.manifest.name;

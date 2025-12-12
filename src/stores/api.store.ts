@@ -73,8 +73,6 @@ export const useApiStore = defineStore('api', () => {
   });
 
   async function initialize() {
-    await settingsStore.waitForSettings();
-
     // Setup watchers only after settings are ready
     setupWatchers();
 

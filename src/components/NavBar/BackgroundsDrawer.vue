@@ -95,7 +95,6 @@ const fittingOptions = computed<{ label: string; value: BackgroundFitting }[]>((
 ]);
 
 onMounted(() => {
-  backgroundStore.initialize();
   scrollableContent.value?.addEventListener('scroll', handleScroll);
 });
 </script>

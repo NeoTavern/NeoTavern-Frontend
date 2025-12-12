@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { debounce } from 'lodash-es';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { ApiTokenizer } from '../../api/tokenizer';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { DebounceTimeout } from '../../constants';
@@ -28,12 +28,6 @@ const layoutStore = useLayoutStore();
 
 const isBrowserCollapsed = ref(false);
 const bookTokenCounts = ref<Record<string, number>>({});
-
-onMounted(() => {
-  if (worldInfoStore.bookInfos.length === 0) {
-    worldInfoStore.initialize();
-  }
-});
 
 /**
  * Calculates token count for a specific book by ID.

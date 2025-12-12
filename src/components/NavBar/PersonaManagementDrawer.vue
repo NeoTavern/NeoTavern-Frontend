@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { debounce } from 'lodash-es';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { ApiTokenizer } from '../../api/tokenizer';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
@@ -229,15 +229,6 @@ function handleSyncName() {
     chatStore.syncPersonaName(personaStore.activePersona.avatarId, personaStore.activePersona.name);
   }
 }
-
-onMounted(() => {
-  if (personaStore.personas.length === 0) {
-    personaStore.initialize();
-  }
-  if (worldInfoStore.bookInfos.length === 0) {
-    worldInfoStore.initialize();
-  }
-});
 
 function handleClose() {
   layoutStore.activateNavBarItem('chat');

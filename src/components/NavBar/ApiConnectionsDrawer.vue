@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { apiConnectionDefinition } from '../../api-connection-definition';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
@@ -139,10 +139,6 @@ const postProcessingOptions = computed(() => [
 const proxies = computed(() =>
   (settingsStore.settings.proxies ?? []).map((proxy) => ({ label: proxy.name, value: proxy.id })),
 );
-
-onMounted(() => {
-  apiStore.initialize();
-});
 </script>
 
 <template>
