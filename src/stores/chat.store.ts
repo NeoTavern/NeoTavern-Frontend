@@ -14,6 +14,7 @@ import {
   type ChatInfo,
   type ChatMessage,
   type ChatMetadata,
+  type ChatTree,
   type FullChat,
 } from '../types';
 import { getCharacterDifferences } from '../utils/character';
@@ -28,10 +29,12 @@ import { usePopupStore } from './popup.store';
 import { usePromptStore } from './prompt.store';
 import { useSettingsStore } from './settings.store';
 import { useUiStore } from './ui.store';
+import { deleteBranch, loadFromTree, saveChatToTree, saveToTree } from '../chat-tree';
 
 export type ChatStoreState = {
   messages: ChatMessage[];
   metadata: ChatMetadata;
+  tree: ChatTree;
 };
 
 export const useChatStore = defineStore('chat', () => {
@@ -86,7 +89,7 @@ export const useChatStore = defineStore('chat', () => {
 
       uiStore.isChatSaving = true; // Keep UI store in sync for legacy status bar
       try {
-        const chatToSave: FullChat = [{ chat_metadata: activeChat.value.metadata }, ...activeChat.value.messages];
+        const chatToSave: FullChat = [{ chat_metadata: activeChat.value.metadata, tree: activeChat.value.tree }, ...activeChat.value.messages];
 
         await chatService.save(activeChatFile.value, chatToSave);
         await promptStore.saveItemizedPrompts(activeChatFile.value);
@@ -111,6 +114,8 @@ export const useChatStore = defineStore('chat', () => {
 
     const message = activeChat.value.messages[messageIndex];
     chatService.syncSwipe(message, swipeIndex);
+
+    await loadFromTree(activeChat.value.tree, activeChat.value.messages, messageIndex, swipeIndex)
 
     await nextTick();
     await eventEmitter.emit('message:updated', messageIndex, message);
@@ -255,6 +260,7 @@ export const useChatStore = defineStore('chat', () => {
             members: [activeCharacter.avatar],
             integrity: uuidv4(),
           },
+          tree: {},
           messages: [],
         };
       }
@@ -279,6 +285,7 @@ export const useChatStore = defineStore('chat', () => {
         activeChatFile.value = chatFile;
         activeChat.value = {
           metadata: metadataItem.chat_metadata,
+          tree: metadataItem.tree ?? {},
           messages: response as ChatMessage[],
         };
 
@@ -351,9 +358,10 @@ export const useChatStore = defineStore('chat', () => {
       };
 
       const messages = firstMessage && firstMessage.mes ? [firstMessage] : [];
-      activeChat.value = { metadata, messages };
+      activeChat.value = { metadata, tree: {}, messages };
+      saveChatToTree(messages, activeChat.value.tree)
 
-      const fullChat: FullChat = [{ chat_metadata: metadata }, ...messages];
+      const fullChat: FullChat = [{ chat_metadata: metadata, tree: activeChat.value.tree }, ...messages];
       await chatService.create(filename, fullChat);
       await characterStore.updateAndSaveCharacter(character.avatar, { chat: filename });
 
@@ -364,6 +372,7 @@ export const useChatStore = defineStore('chat', () => {
         file_id: filename,
         file_name: fullFilename,
         file_size: formatFileSize(JSON.stringify(fullChat).length),
+        tree_size: formatFileSize(JSON.stringify(activeChat.value.tree).length),
         last_mes: getMessageTimeStamp(),
         mes: firstMessage?.mes || '',
       };
@@ -502,7 +511,7 @@ export const useChatStore = defineStore('chat', () => {
     await eventEmitter.emit('message:updated', index, message);
     triggerSave();
   }
-
+    
   async function swipeMessage(messageIndex: number, direction: 'left' | 'right') {
     if (!activeChat.value || messageIndex < 0 || messageIndex >= activeChat.value.messages.length) return;
     const message = activeChat.value.messages[messageIndex];
@@ -510,7 +519,8 @@ export const useChatStore = defineStore('chat', () => {
 
     let currentSwipeId = message.swipe_id ?? 0;
     const swipeCount = message.swipes.length;
-
+    
+    await saveToTree(activeChat.value.tree, activeChat.value.messages);
     if (direction === 'left') {
       currentSwipeId = (currentSwipeId - 1 + swipeCount) % swipeCount;
       await syncSwipeToMes(messageIndex, currentSwipeId);
@@ -519,6 +529,8 @@ export const useChatStore = defineStore('chat', () => {
         currentSwipeId++;
         await syncSwipeToMes(messageIndex, currentSwipeId);
       } else {
+        await loadFromTree(activeChat.value.tree, activeChat.value.messages, messageIndex, currentSwipeId + 1);
+        nextTick();
         await generateResponse(GenerationMode.ADD_SWIPE);
       }
     }
@@ -584,8 +596,9 @@ export const useChatStore = defineStore('chat', () => {
       message.swipe_info.splice(swipeIndex, 1);
     }
     promptStore.clearItemizedPrompt(messageIndex, swipeIndex);
-
+    
     const newSwipeId = Math.min(swipeIndex, message.swipes.length - 1);
+    deleteBranch(activeChat.value.messages, activeChat.value.tree, messageIndex, swipeIndex, newSwipeId )
     await eventEmitter.emit('message:swipe-deleted', { messageIndex, swipeIndex, newSwipeId });
     await syncSwipeToMes(messageIndex, newSwipeId);
   }
@@ -658,6 +671,7 @@ export const useChatStore = defineStore('chat', () => {
           continue;
         }
         const header = fullChat[0] as ChatHeader;
+        const treeData = header.tree;
         const messages = fullChat.slice(1) as ChatMessage[];
         const lastMessage = messages[messages.length - 1];
 
@@ -665,6 +679,7 @@ export const useChatStore = defineStore('chat', () => {
           file_id: fileId,
           file_name: fileName,
           file_size: formatFileSize(JSON.stringify(fullChat).length),
+          tree_size: formatFileSize(JSON.stringify(treeData).length),
           chat_items: messages.length,
           mes: lastMessage?.mes.slice(0, 100) ?? '',
           last_mes: lastMessage ? lastMessage.send_date : getMessageTimeStamp(),
