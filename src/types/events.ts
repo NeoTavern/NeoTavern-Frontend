@@ -26,6 +26,7 @@ export interface ExtensionEventMap {
   'message:created': [message: ChatMessage];
   'message:updated': [index: number, message: ChatMessage];
   'message:deleted': [indices: number[]];
+  'message:swipe-deleted': [{ messageIndex:number, swipeIndex:number, newSwipeId:number }];
 
   // Character Events
   'character:created': [character: Character];
