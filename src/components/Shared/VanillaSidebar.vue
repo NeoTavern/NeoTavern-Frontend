@@ -1,10 +1,26 @@
 <script setup lang="ts">
+import { onMounted } from 'vue';
 import SidebarHeader from '../common/SidebarHeader.vue';
 
-defineProps<{
+const props = defineProps<{
   id: string;
   title?: string;
 }>();
+
+const emit = defineEmits(['ready']);
+
+onMounted(() => {
+  // Since sidebars are now lazy-loaded, we must inform extensions when the DOM is actually ready.
+  // Vanilla extensions listening for window load will fail because this component mounts later.
+  // Dispatch a custom event globally.
+  window.dispatchEvent(
+    new CustomEvent(`sidebar:${props.id}:mounted`, {
+      detail: { containerId: props.id },
+    }),
+  );
+
+  emit('ready');
+});
 </script>
 
 <template>
