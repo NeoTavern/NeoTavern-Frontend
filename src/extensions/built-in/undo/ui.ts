@@ -1,238 +1,224 @@
-import { chatHistory, defaultMaxChatLength, defaultMaxUndoSnapshots, defaultSaveDebounceDuration, defaultShowToasts, extensionName, snapshotEvents } from './index.js';
-import { eventSource, saveSettingsDebounced } from '/script.js';
-import { extension_settings, renderExtensionTemplateAsync } from '/scripts/extensions.js';
-import { debounce, isInputElementInFocus } from '/scripts/utils.js';
+import { ChatHistory } from './index.ts';
+import type { ExtensionAPI } from '../../../types';
+import { DEFAULT_SETTINGS, saveDebounceDuration, snapshotEvents, type ExtensionSettings, type SettingChangeEvents } from './types.ts';
+import { useChatStore } from '../../../stores/chat.store.ts';
+import SettingsPanel from './SettingsPanel.vue';
+import debounce, { type DebouncedFunc } from 'lodash-es/debounce';
+import i18n from '../../../i18n';
+import type { StrictT } from '../../../composables/useStrictI18n.ts';
 
-/**
- * Displays buttons in the options menu.
- */
-export async function addOptionsButtons() {
-    //Creates the buttons.
-    const buttonsHtml = await renderExtensionTemplateAsync(extensionName, 'buttons');
-
-    //Places the buttons.
-    $('#options .options-content').prepend(buttonsHtml);
-
-    //Undo.
-    $(document).on('click', '#option_undo_undo', async () => await chatHistory.loadPreviousSnapshot());
-    //Redo.
-    $(document).on('click', '#option_undo_redo', async () => await chatHistory.loadNextSnapshot());
-
-    //Save.
-    $(document).on('click', '#option_undo_save', async () => await chatHistory.saveChatSnapshot(true));
-    //Discard.
-    $(document).on('click', '#option_undo_discard', async () => await chatHistory.resetChatSnapshots(true));
+// src/components/Popup/Popup.vue
+function isInput(event: KeyboardEvent) {
+    const target = event.target as HTMLElement;
+    return target.tagName === 'TEXTAREA' ||
+    target.tagName === 'INPUT' ||
+    target.isContentEditable ||
+    target.className.includes('cm-');
 }
 
-export async function addSettingsToggles() {
-    //Toggles visibility of undo_buttons and undo_save_options.
-    const menuVisibility = (_, value) => {$('#undo_buttons').toggle(value);};
-    const saveVisibility = (_, value) => $('#undo_save_options').toggle(value);
-
-    //Setting that toggles menuVisibility and saveVisibility.
-    const toggleMenuElement = new ToggleInput('show_menu_buttons', 'Show Undo/Redo in ☰', { defaultValue: true, callback: menuVisibility }).create();
-    const toggleSaveElement = new ToggleInput('show_save_button', 'Show Save/Reset in ☰', { defaultValue: false, callback: saveVisibility }).create();
-    const toggleToastsElement = new ToggleInput('show_toasts', 'Show toasts on Undo/Redo.', { defaultValue: defaultShowToasts }).create();
-
-    //Clicks all the toggles.
-    const toggleExtension = (_, enabled) => {
-        const buttons = [`#${extensionName}_show_menu_buttons`, `#${extensionName}_show_save_button`, `#${extensionName}_toggle_ctrl_z`, `#${extensionName}_show_toasts`];
-        for (const snapShotEvent of snapshotEvents) {
-            buttons.push(`#${extensionName}_${snapShotEvent}`);
+//Animate icon active.
+function setupActiveIndicator(unbinds: (() => void)[]) {
+    //Animate.
+    const animate = () => {
+        const icon = document.querySelector('[data-extension-id="core.undo"] .fa-solid') as HTMLElement;
+        if (icon) {
+            icon.style = "animation: fa-spin 10s infinite linear reverse;";
+            unbinds.push(() => {icon.style = "";});
         }
-        // @ts-ignore
-        $(buttons.join(', ')).filter(function() { return this.checked !== enabled; }).trigger('click');
-        //Needed? chatHistory.chatHistory.length = 0
     };
+    //Setup/cleanup.
+    const extensions = document.querySelector('.menu-button[title="Extensions"]');
+    if (extensions) {
+        extensions.addEventListener('click', animate);
+        unbinds.push(() => extensions.removeEventListener('click', animate));
+    }
+}
 
-    //When any setting is toggled, show the extension as enabled.
-    eventSource.on(`extension_${extensionName}`, (setting, value) => {
-        if ((['show_menu_buttons', 'show_save_button', 'toggle_ctrl_z', 'show_toasts'].includes(setting) || setting.includes('message_')) && value) {
-            // @ts-ignore
-            $(`#${extensionName}_enable_extension`)[0].checked = true;
-            extension_settings[extensionName].enable_extension = true;
-            saveSettingsDebounced();
-        }
-    });
-
-    const enableExtension = new ToggleInput('enable_extension', 'Enable the extension.', { defaultValue: true, callback: toggleExtension, runCallbackOnLoad: false }).create();
-
-    async function processUndoHotkey(event) {
-        if (!isInputElementInFocus()) {
+//Binds/Unbinds Ctrl+Z on settings toggle.
+function setupUndoHotkey(api: ExtensionAPI<ExtensionSettings>, settings: ExtensionSettings, chatHistory: ChatHistory, unbinds: (() => void)[]) {
+    async function processUndoHotkey(event: KeyboardEvent) {
+        if (!isInput(event)) {
             if ((event.ctrlKey || event.metaKey) && !event.altKey) {
                 //Undo.
-                event.key === 'z' && await chatHistory.loadPreviousSnapshot();
+                if (event.key === 'z') await chatHistory.loadPreviousSnapshot();
                 //Redo.
-                event.key === 'Z' && await chatHistory.loadNextSnapshot();
+                if (event.key === 'Z') await chatHistory.loadNextSnapshot();
             }
         }
     }
 
-    const toggleUndoHotkey = (_, enabled, __) => {
+    const toggleUndoHotkey = (enabled = true) => {
         //Toggle on.
         if (enabled) { document.addEventListener('keydown', processUndoHotkey); }
         //Toggle off.
         else { document.removeEventListener('keydown', processUndoHotkey); }
     };
-
-    const toggleUndoHotkeyElement = new ToggleInput('toggle_ctrl_z', 'Enable the Ctrl+Z/Ctrl+Shift+Z hotkeys.', { defaultValue: false, callback: toggleUndoHotkey }).create();
-
-    //Places the settings.
-    const undoToggles = $('#undo_toggles');
-    undoToggles.append(enableExtension);
-    undoToggles.append(toggleMenuElement);
-    undoToggles.append(toggleSaveElement);
-    undoToggles.append(toggleToastsElement);
-    undoToggles.append(toggleUndoHotkeyElement);
-
+    //If enabled, setup the hotkey.
+    toggleUndoHotkey(settings.enableCtrlZ);
+    //Disable the hotkey if the extension is disabled.
+    unbinds.push(() => toggleUndoHotkey(false));
+    //Listen for settings toggles.
+    unbinds.push(api.events.on('undo:setting:enableCtrlZ', toggleUndoHotkey));
 }
 
-export async function addSettingsSliders() {
-    //Creates sliders.
-    //MaxChatHistory will apply next time a save occurs.
-    const maxSnapshotsElement = new RangeInput('max_snapshots', 'Max Undo Snapshots', { defaultValue: defaultMaxUndoSnapshots }).create();
-    const lengthElement = new RangeInput('max_length', 'Max Chat Length', { defaultValue: defaultMaxChatLength }).create();
+//Setup snapshots on events.
+function setupSnapshotEvents(api: ExtensionAPI<ExtensionSettings>, settings: ExtensionSettings, chatHistory: ChatHistory, unbinds: (() => void)[]) {
 
-    //Places the sliders.
-    const undoOptions = $('#undo_options');
-    undoOptions.append(maxSnapshotsElement);
-    undoOptions.append(lengthElement);
-
-}
-
-export async function addSettingsAdvancedToggles() {
-    //Debounce duration.
-    //Needed to prevent redundant saves. https://github.com/SillyTavern/SillyTavern/pull/4819#discussion_r2571515880
-    let saveChatSnapshotDebounced = debounce(() => chatHistory.saveChatSnapshot(false), extension_settings[extensionName]?.debounce_duration ?? defaultSaveDebounceDuration);
-
-
-    const toggleEventFunction = (source, event, enabled, eventFunction) => {
+    const toggleEventFunction = (event: keyof SettingChangeEvents, enabled: boolean, eventFunction: DebouncedFunc<() => Promise<void>>) => {
         //Toggle on.
-        if (enabled) { source.on(event, eventFunction); }
+        if (enabled) {
+            api.events.on(event, eventFunction);
+        }
         //Toggle off.
-        else { source.removeListener(event, eventFunction); }
+        else { api.events.off(event, eventFunction); }
     };
 
-    //Allow each event to be separately toggled.
-    const eventToggles = $('#undo_events');
-    for (const snapShotEvent of snapshotEvents) {
-        //This will be called while each toggle is being created.
-        const toggleSnapshot = (id, enabled, _) => toggleEventFunction(eventSource, id, enabled, saveChatSnapshotDebounced);
-        const toggleSnapshotEvent = new ToggleInput(`${snapShotEvent}`, `Toggles saving the '${snapShotEvent}' event.`, { defaultValue: true, callback: toggleSnapshot }).create();
-        eventToggles.append(toggleSnapshotEvent);
-    }
-}
-/**
- * Creates the settings UI.
- */
-export async function addSettings() {
 
-    //Creates the settings layout.
-    const settingsHtml = await renderExtensionTemplateAsync(extensionName, 'settings');
-
-    //Places the settings layout.
-    $('#undo_container').append(settingsHtml);
-
-    await addSettingsToggles();
-    await addSettingsSliders();
-    await addSettingsAdvancedToggles();
+    const saveChatSnapshotDebounced = debounce(() => chatHistory.saveChatSnapshot(false), saveDebounceDuration);
+    snapshotEvents.forEach((event) => {
+        //Initializes settings.
+        unbinds.push(api.events.on(`undo:setting:${event}` as keyof SettingChangeEvents, (enabled) => toggleEventFunction(event as keyof SettingChangeEvents, enabled as boolean, saveChatSnapshotDebounced)));
+        //Don't enable disabled events.
+        if (settings.snapshotEvents[event]) unbinds.push(api.events.on(event, saveChatSnapshotDebounced));
+    });
 }
 
-/**
- * Boilerplate.
- */
-class UserInput {
-    constructor( id, title, { dataStore = extension_settings[extensionName], callback = (id, value) => {}, category = extensionName, runCallbackOnLoad = true } = {}) {
-        this.id = id;
-        this.title = title;
-        this.dataStore = dataStore;
-        this.callback = callback;
-        this.category = category;
-        this.runCallbackOnLoad = runCallbackOnLoad;
-        this.element = undefined;
+function createButton(id: string, label: string, title: string, faIcon: string, onClick: () => void) {
+    const button = document.createElement('a');
+    button.id = id;
+    button.style.cursor = 'pointer';
+    button.className = 'options-menu-item';
+
+    const icon = document.createElement('i');
+    icon.className = `fa-solid ${faIcon}`;
+    button.title = label;
+
+    button.appendChild(icon);
+
+    const span = document.createElement('span');
+    span.textContent = title;
+    button.appendChild(span);
+
+    button.onclick = (e) => {
+        e.stopPropagation();
+        // document.body.click();
+        onClick();
+    };
+    return button;
+}
+
+function setupUndoRedoButtons(optionsMenu: Element, chatHistory: ChatHistory, t: StrictT) {
+    const undoButton = createButton('undo-options-menu-undo', t('extensionsBuiltin.undo.undoTitle'), t('extensionsBuiltin.undo.undoLabel'), 'fa-clock-rotate-left', async () => await chatHistory.loadPreviousSnapshot());
+    const redoButton = createButton('undo-options-menu-redo', t('extensionsBuiltin.undo.redoTitle'), t('extensionsBuiltin.undo.redoLabel'), 'fa-clock-rotate-left fa-flip-horizontal', async () => await chatHistory.loadNextSnapshot());
+
+    const undoRedo = document.createElement('a');
+    undoRedo.className = 'undo-options-menu-undo-redo';
+    undoRedo.style = 'display:flex';
+    undoRedo.appendChild(undoButton);
+    undoRedo.appendChild(redoButton);
+
+    optionsMenu.appendChild(undoRedo);
+    return () => undoRedo.remove();
+}
+
+function setupSaveDiscardButtons(optionsMenu: Element, chatHistory: ChatHistory, t: StrictT) {
+    const saveButton = createButton('undo-options-menu-save', t('extensionsBuiltin.undo.saveTitle'), t('extensionsBuiltin.undo.saveLabel'), 'fa-floppy-disk', async () => await chatHistory.saveChatSnapshot(true));
+    const discardButton = createButton('undo-options-menu-discard', t('extensionsBuiltin.undo.discardTitle'), t('extensionsBuiltin.undo.discardLabel'), 'fa-trash-can', async () => await chatHistory.resetChatSnapshots(true));
+
+    const saveDiscard = document.createElement('a');
+    saveDiscard.className = 'undo-options-menu-save-discard';
+    saveDiscard.style = 'display:flex';
+    saveDiscard.appendChild(saveButton);
+    saveDiscard.appendChild(discardButton);
+
+    optionsMenu.appendChild(saveDiscard);
+    return () => saveDiscard.remove();
+}
+
+let removeUndoRedo: ChildNode["remove"]|undefined;
+let removeSaveDiscard: ChildNode["remove"]|undefined;
+
+//Shows and hides the buttons on settings toggle.
+function refreshButtons(settings: ExtensionSettings, chatHistory: ChatHistory, unbinds: (() => void)[], t: StrictT) {
+    const optionsMenu = document.querySelector('.options-menu');
+
+    // If menu doesn't exist exist, skip
+    if (!optionsMenu) return;
+
+    // Undo/Redo buttons.
+    if (removeUndoRedo) removeUndoRedo();
+    if (settings.showUndoButtons) {
+        removeUndoRedo = setupUndoRedoButtons(optionsMenu, chatHistory, t);
+        unbinds.push(removeUndoRedo);
+    }
+
+    // Save/Discard buttons.
+    if (removeSaveDiscard) removeSaveDiscard();
+    if (settings.showSaveButtons) {
+        removeSaveDiscard = setupSaveDiscardButtons(optionsMenu, chatHistory, t);
+        unbinds.push(removeSaveDiscard);
     }
 }
 
+export function setup(api: ExtensionAPI<ExtensionSettings>) {
+    // @ts-expect-error 'i18n.global' is of type 'unknown'
+    const t = i18n.global.t as StrictT;
 
-/**
- * Creates a toggle button.
- */
-class ToggleInput extends UserInput {
-    constructor( id, title, { dataStore = extension_settings[extensionName], callback = (id, value) => {}, category = extensionName, defaultValue = true, runCallbackOnLoad = true } = {}) {
-        super(id, title, { dataStore, callback, category, runCallbackOnLoad });
-        this.defaultValue = defaultValue;        this.element = undefined;
-        this.html = `<label class="checkbox_label" for="${this.category}_${this.id}">
-    <input id="${this.category}_${this.id}" type="checkbox" class="checkbox">
-    <span data-i18n="${this.title}">${this.title}</span>
-</label>`;
+    // Prevents unused keys. These are used in settings.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-unused-vars
+    const _UsedI18nKeys = [
+    t('extensionsBuiltin.undo.settings.enableCtrlZ'),
+    t('extensionsBuiltin.undo.settings.maxChatLength'),
+    t('extensionsBuiltin.undo.settings.maxUndoSnapshots'),
+    t('extensionsBuiltin.undo.settings.showSaveButtons'),
+    t('extensionsBuiltin.undo.settings.showUndoButtons'),
+    t('extensionsBuiltin.undo.settings.showToasts')];
+
+    let settingsApp: { unmount: () => void } | null = null;
+
+    const settingsContainer = document.getElementById(api.meta.containerId);
+    if (settingsContainer) {
+        settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
     }
-    create() {
-        this.element = $(this.html);
 
-        const buttonInput = this.element.find(`#${this.category}_${this.id}`);
+    const unbinds: Array<() => void> = [];
 
-        const onElementInput = async () => {
-            const value = buttonInput.prop('checked');
-            this.dataStore[this.id] = value;
-            saveSettingsDebounced();
-            this.callback(this.id, value);
-            await eventSource.emit(`extension_${extensionName}`, this.id, value);
-        };
-        const value = this.dataStore?.[this.id] ?? this.defaultValue;
-        buttonInput.prop('checked', value);
-        buttonInput.on('input', onElementInput);
+    const settings = api.settings.get() ?? DEFAULT_SETTINGS;
 
-        this.runCallbackOnLoad && this.callback(this.id, value);
-        return this.element;
-    }
-}
+    // Clear snapshot when changing chats
+    unbinds.push(
+        api.events.on('chat:entered', async () => {
 
-/**
- * Creates a range input.
- */
-class RangeInput extends UserInput {
-    constructor( id, title, { dataStore = extension_settings[extensionName], callback = (id, value) => {}, category = extensionName, defaultValue = 1000, runCallbackOnLoad = true, min = 0, max = 10000, step = 10 } = {}) {
-        super(id, title, { dataStore, callback, category, runCallbackOnLoad });
-        this.defaultValue = defaultValue;
-        this.min = min;
-        this.max = max;
-        this.step = step;
-        this.element = undefined;
-        this.html = `<div class="alignitemscenter flex-container flexFlowColumn flexGrow flexShrink gap0 flexBasis48p">
-    <span data-i18n="${this.title}">${this.title}</span>
-    <input class="neo-range-slider" type="range" id="${this.category}_${this.id}" name="${this.category}_${this.min}" min="${this.min}" max="${this.max}" step="${this.step}" value="${this.defaultValue}">
-    <input class="neo-range-input" type="number" id="${this.category}_${this.id}_value" min="${this.min}" max="${this.max}" step="${this.step}" value="${this.defaultValue}">
-</div>`;
-    }
-    create() {
-        this.element = $(this.html);
+            const chatStore = useChatStore();
+            if (!chatStore.activeChat) return;
 
-        const sliderInput = this.element.find(`#${this.category}_${this.id}`);
-        const textInput = this.element.find(`#${this.category}_${this.id}_value`);
+            const chatHistory = new ChatHistory(chatStore.activeChat.messages, settings, api);
+            //Reset chatHistory to create the initial snapshot.
+            await chatHistory.resetChatSnapshots(false);
+            //When the extension is disabled, free memory.
+            unbinds.push(() => {chatHistory.chatHistory = [];});
 
-        const handleInput = async (mainInput, syncedInput) => {
-            const value = Number(mainInput.val());
-            this.dataStore[this.id] = value;
-            syncedInput?.val(value);
-            saveSettingsDebounced();
-            this.callback(this.id, value);
-            await eventSource.emit(`extension_${extensionName}`, this.id, value);
-        };
-        const onSliderElementInput = async () => {
-            handleInput(sliderInput, textInput);
-        };
+            //Binds/Unbinds Ctrl+Z on settings toggle.
+            setupUndoHotkey(api, settings, chatHistory, unbinds);
 
-        const onTextElementInput = async () => {
-            handleInput(textInput, sliderInput);
-        };
+            //Shows and hides the buttons on settings toggle.
+            const doRefreshButtons = () => refreshButtons(settings, chatHistory, unbinds, t);
+            doRefreshButtons();
+            unbinds.push(api.events.on('undo:setting:showUndoButtons', doRefreshButtons));
+            unbinds.push(api.events.on('undo:setting:showSaveButtons', doRefreshButtons));
 
-        const value = this.dataStore?.[this.id] ?? this.defaultValue;
-        sliderInput.val(value);
-        textInput.val(value);
-        sliderInput.on('input', onSliderElementInput);
-        textInput.on('input', onTextElementInput);
+            //Animate icon when active.
+            setupActiveIndicator(unbinds);
 
-        this.runCallbackOnLoad && this.callback(this.id, value);
-        return this.element;
-    }
+            //Setup snapshots on events.
+            setupSnapshotEvents(api, settings, chatHistory, unbinds);
+        }),
+    );
+    const deactivate = () => {
+        settingsApp?.unmount();
+        console.log("Undo Deactivated.", unbinds);
+        unbinds.forEach((u) => {u();});
+    };
+
+    return deactivate;
 }

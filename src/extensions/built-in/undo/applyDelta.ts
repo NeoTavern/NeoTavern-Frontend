@@ -2,7 +2,7 @@
 // Originally written by Larry Maccherone.
 
 /* eslint-disable no-param-reassign */
-function innerApplyDelta(obj, delta) {
+function innerApplyDelta(obj: object, delta: object) {
     const keys = Object.keys(delta);
     for (let i = keys.length - 1; i >= 0; i--) {
         const key = keys[i];
@@ -32,6 +32,6 @@ function innerApplyDelta(obj, delta) {
  * applyDelta has known issues, Don't use it.
  * https://github.com/SillyTavern/SillyTavern/pull/4819#discussion_r2595634539
  */
-export function applyDelta(obj, delta) {
+export function applyDelta(obj: object, delta: object) {
     return innerApplyDelta(obj, delta);
 }

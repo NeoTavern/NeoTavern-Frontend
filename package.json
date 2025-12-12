@@ -57,6 +57,7 @@
     "@intlify/unplugin-vue-i18n": "^11.0.1",
     "bowser": "^2.12.1",
     "codemirror": "^6.0.2",
+    "deep-object-diff": "^1.1.9",
     "dompurify": "^3.3.0",
     "handlebars": "^4.7.8",
     "localforage": "^1.10.0",
