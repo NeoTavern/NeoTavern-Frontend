@@ -13,6 +13,7 @@ export interface ExtensionManifest {
   js?: string;
   css?: string;
   auto_update?: boolean;
+  icon?: string;
 }
 
 export interface ExtensionPrompt {

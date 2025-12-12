@@ -6,4 +6,5 @@ export const manifest: ExtensionManifest = {
   description: 'Adds an option to branch the chat from a specific message.',
   version: '1.0.0',
   author: 'NeoTavern Team',
+  icon: 'fa-solid fa-code-branch'
 };

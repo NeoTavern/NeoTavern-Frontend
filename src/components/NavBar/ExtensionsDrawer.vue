@@ -80,7 +80,7 @@ function handleClose() {
             @click="handleExtensionSelect(extension)"
           >
             <template #start>
-              <i class="fa-solid fa-puzzle-piece" style="opacity: 0.7"></i>
+              <i :class="extension.manifest.icon ?? 'fa-solid fa-puzzle-piece'" style="opacity: 0.7"></i>
             </template>
             <template #default>
               <div class="font-bold">{{ extension.manifest.display_name || extension.id }}</div>

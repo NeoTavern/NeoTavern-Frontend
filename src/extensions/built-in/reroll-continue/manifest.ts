@@ -6,4 +6,5 @@ export const manifest: ExtensionManifest = {
   description: 'Adds Reroll/Continue and User Impersonate buttons to the chat options menu.',
   version: '1.0.0',
   author: 'NeoTavern Team',
+  icon: 'fa-solid fa-arrow-right'
 };
