@@ -27,7 +27,6 @@
   &-form-container {
     white-space: nowrap;
     margin: 0 auto;
-    z-index: var(--z-navbar);
     width: 100%;
     background-color: var(--theme-background-tint);
     flex-shrink: 0;
@@ -98,7 +97,6 @@
   background-color: var(--theme-background-tint);
   position: relative;
   padding: var(--spacing-xs);
-  z-index: var(--z-navbar);
 
   &-inner {
     width: 100%;

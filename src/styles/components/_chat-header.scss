@@ -7,7 +7,7 @@
   padding: 0 var(--spacing-lg);
   background-color: var(--theme-background-tint);
   border-bottom: 1px solid var(--theme-border-color);
-  z-index: var(--z-navbar);
+  z-index: calc(var(--z-sidebar) - 1);
   position: relative;
   flex-shrink: 0;
   box-shadow: 0 1px 3px var(--theme-shadow-color);

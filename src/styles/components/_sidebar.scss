@@ -1,34 +1,36 @@
 @use '../mixins' as *;
 
 .sidebar {
-  position: fixed;
+  position: absolute;
   top: 0;
+  bottom: 0;
   height: 100%;
   z-index: var(--z-sidebar);
+
+  background-color: var(--theme-background-tint);
+
   @include card-base();
   @include flex-container(column, stretch, stretch);
-  transition: transform var(--animation-duration-2x) cubic-bezier(0.25, 1, 0.5, 1);
+
+  transition: width var(--animation-duration-2x) cubic-bezier(0.25, 1, 0.5, 1);
+
+  overflow: hidden;
+
+  &:not(.is-open) {
+    width: 0 !important;
+    border: none !important;
+  }
 
   width: var(--sidebar-width);
 
   &--left {
-    left: var(--nav-bar-width);
     border-right: 1px solid var(--theme-border-color);
-    transform: translateX(calc(-100% - 12px));
-
-    &.is-open {
-      transform: translateX(0);
-    }
+    left: var(--nav-bar-width);
   }
 
   &--right {
-    right: 0;
     border-left: 1px solid var(--theme-border-color);
-    transform: translateX(calc(100% + 12px));
-
-    &.is-open {
-      transform: translateX(0);
-    }
+    right: 0;
   }
 
   &-content {
@@ -37,6 +39,9 @@
     overflow-x: hidden;
     position: relative;
     @include hardware-accelerate();
+
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
   }
 
   &-resizer {
@@ -102,24 +107,22 @@
   .sidebar {
     position: fixed;
     top: 0;
-    /* Full height minus navbar */
+    left: 0;
     height: calc(100% - var(--nav-bar-height));
-    width: 100% !important;
-    z-index: var(--z-sidebar);
+
     border: none;
 
-    &--left {
-      left: 0;
-      transform: translateX(-100%);
-    }
+    width: 100% !important;
+
 
     &--right {
+      left: auto;
       right: 0;
-      transform: translateX(100%);
     }
 
-    &.is-open {
-      transform: translateX(0);
+    &-content {
+      width: 100vw;
+      min-width: 100vw;
     }
 
     /* Hide Resizer on Mobile */
@@ -144,7 +147,6 @@
     }
   }
 
-  /* PanelLayout: Show mobile header when in side-only mode */
   .standalone-pane {
     position: relative;
     height: 100%;

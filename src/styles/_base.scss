@@ -5,8 +5,6 @@
 @use 'mixins' as *;
 
 // Standard CSS Scrollbars (Firefox)
-// Firefox has limited support. It does not support pixel-perfect width,
-// border-radius, borders, or shadows on scrollbars.
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color);
@@ -15,13 +13,13 @@
 // Webkit Scrollbars (Chrome, Safari, Edge, Opera)
 ::-webkit-scrollbar {
   width: var(--scrollbar-width);
-  height: var(--scrollbar-width); // Support horizontal scrollbar sizing too
+  height: var(--scrollbar-width);
   scrollbar-gutter: stable;
 }
 
 ::-webkit-scrollbar-track {
   cursor: default;
-  background-color: transparent; // Defaults transparent unless hovered usually
+  background-color: transparent;
   border-radius: var(--scrollbar-track-radius);
 
   &:hover {
@@ -32,12 +30,9 @@
 ::-webkit-scrollbar-thumb {
   min-height: 40px;
   background-color: var(--scrollbar-thumb-color);
-
-  // Granular control
   border-radius: var(--scrollbar-thumb-radius);
   border: var(--scrollbar-thumb-border-width) solid transparent;
   box-shadow: inset 0 0 0 1px var(--scrollbar-thumb-shadow-color);
-
   background-clip: content-box;
   cursor: grab;
 
@@ -59,7 +54,6 @@
 }
 
 html {
-  // Performance tweak for Chrome to prevent flickering on blurred elements.
   -webkit-transform: translateZ(0);
   -webkit-backface-visibility: hidden;
   -webkit-perspective: 1000;
@@ -70,21 +64,15 @@ body {
   padding: 0;
   width: 100%;
   height: 100vh;
-  height: 100dvh; // Use dynamic viewport height where supported
-  overflow: hidden; // App manages its own scrolling regions
-
+  height: 100dvh;
+  overflow: hidden;
   background-color: var(--theme-background-tint);
-  // background-image property would be set here if there is one
   background-repeat: no-repeat;
   background-attachment: fixed;
   background-size: cover;
-
   font-family: var(--font-family-main);
   font-size: var(--font-size-main);
   color: var(--theme-text-color);
-
-  // Enforce a light color-scheme to prevent browser-native dark mode UI
-  // from overriding app styles (e.g., for form controls).
   color-scheme: light;
 }
 
@@ -143,13 +131,11 @@ select {
 }
 
 select option {
-  /* works to highlight selected/active option */
   background-color: var(--white-50a);
   color: var(--black-70a);
 }
 
 select option:not(:checked) {
-  /* works to color unselected items */
   background-color: var(--black-70a);
   color: var(--white-70a);
 }
@@ -248,7 +234,6 @@ select.text-pole {
   100% {
     opacity: 1;
   }
-
   25%,
   75% {
     opacity: 0.2;
@@ -265,20 +250,6 @@ select.text-pole {
 
 .flash {
   animation-name: flash;
-}
-
-// Keyframe animations used throughout the app
-@keyframes flash {
-  0%,
-  50%,
-  100% {
-    opacity: 1;
-  }
-
-  25%,
-  75% {
-    opacity: 0.2;
-  }
 }
 
 @keyframes typing-bounce {
@@ -326,29 +297,11 @@ select.text-pole {
 .animations-disabled {
   animation: none !important;
   transition: none !important;
-}
-
-.animations-disabled .animated {
-  animation: none !important;
-}
-
-.animations-disabled .flash {
-  animation: none !important;
-}
-
-.animations-disabled {
-  .typing-bounce {
-    animation: none !important;
-  }
-
-  .slideUp {
-    animation: none !important;
-  }
-
-  .fadeIn {
-    animation: none !important;
-  }
-
+  .animated,
+  .flash,
+  .typing-bounce,
+  .slideUp,
+  .fadeIn,
   .fadeInQuick {
     animation: none !important;
   }
@@ -358,42 +311,43 @@ select.text-pole {
 // Main Layout
 // =============================================================================
 
-#main-content {
-  position: absolute;
-  top: 0;
-  left: var(--nav-bar-width);
-  right: 0;
-  margin: 0 auto;
-  width: var(--panel-width);
+#app-layout {
+  display: flex;
+  width: 100vw;
   height: 100vh;
-  transition:
-    left 0.3s ease,
-    right 0.3s ease,
-    width 0.3s ease;
+  height: 100dvh;
+  overflow: hidden;
+  position: relative;
+}
+
+#main-content {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  height: 100%;
+
+  .layout-view-wrapper {
+    width: var(--panel-width);
+    height: 100%;
+    max-width: 100%;
+  }
 
   &.full-screen {
-    width: auto;
-
-    &.left-open {
-      left: calc(var(--nav-bar-width) + var(--sidebar-left-width, var(--sidebar-width)));
-    }
-
-    &.right-open {
-      right: var(--sidebar-right-width, var(--sidebar-width));
+    .layout-view-wrapper {
+      width: 100%;
+      max-width: unset;
     }
   }
 
   // =============================================================================
-  // Utility Classes
+  // Utility Classes & Common Components
   // =============================================================================
 
   .font-bold {
     font-weight: bold;
   }
-
-  // =============================================================================
-  // Common Layout Components
-  // =============================================================================
 
   .standalone-pane {
     height: 100%;
@@ -412,10 +366,6 @@ select.text-pole {
     flex-direction: column;
   }
 
-  // =============================================================================
-  // Layout Components
-  // =============================================================================
-
   .content-wrapper {
     height: calc(100% - var(--header-height));
     position: relative;
@@ -426,23 +376,18 @@ select.text-pole {
 // Mobile Layout Overrides
 // =============================================================================
 @media (max-width: 768px) {
-  #main-content {
-    /* Reset absolute positioning for mobile flow */
+  #app-layout {
+    display: block;
     position: relative;
-    left: 0 !important;
-    width: 100% !important;
-    margin: 0;
+  }
 
-    /* Adjust height to account for bottom navbar */
+  #main-content {
+    width: 100% !important;
     height: calc(100vh - var(--nav-bar-height, 60px));
     height: calc(100dvh - var(--nav-bar-height, 60px));
 
-    /* Disable the pushing effect of sidebars on mobile */
-    &.full-screen.left-open,
-    &.full-screen.right-open {
-      left: 0 !important;
-      right: 0 !important;
-      transform: none;
+    .layout-view-wrapper {
+      width: 100% !important;
     }
   }
 }

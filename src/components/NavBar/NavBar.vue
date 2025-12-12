@@ -38,62 +38,60 @@ const isActive = (id: string, item: NavBarItemDefinition) => {
 </script>
 
 <template>
-  <div>
-    <div id="nav-bar" class="nav-bar">
-      <div class="nav-bar-nav">
-        <!-- Main Sections (Top) -->
-        <div class="nav-bar-section nav-bar-section--main">
-          <div v-for="[id, item] in mainNavItems" :key="id" class="nav-item">
-            <Button
-              variant="ghost"
-              :icon="item.icon"
-              :active="isActive(id, item)"
-              :title="item.title"
-              @click="layoutStore.activateNavBarItem(id)"
-            />
-          </div>
+  <div id="nav-bar" class="nav-bar">
+    <div class="nav-bar-nav">
+      <!-- Main Sections (Top) -->
+      <div class="nav-bar-section nav-bar-section--main">
+        <div v-for="[id, item] in mainNavItems" :key="id" class="nav-item">
+          <Button
+            variant="ghost"
+            :icon="item.icon"
+            :active="isActive(id, item)"
+            :title="item.title"
+            @click="layoutStore.activateNavBarItem(id)"
+          />
         </div>
+      </div>
 
-        <!-- Floating/Sidebar Toggles (Middle) -->
-        <div v-if="floatingNavItems.length" class="nav-bar-section nav-bar-section--floating">
-          <div v-for="[id, item] in floatingNavItems" :key="id" class="nav-item">
-            <Button
-              variant="ghost"
-              :icon="item.icon"
-              :active="isActive(id, item)"
-              :title="item.title"
-              @click="layoutStore.activateNavBarItem(id)"
-            />
-          </div>
+      <!-- Floating/Sidebar Toggles (Middle) -->
+      <div v-if="floatingNavItems.length" class="nav-bar-section nav-bar-section--floating">
+        <div v-for="[id, item] in floatingNavItems" :key="id" class="nav-item">
+          <Button
+            variant="ghost"
+            :icon="item.icon"
+            :active="isActive(id, item)"
+            :title="item.title"
+            @click="layoutStore.activateNavBarItem(id)"
+          />
         </div>
+      </div>
 
-        <!-- Drawers (Bottom) -->
-        <div v-if="drawerNavItems.length" class="nav-bar-section nav-bar-section--drawer">
-          <div v-for="[id, item] in drawerNavItems" :key="id" class="nav-item">
-            <Button
-              variant="ghost"
-              :icon="item.icon"
-              :active="isActive(id, item)"
-              :title="item.title"
-              @click="layoutStore.activateNavBarItem(id)"
-            />
-          </div>
+      <!-- Drawers (Bottom) -->
+      <div v-if="drawerNavItems.length" class="nav-bar-section nav-bar-section--drawer">
+        <div v-for="[id, item] in drawerNavItems" :key="id" class="nav-item">
+          <Button
+            variant="ghost"
+            :icon="item.icon"
+            :active="isActive(id, item)"
+            :title="item.title"
+            @click="layoutStore.activateNavBarItem(id)"
+          />
         </div>
       </div>
     </div>
-
-    <!-- Drawer Content Areas -->
-    <template v-for="[id, item] in drawerNavItems" :key="id">
-      <div
-        v-show="item.component"
-        class="nav-item-content"
-        :class="{
-          active: layoutStore.activeDrawer === id,
-          wide: item.layout === 'wide',
-        }"
-      >
-        <component :is="item.component" />
-      </div>
-    </template>
   </div>
+
+  <!-- Drawer Content Areas -->
+  <template v-for="[id, item] in drawerNavItems" :key="id">
+    <div
+      v-show="item.component"
+      class="nav-item-content"
+      :class="{
+        active: layoutStore.activeDrawer === id,
+        wide: item.layout === 'wide',
+      }"
+    >
+      <component :is="item.component" />
+    </div>
+  </template>
 </template>

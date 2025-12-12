@@ -36,7 +36,13 @@ function closeSidebar() {
 </script>
 
 <template>
-  <aside :id="`sidebar-${side}`" ref="sidebarRef" class="sidebar" :class="[`sidebar--${side}`, { 'is-open': isOpen }]">
+  <aside
+    :id="`sidebar-${side}`"
+    ref="sidebarRef"
+    class="sidebar"
+    :class="[`sidebar--${side}`, { 'is-open': isOpen }]"
+    :style="{ '--sidebar-width': `var(${cssVariable})` }"
+  >
     <!-- Mobile Header (Visible via CSS media query) -->
     <div class="sidebar-mobile-header">
       <span class="mobile-header-title">

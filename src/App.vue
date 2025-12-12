@@ -99,34 +99,38 @@ onMounted(async () => {
     </div>
   </div>
 
-  <NavBar />
+  <!-- 
+    Flex Layout Wrapper 
+    This creates the structure: [NavBar] [LeftSidebar] [MainContent] [RightSidebar]
+  -->
+  <div id="app-layout">
+    <NavBar />
 
-  <SidebarHost side="left" />
+    <SidebarHost side="left" />
 
-  <!-- Main Layout -->
-  <main
-    id="main-content"
-    :class="{
-      'full-screen': isFullScreen,
-      'left-open': layoutStore.isLeftSidebarOpen,
-      'right-open': layoutStore.isRightSidebarOpen,
-    }"
-  >
-    <!--
-      We wrap the layout component in a div to ensure v-show works correctly 
-      even if the component has multiple root nodes (fragments), which avoids Vue warnings.
-    -->
-    <div
-      v-for="layout in allMainLayouts"
-      v-show="layoutStore.activeMainLayout === layout.id"
-      :key="layout.id"
-      style="height: 100%; width: 100%"
+    <!-- Main Content Area -->
+    <main
+      id="main-content"
+      :class="{
+        'full-screen': isFullScreen,
+      }"
     >
-      <component :is="layout.component" v-bind="layout.props" />
-    </div>
-  </main>
+      <!--
+        The layout components are centered within main-content via CSS.
+        We use v-show to maintain DOM state for extensions.
+      -->
+      <div
+        v-for="layout in allMainLayouts"
+        v-show="layoutStore.activeMainLayout === layout.id"
+        :key="layout.id"
+        class="layout-view-wrapper"
+      >
+        <component :is="layout.component" v-bind="layout.props" />
+      </div>
+    </main>
 
-  <SidebarHost side="right" />
+    <SidebarHost side="right" />
+  </div>
 
   <template v-for="popup in popupStore.popups" :key="popup.id">
     <Popup
