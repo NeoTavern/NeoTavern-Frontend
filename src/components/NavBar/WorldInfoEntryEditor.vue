@@ -222,10 +222,9 @@ const logicOptions = [
         </FormItem>
 
         <FormItem :label="t('worldInfo.scanDepth')">
-          <!-- @vue-ignore -->
           <Input
             type="number"
-            :model-value="modelValue?.scanDepth ?? null"
+            :model-value="modelValue?.scanDepth!"
             :placeholder="t('common.global')"
             @update:model-value="(val) => updateValue('scanDepth', val === '' ? null : Number(val))"
           />

@@ -63,6 +63,8 @@ const activeRegistry = computed(() => {
         v-show="activeViewId === id"
         :id="`sidebar-${side}-${id}`"
         class="sidebar-pane"
+        role="region"
+        :aria-label="def.title"
       >
         <component :is="def.component" v-bind="{ title: def.title, ...def.componentProps }" />
       </div>

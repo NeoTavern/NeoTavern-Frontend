@@ -36,21 +36,24 @@ const sizeOptions = computed(() => {
   }));
 });
 
-function onSizeChange(newSize: number) {
+function onSizeChange(newSize: number | number[]) {
   emit('update:itemsPerPage', newSize);
   emit('update:currentPage', 1); // Reset to first page
 }
 </script>
 
 <template>
-  <div v-if="totalItems > 0" class="pagination">
-    <div class="pagination-nav">{{ startItem }}-{{ endItem }} {{ t('common.of') }} {{ totalItems }}</div>
+  <div v-if="totalItems > 0" class="pagination" role="navigation" :aria-label="t('a11y.pagination.navigation')">
+    <div class="pagination-nav" aria-live="polite">
+      {{ startItem }}-{{ endItem }} {{ t('common.of') }} {{ totalItems }}
+    </div>
     <div class="pagination-pages">
       <Button
         variant="ghost"
         icon="fa-angles-left"
         :disabled="!canGoBack"
         :title="t('pagination.first')"
+        :aria-label="t('pagination.first')"
         @click="changePage(1)"
       />
       <Button
@@ -58,6 +61,7 @@ function onSizeChange(newSize: number) {
         icon="fa-angle-left"
         :disabled="!canGoBack"
         :title="t('pagination.previous')"
+        :aria-label="t('pagination.previous')"
         @click="changePage(currentPage - 1)"
       />
       <Button
@@ -65,6 +69,7 @@ function onSizeChange(newSize: number) {
         icon="fa-angle-right"
         :disabled="!canGoForward"
         :title="t('pagination.next')"
+        :aria-label="t('pagination.next')"
         @click="changePage(currentPage + 1)"
       />
       <Button
@@ -72,12 +77,18 @@ function onSizeChange(newSize: number) {
         icon="fa-angles-right"
         :disabled="!canGoForward"
         :title="t('pagination.last')"
+        :aria-label="t('pagination.last')"
         @click="changePage(totalPages)"
       />
     </div>
     <div class="pagination-size-changer">
-      <!-- @vue-ignore -->
-      <Select :model-value="itemsPerPage" :options="sizeOptions" @update:model-value="onSizeChange" />
+      <Select
+        :model-value="itemsPerPage"
+        :options="sizeOptions"
+        :label="t('pagination.itemsPerPageLabel')"
+        class="pagination-select"
+        @update:model-value="onSizeChange"
+      />
     </div>
   </div>
 </template>

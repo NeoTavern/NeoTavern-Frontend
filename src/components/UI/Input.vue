@@ -1,5 +1,7 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
+import { uuidv4 } from '../../utils/commons';
+
 interface Props {
   modelValue: string | number;
   label?: string;
@@ -9,9 +11,10 @@ interface Props {
   min?: number;
   max?: number;
   step?: number;
+  id?: string;
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   type: 'text',
   disabled: false,
   label: undefined,
@@ -19,9 +22,13 @@ withDefaults(defineProps<Props>(), {
   min: undefined,
   max: undefined,
   step: undefined,
+  id: undefined,
 });
 
 const emit = defineEmits(['update:modelValue', 'input', 'change']);
+
+// Use provided ID or generate one
+const inputId = props.id || `input-${uuidv4()}`;
 
 function handleInput(event: Event) {
   const target = event.target as HTMLInputElement;
@@ -38,8 +45,9 @@ function handleInput(event: Event) {
 
 <template>
   <div class="input-wrapper">
-    <label v-if="label" class="input-label">{{ label }}</label>
+    <label v-if="label" :for="inputId" class="input-label">{{ label }}</label>
     <input
+      :id="inputId"
       class="text-pole"
       :type="type"
       :value="modelValue"
@@ -48,6 +56,7 @@ function handleInput(event: Event) {
       :min="min"
       :max="max"
       :step="step"
+      :aria-label="!label ? placeholder : undefined"
       @input="handleInput"
       @change="$emit('change', $event)"
     />

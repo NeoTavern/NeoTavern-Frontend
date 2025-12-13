@@ -237,10 +237,12 @@
   display: flex;
   flex-direction: column;
 
-  .maximize-icon {
+  .maximize-icon-btn {
     cursor: pointer;
     opacity: 0.7;
     transition: opacity 0.2s;
+    border: none;
+    background: transparent;
 
     &:hover {
       opacity: 1;

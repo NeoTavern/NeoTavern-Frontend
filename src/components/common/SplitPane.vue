@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useAnimationControl } from '../../composables/useAnimationControl';
 import { useMobile } from '../../composables/useMobile';
 import { useResizable } from '../../composables/useResizable';
+import { useStrictI18n } from '../../composables/useStrictI18n';
 import type { Settings } from '../../types';
 
 const props = defineProps<{
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 
 const { animationsDisabled } = useAnimationControl();
 const { isMobile } = useMobile();
+const { t } = useStrictI18n();
 
 const paneRef = ref<HTMLElement | null>(null);
 const handleRef = ref<HTMLElement | null>(null);
@@ -40,6 +42,13 @@ function toggleCollapse() {
   emit('update:collapsed', !props.collapsed);
 }
 
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    toggleCollapse();
+  }
+}
+
 // Icon logic reactive to mobile state
 const iconClass = computed(() => {
   if (isMobile.value) {
@@ -47,6 +56,8 @@ const iconClass = computed(() => {
   }
   return props.collapsed ? 'fa-angles-right' : 'fa-angles-left';
 });
+
+const toggleLabel = computed(() => t(props.collapsed ? 'common.expandSidebar' : 'common.collapseSidebar'));
 </script>
 
 <template>
@@ -69,10 +80,15 @@ const iconClass = computed(() => {
     <div ref="handleRef" class="split-pane-divider">
       <div
         class="split-pane-collapse-toggle"
-        :title="collapsed ? 'Show List' : 'Show Content'"
+        :title="toggleLabel"
+        role="button"
+        :aria-label="toggleLabel"
+        :aria-expanded="!collapsed"
+        tabindex="0"
         @click.stop="toggleCollapse"
+        @keydown="onKeydown"
       >
-        <i class="fa-solid" :class="iconClass"></i>
+        <i class="fa-solid" :class="iconClass" aria-hidden="true"></i>
       </div>
     </div>
 

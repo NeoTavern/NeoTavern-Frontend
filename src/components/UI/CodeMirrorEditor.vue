@@ -6,6 +6,7 @@ import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, keymap, placeholder as placeholderExt, ViewUpdate } from '@codemirror/view';
 import { basicSetup } from 'codemirror';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useStrictI18n } from '../../composables/useStrictI18n';
 
 const props = withDefaults(
   defineProps<{
@@ -16,6 +17,8 @@ const props = withDefaults(
     minHeight?: string;
     maxHeight?: string;
     language?: 'markdown' | 'css';
+    ariaLabel?: string;
+    id?: string;
   }>(),
   {
     disabled: false,
@@ -24,8 +27,12 @@ const props = withDefaults(
     minHeight: 'auto',
     maxHeight: 'none',
     language: 'markdown',
+    ariaLabel: undefined,
+    id: undefined,
   },
 );
+
+const { t } = useStrictI18n();
 
 const emit = defineEmits(['update:modelValue', 'focus', 'blur']);
 
@@ -99,6 +106,11 @@ const initEditor = () => {
       languageCompartment.of(getLanguageExtension(props.language)),
       appTheme,
       EditorView.lineWrapping,
+      EditorView.contentAttributes.of({
+        'aria-label': props.ariaLabel || t('a11y.codeMirrorEditor.label'),
+        'aria-multiline': 'true',
+        ...(props.id ? { id: props.id } : {}),
+      }),
       EditorView.updateListener.of((v: ViewUpdate) => {
         if (v.docChanged) {
           emit('update:modelValue', v.state.doc.toString());

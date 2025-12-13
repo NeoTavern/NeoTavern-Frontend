@@ -19,15 +19,13 @@ const selectedProfile = computed({
 });
 
 const options = computed(() => {
-  const list = [
-    { label: t('apiConnections.profileManagement.none'), value: undefined },
+  return [
+    { label: t('apiConnections.profileManagement.none'), value: '' },
     ...apiStore.connectionProfiles.map((p) => ({ label: p.name, value: p.name })),
   ];
-  return list as { label: string; value: string | undefined }[];
 });
 </script>
 
 <template>
-  <!-- @vue-ignore -->
   <Select v-model="selectedProfile!" :options="options" searchable />
 </template>

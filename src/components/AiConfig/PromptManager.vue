@@ -49,7 +49,7 @@ function openGlobalManager() {
   });
 }
 
-function addFromLibrary(identifier: string) {
+function addFromLibrary(identifier: string | string[]) {
   if (!identifier) return;
 
   const original = settingsStore.settings.prompts.find((p) => p.identifier === identifier);
@@ -125,7 +125,6 @@ function getBadgeClass(role?: string) {
     <div class="prompt-manager-header">
       <div class="prompt-manager-actions-row">
         <div style="flex-grow: 1">
-          <!-- @vue-ignore -->
           <Select
             v-model="selectedLibraryPrompt"
             :options="libraryOptions"

@@ -507,6 +507,7 @@ export interface MessageSchema {
     seconds: string;
     remove: string;
     dragToReorder: string;
+    dragHandle: string;
     toggle: string;
     refresh: string;
     messages: string;
@@ -525,6 +526,12 @@ export interface MessageSchema {
     rename: string;
     activate: string;
     add: string;
+    collapseSidebar: string;
+    expandSidebar: string;
+    loadingButton: string;
+    upload: string;
+    image: string;
+    info: string;
   };
   popup: {
     cropAvatar: {
@@ -545,6 +552,7 @@ export interface MessageSchema {
     next: string;
     last: string;
     perPage: string;
+    itemsPerPageLabel: string;
   };
   chat: {
     inputPlaceholder: string;
@@ -588,6 +596,7 @@ export interface MessageSchema {
     selection: {
       modeFree: string;
       modeRange: string;
+      toolbar: string;
     };
     copy: {
       error: string;
@@ -663,7 +672,9 @@ export interface MessageSchema {
     tokenWarning: string;
   };
   characterPanel: {
-    pinToggle: string;
+    toolbar: string;
+    listLabel: string;
+    isFavorite: string;
     createNew: string;
     importFile: string;
     searchToggle: string;
@@ -717,6 +728,8 @@ export interface MessageSchema {
       convertToPersona: string;
       rename: string;
     };
+    name: string;
+    tags: string;
     advanced: {
       promptOverrides: string;
       postHistoryInstructions: string;
@@ -1179,6 +1192,56 @@ export interface MessageSchema {
       none: string;
       force: string;
       include: string;
+    };
+  };
+  a11y: {
+    tagInput: {
+      description: string;
+      tagsList: string;
+      removeTag: string;
+      addTag: string;
+      added: string;
+      removed: string;
+    };
+    imageCropper: {
+      cropBoxLabel: string;
+      cropBoxDescription: string;
+    };
+    pagination: {
+      navigation: string;
+    };
+    backgrounds: {
+      images: string;
+      scrollToTop: string;
+    };
+    navbar: {
+      navigation: string;
+    };
+    sidebar: {
+      close: string;
+      resizeLeft: string;
+      resizeRight: string;
+      menu: string;
+      options: string;
+    };
+    rangeControl: {
+      value: string;
+      valueLower: string;
+    };
+    select: {
+      filterOptions: string;
+      searchPlaceholder: string;
+      noOptions: string;
+    };
+    smartAvatar: {
+      groupAvatar: string;
+      singleAvatar: string;
+    };
+    tabs: {
+      list: string;
+    };
+    codeMirrorEditor: {
+      label: string;
     };
   };
 }

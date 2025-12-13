@@ -57,10 +57,9 @@ const { t } = useStrictI18n();
   <div class="preset-control">
     <div class="preset-control-selector">
       <slot name="selector">
-        <!-- @vue-ignore -->
         <Select
           v-if="options"
-          v-model="internalValue"
+          v-model="internalValue!"
           :options="options"
           :searchable="searchable"
           :disabled="disabled"

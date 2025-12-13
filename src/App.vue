@@ -104,12 +104,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div id="background" :style="backgroundStyle"></div>
+  <div id="background" :style="backgroundStyle" aria-hidden="true"></div>
 
   <!-- App Initialization Loading Overlay -->
-  <div v-show="isInitializing" class="app-initializing-overlay">
+  <div v-show="isInitializing" class="app-initializing-overlay" aria-live="assertive" role="alert" aria-busy="true">
     <div class="loading-spinner">
-      <i class="fa-solid fa-circle-notch fa-spin"></i>
+      <i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>
       <span>{{ t('common.loading') }}</span>
     </div>
   </div>
@@ -129,6 +129,7 @@ onMounted(async () => {
       :class="{
         'full-screen': isFullScreen,
       }"
+      role="main"
     >
       <!--
         The layout components are centered within main-content via CSS.

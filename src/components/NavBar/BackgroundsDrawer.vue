@@ -133,7 +133,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div ref="scrollableContent" class="backgrounds-drawer-scrollable-content">
+    <div ref="scrollableContent" class="backgrounds-drawer-scrollable-content" tabindex="-1">
       <div class="heading-container">
         <h3>{{ t('backgrounds.systemBackgrounds') }}</h3>
         <div class="heading-controls">
@@ -153,7 +153,7 @@ onMounted(() => {
           />
         </div>
       </div>
-      <div class="backgrounds-drawer-grid">
+      <div class="backgrounds-drawer-grid" role="list" :aria-label="t('a11y.backgrounds.images')">
         <div
           v-for="bg in backgroundStore.filteredSystemBackgrounds"
           :key="bg"
@@ -166,7 +166,13 @@ onMounted(() => {
               backgroundStore.currentBackgroundUrl === `url(&quot;/backgrounds/${encodeURIComponent(bg)}&quot;)`,
           }"
           :title="bg"
+          role="button"
+          tabindex="0"
+          :aria-label="getBgFileName(bg)"
+          :aria-pressed="backgroundStore.currentBackgroundUrl.includes(encodeURIComponent(bg))"
           @click="backgroundStore.selectBackground(bg)"
+          @keydown.enter.prevent="backgroundStore.selectBackground(bg)"
+          @keydown.space.prevent="backgroundStore.selectBackground(bg)"
         >
           <div class="background-item-thumbnail" :style="{ backgroundImage: `url(${getThumbnailUrl('bg', bg)})` }">
             <div class="background-item-title">{{ getBgFileName(bg) }}</div>
@@ -189,8 +195,13 @@ onMounted(() => {
       </div>
     </div>
 
-    <button class="backgrounds-drawer-scroll-top" :class="{ visible: isScrolled }" @click="scrollToTop">
-      <i class="fa-solid fa-chevron-up"></i>
+    <button
+      class="backgrounds-drawer-scroll-top"
+      :class="{ visible: isScrolled }"
+      :aria-label="t('a11y.backgrounds.scrollToTop')"
+      @click="scrollToTop"
+    >
+      <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
     </button>
   </div>
 </template>

@@ -157,20 +157,20 @@ function onCancel() {
   emit('close');
 }
 
-function handleEnter(evt: KeyboardEvent) {
-  if (evt.key === 'Enter' && !evt.shiftKey && !evt.altKey) {
-    const target = evt.target as HTMLElement;
-    const isInput =
-      target.tagName === 'TEXTAREA' ||
-      target.tagName === 'INPUT' ||
-      target.isContentEditable ||
-      target.className.includes('cm-');
-    if (!isInput) {
-      evt.preventDefault();
-      handleResult(props.defaultResult ?? POPUP_RESULT.AFFIRMATIVE);
-    }
-  }
-}
+// function handleEnter(evt: KeyboardEvent) {
+//   if (evt.key === 'Enter' && !evt.shiftKey && !evt.altKey) {
+//     const target = evt.target as HTMLElement;
+//     const isInput =
+//       target.tagName === 'TEXTAREA' ||
+//       target.tagName === 'INPUT' ||
+//       target.isContentEditable ||
+//       target.className.includes('cm-');
+//     if (!isInput) {
+//       evt.preventDefault();
+//       handleResult(props.defaultResult ?? POPUP_RESULT.AFFIRMATIVE);
+//     }
+//   }
+// }
 </script>
 
 <template>
@@ -179,18 +179,20 @@ function handleEnter(evt: KeyboardEvent) {
     ref="dialog"
     class="popup"
     :class="{ wide: wide, large: large }"
+    :role="type === POPUP_TYPE.CONFIRM ? 'alertdialog' : 'dialog'"
+    :aria-labelledby="title ? `${id}-title` : undefined"
+    :aria-describedby="content ? `${id}-content` : undefined"
     @cancel="onCancel"
-    @keydown="handleEnter"
   >
     <div class="popup-body">
       <!-- eslint-disable-next-line vue/no-v-html -->
-      <h3 v-if="title" class="popup-title" v-html="sanitizedTitle"></h3>
+      <h3 v-if="title" :id="`${id}-title`" class="popup-title" v-html="sanitizedTitle"></h3>
       <div
         class="popup-content"
         :class="{ 'is-input': type === POPUP_TYPE.INPUT, 'is-crop': type === POPUP_TYPE.CROP }"
       >
         <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-if="content" class="popup-message" v-html="formattedContent"></div>
+        <div v-if="content" :id="`${id}-content`" class="popup-message" v-html="formattedContent"></div>
 
         <component :is="component" v-if="component" v-bind="componentProps" />
 

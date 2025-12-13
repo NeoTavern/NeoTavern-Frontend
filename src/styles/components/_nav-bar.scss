@@ -118,6 +118,7 @@
     flex-direction: row;
     width: auto;
     gap: var(--spacing-md);
+    display: inline-flex;
 
     & + & {
       margin-top: 0;

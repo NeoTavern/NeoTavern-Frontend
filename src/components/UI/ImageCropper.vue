@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { useStrictI18n } from '../../composables/useStrictI18n';
 
 const props = defineProps({
   src: { type: String, required: true },
   aspectRatio: { type: Number, default: undefined },
 });
 
+const { t } = useStrictI18n();
 const image = ref<HTMLImageElement | null>(null);
 const isReady = ref(false);
 
@@ -92,6 +94,12 @@ const onDrag = (event: MouseEvent | TouchEvent) => {
 
   const dx = clientX - startX;
   const dy = clientY - startY;
+
+  applyMoveOrResize(dx, dy);
+};
+
+const applyMoveOrResize = (dx: number, dy: number) => {
+  if (!activeHandle) return;
 
   if (activeHandle === 'move') {
     let newX = startCrop.x + dx;
@@ -216,6 +224,53 @@ const getData = () => {
   };
 };
 
+function handleKeyDown(e: KeyboardEvent) {
+  if (!isReady.value) return;
+
+  const step = e.shiftKey ? 10 : 1;
+  let dx = 0;
+  let dy = 0;
+  let handled = false;
+
+  // If shift is held, we resize (se handle), otherwise we move
+  if (e.shiftKey) {
+    activeHandle = 'se'; // Resize from bottom-right
+  } else {
+    activeHandle = 'move';
+  }
+
+  // Initialize start positions for the "drag" logic simulation
+  startCrop.x = crop.x;
+  startCrop.y = crop.y;
+  startCrop.w = crop.w;
+  startCrop.h = crop.h;
+
+  switch (e.key) {
+    case 'ArrowLeft':
+      dx = -step;
+      handled = true;
+      break;
+    case 'ArrowRight':
+      dx = step;
+      handled = true;
+      break;
+    case 'ArrowUp':
+      dy = -step;
+      handled = true;
+      break;
+    case 'ArrowDown':
+      dy = step;
+      handled = true;
+      break;
+  }
+
+  if (handled) {
+    e.preventDefault();
+    applyMoveOrResize(dx, dy);
+    activeHandle = null;
+  }
+}
+
 defineExpose({ getData });
 
 onMounted(() => {
@@ -234,33 +289,42 @@ onBeforeUnmount(() => {
 <template>
   <div class="image-cropper">
     <div class="wrapper">
-      <img ref="image" :src="src" @load="onImageLoad" />
+      <img ref="image" :src="src" :alt="t('common.image')" @load="onImageLoad" />
 
       <div
         v-if="isReady"
         class="crop-box"
         :style="boxStyle"
+        tabindex="0"
+        role="button"
+        :aria-label="t('a11y.imageCropper.cropBoxLabel')"
+        :aria-description="t('a11y.imageCropper.cropBoxDescription')"
         @mousedown="startDrag('move', $event)"
         @touchstart="startDrag('move', $event)"
+        @keydown="handleKeyDown"
       >
-        <!-- Handles -->
+        <!-- Handles (Hidden from SR as keyboard users use the main box) -->
         <div
           class="handle nw"
+          aria-hidden="true"
           @mousedown.stop="startDrag('nw', $event)"
           @touchstart.stop="startDrag('nw', $event)"
         ></div>
         <div
           class="handle ne"
+          aria-hidden="true"
           @mousedown.stop="startDrag('ne', $event)"
           @touchstart.stop="startDrag('ne', $event)"
         ></div>
         <div
           class="handle sw"
+          aria-hidden="true"
           @mousedown.stop="startDrag('sw', $event)"
           @touchstart.stop="startDrag('sw', $event)"
         ></div>
         <div
           class="handle se"
+          aria-hidden="true"
           @mousedown.stop="startDrag('se', $event)"
           @touchstart.stop="startDrag('se', $event)"
         ></div>
@@ -302,6 +366,11 @@ onBeforeUnmount(() => {
   border: 1px solid rgba(255, 255, 255, 0.8);
   box-sizing: border-box;
   touch-action: none;
+
+  &:focus {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
 
   &::before {
     // Grid lines (thirds)

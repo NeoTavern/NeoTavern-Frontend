@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { slideTransitionHooks } from '../../utils/client';
+import { uuidv4 } from '../../utils/commons';
 
 interface Props {
   title: string;
@@ -19,8 +20,9 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits(['update:isOpen']);
 
 // Internal state.
-// If controlled (isOpen defined), sync with it.
 const internalIsOpen = ref(props.isOpen);
+const headerId = `collapsible-header-${uuidv4()}`;
+const contentId = `collapsible-content-${uuidv4()}`;
 
 const { beforeEnter, enter, afterEnter, beforeLeave, leave, afterLeave } = slideTransitionHooks;
 
@@ -39,22 +41,42 @@ function toggle() {
   internalIsOpen.value = newValue;
   emit('update:isOpen', newValue);
 }
+
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    toggle();
+  }
+}
 </script>
 
 <template>
   <div class="inline-drawer">
-    <div class="inline-drawer-header" @click="toggle">
+    <div
+      :id="headerId"
+      class="inline-drawer-header"
+      role="button"
+      tabindex="0"
+      :aria-expanded="internalIsOpen"
+      :aria-controls="contentId"
+      @click="toggle"
+      @keydown="onKeydown"
+    >
       <div class="inline-drawer-title">
         {{ title }}
         <small v-if="subtitle" class="subtitle">{{ subtitle }}</small>
       </div>
 
       <!-- Header Actions Slot (e.g. buttons) -->
-      <div v-if="$slots.actions" class="header-actions" @click.stop>
+      <div v-if="$slots.actions" class="header-actions" @click.stop @keydown.stop>
         <slot name="actions" />
       </div>
 
-      <i class="fa-solid fa-circle-chevron-down inline-drawer-icon" :class="{ 'is-open': internalIsOpen }"></i>
+      <i
+        class="fa-solid fa-circle-chevron-down inline-drawer-icon"
+        :class="{ 'is-open': internalIsOpen }"
+        aria-hidden="true"
+      ></i>
     </div>
 
     <Transition
@@ -66,7 +88,7 @@ function toggle() {
       @leave="leave"
       @after-leave="afterLeave"
     >
-      <div v-show="internalIsOpen" class="drawer-wrapper">
+      <div v-show="internalIsOpen" :id="contentId" class="drawer-wrapper" role="region" :aria-labelledby="headerId">
         <div class="inline-drawer-content">
           <slot />
         </div>

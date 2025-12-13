@@ -83,6 +83,11 @@
     box-shadow: 0 0 5px var(--black-50a);
     overflow: hidden;
     position: relative;
+
+    &:focus-visible {
+      outline: 2px solid var(--theme-emphasis-color);
+      outline-offset: 2px;
+    }
   }
 
   &-id,
@@ -227,6 +232,11 @@
       &:hover {
         opacity: 1;
       }
+      &:focus-visible {
+        color: var(--theme-emphasis-color);
+        outline: none;
+        opacity: 1;
+      }
     }
 
     .swipe-counter {
@@ -262,6 +272,12 @@
 
       &:hover {
         opacity: 1;
+      }
+
+      &:focus-visible {
+        outline: 1px solid var(--theme-emphasis-color);
+        outline-offset: 2px;
+        border-radius: var(--base-border-radius);
       }
     }
 

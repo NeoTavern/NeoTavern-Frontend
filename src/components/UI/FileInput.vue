@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useStrictI18n } from '../../composables/useStrictI18n';
 import Button from './Button.vue';
+
+const { t } = useStrictI18n();
 
 defineProps<{
   accept?: string;
@@ -32,12 +35,20 @@ function handleChange(e: Event) {
 
 <template>
   <div class="file-input">
-    <input ref="inputRef" type="file" hidden :accept="accept" :multiple="multiple" @change="handleChange" />
+    <input
+      ref="inputRef"
+      type="file"
+      hidden
+      :accept="accept"
+      :multiple="multiple"
+      tabindex="-1"
+      @change="handleChange"
+    />
 
     <Button v-if="type === 'button'" :icon="icon || 'fa-upload'" @click="trigger">
-      {{ label || 'Upload' }}
+      {{ label || t('common.upload') }}
     </Button>
 
-    <Button v-else :icon="icon || 'fa-upload'" :title="label || 'Upload'" variant="ghost" @click="trigger" />
+    <Button v-else :icon="icon || 'fa-upload'" :title="label || t('common.upload')" variant="ghost" @click="trigger" />
   </div>
 </template>

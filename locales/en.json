@@ -504,6 +504,7 @@
     "seconds": "seconds",
     "remove": "Remove",
     "dragToReorder": "Drag to reorder",
+    "dragHandle": "Drag handle",
     "toggle": "Toggle",
     "refresh": "Refresh",
     "messages": "messages",
@@ -521,7 +522,13 @@
     "create": "Create",
     "rename": "Rename",
     "activate": "Activate",
-    "add": "Add"
+    "add": "Add",
+    "collapseSidebar": "Collapse Sidebar",
+    "expandSidebar": "Expand Sidebar",
+    "loadingButton": "Loading",
+    "upload": "Upload",
+    "image": "Image",
+    "info": "Info"
   },
   "popup": {
     "cropAvatar": {
@@ -541,7 +548,8 @@
     "previous": "Previous Page",
     "next": "Next Page",
     "last": "Last Page",
-    "perPage": "{count} / page"
+    "perPage": "{count} / page",
+    "itemsPerPageLabel": "Items per page"
   },
   "chat": {
     "inputPlaceholder": "Type a message",
@@ -584,7 +592,8 @@
     },
     "selection": {
       "modeFree": "Selection Mode: Free (Click to toggle)",
-      "modeRange": "Selection Mode: To Bottom (Click to select from message to end)"
+      "modeRange": "Selection Mode: To Bottom (Click to select from message to end)",
+      "toolbar": "Message Selection Toolbar"
     },
     "copy": {
       "error": "Failed to copy message."
@@ -660,7 +669,9 @@
     "tokenWarning": "Character definition is large ({tokens} tokens), using over {percentage}% of your context window. This may impact performance and context limits."
   },
   "characterPanel": {
-    "pinToggle": "Locked = Character Management panel will stay open",
+    "toolbar": "Character Panel toolbar",
+    "listLabel": "List of characters",
+    "isFavorite": "Is favorite",
     "createNew": "Create New Character",
     "importFile": "Import Character from File",
     "searchToggle": "Toggle search bar",
@@ -714,6 +725,8 @@
       "convertToPersona": "Convert to Persona",
       "rename": "Rename"
     },
+    "name": "Name",
+    "tags": "Tags",
     "advanced": {
       "promptOverrides": "Prompt Overrides",
       "postHistoryInstructions": "Post-History Instructions",
@@ -1176,6 +1189,56 @@
       "none": "None",
       "force": "Force",
       "include": "Include"
+    }
+  },
+  "a11y": {
+    "tagInput": {
+      "description": "Type a tag and press Enter or Comma to add it.",
+      "tagsList": "Selected Tags",
+      "removeTag": "Remove tag: {tag}",
+      "addTag": "Add Tag",
+      "added": "{count} tag(s) added: {tags}",
+      "removed": "Removed tag: {tag}"
+    },
+    "imageCropper": {
+      "cropBoxLabel": "Crop selection box. Drag to move or resize.",
+      "cropBoxDescription": "Use arrow keys to move. Shift + arrow keys to resize. Enter or Space to confirm."
+    },
+    "pagination": {
+      "navigation": "Pagination"
+    },
+    "backgrounds": {
+      "images": "Background Images",
+      "scrollToTop": "Scroll to top"
+    },
+    "navbar": {
+      "navigation": "Application navigation"
+    },
+    "sidebar": {
+      "close": "Close Sidebar",
+      "resizeLeft": "Resize Left Sidebar",
+      "resizeRight": "Resize Right Sidebar",
+      "menu": "Menu",
+      "options": "Options"
+    },
+    "rangeControl": {
+      "value": "Value",
+      "valueLower": "value"
+    },
+    "select": {
+      "filterOptions": "Filter options",
+      "searchPlaceholder": "Search...",
+      "noOptions": "No options found"
+    },
+    "smartAvatar": {
+      "groupAvatar": "Group Avatar",
+      "singleAvatar": "Avatar"
+    },
+    "tabs": {
+      "list": "Tabs"
+    },
+    "codeMirrorEditor": {
+      "label": "Code Editor"
     }
   }
 }

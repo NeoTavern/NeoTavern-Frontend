@@ -5,6 +5,7 @@ import { useStrictI18n } from '../../composables/useStrictI18n';
 import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { POPUP_TYPE, type CodeMirrorTarget } from '../../types';
+import { uuidv4 } from '../../utils/commons';
 import CodeMirrorEditor from './CodeMirrorEditor.vue';
 import TextareaExpanded from './TextareaExpanded.vue';
 
@@ -19,6 +20,7 @@ interface Props {
   codeMirror?: boolean;
   language?: 'markdown' | 'css';
   identifier?: CodeMirrorTarget;
+  id?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -31,6 +33,7 @@ const props = withDefaults(defineProps<Props>(), {
   codeMirror: false,
   language: 'markdown',
   identifier: undefined,
+  id: undefined,
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -42,6 +45,8 @@ const { t } = useStrictI18n();
 
 const textareaRef = ref<HTMLTextAreaElement>();
 const codeEditorRef = ref<InstanceType<typeof CodeMirrorEditor>>();
+
+const textareaId = computed(() => props.id || `textarea-${uuidv4()}`);
 
 const isCodeMirrorActive = computed(() => {
   if (props.codeMirror) return true;
@@ -99,10 +104,16 @@ const cmMinHeight = computed(() => {
 <template>
   <div class="textarea-wrapper">
     <div v-if="label || $slots.header || props.allowMaximize" class="textarea-header">
-      <label v-if="label">{{ label }}</label>
-      <div v-if="props.allowMaximize" class="maximize-icon" @click="maximizeEditor">
-        <i class="fa-solid fa-maximize"></i>
-      </div>
+      <label v-if="label" :for="textareaId">{{ label }}</label>
+      <button
+        v-if="props.allowMaximize"
+        class="maximize-icon-btn"
+        :aria-label="t('common.expandedEditor')"
+        :title="t('common.expandedEditor')"
+        @click="maximizeEditor"
+      >
+        <i class="fa-solid fa-maximize" aria-hidden="true"></i>
+      </button>
     </div>
 
     <CodeMirrorEditor
@@ -114,11 +125,13 @@ const cmMinHeight = computed(() => {
       :placeholder="placeholder"
       :min-height="cmMinHeight"
       :max-height="cmMinHeight"
+      :aria-label="label || placeholder"
       @update:model-value="onCodeMirrorUpdate"
     />
 
     <textarea
       v-else
+      :id="textareaId"
       ref="textareaRef"
       class="text-pole"
       :value="modelValue"
@@ -126,6 +139,7 @@ const cmMinHeight = computed(() => {
       :placeholder="placeholder"
       :disabled="disabled"
       :style="{ resize: resizable ? 'vertical' : 'none' }"
+      :aria-label="!label ? placeholder : undefined"
       @input="onInput"
     ></textarea>
     <slot name="footer" />

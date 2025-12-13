@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { aiConfigDefinition } from '../../ai-config-definition';
-import { Button, Tabs } from '../../components/UI';
+import { Tabs } from '../../components/UI';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { AiConfigCondition } from '../../types';
@@ -14,7 +14,6 @@ const { t } = useStrictI18n();
 const settingsStore = useSettingsStore();
 
 const activeTab = ref<'connections' | 'sampler' | 'prompts'>('connections');
-const isPanelPinned = ref(false);
 
 function checkConditions(conditions?: AiConfigCondition | AiConfigCondition[]): boolean {
   if (!conditions) return true;
@@ -64,12 +63,6 @@ const sectionsFromPostProcessing = computed(() => {
   <div class="ai-config-drawer">
     <SidebarHeader class="ai-config-drawer-header" :title="t('navbar.aiConfig')">
       <template #actions>
-        <Button
-          variant="ghost"
-          :icon="isPanelPinned ? 'fa-lock' : 'fa-unlock'"
-          :title="t('characterPanel.pinToggle')"
-          @click="isPanelPinned = !isPanelPinned"
-        />
         <a
           class="ai-config-drawer-docs-link fa-solid fa-circle-question"
           href="https://docs.sillytavern.app/usage/common-settings/"

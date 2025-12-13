@@ -24,7 +24,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="vanilla-sidebar-wrapper">
+  <div class="vanilla-sidebar-wrapper" aria-live="polite">
     <SidebarHeader v-if="title" :title="title">
       <template #actions>
         <!-- Extensions can inject header actions here -->

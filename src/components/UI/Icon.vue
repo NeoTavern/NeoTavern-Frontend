@@ -17,5 +17,5 @@ const classes = computed(() => {
 </script>
 
 <template>
-  <i :class="classes"></i>
+  <i :class="classes" aria-hidden="true"></i>
 </template>

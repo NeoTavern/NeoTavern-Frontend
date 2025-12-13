@@ -123,11 +123,11 @@ onMounted(async () => {
   >
     <template #main-header-actions>
       <div class="sidebar-mobile-header">
-        <Button icon="fa-xmark" variant="ghost" @click="handleClose" />
+        <Button icon="fa-xmark" variant="ghost" :title="t('common.close')" @click="handleClose" />
       </div>
     </template>
     <template #side>
-      <div class="sidebar-controls character-panel-controls">
+      <div class="sidebar-controls character-panel-controls" role="toolbar" :aria-label="t('characterPanel.toolbar')">
         <div class="sidebar-controls-row character-panel-actions">
           <Button variant="ghost" icon="fa-user-plus" :title="t('characterPanel.createNew')" @click="createNew" />
           <FileInput
@@ -144,6 +144,8 @@ onMounted(async () => {
             variant="ghost"
             icon="fa-search"
             :title="t('characterPanel.searchToggle')"
+            :active="isSearchActive"
+            :aria-pressed="isSearchActive"
             @click="isSearchActive = !isSearchActive"
           />
         </div>
@@ -156,6 +158,7 @@ onMounted(async () => {
                   v-model="characterUiStore.sortOrder"
                   :options="sortOptions"
                   :title="t('characterPanel.sorting.title')"
+                  :label="t('characterPanel.sorting.title')"
                 />
               </div>
             </template>
@@ -172,7 +175,12 @@ onMounted(async () => {
         />
       </div>
 
-      <div id="character-list" class="character-panel-character-list">
+      <div
+        id="character-list"
+        class="character-panel-character-list"
+        role="list"
+        :aria-label="t('characterPanel.listLabel')"
+      >
         <div v-if="characterUiStore.paginatedCharacters.length === 0" style="padding: 10px; opacity: 0.7">
           {{ t('common.loading') }}
         </div>
@@ -183,13 +191,15 @@ onMounted(async () => {
                 if (character.avatar === characterUiStore.highlightedAvatar) highlightedItemRef = el?.$el;
               }
             "
+            role="listitem"
             :active="characterUiStore.editFormCharacter?.avatar === character.avatar"
             :class="{ 'flash animated': character.avatar === characterUiStore.highlightedAvatar }"
             :data-character-avatar="character.avatar"
+            :aria-label="character.name"
             @click="handleCharacterSelect(character)"
           >
             <template #start>
-              <img :src="getThumbnailUrl('avatar', character.avatar)" :alt="`${character.name} Avatar`" />
+              <img :src="getThumbnailUrl('avatar', character.avatar)" :alt="''" />
             </template>
 
             <template #default>
@@ -199,6 +209,7 @@ onMounted(async () => {
                   v-if="character.fav"
                   class="fa-solid fa-star"
                   style="color: var(--color-golden); font-size: 0.8em"
+                  :aria-label="t('characterPanel.isFavorite')"
                 ></i>
               </div>
               <div

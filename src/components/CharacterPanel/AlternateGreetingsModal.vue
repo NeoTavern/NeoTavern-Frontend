@@ -81,7 +81,14 @@ function swapWithFirstMes(index: number) {
     <DraggableList v-model:items="localGreetings" item-key="id" handle-class="drag-handle" class="greetings-list">
       <template #default="{ item, index }">
         <div class="greeting-item">
-          <div class="drag-handle">
+          <div
+            class="drag-handle"
+            role="button"
+            :aria-label="t('common.dragHandle')"
+            tabindex="0"
+            @keydown.enter.prevent
+            @keydown.space.prevent
+          >
             <Icon icon="fa-grip-vertical" />
           </div>
           <div class="greeting-input-wrapper">
@@ -98,7 +105,7 @@ function swapWithFirstMes(index: number) {
             :title="t('characterEditor.alternateGreetings.swapTooltip')"
             @click="swapWithFirstMes(index)"
           />
-          <Button variant="danger" icon="fa-trash" @click="removeGreeting(index)" />
+          <Button variant="danger" icon="fa-trash" :aria-label="t('common.delete')" @click="removeGreeting(index)" />
         </div>
       </template>
     </DraggableList>

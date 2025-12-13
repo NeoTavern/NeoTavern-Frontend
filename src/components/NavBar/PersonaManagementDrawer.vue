@@ -245,7 +245,7 @@ function handleClose() {
     >
       <template #actions>
         <a href="https://docs.sillytavern.app/usage/core-concepts/personas/" target="_blank" class="note-link-span">
-          <span class="fa-solid fa-circle-question"></span>
+          <span class="fa-solid fa-circle-question" aria-hidden="true"></span>
         </a>
       </template>
     </SidebarHeader>
@@ -294,7 +294,7 @@ function handleClose() {
           </div>
 
           <ListItem :active="personaUiStore.viewMode === 'settings'" @click="selectGlobalSettings">
-            <template #start><i class="fa-solid fa-cogs" style="opacity: 0.7"></i></template>
+            <template #start><i class="fa-solid fa-cogs" style="opacity: 0.7" aria-hidden="true"></i></template>
             <template #default>{{ t('personaManagement.globalSettings.title') }}</template>
           </ListItem>
 
@@ -308,18 +308,18 @@ function handleClose() {
             :items-per-page-options="[5, 10, 25, 50, 100]"
           />
 
-          <div class="persona-list" :class="{ 'grid-view': personaUiStore.isGridView }">
-            <div v-for="persona in paginatedPersonas" :key="`${persona.avatarId}-${personaStore.lastAvatarUpdate}`">
+          <div class="persona-list" :class="{ 'grid-view': personaUiStore.isGridView }" role="list">
+            <div
+              v-for="persona in paginatedPersonas"
+              :key="`${persona.avatarId}-${personaStore.lastAvatarUpdate}`"
+              role="listitem"
+            >
               <ListItem
                 :active="personaUiStore.viewMode === 'editor' && persona.avatarId === personaStore.activePersonaId"
                 @click="selectPersona(persona.avatarId)"
               >
                 <template #start>
-                  <img
-                    :src="getThumbnailUrl('persona', persona.avatarId)"
-                    alt="Persona Avatar"
-                    class="persona-item-avatar"
-                  />
+                  <img :src="getThumbnailUrl('persona', persona.avatarId)" alt="" class="persona-item-avatar" />
                 </template>
                 <template #default>
                   <div class="font-bold persona-name-row">
@@ -328,6 +328,7 @@ function handleClose() {
                       v-if="personaStore.isDefault(persona.avatarId)"
                       class="fa-solid fa-star default-icon"
                       :title="t('personaManagement.default.tooltip')"
+                      aria-hidden="true"
                     ></i>
                   </div>
                   <div class="persona-desc">
@@ -442,9 +443,14 @@ function handleClose() {
               <h5>{{ t('personaManagement.connections.linkedCharacters') }}</h5>
               <div class="chips-container">
                 <div v-for="char in connectedCharacters" :key="char.avatar" class="character-chip">
-                  <img :src="getThumbnailUrl('avatar', char.avatar)" class="chip-avatar" />
+                  <img :src="getThumbnailUrl('avatar', char.avatar)" class="chip-avatar" alt="" />
                   <span class="chip-name">{{ char?.name ?? '' }}</span>
-                  <i class="fa-solid fa-xmark chip-remove" @click="removeConnection(char.avatar)"></i>
+                  <i
+                    class="fa-solid fa-xmark chip-remove"
+                    aria-hidden="true"
+                    :aria-label="t('common.remove')"
+                    @click="removeConnection(char.avatar)"
+                  ></i>
                 </div>
               </div>
             </div>

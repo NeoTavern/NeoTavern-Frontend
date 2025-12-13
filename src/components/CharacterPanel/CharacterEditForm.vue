@@ -448,7 +448,7 @@ const moreOptions = computed(() => [
   { value: 'rename', label: t('characterEditor.moreOptions.rename') },
 ]);
 
-async function handleMoreAction(action: string) {
+async function handleMoreAction(action: string | string[]) {
   if (!localCharacter.value) return;
 
   switch (action) {
@@ -495,13 +495,20 @@ const embeddedLorebookName = computed({
           <h2 v-show="!isCreating" class="interactable" tabindex="0">{{ localCharacter.name }}</h2>
           <Input
             v-show="isCreating"
+            id="character-name-input"
             v-model="localCharacter.name"
             :placeholder="t('characterEditor.namePlaceholder')"
             class="font-bold text-lg"
+            :label="t('characterEditor.name')"
           />
         </div>
         <div class="character-edit-form-header-info">
-          <div id="character-editor-token-info" class="result_info" :title="t('characterEditor.tokenCounts.title')">
+          <div
+            id="character-editor-token-info"
+            class="result_info"
+            :title="t('characterEditor.tokenCounts.title')"
+            :aria-label="t('characterEditor.tokenCounts.title')"
+          >
             <div>
               <strong id="character-editor-total-tokens" :title="t('characterEditor.tokenCounts.total')">{{
                 characterStore.totalTokens
@@ -593,12 +600,24 @@ const embeddedLorebookName = computed({
             </div>
 
             <div v-show="isExportMenuVisible" ref="exportMenuRef" class="export-menu" :style="exportMenuStyles">
-              <a class="export-menu-item" @click="handleExportPng">
-                <i class="fa-solid fa-file-image"></i>
+              <a
+                class="export-menu-item"
+                role="button"
+                tabindex="0"
+                @click="handleExportPng"
+                @keydown.enter="handleExportPng"
+              >
+                <i class="fa-solid fa-file-image" aria-hidden="true"></i>
                 <span>{{ t('characterEditor.exportAsPng') }}</span>
               </a>
-              <a class="export-menu-item" @click="handleExportJson">
-                <i class="fa-solid fa-file-code"></i>
+              <a
+                class="export-menu-item"
+                role="button"
+                tabindex="0"
+                @click="handleExportJson"
+                @keydown.enter="handleExportJson"
+              >
+                <i class="fa-solid fa-file-code" aria-hidden="true"></i>
                 <span>{{ t('characterEditor.exportAsJson') }}</span>
               </a>
             </div>
@@ -607,14 +626,22 @@ const embeddedLorebookName = computed({
           </div>
 
           <div v-show="!isCreating">
-            <!-- @vue-ignore -->
-            <Select :model-value="'default'" :options="moreOptions" @update:model-value="handleMoreAction" />
+            <Select
+              :model-value="'default'"
+              :options="moreOptions"
+              :label="t('characterEditor.more')"
+              @update:model-value="handleMoreAction"
+            />
           </div>
         </div>
       </div>
 
       <div class="character-edit-form-tags-block">
-        <TagInput v-model="localCharacter.tags!" :placeholder="t('characterEditor.searchTags')" />
+        <TagInput
+          v-model="localCharacter.tags!"
+          :placeholder="t('characterEditor.searchTags')"
+          :label="t('characterEditor.tags')"
+        />
       </div>
 
       <!-- Creator's Notes Inline Drawer -->
@@ -639,8 +666,9 @@ const embeddedLorebookName = computed({
       <small v-show="areDetailsHidden">{{ t('characterEditor.detailsHidden') }}</small>
 
       <div v-show="!areDetailsHidden" class="character-edit-form-main-content">
-        <FormItem :label="t('characterEditor.description')" data-field-name="description">
+        <FormItem for="char-description" :label="t('characterEditor.description')" data-field-name="description">
           <Textarea
+            id="char-description"
             v-model="localCharacter.description!"
             allow-maximize
             :rows="12"
@@ -656,7 +684,7 @@ const embeddedLorebookName = computed({
           </Textarea>
         </FormItem>
 
-        <FormItem :label="t('characterEditor.firstMessage')" data-field-name="first_mes">
+        <FormItem for="char-first-mes" :label="t('characterEditor.firstMessage')" data-field-name="first_mes">
           <div class="first-message-header">
             <Button variant="ghost" icon="fa-list-ul" @click="openAlternateGreetings">
               {{ t('characterEditor.alternateGreetings.label') }}
@@ -666,6 +694,7 @@ const embeddedLorebookName = computed({
             </Button>
           </div>
           <Textarea
+            id="char-first-mes"
             v-model="localCharacter.first_mes!"
             allow-maximize
             :rows="10"
@@ -683,8 +712,13 @@ const embeddedLorebookName = computed({
 
         <hr />
 
-        <FormItem :label="t('characterEditor.advanced.personality')" data-field-name="personality">
+        <FormItem
+          for="char-personality"
+          :label="t('characterEditor.advanced.personality')"
+          data-field-name="personality"
+        >
           <Textarea
+            id="char-personality"
             v-model="localCharacter.personality!"
             allow-maximize
             :rows="4"
@@ -700,8 +734,9 @@ const embeddedLorebookName = computed({
           </Textarea>
         </FormItem>
 
-        <FormItem :label="t('characterEditor.advanced.scenario')" data-field-name="scenario">
+        <FormItem for="char-scenario" :label="t('characterEditor.advanced.scenario')" data-field-name="scenario">
           <Textarea
+            id="char-scenario"
             v-model="localCharacter.scenario!"
             allow-maximize
             :rows="4"
@@ -720,8 +755,9 @@ const embeddedLorebookName = computed({
         <!-- Character Note with Depth -->
         <div class="character-note-container" data-field-name="data.depth_prompt.prompt">
           <div v-if="localCharacter.data?.depth_prompt" style="flex: 3">
-            <FormItem :label="t('characterEditor.advanced.characterNote')">
+            <FormItem for="char-note" :label="t('characterEditor.advanced.characterNote')">
               <Textarea
+                id="char-note"
                 v-model="localCharacter.data.depth_prompt.prompt"
                 allow-maximize
                 :rows="5"
@@ -732,11 +768,17 @@ const embeddedLorebookName = computed({
             </FormItem>
           </div>
           <div v-if="localCharacter.data?.depth_prompt" style="flex: 1">
-            <FormItem :label="t('characterEditor.advanced.depth')">
-              <Input v-model="localCharacter.data.depth_prompt.depth" type="number" :min="0" :max="9999" />
+            <FormItem for="char-depth" :label="t('characterEditor.advanced.depth')">
+              <Input
+                id="char-depth"
+                v-model="localCharacter.data.depth_prompt.depth"
+                type="number"
+                :min="0"
+                :max="9999"
+              />
             </FormItem>
-            <FormItem :label="t('characterEditor.advanced.role')">
-              <Select v-model="localCharacter.data.depth_prompt.role" :options="roleOptions" />
+            <FormItem for="char-role" :label="t('characterEditor.advanced.role')">
+              <Select id="char-role" v-model="localCharacter.data.depth_prompt.role" :options="roleOptions" />
             </FormItem>
           </div>
         </div>
@@ -745,7 +787,13 @@ const embeddedLorebookName = computed({
           :label="t('characterEditor.advanced.talkativeness')"
           :description="t('characterEditor.advanced.talkativenessHint')"
         >
-          <RangeControl v-model="localCharacter.talkativeness!" :min="0" :max="1" :step="0.05">
+          <RangeControl
+            v-model="localCharacter.talkativeness!"
+            :min="0"
+            :max="1"
+            :step="0.05"
+            :label="t('characterEditor.advanced.talkativeness')"
+          >
             <template #addon>
               <div class="slider-hint">
                 <span>{{ t('characterEditor.advanced.talkativenessShy') }}</span>
@@ -758,8 +806,13 @@ const embeddedLorebookName = computed({
 
         <hr />
 
-        <FormItem :label="t('characterEditor.advanced.dialogueExamples')" data-field-name="mes_example">
+        <FormItem
+          for="char-examples"
+          :label="t('characterEditor.advanced.dialogueExamples')"
+          data-field-name="mes_example"
+        >
           <Textarea
+            id="char-examples"
             v-model="localCharacter.mes_example!"
             allow-maximize
             :rows="6"
@@ -783,8 +836,9 @@ const embeddedLorebookName = computed({
         >
           <div class="inline-drawer-content--column">
             <div v-if="localCharacter.data" data-field-name="data.post_history_instructions">
-              <FormItem :label="t('characterEditor.advanced.postHistoryInstructions')">
+              <FormItem for="char-post-history" :label="t('characterEditor.advanced.postHistoryInstructions')">
                 <Textarea
+                  id="char-post-history"
                   v-model="localCharacter.data.post_history_instructions!"
                   allow-maximize
                   :rows="3"
@@ -816,17 +870,17 @@ const embeddedLorebookName = computed({
           :subtitle="t('characterEditor.advanced.metadataHint')"
         >
           <div class="inline-drawer-content--column">
-            <!-- TODO: Move to another place -->
-            <FormItem :label="t('characterEditor.embeddedLorebook')">
-              <Select v-model="embeddedLorebookName" :options="lorebookOptions" searchable />
+            <FormItem for="char-lorebook" :label="t('characterEditor.embeddedLorebook')">
+              <Select id="char-lorebook" v-model="embeddedLorebookName" :options="lorebookOptions" searchable />
             </FormItem>
 
             <small>{{ t('characterEditor.advanced.metadataOptional') }}</small>
             <div class="form-row">
               <div class="form-column">
-                <FormItem :label="t('characterEditor.advanced.createdBy')">
+                <FormItem for="char-creator" :label="t('characterEditor.advanced.createdBy')">
                   <Textarea
                     v-if="localCharacter.data"
+                    id="char-creator"
                     v-model="localCharacter.data.creator!"
                     :rows="2"
                     :placeholder="t('characterEditor.advanced.createdByPlaceholder')"
@@ -834,9 +888,10 @@ const embeddedLorebookName = computed({
                 </FormItem>
               </div>
               <div class="form-column">
-                <FormItem :label="t('characterEditor.advanced.characterVersion')">
+                <FormItem for="char-version" :label="t('characterEditor.advanced.characterVersion')">
                   <Textarea
                     v-if="localCharacter.data"
+                    id="char-version"
                     v-model="localCharacter.data.character_version!"
                     :rows="2"
                     :placeholder="t('characterEditor.advanced.characterVersionPlaceholder')"
@@ -846,9 +901,10 @@ const embeddedLorebookName = computed({
             </div>
             <div class="form-row">
               <div class="form-column" data-field-name="data.creator_notes">
-                <FormItem :label="t('characterEditor.advanced.creatorNotes')">
+                <FormItem for="char-creator-notes" :label="t('characterEditor.advanced.creatorNotes')">
                   <Textarea
                     v-if="localCharacter.data"
+                    id="char-creator-notes"
                     v-model="localCharacter.data.creator_notes!"
                     allow-maximize
                     :rows="4"
@@ -859,8 +915,9 @@ const embeddedLorebookName = computed({
                 </FormItem>
               </div>
               <div class="form-column">
-                <FormItem :label="t('characterEditor.advanced.tagsToEmbed')">
+                <FormItem for="char-embed-tags" :label="t('characterEditor.advanced.tagsToEmbed')">
                   <Textarea
+                    id="char-embed-tags"
                     :model-value="localCharacter.tags?.join(', ') || ''"
                     :rows="4"
                     :placeholder="t('characterEditor.advanced.tagsToEmbedPlaceholder')"

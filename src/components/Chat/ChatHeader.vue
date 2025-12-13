@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useCharacterUiStore } from '../../stores/character-ui.store';
 import { useCharacterStore } from '../../stores/character.store';
 import { useChatStore } from '../../stores/chat.store';
@@ -17,6 +18,8 @@ const characterStore = useCharacterStore();
 const characterUiStore = useCharacterUiStore();
 const chatStore = useChatStore();
 const groupChatStore = useGroupChatStore();
+
+const { t } = useStrictI18n();
 
 const firstCharacter = computed(() => characterStore.activeCharacters?.[0]);
 
@@ -65,7 +68,15 @@ function handleCharacterClick() {
       <MainContentFullscreenToggle class="chat-header-icon" />
     </div>
 
-    <div class="chat-header-group center" @click="handleCharacterClick">
+    <div
+      class="chat-header-group center"
+      role="button"
+      tabindex="0"
+      :aria-label="isGroup ? headerTitle : headerTitle + ' ' + t('common.info')"
+      @click="handleCharacterClick"
+      @keydown.enter.prevent="handleCharacterClick"
+      @keydown.space.prevent="handleCharacterClick"
+    >
       <div v-if="characterStore.activeCharacters.length > 0" class="chat-header-info">
         <div class="chat-header-info-avatar" :class="{ 'group-grid': isGroup }">
           <SmartAvatar :urls="avatarUrls" :alt="headerTitle" />
