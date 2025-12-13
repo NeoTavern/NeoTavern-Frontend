@@ -273,7 +273,7 @@ async function showPromptItemization() {
 </script>
 
 <template>
-  <div
+  <article
     class="message"
     :class="{
       'is-user': message.is_user,
@@ -283,17 +283,26 @@ async function showPromptItemization() {
       'animations-disabled': animationsDisabled,
     }"
     :data-message-index="index"
+    :aria-label="`${displayName} - ${formattedTimestamp}`"
     @click="handleSelectionClick"
   >
     <!-- Selection Overlay -->
-    <div v-if="isSelectionMode" class="message-selection-overlay">
+    <div v-if="isSelectionMode" class="message-selection-overlay" aria-hidden="true">
       <div class="selection-checkbox" :class="{ checked: isSelected }">
         <i v-if="isSelected" class="fa-solid fa-check"></i>
       </div>
     </div>
 
     <div class="message-avatar-wrapper">
-      <div class="message-avatar" style="cursor: pointer" @click.stop="handleAvatarClick">
+      <div
+        class="message-avatar"
+        role="button"
+        tabindex="0"
+        :aria-label="displayName!"
+        @click.stop="handleAvatarClick"
+        @keydown.enter.stop.prevent="handleAvatarClick"
+        @keydown.space.stop.prevent="handleAvatarClick"
+      >
         <SmartAvatar :urls="[avatarUrls.thumbnail]" :alt="`${displayName} Avatar`" />
       </div>
       <div class="message-id">#{{ index }}</div>
@@ -352,9 +361,22 @@ async function showPromptItemization() {
       </div>
 
       <div v-if="!isEditing && hasReasoning" class="message-reasoning">
-        <div class="message-reasoning-header" @click.stop="isReasoningCollapsed = !isReasoningCollapsed">
+        <div
+          class="message-reasoning-header"
+          role="button"
+          tabindex="0"
+          :aria-expanded="!isReasoningCollapsed"
+          :aria-label="t('chat.reasoning.title')"
+          @click.stop="isReasoningCollapsed = !isReasoningCollapsed"
+          @keydown.enter.stop.prevent="isReasoningCollapsed = !isReasoningCollapsed"
+          @keydown.space.stop.prevent="isReasoningCollapsed = !isReasoningCollapsed"
+        >
           <span>{{ t('chat.reasoning.title') }}</span>
-          <i class="fa-solid" :class="isReasoningCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+          <i
+            class="fa-solid"
+            :class="isReasoningCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"
+            aria-hidden="true"
+          ></i>
         </div>
         <transition name="expand">
           <!-- eslint-disable-next-line vue/no-v-html -->
@@ -391,18 +413,30 @@ async function showPromptItemization() {
         <div class="message-swipe-controls">
           <i
             class="swipe-arrow fa-solid fa-chevron-left"
+            role="button"
+            tabindex="0"
             :title="t('chat.buttons.swipeLeft')"
+            :aria-label="t('chat.buttons.swipeLeft')"
             @click="swipe('left')"
+            @keydown.enter.prevent="swipe('left')"
+            @keydown.space.prevent="swipe('left')"
           ></i>
-          <span class="swipe-counter">{{ (message.swipe_id ?? 0) + 1 }} / {{ message.swipes?.length ?? 0 }}</span>
+          <span class="swipe-counter" aria-live="polite"
+            >{{ (message.swipe_id ?? 0) + 1 }} / {{ message.swipes?.length ?? 0 }}</span
+          >
           <i
             class="swipe-arrow fa-solid fa-chevron-right"
+            role="button"
+            tabindex="0"
             :title="t('chat.buttons.swipeRight')"
+            :aria-label="t('chat.buttons.swipeRight')"
             @click="swipe('right')"
+            @keydown.enter.prevent="swipe('right')"
+            @keydown.space.prevent="swipe('right')"
           ></i>
         </div>
       </div>
       <!-- TODO: Implement media, etc. -->
     </div>
-  </div>
+  </article>
 </template>

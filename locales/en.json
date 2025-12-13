@@ -527,7 +527,8 @@
     "expandSidebar": "Expand Sidebar",
     "loadingButton": "Loading",
     "upload": "Upload",
-    "image": "Image"
+    "image": "Image",
+    "info": "Info"
   },
   "popup": {
     "cropAvatar": {
@@ -591,7 +592,8 @@
     },
     "selection": {
       "modeFree": "Selection Mode: Free (Click to toggle)",
-      "modeRange": "Selection Mode: To Bottom (Click to select from message to end)"
+      "modeRange": "Selection Mode: To Bottom (Click to select from message to end)",
+      "toolbar": "Message Selection Toolbar"
     },
     "copy": {
       "error": "Failed to copy message."

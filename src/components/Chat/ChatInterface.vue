@@ -287,14 +287,21 @@ watch(
 
 <template>
   <div class="chat-interface">
-    <div v-show="chatStore.isChatLoading" class="chat-loading-overlay">
+    <div v-show="chatStore.isChatLoading" class="chat-loading-overlay" role="alert" aria-busy="true">
       <div class="loading-spinner">
         <i class="fa-solid fa-circle-notch fa-spin"></i>
         <span>{{ t('common.loading') }}</span>
       </div>
     </div>
 
-    <div id="chat-messages-container" ref="messagesContainer" class="chat-interface-messages">
+    <div
+      id="chat-messages-container"
+      ref="messagesContainer"
+      class="chat-interface-messages"
+      role="log"
+      :aria-label="t('chat.itemization.chatHistory')"
+      aria-live="polite"
+    >
       <div v-if="hasMoreMessages" class="chat-load-more-container">
         <Button class="load-more-btn" variant="ghost" @click="loadMoreMessages">
           <i class="fa-solid fa-arrow-up"></i>
@@ -303,7 +310,7 @@ watch(
       </div>
 
       <ChatMessage v-for="item in visibleMessages" :key="item.index" :message="item.message" :index="item.index" />
-      <div v-show="chatStore.isGenerating" class="chat-interface-typing-indicator">
+      <div v-show="chatStore.isGenerating" class="chat-interface-typing-indicator" role="status" aria-label="Typing">
         <span>{{ t('chat.typingIndicator') }}</span>
         <div class="dot dot1"></div>
         <div class="dot dot2"></div>
@@ -328,6 +335,8 @@ watch(
               variant="ghost"
               icon="fa-bars"
               :title="t('chat.options')"
+              aria-haspopup="menu"
+              :aria-expanded="isOptionsMenuVisible"
               @click.stop="isOptionsMenuVisible = !isOptionsMenuVisible"
             />
           </div>
@@ -364,21 +373,56 @@ watch(
           </div>
         </div>
 
-        <div v-show="isOptionsMenuVisible" ref="optionsMenuRef" class="options-menu" :style="optionsMenuStyles">
-          <a class="options-menu-item" @click="generate">
+        <div
+          v-show="isOptionsMenuVisible"
+          ref="optionsMenuRef"
+          class="options-menu"
+          :style="optionsMenuStyles"
+          role="menu"
+          aria-labelledby="chat-options-button"
+        >
+          <a
+            class="options-menu-item"
+            role="menuitem"
+            tabindex="0"
+            @click="generate"
+            @keydown.enter.prevent="generate"
+            @keydown.space.prevent="generate"
+          >
             <i class="fa-solid fa-paper-plane"></i>
             <span>{{ t('chat.optionsMenu.generate') }}</span>
           </a>
-          <a class="options-menu-item" @click="regenerate">
+          <a
+            class="options-menu-item"
+            role="menuitem"
+            tabindex="0"
+            @click="regenerate"
+            @keydown.enter.prevent="regenerate"
+            @keydown.space.prevent="regenerate"
+          >
             <i class="fa-solid fa-repeat"></i>
             <span>{{ t('chat.optionsMenu.regenerate') }}</span>
           </a>
-          <a class="options-menu-item" @click="continueGeneration">
+          <a
+            class="options-menu-item"
+            role="menuitem"
+            tabindex="0"
+            @click="continueGeneration"
+            @keydown.enter.prevent="continueGeneration"
+            @keydown.space.prevent="continueGeneration"
+          >
             <i class="fa-solid fa-arrow-right"></i>
             <span>{{ t('chat.optionsMenu.continue') }}</span>
           </a>
-          <hr />
-          <a class="options-menu-item" @click="toggleSelectionMode">
+          <hr role="separator" />
+          <a
+            class="options-menu-item"
+            role="menuitem"
+            tabindex="0"
+            @click="toggleSelectionMode"
+            @keydown.enter.prevent="toggleSelectionMode"
+            @keydown.space.prevent="toggleSelectionMode"
+          >
             <i class="fa-solid fa-check-double"></i>
             <span>{{ t('chat.optionsMenu.selectMessages') }}</span>
           </a>
@@ -386,7 +430,12 @@ watch(
       </div>
 
       <!-- Selection Mode Toolbar -->
-      <div v-show="chatSelectionStore.isSelectionMode" class="selection-toolbar">
+      <div
+        v-show="chatSelectionStore.isSelectionMode"
+        class="selection-toolbar"
+        role="toolbar"
+        :aria-label="t('chat.selection.toolbar')"
+      >
         <div class="selection-info">
           <span
             >{{ chatSelectionStore.selectedMessageIndices.size }} {{ t('common.selected') }} ({{

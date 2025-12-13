@@ -531,6 +531,7 @@ export interface MessageSchema {
     loadingButton: string;
     upload: string;
     image: string;
+    info: string;
   };
   popup: {
     cropAvatar: {
@@ -595,6 +596,7 @@ export interface MessageSchema {
     selection: {
       modeFree: string;
       modeRange: string;
+      toolbar: string;
     };
     copy: {
       error: string;
