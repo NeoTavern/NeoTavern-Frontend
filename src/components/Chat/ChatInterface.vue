@@ -48,7 +48,11 @@ const { floatingStyles: optionsMenuStyles } = useFloating(optionsButtonRef, opti
 });
 
 function submitMessage() {
-  if (!userInput.value.trim()) return;
+  //If userInput is empty, attempt to generate a new response.
+  if (!userInput.value.trim()) {
+    generate();
+    return;
+  };
   chatStore.sendMessage(userInput.value);
   userInput.value = '';
 
