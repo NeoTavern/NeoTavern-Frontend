@@ -339,6 +339,11 @@ select.text-pole {
       width: 100%;
       max-width: unset;
     }
+    padding-left: calc(var(--sidebar-left-visible-width, 0px) + var(--nav-bar-width));
+    padding-right: var(--sidebar-right-visible-width, 0px);
+    transition:
+      padding-left var(--animation-duration-2x) cubic-bezier(0.25, 1, 0.5, 1),
+      padding-right var(--animation-duration-2x) cubic-bezier(0.25, 1, 0.5, 1);
   }
 
   // =============================================================================
@@ -385,6 +390,9 @@ select.text-pole {
     width: 100% !important;
     height: calc(100vh - var(--nav-bar-height, 60px));
     height: calc(100dvh - var(--nav-bar-height, 60px));
+
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 
     .layout-view-wrapper {
       width: 100% !important;

@@ -306,6 +306,7 @@
 // --- Tabs ---
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-xs);
   border-bottom: 1px solid var(--theme-border-color);
   padding-bottom: var(--spacing-xs);

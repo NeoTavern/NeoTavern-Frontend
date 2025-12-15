@@ -149,6 +149,8 @@ $base-border-radius-rounded: 8px;
   // Sidebars (Dynamic)
   --sidebar-left-width: var(--sidebar-width);
   --sidebar-right-width: var(--sidebar-width);
+  --sidebar-left-visible-width: 0px;
+  --sidebar-right-visible-width: 0px;
 
   // Font
   --font-scale: #{$base-font-scale};

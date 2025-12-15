@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useResizable } from '../../composables/useResizable';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useLayoutStore } from '../../stores/layout.store';
@@ -20,6 +20,7 @@ const sidebarRef = ref<HTMLElement | null>(null);
 const resizerRef = ref<HTMLElement | null>(null);
 
 const cssVariable = props.side === 'left' ? '--sidebar-left-width' : '--sidebar-right-width';
+const visibleWidthVariable = props.side === 'left' ? '--sidebar-left-visible-width' : '--sidebar-right-visible-width';
 
 useResizable(sidebarRef, resizerRef, {
   storageKey: props.storageKey,
@@ -28,6 +29,14 @@ useResizable(sidebarRef, resizerRef, {
   side: props.side,
   cssVariable,
 });
+
+function updateVisibleWidth() {
+  const value = props.isOpen ? `var(${cssVariable})` : '0px';
+  document.documentElement.style.setProperty(visibleWidthVariable, value);
+}
+
+watch(() => props.isOpen, updateVisibleWidth);
+onMounted(updateVisibleWidth);
 
 function closeSidebar() {
   if (props.side === 'left') {
