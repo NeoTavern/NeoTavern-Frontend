@@ -310,6 +310,7 @@ export interface Settings {
     };
     disableAnimations: boolean;
     selectedTheme: string;
+    forceMobileMode: boolean;
   };
   chat: {
     sendOnEnter: SendOnEnterOptions;
@@ -497,4 +498,5 @@ export interface SettingDefinition {
   multiple?: boolean;
   searchable?: boolean;
   groupSelect?: boolean;
+  showOn?: 'all' | 'mobileDevice' | 'desktopDevice';
 }

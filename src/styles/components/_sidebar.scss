@@ -103,7 +103,7 @@
 // =============================================================================
 // Mobile Sidebar Overrides
 // =============================================================================
-@media (max-width: 768px) {
+@include mobile-override() {
   .sidebar {
     position: fixed;
     top: 0;
@@ -113,6 +113,11 @@
     border: none;
 
     width: 100% !important;
+
+    &:not(.is-open) {
+      width: 0 !important;
+      border: none !important;
+    }
 
     &--right {
       left: auto;

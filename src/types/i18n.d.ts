@@ -1064,6 +1064,10 @@ export interface MessageSchema {
         label: string;
         description: string;
       };
+      forceMobileMode: {
+        label: string;
+        description: string;
+      };
       chat: {
         reasoningCollapsed: {
           label: string;

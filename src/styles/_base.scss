@@ -1,8 +1,8 @@
+@use 'mixins' as *;
+
 // =============================================================================
 // Custom Scrollbar
 // =============================================================================
-
-@use 'mixins' as *;
 
 // Standard CSS Scrollbars (Firefox)
 * {
@@ -380,7 +380,7 @@ select.text-pole {
 // =============================================================================
 // Mobile Layout Overrides
 // =============================================================================
-@media (max-width: 768px) {
+@include mobile-override() {
   #app-layout {
     display: block;
     position: relative;

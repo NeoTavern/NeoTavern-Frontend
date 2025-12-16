@@ -26,10 +26,6 @@
   align-items: center;
   gap: var(--spacing-sm);
   width: 100%;
-
-  & + & {
-    margin-top: var(--spacing-md);
-  }
 }
 
 .nav-item {
@@ -90,7 +86,7 @@
 // =============================================================================
 // Mobile Navbar (Bottom Bar)
 // =============================================================================
-@media (max-width: 768px) {
+@include mobile-override() {
   .nav-bar {
     width: 100%;
     height: var(--nav-bar-height);
@@ -105,8 +101,9 @@
   }
 
   .nav-bar-nav {
+    display: flex;
     flex-direction: row;
-    justify-content: space-evenly;
+    justify-content: center;
     align-items: center;
     padding: 0;
     gap: 0;
@@ -123,7 +120,6 @@
     & + & {
       margin-top: 0;
       border-left: 1px solid var(--theme-border-color);
-      padding-left: var(--spacing-sm);
     }
   }
 
@@ -142,5 +138,16 @@
     &.wide {
       width: 100%;
     }
+  }
+}
+
+.nav-bar-nav,
+.nav-section-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: contents;
+  @include mobile-override() {
+    display: flex;
   }
 }

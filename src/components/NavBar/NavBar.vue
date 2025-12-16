@@ -113,16 +113,3 @@ const isActive = (id: string, item: NavBarItemDefinition) => {
     </div>
   </template>
 </template>
-
-<style scoped>
-.nav-bar-nav,
-.nav-section-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: contents;
-  @media (max-width: 768px) {
-    display: flex;
-  }
-}
-</style>

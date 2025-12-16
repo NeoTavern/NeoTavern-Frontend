@@ -127,6 +127,16 @@ export const settingsDefinition: SettingDefinition[] = [
     widget: 'checkbox',
     defaultValue: false,
   },
+  {
+    id: 'ui.forceMobileMode',
+    label: 'settings.ui.forceMobileMode.label',
+    description: 'settings.ui.forceMobileMode.description',
+    category: 'Appearance',
+    type: 'boolean',
+    widget: 'checkbox',
+    defaultValue: false,
+    showOn: 'desktopDevice',
+  },
 
   // --- Editor ---
   {

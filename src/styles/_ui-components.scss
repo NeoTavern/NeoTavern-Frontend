@@ -916,7 +916,7 @@
 // =============================================================================
 // Mobile UI Component Overrides
 // =============================================================================
-@media (max-width: 768px) {
+@include mobile-override() {
   /* Panel Layout Header Toggle */
   .main-page-header-left .menu-button {
     display: none;

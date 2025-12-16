@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, type CSSProperties } from 'vue';
+import { computed, onMounted, ref, watch, type CSSProperties } from 'vue';
 import NavBar from './components/NavBar/NavBar.vue';
 import Popup from './components/Popup/Popup.vue';
 import SidebarHost from './components/Shared/SidebarHost.vue';
@@ -82,6 +82,20 @@ onMounted(async () => {
   registerCoreComponents();
 
   await settingsStore.initializeSettings();
+
+  if (settingsStore.settings.ui.forceMobileMode) {
+    document.body.classList.add('force-mobile-layout');
+  }
+  watch(
+    () => settingsStore.settings.ui.forceMobileMode,
+    (newValue) => {
+      if (newValue) {
+        document.body.classList.add('force-mobile-layout');
+      } else {
+        document.body.classList.remove('force-mobile-layout');
+      }
+    },
+  );
 
   await Promise.all([
     secretStore.fetchSecrets(),

@@ -10,7 +10,7 @@ type RightSidebarState = {
 
 export const useLayoutStore = defineStore('layout', () => {
   const registryStore = useComponentRegistryStore();
-  const { isMobile } = useMobile();
+  const { isViewportMobile } = useMobile();
 
   const activeDrawer = ref<string | null>(null);
   const activeMainLayout = ref<string>('chat');
@@ -49,7 +49,7 @@ export const useLayoutStore = defineStore('layout', () => {
   }
 
   function autoCloseSidebarsOnMobile() {
-    if (isMobile.value) {
+    if (isViewportMobile.value) {
       if (isLeftSidebarOpen.value) {
         closeLeftSidebar();
       }

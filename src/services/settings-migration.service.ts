@@ -89,6 +89,7 @@ export function createDefaultSettings(): Settings {
       },
       disableAnimations: false,
       selectedTheme: 'Default',
+      forceMobileMode: false,
     },
     worldInfo: structuredClone(defaultWorldInfoSettings),
   };
@@ -260,6 +261,7 @@ export function migrateLegacyUserSettings(
       },
       disableAnimations: p.reduced_motion ?? false,
       selectedTheme: 'Default',
+      forceMobileMode: false,
     },
     chat: {
       sendOnEnter: p.send_on_enter,

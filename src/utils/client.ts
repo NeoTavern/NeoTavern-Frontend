@@ -42,7 +42,7 @@ export function getParsedUA() {
   return parsedUA;
 }
 
-export function isMobile() {
+export function isDeviceMobile() {
   const mobileTypes = ['mobile', 'tablet'];
   const result = getParsedUA();
   if (!result || !result.platform || !result.platform.type) {
@@ -56,7 +56,7 @@ export function isMobile() {
  */
 export function isViewportMobile(): boolean {
   if (typeof window === 'undefined') return false;
-  return isMobile() || window.matchMedia('(max-width: 768px)').matches;
+  return window.matchMedia('(max-width: 768px)').matches;
 }
 
 // --- DOM Utils ---

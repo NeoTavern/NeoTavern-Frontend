@@ -1,3 +1,5 @@
+@use 'responsive' as *;
+
 // =============================================================================
 // Core Variables
 // =============================================================================
@@ -200,11 +202,11 @@ $base-border-radius-rounded: 8px;
 
   // --- Z-Index Scale ---
   --z-tooltip: 1000;
-  --z-drawer: 900;
-  --z-navbar: 800;
-  --z-sidebar: 700;
-  --z-modal: 600;
-  --z-dropdown: 500;
+  --z-dropdown: 900;
+  --z-drawer: 800;
+  --z-navbar: 700;
+  --z-sidebar: 600;
+  --z-modal: 500;
   --z-sticky: 100;
 
   // --- Text Formatting ---
@@ -214,34 +216,30 @@ $base-border-radius-rounded: 8px;
 // =============================================================================
 // Mobile Overrides
 // =============================================================================
-@media (min-width: 769px) {
-  :root {
-    --nav-bar-width: var(--nav-bar-width-desktop);
-  }
+@include desktop-variables() {
+  --nav-bar-width: var(--nav-bar-width-desktop);
 }
 
-@media (max-width: 768px) {
-  :root {
-    /* Navbar moves to bottom */
-    --nav-bar-width: 0px;
-    --nav-bar-height: 60px;
+@include mobile-variables() {
+  /* Navbar moves to bottom */
+  --nav-bar-width: 0px;
+  --nav-bar-height: 60px;
 
-    /* Sidebars are full width overlays */
-    --sidebar-width: 100%;
-    --sidebar-left-width: 100%;
-    --sidebar-right-width: 100%;
+  /* Sidebars are full width overlays */
+  --sidebar-width: 100%;
+  --sidebar-left-width: 100%;
+  --sidebar-right-width: 100%;
 
-    /* Panels take full width */
-    --panel-width: 100%;
-    --panel-width-wide: 100%;
+  /* Panels take full width */
+  --panel-width: 100%;
+  --panel-width-wide: 100%;
 
-    /* Increase font for readability/touch */
-    --base-font-size: 14px;
-    --font-scale: 1;
+  /* Increase font for readability/touch */
+  --base-font-size: 14px;
+  --font-scale: 1;
 
-    /* Adjust layout spacing */
-    --layout-message-right-spacing: 0px;
-    --spacing-lg: 12px;
-    --spacing-xl: 16px;
-  }
+  /* Adjust layout spacing */
+  --layout-message-right-spacing: 0px;
+  --spacing-lg: 12px;
+  --spacing-xl: 16px;
 }

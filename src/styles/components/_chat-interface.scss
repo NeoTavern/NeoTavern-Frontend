@@ -42,7 +42,6 @@
     color: var(--theme-text-color);
     margin-left: var(--spacing-md);
     animation: fadeIn 0.3s ease;
-    z-index: var(--z-sticky);
 
     .dot {
       width: 6px;
@@ -203,7 +202,7 @@
 // =============================================================================
 // Mobile Chat Interface
 // =============================================================================
-@media (max-width: 768px) {
+@include mobile-override() {
   .chat-interface {
     /* Ensure the input doesn't get hidden behind the keyboard or toolbar */
     height: 100%;

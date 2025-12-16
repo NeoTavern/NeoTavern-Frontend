@@ -1061,6 +1061,10 @@
         "label": "Disable all animations",
         "description": "Disables CSS transitions, Vue transitions, and other animations for better performance and accessibility"
       },
+      "forceMobileMode": {
+        "label": "Force Mobile Mode",
+        "description": "Always use the mobile layout, even on larger screens."
+      },
       "chat": {
         "reasoningCollapsed": {
           "label": "Collapse Reasoning by Default",

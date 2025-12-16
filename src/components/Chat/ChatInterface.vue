@@ -27,7 +27,7 @@ const chatSelectionStore = useChatSelectionStore();
 const worldInfoStore = useWorldInfoStore();
 const popupStore = usePopupStore();
 const promptStore = usePromptStore();
-const { isMobile } = useMobile();
+const { isDeviceMobile, isViewportMobile } = useMobile();
 const layoutStore = useLayoutStore();
 const { t } = useStrictI18n();
 
@@ -233,7 +233,7 @@ watch(lastMessageContent, () => {
 
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside);
-  if (!isMobile.value) {
+  if (!isDeviceMobile.value) {
     await nextTick();
     chatInput.value?.focus();
   }
@@ -274,7 +274,7 @@ watch(
       const savedInput = await promptStore.loadUserTyping(newFile);
       userInput.value = savedInput;
 
-      if (!isMobile.value) {
+      if (!isDeviceMobile.value) {
         await nextTick();
         chatInput.value?.focus();
       }
@@ -322,7 +322,7 @@ watch(
       <div
         v-show="
           !chatSelectionStore.isSelectionMode &&
-          (isMobile ? !layoutStore.isLeftSidebarOpen && !layoutStore.isRightSidebarOpen : true)
+          (isViewportMobile ? !layoutStore.isLeftSidebarOpen && !layoutStore.isRightSidebarOpen : true)
         "
         id="chat-form"
         class="chat-form"

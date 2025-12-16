@@ -57,7 +57,7 @@ const searchInputRef = ref<HTMLInputElement | null>(null);
 const searchQuery = ref('');
 const highlightedIndex = ref<number>(-1); // For visual navigation
 
-const { isMobile } = useMobile();
+const { isDeviceMobile } = useMobile();
 const { t } = useStrictI18n();
 
 const selectId = props.id || `select-${uuidv4()}`;
@@ -165,7 +165,7 @@ function toggleOpen() {
 
     nextTick(() => {
       scrollToHighlightedOption();
-      if (props.searchable && !isMobile.value) {
+      if (props.searchable && !isDeviceMobile.value) {
         searchInputRef.value?.focus();
       } else if (dropdownRef.value) {
         dropdownRef.value.focus();

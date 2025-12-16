@@ -20,7 +20,7 @@ const emit = defineEmits<{
 }>();
 
 const { animationsDisabled } = useAnimationControl();
-const { isMobile } = useMobile();
+const { isViewportMobile } = useMobile();
 const { t } = useStrictI18n();
 
 const paneRef = ref<HTMLElement | null>(null);
@@ -51,7 +51,7 @@ function onKeydown(event: KeyboardEvent) {
 
 // Icon logic reactive to mobile state
 const iconClass = computed(() => {
-  if (isMobile.value) {
+  if (isViewportMobile.value) {
     return props.collapsed ? 'fa-list' : 'fa-xmark';
   }
   return props.collapsed ? 'fa-angles-right' : 'fa-angles-left';
@@ -61,16 +61,11 @@ const toggleLabel = computed(() => t(props.collapsed ? 'common.expandSidebar' : 
 </script>
 
 <template>
-  <!-- 
-    We add 'is-mobile' class to help CSS scoping if needed, 
-    though mostly handled by @media queries in global styles.
-  -->
   <div
     class="split-pane"
     :class="{
       'is-collapsed': collapsed,
       'animations-disabled': animationsDisabled,
-      'is-mobile': isMobile,
     }"
   >
     <div ref="paneRef" class="split-pane-panel split-pane-panel--side">

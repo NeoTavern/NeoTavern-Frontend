@@ -1,4 +1,6 @@
 @use 'sass:map';
+@use 'responsive' as *;
+@forward 'responsive';
 
 // =============================================================================
 // Layout & Positioning Mixins
@@ -137,20 +139,6 @@
     @media (min-width: $min-width) {
       @content;
     }
-  }
-}
-
-/// Hide element on mobile devices
-@mixin hide-mobile() {
-  @include breakpoint(sm) {
-    @content;
-  }
-}
-
-/// Hide element on desktop devices
-@mixin hide-desktop() {
-  @include breakpoint(xl) {
-    display: none;
   }
 }
 

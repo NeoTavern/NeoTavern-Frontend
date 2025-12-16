@@ -1,17 +1,28 @@
-import { onMounted, onUnmounted, ref } from 'vue';
-import { isViewportMobile } from '../utils/client';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useSettingsStore } from '../stores/settings.store';
+import { isDeviceMobile as clientIsDeviceMobile, isViewportMobile as clientIsViewportMobile } from '../utils/client';
 
 /**
  * A reactive composable to track if the viewport is mobile.
  * Updates automatically on window resize.
  */
 export function useMobile() {
-  const isMobile = ref(isViewportMobile());
+  const settingsStore = useSettingsStore();
+
+  const isDeviceMobile = ref(clientIsDeviceMobile());
+  const viewportMobileState = ref(clientIsViewportMobile());
+
+  const isViewportMobile = computed(() => {
+    if (settingsStore.settings.ui.forceMobileMode) {
+      return true;
+    }
+    return viewportMobileState.value;
+  });
 
   function handleResize() {
-    const newVal = isViewportMobile();
-    if (newVal !== isMobile.value) {
-      isMobile.value = newVal;
+    const newValue = clientIsViewportMobile();
+    if (viewportMobileState.value !== newValue) {
+      viewportMobileState.value = newValue;
     }
   }
 
@@ -25,5 +36,5 @@ export function useMobile() {
     window.removeEventListener('resize', handleResize);
   });
 
-  return { isMobile };
+  return { isViewportMobile, isDeviceMobile };
 }

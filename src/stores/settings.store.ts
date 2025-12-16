@@ -22,7 +22,7 @@ import { useUiStore } from './ui.store';
 type SettingsValue<P extends SettingsPath> = ValueForPath<Settings, P>;
 
 export const useSettingsStore = defineStore('settings', () => {
-  const { isMobile } = useMobile();
+  const { isDeviceMobile } = useMobile();
 
   const settings = ref<Settings>(createDefaultSettings());
   const settingsInitializing = ref(true);
@@ -55,7 +55,7 @@ export const useSettingsStore = defineStore('settings', () => {
       case SendOnEnterOptions.DISABLED:
         return false;
       case SendOnEnterOptions.AUTO:
-        return !isMobile.value;
+        return !isDeviceMobile.value;
       case SendOnEnterOptions.ENABLED:
         return true;
       default:

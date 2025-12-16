@@ -98,7 +98,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@include mobile-override() {
   /* Hide fullscreen toggle on mobile as it is always fullscreen */
   .chat-header-group.left {
     display: none;

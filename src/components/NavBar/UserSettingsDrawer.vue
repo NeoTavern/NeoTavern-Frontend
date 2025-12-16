@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { Checkbox, CollapsibleSection, FormItem, Input, RangeControl, Search, Select } from '../../components/UI';
+import { useMobile } from '../../composables/useMobile';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { GroupedSettingOption, SettingDefinition, SettingOption, Settings, SettingsPath } from '../../types';
@@ -11,12 +12,23 @@ const { t } = useStrictI18n();
 const settingsStore = useSettingsStore();
 const searchTerm = ref('');
 
+const { isDeviceMobile } = useMobile();
+
 const filteredDefinitions = computed(() => {
+  let deepCopy = JSON.parse(JSON.stringify(settingsStore.definitions)) as SettingDefinition[];
+  deepCopy.filter((def) => {
+    if (def.showOn === 'mobileDevice') {
+      return isDeviceMobile.value;
+    } else if (def.showOn === 'desktopDevice') {
+      return !isDeviceMobile.value;
+    }
+    return true;
+  });
   if (!searchTerm.value.trim()) {
-    return settingsStore.definitions;
+    return deepCopy;
   }
   const lowerCaseSearch = searchTerm.value.toLowerCase();
-  return settingsStore.definitions.filter(
+  return deepCopy.filter(
     (def) =>
       t(def.label).toLowerCase().includes(lowerCaseSearch) ||
       (def.description && t(def.description).toLowerCase().includes(lowerCaseSearch)) ||

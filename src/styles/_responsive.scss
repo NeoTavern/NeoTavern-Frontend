@@ -1,0 +1,82 @@
+@use 'sass:map';
+
+// =============================================================================
+// Responsive Logic & Breakpoints
+// =============================================================================
+
+@mixin breakpoint($breakpoint) {
+  $breakpoints: (
+    xs: 0,
+    sm: 576px,
+    md: 768px,
+    lg: 992px,
+    xl: 1200px,
+    xxl: 1400px,
+  );
+
+  $min-width: map.get($breakpoints, $breakpoint);
+
+  @if $min-width {
+    @media (min-width: $min-width) {
+      @content;
+    }
+  }
+}
+
+@mixin mobile-override() {
+  @media (max-width: 768px) {
+    @content;
+  }
+
+  body.force-mobile-layout {
+    @content;
+  }
+}
+
+@mixin mobile-variables() {
+  @media (max-width: 768px) {
+    :root {
+      @content;
+    }
+  }
+
+  body.force-mobile-layout {
+    @content;
+  }
+}
+
+@mixin desktop-override() {
+  @media (min-width: 769px) {
+    @content;
+  }
+
+  body:not(.force-mobile-layout) {
+    @content;
+  }
+}
+
+@mixin desktop-variables() {
+  @media (min-width: 769px) {
+    :root {
+      @content;
+    }
+  }
+
+  body:not(.force-mobile-layout) {
+    @content;
+  }
+}
+
+@mixin hide-mobile() {
+  @include mobile-override() {
+    display: none !important;
+  }
+}
+
+@mixin hide-desktop() {
+  @include breakpoint(xl) {
+    body:not(.force-mobile-layout) & {
+      display: none;
+    }
+  }
+}
