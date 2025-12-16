@@ -232,6 +232,12 @@ export function migrateLegacyUserSettings(
     allPrompts = collectPromptsFromLegacyPresets(userSettingsResponse.openai_settings);
   }
 
+  let defaultMigratedPrompts = defaultPrompts;
+  if (oai.preset_settings_openai) {
+    defaultMigratedPrompts =
+      neoSamplerPresets.find((p) => p.name === oai.preset_settings_openai)?.preset.prompts || defaultPrompts;
+  }
+
   const migrated: Settings = {
     ui: {
       background: {
@@ -350,7 +356,7 @@ export function migrateLegacyUserSettings(
         max_context_unlocked: oai.max_context_unlocked ?? defaultSamplerSettings.max_context_unlocked,
         max_tokens: oai.openai_max_tokens ?? defaultSamplerSettings.max_tokens,
         stream: oai.stream_openai ?? defaultSamplerSettings.stream,
-        prompts: defaultPrompts,
+        prompts: defaultMigratedPrompts,
         show_thoughts: oai.show_thoughts ?? defaultSamplerSettings.show_thoughts,
         seed: oai.seed ?? defaultSamplerSettings.seed,
         n: oai.n ?? defaultSamplerSettings.n,
