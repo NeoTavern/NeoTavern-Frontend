@@ -528,7 +528,8 @@
     "loadingButton": "Loading",
     "upload": "Upload",
     "image": "Image",
-    "info": "Info"
+    "info": "Info",
+    "general": "General"
   },
   "popup": {
     "cropAvatar": {

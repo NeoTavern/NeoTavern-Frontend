@@ -532,6 +532,7 @@ export interface MessageSchema {
     upload: string;
     image: string;
     info: string;
+    general: string;
   };
   popup: {
     cropAvatar: {

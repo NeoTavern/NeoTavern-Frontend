@@ -9,7 +9,7 @@ import type { ExtensionEventMap } from './events';
 import type { ApiChatMessage, ChatCompletionPayload, GenerationResponse, StreamedChunk } from './generation';
 import type { Persona, PersonaDescription } from './persona';
 import type { PopupShowOptions } from './popup';
-import type { ApiFormatter, SamplerSettings, Settings, SettingsPath } from './settings';
+import type { ApiFormatter, CodeMirrorTarget, SamplerSettings, Settings, SettingsPath } from './settings';
 import type { Path, ValueForPath } from './utils';
 import type { WorldInfoBook, WorldInfoEntry, WorldInfoHeader, WorldInfoSettings } from './world-info';
 
@@ -26,6 +26,13 @@ export interface LlmGenerationOptions {
   instructTemplateName?: string;
   signal?: AbortSignal;
   generationId?: string;
+}
+
+export interface TextareaToolDefinition {
+  id: string;
+  icon: string;
+  title: string;
+  onClick: (payload: { value: string; setValue: (val: string) => void }) => void;
 }
 
 export enum MountableComponent {
@@ -387,6 +394,7 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
     getActives: () => Readonly<Character[]>;
     getAll: () => readonly Character[];
     get: (avatar: string) => Readonly<Character> | null;
+    getEditing: () => Readonly<Character> | null;
     create: (character: Character, avatarImage?: File) => Promise<void>;
     delete: (avatar: string, deleteChats?: boolean) => Promise<void>;
     update: (avatar: string, data: Partial<Character>) => Promise<void>;
@@ -474,6 +482,14 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
      * @param id The ID of the sidebar to open.
      */
     openSidebar: (id: string) => void;
+
+    /**
+     * Registers a tool action for Textareas with specific identifiers.
+     * @param identifier The CodeMirrorTarget identifier (e.g. 'character.description').
+     * @param definition The tool definition including icon and callback.
+     * @returns A cleanup function to unregister the tool.
+     */
+    registerTextareaTool: (identifier: CodeMirrorTarget, definition: TextareaToolDefinition) => () => void;
 
     /**
      * Mounts a predefined system component to the DOM.

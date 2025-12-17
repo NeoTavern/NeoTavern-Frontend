@@ -14,7 +14,7 @@ const popupPromises = new Map<string, PopupPromise<any>>();
 export const usePopupStore = defineStore('popup', () => {
   const popups = ref<PopupState[]>([]);
 
-  function show<T = unknown>(options: PopupShowOptions): Promise<{ result: number; value: T }> {
+  function show<T = unknown>(options: PopupShowOptions): Promise<{ result: number; value: T; closePopup: () => void }> {
     const id = uuidv4();
     const newPopup: PopupState = {
       id,
@@ -28,8 +28,17 @@ export const usePopupStore = defineStore('popup', () => {
 
     popups.value.push(newPopup);
 
-    return new Promise((resolve, reject) => {
-      popupPromises.set(id, { resolve, reject });
+    const closePopup = () => cancel(id);
+
+    if (newPopup.component && newPopup.componentProps) {
+      newPopup.componentProps.closePopup = closePopup;
+    }
+
+    return new Promise((resolve) => {
+      popupPromises.set(id, {
+        resolve: (payload) => resolve({ ...payload, closePopup }),
+        reject: () => resolve({ result: POPUP_RESULT.CANCELLED, value: null as T, closePopup }),
+      });
     });
   }
 

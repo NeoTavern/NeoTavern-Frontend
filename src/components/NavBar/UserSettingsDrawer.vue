@@ -86,6 +86,7 @@ function formatOptions(options: (SettingOption | GroupedSettingOption)[]) {
 }
 </script>
 
+<!-- eslint-disable vue/no-deprecated-filter -->
 <template>
   <div class="user-settings-drawer">
     <SidebarHeader class="user-settings-drawer-header" :title="t('navbar.userSettings')" />
@@ -146,9 +147,8 @@ function formatOptions(options: (SettingOption | GroupedSettingOption)[]) {
 
                   <!-- Text/Number Input -->
                   <div v-if="setting.widget === 'text'">
-                    <!-- If we remove brackets, vue type checker thinks we are using vue filter. So I added bracket to bypass this. However prettier removig the brackets. So we need to find a solution. Maybe 2 different input blocks? -->
                     <Input
-                      :model-value="(getSettingValue(setting.id) as string | number)"
+                      :model-value="getSettingValue(setting.id) as string | number"
                       :type="setting.type === 'number' ? 'number' : 'text'"
                       :min="setting.min"
                       :max="setting.max"

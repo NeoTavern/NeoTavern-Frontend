@@ -35,8 +35,11 @@ import VanillaSidebar from '../components/Shared/VanillaSidebar.vue';
 import { macroService } from '../services/macro-service';
 import { PromptBuilder } from '../services/prompt-engine';
 import { WorldInfoProcessor } from '../services/world-info';
+import { useCharacterUiStore } from '../stores/character-ui.store';
 import { useComponentRegistryStore } from '../stores/component-registry.store';
 import { useLayoutStore } from '../stores/layout.store';
+import type { TextareaToolDefinition } from '../types/ExtensionAPI';
+import type { CodeMirrorTarget } from '../types/settings';
 import { getCharactersForContext } from './chat';
 
 // --- Event Emitter ---
@@ -421,6 +424,7 @@ const baseExtensionAPI: ExtensionAPI = {
       const char = useCharacterStore().characters.find((c) => c.avatar === avatar);
       return char ? deepClone(char) : null;
     },
+    getEditing: () => deepClone(useCharacterUiStore().editFormCharacter),
     create: async (character, avatarImage) => {
       const store = useCharacterStore();
       if (!avatarImage) {
@@ -526,6 +530,10 @@ const baseExtensionAPI: ExtensionAPI = {
       useComponentRegistryStore().unregisterNavBarItem(id);
     },
     openSidebar: (id) => useLayoutStore().toggleRightSidebar(id),
+    registerTextareaTool: (identifier, definition) => {
+      useComponentRegistryStore().registerTextareaTool(identifier, definition);
+      return () => useComponentRegistryStore().unregisterTextareaTool(identifier, definition.id);
+    },
     mountComponent: async (container, componentName, props) => {
       if (!container) return;
       const componentLoader = mountableComponents[componentName];
@@ -768,6 +776,11 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
         const namespacedId = `${extensionId}.${id}`;
         if (componentRegistryStore.rightSidebarRegistry.has(namespacedId)) layoutStore.toggleRightSidebar(namespacedId);
       }
+    },
+    registerTextareaTool: (identifier: CodeMirrorTarget, definition: TextareaToolDefinition) => {
+      const toolId = definition.id.startsWith(extensionId) ? definition.id : `${extensionId}.${definition.id}`;
+      useComponentRegistryStore().registerTextareaTool(identifier, { ...definition, id: toolId });
+      return () => useComponentRegistryStore().unregisterTextareaTool(identifier, toolId);
     },
   };
 

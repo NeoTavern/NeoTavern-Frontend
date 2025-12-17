@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { computed, markRaw, ref } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
+import { useComponentRegistryStore } from '../../stores/component-registry.store';
 import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { POPUP_TYPE, type CodeMirrorTarget } from '../../types';
@@ -40,6 +41,7 @@ const emit = defineEmits(['update:modelValue']);
 
 const popupStore = usePopupStore();
 const settingsStore = useSettingsStore();
+const registryStore = useComponentRegistryStore();
 
 const { t } = useStrictI18n();
 
@@ -56,12 +58,28 @@ const isCodeMirrorActive = computed(() => {
   return false;
 });
 
+const activeTools = computed(() => {
+  if (!props.identifier) return [];
+  return registryStore.textareaToolRegistry.get(props.identifier) || [];
+});
+
+const showHeader = computed(() => {
+  return !!props.label || !!props.allowMaximize || activeTools.value.length > 0;
+});
+
 function onInput(event: Event) {
   emit('update:modelValue', (event.target as HTMLTextAreaElement).value);
 }
 
 function onCodeMirrorUpdate(value: string) {
   emit('update:modelValue', value);
+}
+
+function handleToolClick(tool: { onClick: (payload: { value: string; setValue: (val: string) => void }) => void }) {
+  tool.onClick({
+    value: props.modelValue,
+    setValue: (val: string) => emit('update:modelValue', val),
+  });
 }
 
 defineExpose({
@@ -103,17 +121,29 @@ const cmMinHeight = computed(() => {
 
 <template>
   <div class="textarea-wrapper">
-    <div v-if="label || $slots.header || props.allowMaximize" class="textarea-header">
+    <div v-if="showHeader || $slots.header" class="textarea-header">
       <label v-if="label" :for="textareaId">{{ label }}</label>
-      <button
-        v-if="props.allowMaximize"
-        class="maximize-icon-btn"
-        :aria-label="t('common.expandedEditor')"
-        :title="t('common.expandedEditor')"
-        @click="maximizeEditor"
-      >
-        <i class="fa-solid fa-maximize" aria-hidden="true"></i>
-      </button>
+      <div class="textarea-header-tools">
+        <button
+          v-for="tool in activeTools"
+          :key="tool.id"
+          class="maximize-icon-btn tool-btn"
+          :title="tool.title"
+          @click="handleToolClick(tool)"
+        >
+          <i :class="tool.icon"></i>
+        </button>
+
+        <button
+          v-if="props.allowMaximize"
+          class="maximize-icon-btn"
+          :aria-label="t('common.expandedEditor')"
+          :title="t('common.expandedEditor')"
+          @click="maximizeEditor"
+        >
+          <i class="fa-solid fa-maximize" aria-hidden="true"></i>
+        </button>
+      </div>
     </div>
 
     <CodeMirrorEditor
@@ -145,3 +175,28 @@ const cmMinHeight = computed(() => {
     <slot name="footer" />
   </div>
 </template>
+
+<style scoped>
+/* TODO: Make sure this is sync with _ui-components.scss */
+.textarea-header-tools {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.tool-btn {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.tool-btn:hover {
+  opacity: 1;
+}
+
+.textarea-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+</style>
