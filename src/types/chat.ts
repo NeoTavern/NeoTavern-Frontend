@@ -28,6 +28,17 @@ export interface ChatMetadata {
     };
     members: Record<string, GroupMemberStatus>;
   };
+  tree?: ChatTree;
+}
+
+export interface ChatTree {
+    branch_id?: number;
+    branch?: ChatTreeMessage[]
+}
+
+export interface ChatTreeMessage extends Omit<ChatMessage, 'swipe_id' | 'swipes' | 'swipe_info'>{
+    branch_id?: number;
+    branch?: ChatTreeMessage[];
 }
 
 export interface SwipeInfo {
@@ -68,6 +79,7 @@ export interface ChatMessage {
 
 export type ChatHeader = {
   chat_metadata: ChatMetadata;
+  tree?: ChatTree;
 };
 
 export type FullChat = [ChatHeader, ...ChatMessage[]];
@@ -82,6 +94,7 @@ export type ChatInfo = {
    */
   file_name: string;
   file_size: string; // human-readable size like "10KB"
+  tree_size: string;
   chat_items: number;
   mes: string;
   last_mes: string; // ISO timestamp
