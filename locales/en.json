@@ -529,7 +529,8 @@
     "upload": "Upload",
     "image": "Image",
     "info": "Info",
-    "general": "General"
+    "general": "General",
+    "default": "Default"
   },
   "popup": {
     "cropAvatar": {

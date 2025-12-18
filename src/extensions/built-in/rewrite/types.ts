@@ -1,8 +1,16 @@
+export interface RewriteTemplateArg {
+  key: string;
+  label: string;
+  type: 'boolean' | 'number' | 'string';
+  defaultValue: boolean | number | string;
+}
+
 export interface RewriteTemplate {
   id: string;
   name: string;
   prompt: string; // The instruction
   template: string; // The macro template
+  args?: RewriteTemplateArg[];
 }
 
 export interface RewriteTemplateOverride {
@@ -10,6 +18,7 @@ export interface RewriteTemplateOverride {
   prompt?: string;
   lastUsedXMessages?: number; // How many context messages to include
   escapeInputMacros?: boolean;
+  args?: Record<string, boolean | number | string>;
 }
 
 export interface RewriteSettings {
@@ -114,10 +123,38 @@ Response:
     id: 'generic',
     name: 'Generic Instruction',
     prompt: 'Rewrite the text following these instructions: ...',
+    args: [
+      {
+        key: 'includeChar',
+        label: 'Include Active Character',
+        type: 'boolean',
+        defaultValue: true,
+      },
+      {
+        key: 'includePersona',
+        label: 'Include Active Persona',
+        type: 'boolean',
+        defaultValue: true,
+      },
+    ],
     template: `You are a helpful writing assistant.
 
+{{#if includeChar}}
+[Character Context]
+{{#if char}}Name: {{char}}{{/if}}
+{{#if description}}Description: {{description}}{{/if}}
+{{#if personality}}Personality: {{personality}}{{/if}}
+{{#if scenario}}Scenario: {{scenario}}{{/if}}
+{{/if}}
+
+{{#if includePersona}}
+[User Context]
+{{#if user}}Name: {{user}}{{/if}}
+{{#if persona}}Description: {{persona}}{{/if}}
+{{/if}}
+
 {{#if contextMessages}}
-[Context Info]
+[Chat Context]
 {{contextMessages}}
 {{/if}}
 

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector, SplitPane } from '../../../components/common';
-import { Button, FormItem, Input, Textarea } from '../../../components/UI';
+import { Button, Checkbox, FormItem, Input, Select, Textarea } from '../../../components/UI';
 import { useStrictI18n } from '../../../composables/useStrictI18n';
 import { POPUP_RESULT, POPUP_TYPE, type ExtensionAPI } from '../../../types';
 import { uuidv4 } from '../../../utils/commons';
-import { DEFAULT_TEMPLATES, type RewriteSettings, type RewriteTemplate } from './types';
+import { DEFAULT_TEMPLATES, type RewriteSettings, type RewriteTemplate, type RewriteTemplateArg } from './types';
 
 // TODO: i18n
 
@@ -59,6 +59,7 @@ function createTemplate() {
     name: 'New Template',
     prompt: 'Rewrite the text...',
     template: DEFAULT_TEMPLATES[0].template,
+    args: [],
   };
   settings.value.templates.push(newTemplate);
   editingTemplateId.value = newTemplate.id;
@@ -72,6 +73,7 @@ function duplicateTemplate(id: string) {
     ...original,
     id: uuidv4(),
     name: `${original.name} (Copy)`,
+    args: original.args ? JSON.parse(JSON.stringify(original.args)) : [],
   };
   settings.value.templates.push(newTemplate);
   editingTemplateId.value = newTemplate.id;
@@ -117,7 +119,7 @@ async function resetTemplates() {
   });
 
   if (result === POPUP_RESULT.AFFIRMATIVE) {
-    settings.value.templates = [...DEFAULT_TEMPLATES];
+    settings.value.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
     editingTemplateId.value = null;
   }
 }
@@ -141,6 +143,36 @@ async function resetDefaultField(id: string, field: 'prompt' | 'template') {
       current[field] = def[field];
     }
   }
+}
+
+// Argument Management
+const argTypes = [
+  { label: 'Boolean', value: 'boolean' },
+  { label: 'String', value: 'string' },
+  { label: 'Number', value: 'number' },
+];
+
+function addArg() {
+  if (!activeTemplate.value) return;
+  if (!activeTemplate.value.args) activeTemplate.value.args = [];
+  activeTemplate.value.args.push({
+    key: 'newArg',
+    label: 'New Argument',
+    type: 'boolean',
+    defaultValue: true,
+  });
+}
+
+function removeArg(index: number) {
+  if (!activeTemplate.value || !activeTemplate.value.args) return;
+  activeTemplate.value.args.splice(index, 1);
+}
+
+// Fix default value type when type changes
+function onArgTypeChange(arg: RewriteTemplateArg) {
+  if (arg.type === 'boolean') arg.defaultValue = false;
+  else if (arg.type === 'number') arg.defaultValue = 0;
+  else arg.defaultValue = '';
 }
 </script>
 
@@ -206,6 +238,40 @@ async function resetDefaultField(id: string, field: 'prompt' | 'template') {
                   />
                 </div>
               </FormItem>
+
+              <FormItem label="Custom Flags / Arguments">
+                <div class="args-list">
+                  <div v-if="!activeTemplate.args?.length" class="empty-args">No custom arguments defined.</div>
+                  <div v-for="(arg, idx) in activeTemplate.args" :key="idx" class="arg-item">
+                    <div class="arg-row">
+                      <Input v-model="arg.key" placeholder="Key (e.g. includeChar)" class="arg-input-sm" />
+                      <Input v-model="arg.label" placeholder="Label" class="arg-input-md" />
+                      <Select
+                        v-model="arg.type"
+                        :options="argTypes"
+                        class="arg-input-sm"
+                        @update:model-value="onArgTypeChange(arg)"
+                      />
+                      <div class="arg-default">
+                        <Checkbox
+                          v-if="arg.type === 'boolean'"
+                          v-model="arg.defaultValue as boolean"
+                          :label="t('common.default')"
+                        />
+                        <Input
+                          v-else
+                          v-model="arg.defaultValue as string | number"
+                          :type="arg.type === 'number' ? 'number' : 'text'"
+                          placeholder="Default"
+                        />
+                      </div>
+                      <Button icon="fa-trash" variant="ghost" class="delete-arg-btn" @click="removeArg(idx)" />
+                    </div>
+                  </div>
+                  <Button icon="fa-plus" variant="ghost" class="add-arg-btn" @click="addArg">Add Argument</Button>
+                </div>
+              </FormItem>
+
               <FormItem label="Template Macro">
                 <div class="textarea-container">
                   <Textarea v-model="activeTemplate.template" :rows="10" />
@@ -223,7 +289,14 @@ async function resetDefaultField(id: string, field: 'prompt' | 'template') {
                   >, <code>{{ '{' + '{prompt}' + '}' }}</code
                   >, <code>{{ '{' + '{contextMessages}' + '}' }}</code
                   >, <code>{{ '{' + '{fieldName}' + '}' }}</code
-                  >.
+                  >.<br />
+                  Custom Args:
+                  <template v-if="activeTemplate.args?.length">
+                    <code v-for="arg in activeTemplate.args" :key="arg.key"
+                      >{{ '{' + '{' + arg.key + '}' + '}' }}
+                    </code>
+                  </template>
+                  <template v-else>None</template>
                   <br />
                   Standard macros (e.g. <code>{{ '{' + '{char}' + '}' }}</code
                   >, <code>{{ '{' + '{user}' + '}' }}</code
@@ -261,7 +334,7 @@ async function resetDefaultField(id: string, field: 'prompt' | 'template') {
 
 .templates-layout {
   border: 1px solid var(--theme-border-color);
-  height: 500px;
+  height: 600px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -368,5 +441,63 @@ async function resetDefaultField(id: string, field: 'prompt' | 'template') {
   align-items: center;
   justify-content: center;
   opacity: 0.5;
+}
+
+/* Args Editor */
+.args-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background-color: var(--black-20a);
+  border-radius: var(--base-border-radius);
+}
+
+.arg-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--theme-border-color);
+}
+.arg-item:last-child {
+  border-bottom: none;
+}
+
+.arg-row {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.arg-input-sm {
+  width: 120px;
+  flex-shrink: 0;
+}
+.arg-input-md {
+  flex: 1;
+}
+
+.arg-default {
+  width: 100px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.delete-arg-btn {
+  color: var(--color-accent-red);
+}
+
+.add-arg-btn {
+  align-self: flex-start;
+  font-size: 0.9em;
+}
+
+.empty-args {
+  font-size: 0.9em;
+  opacity: 0.6;
+  font-style: italic;
+  padding: 5px 0;
 }
 </style>

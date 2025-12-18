@@ -5,7 +5,7 @@ import { ConnectionProfileSelector } from '../../../components/common';
 import { Button, Checkbox, CollapsibleSection, FormItem, Input, Select, Textarea } from '../../../components/UI';
 import type { Character, ExtensionAPI, Persona } from '../../../types';
 import { RewriteService } from './RewriteService';
-import { type RewriteSettings, type RewriteTemplateOverride, DEFAULT_TEMPLATES } from './types';
+import { DEFAULT_TEMPLATES, type RewriteSettings, type RewriteTemplateOverride } from './types';
 
 // TODO: i18n
 
@@ -36,6 +36,7 @@ const selectedProfile = ref<string>('');
 const promptOverride = ref<string>('');
 const contextMessageCount = ref<number>(0);
 const escapeMacros = ref<boolean>(true);
+const argOverrides = ref<Record<string, boolean | number | string>>({});
 
 // Generation State
 const generatedText = ref<string>('');
@@ -92,6 +93,20 @@ function loadTemplateOverrides() {
   promptOverride.value = overrides.prompt ?? tpl?.prompt ?? '';
   contextMessageCount.value = overrides.lastUsedXMessages ?? 0;
   escapeMacros.value = overrides.escapeInputMacros ?? true;
+
+  // Load args
+  const args: Record<string, boolean | number | string> = {};
+  if (tpl?.args) {
+    tpl.args.forEach((arg) => {
+      // Priority: Override > Default
+      if (overrides.args && overrides.args[arg.key] !== undefined) {
+        args[arg.key] = overrides.args[arg.key];
+      } else {
+        args[arg.key] = arg.defaultValue;
+      }
+    });
+  }
+  argOverrides.value = args;
 }
 
 function resetPrompt() {
@@ -111,6 +126,7 @@ function saveState() {
     prompt: promptOverride.value,
     lastUsedXMessages: Number(contextMessageCount.value),
     escapeInputMacros: escapeMacros.value,
+    args: argOverrides.value,
   };
 
   settings.value.templateOverrides[tplId] = overrides;
@@ -255,6 +271,7 @@ async function handleGenerate() {
         contextMessages: contextMessagesStr,
         fieldName: props.identifier,
       },
+      argOverrides.value,
     );
 
     if (typeof response === 'function') {
@@ -307,6 +324,19 @@ function handleCancel() {
     </div>
 
     <CollapsibleSection title="Context & Prompt" :is-open="true">
+      <!-- Dynamic Arguments Section -->
+      <div v-if="currentTemplate?.args && currentTemplate.args.length > 0" class="dynamic-args-grid">
+        <div v-for="arg in currentTemplate.args" :key="arg.key" class="dynamic-arg-item">
+          <Checkbox v-if="arg.type === 'boolean'" v-model="argOverrides[arg.key] as boolean" :label="arg.label" />
+          <FormItem v-else :label="arg.label">
+            <Input
+              v-model="argOverrides[arg.key] as string | number"
+              :type="arg.type === 'number' ? 'number' : 'text'"
+            />
+          </FormItem>
+        </div>
+      </div>
+
       <div class="context-controls">
         <div class="escape-control">
           <Checkbox
@@ -385,6 +415,15 @@ function handleCancel() {
   gap: 15px;
   align-items: center;
   margin-bottom: 10px;
+}
+
+.dynamic-args-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px dashed var(--theme-border-color);
 }
 
 .flex-spacer {

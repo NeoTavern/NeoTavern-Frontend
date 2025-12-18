@@ -35,6 +35,7 @@ export class RewriteService {
     customPromptOverride?: string,
     contextData?: { activeCharacter?: Character; characters?: Character[]; persona?: Persona },
     additionalMacros?: Record<string, unknown>,
+    argOverrides?: Record<string, boolean | number | string>,
   ): Promise<GenerationResponse | (() => AsyncGenerator<StreamedChunk>)> {
     const settings = this.getSettings();
     const template = settings.templates.find((t) => t.id === templateId);
@@ -43,10 +44,20 @@ export class RewriteService {
     const promptText = customPromptOverride || template?.prompt || '';
     const macroTemplate = template?.template || '{{input}}';
 
+    // Resolve custom args
+    const args: Record<string, unknown> = {};
+    if (template?.args) {
+      for (const arg of template.args) {
+        // Use override if present, else default, else undefined (though types say mandatory default)
+        args[arg.key] = argOverrides?.[arg.key] ?? arg.defaultValue;
+      }
+    }
+
     // Prepare macros
     const macros = {
       input: input,
       prompt: promptText,
+      ...args,
       ...additionalMacros, // e.g. contextMessages
     };
 
