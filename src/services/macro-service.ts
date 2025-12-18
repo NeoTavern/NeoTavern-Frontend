@@ -12,6 +12,7 @@ export class MacroService {
   private static instance: MacroService;
   private readonly MAX_RECURSION = 10;
   private readonly COMMENT_REGEX = /\{\{\/\/[\s\S]*?\}\}/g;
+  private readonly RAW_BLOCK_REGEX = /\{\{#raw\}\}([\s\S]*?)\{\{\/raw\}\}/g;
 
   private constructor() {
     this.registerGlobalHelpers();
@@ -26,6 +27,9 @@ export class MacroService {
 
   private registerGlobalHelpers() {
     Handlebars.registerHelper('time', () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    Handlebars.registerHelper('raw', function (options) {
+      return options.fn();
+    });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,33 +56,44 @@ export class MacroService {
   /**
    * Processes a string, replacing macros with context data.
    * Recursively processes the result up to MAX_RECURSION times to handle nested macros.
-   * Also strips comments in the format {{// ... }}
+   * Also strips comments in the format {{// ... }} and preserves raw blocks {{#raw}}...{{/raw}}
    */
   public process(text: string, contextData: MacroContextData): string {
     if (!text) return '';
 
     let currentText = text;
     let depth = 0;
+    const allRawBlocks: string[] = [];
 
-    while (currentText.includes('{{') && depth < this.MAX_RECURSION) {
-      // Remove comments first
-      const textWithoutComments = currentText.replace(this.COMMENT_REGEX, '');
+    while (depth < this.MAX_RECURSION) {
+      // Remove comments
+      currentText = currentText.replace(this.COMMENT_REGEX, '');
 
-      // If no macros left (Handlebars uses {{), we are done.
-      // But we must return the text without comments.
-      if (!textWithoutComments.includes('{{')) {
-        currentText = textWithoutComments;
+      // Extract any new raw blocks (using a global counter to avoid collisions)
+      const startIndex = allRawBlocks.length;
+      currentText = currentText.replace(this.RAW_BLOCK_REGEX, (_match, content) => {
+        const placeholder = `___RAW_BLOCK_${allRawBlocks.length}___`;
+        allRawBlocks.push(content);
+        return placeholder;
+      });
+
+      // If no new raw blocks were found and no macros left, we're done
+      if (allRawBlocks.length === startIndex && !currentText.includes('{{')) {
+        break;
+      }
+
+      // If no macros left, we're done
+      if (!currentText.includes('{{')) {
         break;
       }
 
       try {
-        const template = Handlebars.compile(textWithoutComments, { noEscape: true });
+        const template = Handlebars.compile(currentText, { noEscape: true });
         const context = this.buildContext(contextData);
         const newText = template(context);
 
-        // If text didn't change (macros resolved or unresolvable)
-        if (newText === textWithoutComments) {
-          currentText = newText;
+        // If text didn't change, we are done
+        if (newText === currentText) {
           break;
         }
 
@@ -86,14 +101,20 @@ export class MacroService {
         depth++;
       } catch (e) {
         console.warn('MacroService: Failed to process template:', e);
-        // If compilation fails, return the text with comments removed
-        currentText = textWithoutComments;
         break;
       }
     }
 
-    // Final pass to ensure no comments are left (e.g. if loop exited due to max recursion)
-    return currentText.replace(this.COMMENT_REGEX, '');
+    // Finally, restore all raw blocks
+    return this.restoreRawBlocks(currentText, allRawBlocks);
+  }
+
+  private restoreRawBlocks(text: string, rawBlocks: string[]): string {
+    let result = text;
+    rawBlocks.forEach((content, index) => {
+      result = result.replace(`___RAW_BLOCK_${index}___`, content);
+    });
+    return result;
   }
 }
 

@@ -9,6 +9,7 @@ export interface RewriteTemplateOverride {
   lastUsedProfile?: string;
   prompt?: string;
   lastUsedXMessages?: number; // How many context messages to include
+  escapeInputMacros?: boolean;
 }
 
 export interface RewriteSettings {

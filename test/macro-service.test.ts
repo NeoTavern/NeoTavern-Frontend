@@ -135,4 +135,58 @@ describe('MacroService', () => {
       expect(result).toBe('Alice says hello');
     });
   });
+
+  describe('Raw Blocks', () => {
+    test('preserves macros inside raw blocks', () => {
+      const template = '{{#raw}}{{char}} and {{user}}{{/raw}}';
+      const result = macroService.process(template, context);
+      expect(result).toBe('{{char}} and {{user}}');
+    });
+
+    test('processes macros outside raw blocks', () => {
+      const template = '{{char}} says: {{#raw}}Hello {{user}}{{/raw}}';
+      const result = macroService.process(template, context);
+      expect(result).toBe('Alice says: Hello {{user}}');
+    });
+
+    test('handles multiple raw blocks', () => {
+      const template = '{{#raw}}{{char}}{{/raw}} and {{user}} with {{#raw}}{{scenario}}{{/raw}}';
+      const result = macroService.process(template, context);
+      expect(result).toBe('{{char}} and Bob with {{scenario}}');
+    });
+
+    test('preserves raw blocks through recursive processing', () => {
+      const contextWithInput: MacroContextData = {
+        ...context,
+        additionalMacros: { input: '{{#raw}}{{char}}{{/raw}}' },
+      };
+      const template = 'Text: {{input}}';
+      const result = macroService.process(template, contextWithInput);
+      expect(result).toBe('Text: {{char}}');
+    });
+
+    test('handles nested content in raw blocks', () => {
+      const template = '{{#raw}}Write as {{char}} in third-person{{/raw}}';
+      const result = macroService.process(template, context);
+      expect(result).toBe('Write as {{char}} in third-person');
+    });
+
+    test('raw blocks work with comments', () => {
+      const template = '{{// comment }}{{#raw}}{{char}}{{/raw}} is cool';
+      const result = macroService.process(template, context);
+      expect(result).toBe('{{char}} is cool');
+    });
+
+    test('empty raw blocks', () => {
+      const template = '{{#raw}}{{/raw}}text';
+      const result = macroService.process(template, context);
+      expect(result).toBe('text');
+    });
+
+    test('raw blocks with whitespace', () => {
+      const template = '{{#raw}}  {{char}}  {{/raw}}';
+      const result = macroService.process(template, context);
+      expect(result).toBe('  {{char}}  ');
+    });
+  });
 });

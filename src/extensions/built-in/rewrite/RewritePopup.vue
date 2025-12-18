@@ -2,7 +2,7 @@
 import * as Diff from 'diff';
 import { computed, onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
-import { Button, CollapsibleSection, FormItem, Input, Select, Textarea } from '../../../components/UI';
+import { Button, Checkbox, CollapsibleSection, FormItem, Input, Select, Textarea } from '../../../components/UI';
 import type { Character, ExtensionAPI, Persona } from '../../../types';
 import { RewriteService } from './RewriteService';
 import { type RewriteSettings, type RewriteTemplateOverride, DEFAULT_TEMPLATES } from './types';
@@ -35,6 +35,7 @@ const selectedTemplateId = ref<string>('');
 const selectedProfile = ref<string>('');
 const promptOverride = ref<string>('');
 const contextMessageCount = ref<number>(0);
+const escapeMacros = ref<boolean>(true);
 
 // Generation State
 const generatedText = ref<string>('');
@@ -90,6 +91,7 @@ function loadTemplateOverrides() {
 
   promptOverride.value = overrides.prompt ?? tpl?.prompt ?? '';
   contextMessageCount.value = overrides.lastUsedXMessages ?? 0;
+  escapeMacros.value = overrides.escapeInputMacros ?? true;
 }
 
 function resetPrompt() {
@@ -108,6 +110,7 @@ function saveState() {
     lastUsedProfile: selectedProfile.value,
     prompt: promptOverride.value,
     lastUsedXMessages: Number(contextMessageCount.value),
+    escapeInputMacros: escapeMacros.value,
   };
 
   settings.value.templateOverrides[tplId] = overrides;
@@ -237,8 +240,13 @@ async function handleGenerate() {
     const contextData = getContextData();
     const contextMessagesStr = getContextMessagesString();
 
+    let inputToProcess = props.originalText;
+    if (escapeMacros.value) {
+      inputToProcess = `{{#raw}}${props.originalText}{{/raw}}`;
+    }
+
     const response = await service.generateRewrite(
-      props.originalText,
+      inputToProcess,
       selectedTemplateId.value,
       selectedProfile.value,
       promptOverride.value,
@@ -300,6 +308,13 @@ function handleCancel() {
 
     <CollapsibleSection title="Context & Prompt" :is-open="true">
       <div class="context-controls">
+        <div class="escape-control">
+          <Checkbox
+            v-model="escapeMacros"
+            label="Escape Macros"
+            title="Prevents {{macros}} in input text from being processed"
+          />
+        </div>
         <div class="flex-spacer"></div>
         <div class="msg-count-control">
           <span class="label">Context Messages:</span>
@@ -381,6 +396,11 @@ function handleCancel() {
   align-items: center;
   gap: 8px;
   font-size: 0.9em;
+}
+
+.escape-control {
+  display: flex;
+  align-items: center;
 }
 
 .input-with-reset {
