@@ -1190,6 +1190,27 @@ export interface MessageSchema {
       branchName: string;
       loadChatFailed: string;
     };
+    undo: {
+      discardLabel: string;
+      discardTitle: string;
+      redoLabel: string;
+      redoTitle: string;
+      saveLabel: string;
+      saveTitle: string;
+      settings: {
+        chatLengthWarning: string;
+        enableCtrlZ: string;
+        maxChatLength: string;
+        maxUndoSnapshots: string;
+        showSaveButtons: string;
+        showToasts: string;
+        showUndoButtons: string;
+        snapshotEvents: string;
+        snapshotEventsDescription: string;
+      };
+      undoLabel: string;
+      undoTitle: string;
+    };
   };
   persona: {
     createFromCharacter: {
