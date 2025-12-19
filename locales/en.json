@@ -1,162 +1,389 @@
 {
-  "aiConfig": {
-    "claude": {
-      "assistantPrefill": {
-        "description": "Text to pre-fill the assistant's response with. Usually `{'{{char}}'}:`",
-        "label": "Assistant Prefill"
+  "navbar": {
+    "aiConfig": "AI Configuration",
+    "chat": "Chat",
+    "worldInfo": "World Info",
+    "userSettings": "User Settings",
+    "backgrounds": "Backgrounds",
+    "extensions": "Extensions",
+    "personaManagement": "Persona Management",
+    "characterManagement": "Character Management",
+    "recentChats": "Recent Chats"
+  },
+  "formatting": {
+    "title": "AI Response Formatting",
+    "description": "Text completion."
+  },
+  "chatManagement": {
+    "newChat": "New Chat",
+    "createPrompt": "Enter a name for the new chat:",
+    "renamePrompt": "Enter the new name for this chat:",
+    "deleteConfirmTitle": "Delete Chat",
+    "deleteConfirmContent": "Are you sure you want to delete the chat file \"{chatFile}\"? This action cannot be undone.",
+    "noRecentChats": "No recent chats found.",
+    "noChatsFound": "No chats found.",
+    "scenarioOverride": "Scenario Override",
+    "scenarioOverridePlaceholder": "Override the scenario for this chat...",
+    "connectionProfile": "Connection Profile",
+    "deleteSelectedConfirmContent": "Are you sure you want to delete {count} selected chats?",
+    "chatLorebooks": "Assigned Lorebooks",
+    "selectLorebooks": "Select lorebooks...",
+    "actions": {
+      "rename": "Rename Chat",
+      "export": "Export Chat",
+      "import": "Import Chats",
+      "delete": "Delete Chat"
+    },
+    "errors": {
+      "create": "Failed to create new chat.",
+      "rename": "Failed to rename chat.",
+      "export": "Failed to export chat.",
+      "noActiveChat": "No active chat selected to export.",
+      "noMessagesToExport": "Cannot export empty chat.",
+      "delete": "Failed to delete chat."
+    },
+    "tabs": {
+      "chats": "Chats",
+      "group": "Group",
+      "config": "Configuration"
+    },
+    "import": {
+      "success": "{count} chat(s) imported successfully",
+      "error": "Failed to import chats"
+    }
+  },
+  "group": {
+    "peek": "Peek Character",
+    "forceTalk": "Force Talk",
+    "mute": "Mute/Unmute",
+    "addMember": "Add Member",
+    "replyStrategy": "Reply Strategy",
+    "members": "Members",
+    "configuration": "Configuration",
+    "queue": "Generation Queue",
+    "clearQueue": "Clear Queue",
+    "strategies": {
+      "manual": "Manual",
+      "natural": "Natural Order",
+      "list": "List Order",
+      "pooled": "Pooled Order"
+    },
+    "handlingMode": "Context Handling Mode",
+    "modes": {
+      "swap": "Swap Character Cards",
+      "joinExclude": "Join (Exclude Muted)",
+      "joinInclude": "Join (Include Muted)"
+    },
+    "allowSelfResponses": "Allow Self Responses",
+    "autoMode": "Auto Mode",
+    "autoModeHint": "Automatically generate responses every X seconds. Set to 0 to disable."
+  },
+  "personaManagement": {
+    "title": "Persona Management",
+    "export": "Export",
+    "import": "Import",
+    "create": "Create",
+    "activated": "Persona {name} activated.",
+    "noDescription": "[No description]",
+    "currentPersona": "Current Persona",
+    "description": {
+      "label": "Persona Description",
+      "placeholder": "Example:\n[{'{{user}}'} is a 28-year-old Romanian cat girl.]"
+    },
+    "connections": {
+      "title": "Connections",
+      "default": "Default",
+      "character": "Character",
+      "chat": "Chat",
+      "linkedCharacters": "Linked Characters"
+    },
+    "default": {
+      "tooltip": "Default Persona"
+    },
+    "globalSettings": {
+      "title": "Global Settings",
+      "showNotifications": "Show notifications on switching personas"
+    },
+    "actions": {
+      "rename": "Rename",
+      "syncName": "Sync Name to Chat",
+      "changeImage": "Change Image",
+      "duplicate": "Duplicate",
+      "delete": "Delete"
+    },
+    "rename": {
+      "title": "Rename Persona",
+      "prompt": "Enter the new name for this persona:"
+    },
+    "delete": {
+      "confirmTitle": "Delete Persona",
+      "confirmMessage": "Are you sure you want to delete the persona \"{name}\"? All associated information will be lost.",
+      "error": "Failed to delete persona."
+    },
+    "duplicate": {
+      "error": "Failed to duplicate persona."
+    },
+    "lorebooks": {
+      "label": "Lorebooks"
+    },
+    "errors": {
+      "invalidFileFormat": "Invalid file format. Expected an array of personas.",
+      "importFailed": "Failed to import personas. Please check the file format."
+    }
+  },
+  "worldInfo": {
+    "activeWorlds": "Active World(s) for all chats",
+    "activeWorldsHint": "These lorebooks will be active in all chats.",
+    "globalSettings": "Global Settings",
+    "activationSettings": "Activation Settings",
+    "scanDepth": "Scan Depth",
+    "contextPercent": "Context %",
+    "budgetCap": "Budget Cap",
+    "budgetCapHint": "(0 = disabled)",
+    "minActivations": "Min. Activations",
+    "minActivationsHint": "Minimum number of entries to activate (if possible) regardless of scan depth",
+    "minActivationsDepthMax": "Min. Activations Max Depth",
+    "minActivationsDepthMaxHint": "Maximum scan depth to search for minimum activations",
+    "maxRecursionSteps": "Max Recursion Steps",
+    "maxRecursionStepsHint": "Maximum number of recursion loops to prevent infinite loops",
+    "includeNames": "Include Names",
+    "includeNamesHint": "Include names with each message into the context for scanning",
+    "recursiveScan": "Recursive Scan",
+    "recursiveScanHint": "Entries can activate other entries by mentioning their keywords",
+    "caseSensitive": "Case Sensitive",
+    "caseSensitiveHint": "Lookup for the entry keys in the context will respect the case",
+    "matchWholeWords": "Match Whole Words",
+    "matchWholeWordsHint": "If the entry key consists of only one word, it would not be matched as part of other words",
+    "useGroupScoring": "Use Group Scoring",
+    "useGroupScoringHint": "Only the entries with the most number of key matches will be selected for Inclusion Group filtering",
+    "alertOnOverflow": "Alert On Overflow",
+    "alertOnOverflowHint": "Alert if your world info is greater than the allocated budget.",
+    "newWorld": "New Lorebook",
+    "import": "Import Lorebook",
+    "export": "Export Lorebook",
+    "rename": "Rename Lorebook",
+    "duplicate": "Duplicate Lorebook",
+    "newEntryInBook": "New Entry in {bookName}",
+    "deleteBook": "Delete Lorebook '{bookName}'",
+    "refresh": "Refresh",
+    "searchPlaceholder": "Search Lorebooks...",
+    "importSuccess": "Successfully imported embedded lorebook: {name}",
+    "totalActiveTokens": "Total Active Tokens",
+    "sorting": {
+      "title": "Sort entries by",
+      "titleAsc": "Title A-Z",
+      "titleDesc": "Title Z-A",
+      "orderAsc": "Order ↗",
+      "uidAsc": "UID ↗",
+      "uidDesc": "UID ↘"
+    },
+    "entry": {
+      "toggle": "Toggle entry's active state.",
+      "titlePlaceholder": "Entry Title/Memo",
+      "keywordsPlaceholder": "Type and press Enter...",
+      "logic": "Logic",
+      "logicOptions": {
+        "andAny": "AND ANY",
+        "andAll": "AND ALL",
+        "notAll": "NOT ALL",
+        "notAny": "NOT ANY"
       },
-      "useSysPrompt": {
-        "description": "If enabled, the first system-role message will be used as Claude's system prompt.",
-        "label": "Use System Prompt"
+      "filterPlaceholder": "Comma separated list (ignored if empty)",
+      "content": "Content",
+      "contentPlaceholder": "What this keyword should mean to the AI...",
+      "positionLabel": "Position",
+      "positionTooltip": "{'↑'}Char: Before Character Definitions\n{'↓'}Char: After Character Definitions\n{'↑'}EM: Before Example Messages\n{'↓'}EM: After Example Messages\n{'↑'}AN: Before Author's Note\n{'↓'}AN: After Author's Note\n{'@'}D ⚙️: at Depth (System)\n{'@'}D 👤: at Depth (User)\n{'@'}D 🤖: at Depth (Assistant)",
+      "positionOptions": {
+        "beforeChar": "{'↑'}Char",
+        "afterChar": "{'↓'}Char",
+        "beforeEM": "{'↑'}EM",
+        "afterEM": "{'↓'}EM",
+        "beforeAN": "{'↑'}AN",
+        "afterAN": "{'↓'}AN",
+        "atDepthSystem": "{'@'}D ⚙️",
+        "outlet": "➡️ Outlet"
+      },
+      "depth": "Depth",
+      "order": "Order",
+      "trigger": "Trigger %",
+      "move": "Move/Copy Entry to Another Lorebook",
+      "duplicate": "Duplicate world info entry",
+      "delete": "Delete world info entry",
+      "additionalSources": "Additional Matching Sources",
+      "charDescription": "Character Description",
+      "charPersonality": "Character Personality",
+      "scenario": "Scenario",
+      "personaDescription": "Persona Description",
+      "charNote": "Character's Note",
+      "creatorNotes": "Creator's Notes",
+      "entryState": "Entry State",
+      "entryStates": {
+        "constant": "🔵 Constant",
+        "normal": "🟢 Normal"
+      },
+      "delay": "Delay (messages)",
+      "outletName": "Outlet Name (not implemented)",
+      "groupSettings": "Group & Budget Settings",
+      "group": "Group",
+      "groupWeight": "Group Weight",
+      "groupOverride": "Group Override",
+      "recursionSettings": "Recursion Settings",
+      "delayUntilRecursion": "Delay until Recursion Level",
+      "preventRecursion": "Prevent Recursion",
+      "excludeRecursion": "Exclude from Recursion",
+      "characterFilters": "Character Filters",
+      "filterCharNames": "Filter by Character Name",
+      "filterCharTags": "Filter by Character Tag",
+      "filterCharExclude": "Exclude matching characters",
+      "ignoreBudget": "Ignore Token Budget",
+      "matchWholeWords": "Match Whole Words",
+      "caseSensitive": "Case Sensitive"
+    },
+    "popup": {
+      "newBookTitle": "New Lorebook",
+      "newBookContent": "Enter the name for the new lorebook:",
+      "newBookInput": "New Lorebook",
+      "deleteBookContent": "Are you sure you want to delete the lorebook \"<b>{name}</b>\"?",
+      "renameBookTitle": "Rename Lorebook",
+      "duplicateBookTitle": "Duplicate Lorebook",
+      "duplicateBookInputSuffix": " (copy)",
+      "deleteEntryTitle": "Confirm Entry Deletion",
+      "deleteEntryContent": "Are you sure you want to delete the entry \"<b>{name}</b>\"?",
+      "importEmbeddedTitle": "Import Embedded Lorebook",
+      "importEmbeddedContent": "This character has an embedded lorebook named \"{name}\". Do you want to import it into your World Info library?"
+    },
+    "errors": {
+      "loadListFailed": "Failed to load lorebooks. Make sure you are on the staging branch on SillyTavern.",
+      "loadFailed": "Could not load lorebook: {name}.",
+      "saveFailed": "Failed to save lorebook.",
+      "createFailed": "Failed to create lorebook.",
+      "deleteFailed": "Failed to delete lorebook.",
+      "renameFailed": "Failed to rename lorebook.",
+      "bookNotFound": "Book not found: {name}.",
+      "importFailed": "Failed to import lorebook.",
+      "exportFailed": "Failed to export lorebook."
+    }
+  },
+  "backgrounds": {
+    "add": "Add Background",
+    "fitting": "Background Fitting",
+    "fittingOptions": {
+      "classic": "Classic",
+      "cover": "Cover",
+      "contain": "Contain",
+      "stretch": "Stretch",
+      "center": "Center"
+    },
+    "autoSelect": "Auto-select",
+    "autoSelectTooltip": "Automatically select a background based on the chat context",
+    "searchPlaceholder": "Search...",
+    "systemBackgrounds": "System Backgrounds",
+    "zoomIn": "Make thumbnails smaller",
+    "zoomOut": "Make thumbnails larger",
+    "confirmDelete": "Are you sure you want to delete {fileName}?",
+    "renameTitle": "Enter new background name:",
+    "actions": {
+      "lock": "Lock background for this chat",
+      "unlock": "Unlock background",
+      "rename": "Rename Background",
+      "delete": "Delete Background"
+    },
+    "errors": {
+      "fetch": "Failed to load backgrounds.",
+      "noChatLock": "Select a chat to lock the background for it.",
+      "upload": "Failed to upload background.",
+      "delete": "Failed to delete background.",
+      "rename": "Failed to rename background."
+    }
+  },
+  "aiConfig": {
+    "tabConnections": "API",
+    "tabSampler": "Sampler",
+    "tabPrompts": "Prompts",
+    "promptsTitle": "Prompt Manager",
+    "manualInputNote": "Click slider numbers to input manually.",
+    "docsLinkTooltip": "Documentation on sampling parameters.",
+    "topPMinP": "Top P & Min P",
+    "presets": {
+      "sampler": {
+        "label": "Sampler Presets"
+      },
+      "import": "Import preset",
+      "export": "Export preset",
+      "delete": "Delete the preset",
+      "update": "Update current preset",
+      "rename": "Rename current preset",
+      "saveAs": "Save preset as",
+      "newName": "Enter new preset name:",
+      "renamePopupTitle": "Rename Preset",
+      "deletePopupContent": "Are you sure you want to delete the preset \"<b>{name}</b>\"?",
+      "errors": {
+        "renameDefault": "Cannot rename the default preset.",
+        "deleteDefault": "Cannot delete the default preset.",
+        "noExportSelected": "No preset selected to export.",
+        "exportNotFound": "Preset \"{name}\" not found.",
+        "importInvalid": "Failed to import preset. The file might be invalid.",
+        "noPresetName": "Preset name cannot be empty.",
+        "migrateFailed": "Failed to migrate legacy preset."
+      },
+      "messages": {
+        "migrateSuccess": "Legacy preset migrated successfully."
       }
+    },
+    "promptManager": {
+      "label": "Prompt Manager",
+      "description": "Control how the final prompt is constructed before being sent to the AI.",
+      "noPrompts": "No prompts created yet.",
+      "newPrompt": "New Prompt",
+      "role": "Role",
+      "content": "Content",
+      "selectFromLibrary": "Select from Prompt Library",
+      "addFromLibrary": "Add from Library",
+      "globalPrompts": "Global Prompts",
+      "markerHint": "This is a marker prompt. It serves as a placeholder for injected content and cannot be edited directly."
     },
     "contextSize": {
       "label": "Context Size (tokens)",
       "unlocked": "Unlocked",
       "unlockedTooltip": "Only enable this if your model supports context sizes greater than the slider's default maximum."
     },
-    "docsLinkTooltip": "Documentation on sampling parameters.",
-    "freqPenalty": {
-      "label": "Frequency Penalty"
-    },
-    "google": {
-      "useSysPrompt": {
-        "description": "If enabled, the system prompt will be formatted in a way that is more compatible with Google models.",
-        "label": "Use System Prompt"
-      }
-    },
-    "koboldcpp": {
-      "bannedTokens": "Banned Tokens (One per line)",
-      "dryAllowedLength": "DRY Allowed Length",
-      "dryBase": "DRY Base",
-      "dryMultiplier": "DRY Multiplier",
-      "dryPenaltyLastN": "DRY Penalty Last N",
-      "drySequenceBreakers": "DRY Sequence Breakers (One per line)",
-      "dynatempExponent": "Dynamic Temperature Exponent",
-      "dynatempRange": "Dynamic Temperature Range",
-      "grammar": "GBNF Grammar",
-      "grammarRetainState": "Retain Grammar State",
-      "groups": {
-        "basic": "Basic Samplers",
-        "dry": "DRY (Don't Repeat Yourself)",
-        "dynatemp": "Dynamic Temperature",
-        "grammar": "Grammar & Banned Tokens",
-        "mirostat": "Mirostat",
-        "tfs": "Tail Free Sampling & Typical",
-        "xtc": "XTC"
-      },
-      "header": "KoboldCpp Settings",
-      "mirostat": {
-        "disabled": "Disabled",
-        "label": "Mirostat Mode",
-        "v1": "Mirostat v1",
-        "v2": "Mirostat v2"
-      },
-      "mirostatEta": "Mirostat Eta",
-      "mirostatTau": "Mirostat Tau",
-      "nsigma": "Top N-Sigma",
-      "repPenRange": "Repetition Penalty Range",
-      "samplerOrder": "Sampler Order",
-      "smoothingFactor": "Smoothing Factor",
-      "tfs": "TFS (Tail Free Sampling)",
-      "typical": "Typical P",
-      "xtcProbability": "XTC Probability",
-      "xtcThreshold": "XTC Threshold"
-    },
-    "manualInputNote": "Click slider numbers to input manually.",
     "maxResponseLength": {
       "label": "Max Response Length (tokens)"
     },
-    "minP": {
-      "label": "Min P"
+    "streaming": {
+      "label": "Streaming",
+      "description": "Display the response bit by bit as it is generated. When this is off, responses will be displayed all at once when they are complete."
     },
-    "ollama": {
-      "groups": {
-        "advanced": "Advanced"
+    "showThoughts": {
+      "label": "Request model reasoning",
+      "description": "Allows the model to return its thinking process. This setting affects visibility only."
+    },
+    "reasoningEffort": {
+      "label": "Reasoning Effort",
+      "tooltip": "Constrains effort on reasoning for reasoning models.\nReducing reasoning effort can result in faster responses and fewer tokens used on reasoning in a response.",
+      "options": {
+        "auto": "Auto",
+        "minimum": "Minimum",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High",
+        "maximum": "Maximum"
       },
-      "header": "Ollama Settings",
-      "numBatch": "Batch Size",
-      "numKeep": "Keep Context",
-      "repeatLastN": "Repeat Last N",
-      "tfsZ": "TFS Z",
-      "typicalP": "Typical P"
+      "descriptionOpenAI": "OpenAI-style options: low, medium, high. Minimum and maximum are aliased to low and high. Auto does not send an effort level.",
+      "descriptionClaude": "Allocates a portion of the response length for thinking (min: 1024 tokens, low: 10%, medium: 25%, high: 50%, max: 95%), but minimum 1024 tokens. Auto does not request thinking.",
+      "descriptionGoogle": "Allocates a portion of the response length for thinking (Flash 2.5/Pro 2.5) (min: 0/128 tokens, low: 10%, medium: 25%, high: 50%, max: 24576/32768 tokens). Auto lets the model decide."
+    },
+    "temperature": {
+      "label": "Temperature"
+    },
+    "freqPenalty": {
+      "label": "Frequency Penalty"
     },
     "presPenalty": {
       "label": "Presence Penalty"
     },
-    "presets": {
-      "delete": "Delete the preset",
-      "deletePopupContent": "Are you sure you want to delete the preset \"<b>{name}</b>\"?",
-      "errors": {
-        "deleteDefault": "Cannot delete the default preset.",
-        "exportNotFound": "Preset \"{name}\" not found.",
-        "importInvalid": "Failed to import preset. The file might be invalid.",
-        "migrateFailed": "Failed to migrate legacy preset.",
-        "noExportSelected": "No preset selected to export.",
-        "noPresetName": "Preset name cannot be empty.",
-        "renameDefault": "Cannot rename the default preset."
-      },
-      "export": "Export preset",
-      "import": "Import preset",
-      "messages": {
-        "migrateSuccess": "Legacy preset migrated successfully."
-      },
-      "newName": "Enter new preset name:",
-      "rename": "Rename current preset",
-      "renamePopupTitle": "Rename Preset",
-      "sampler": {
-        "label": "Sampler Presets"
-      },
-      "saveAs": "Save preset as",
-      "update": "Update current preset"
-    },
-    "promptManager": {
-      "addFromLibrary": "Add from Library",
-      "content": "Content",
-      "description": "Control how the final prompt is constructed before being sent to the AI.",
-      "globalPrompts": "Global Prompts",
-      "label": "Prompt Manager",
-      "markerHint": "This is a marker prompt. It serves as a placeholder for injected content and cannot be edited directly.",
-      "newPrompt": "New Prompt",
-      "noPrompts": "No prompts created yet.",
-      "role": "Role",
-      "selectFromLibrary": "Select from Prompt Library"
-    },
-    "promptsTitle": "Prompt Manager",
-    "reasoningEffort": {
-      "descriptionClaude": "Allocates a portion of the response length for thinking (min: 1024 tokens, low: 10%, medium: 25%, high: 50%, max: 95%), but minimum 1024 tokens. Auto does not request thinking.",
-      "descriptionGoogle": "Allocates a portion of the response length for thinking (Flash 2.5/Pro 2.5) (min: 0/128 tokens, low: 10%, medium: 25%, high: 50%, max: 24576/32768 tokens). Auto lets the model decide.",
-      "descriptionOpenAI": "OpenAI-style options: low, medium, high. Minimum and maximum are aliased to low and high. Auto does not send an effort level.",
-      "label": "Reasoning Effort",
-      "options": {
-        "auto": "Auto",
-        "high": "High",
-        "low": "Low",
-        "maximum": "Maximum",
-        "medium": "Medium",
-        "minimum": "Minimum"
-      },
-      "tooltip": "Constrains effort on reasoning for reasoning models.\nReducing reasoning effort can result in faster responses and fewer tokens used on reasoning in a response."
-    },
     "repPenalty": {
       "label": "Repetition Penalty"
-    },
-    "showThoughts": {
-      "description": "Allows the model to return its thinking process. This setting affects visibility only.",
-      "label": "Request model reasoning"
-    },
-    "streaming": {
-      "description": "Display the response bit by bit as it is generated. When this is off, responses will be displayed all at once when they are complete.",
-      "label": "Streaming"
-    },
-    "tabConnections": "API",
-    "tabPrompts": "Prompts",
-    "tabSampler": "Sampler",
-    "temperature": {
-      "label": "Temperature"
-    },
-    "topA": {
-      "label": "Top A"
     },
     "topK": {
       "label": "Top K"
@@ -164,733 +391,149 @@
     "topP": {
       "label": "Top P"
     },
-    "topPMinP": "Top P & Min P"
+    "minP": {
+      "label": "Min P"
+    },
+    "topA": {
+      "label": "Top A"
+    },
+    "claude": {
+      "useSysPrompt": {
+        "label": "Use System Prompt",
+        "description": "If enabled, the first system-role message will be used as Claude's system prompt."
+      },
+      "assistantPrefill": {
+        "label": "Assistant Prefill",
+        "description": "Text to pre-fill the assistant's response with. Usually `{'{{char}}'}:`"
+      }
+    },
+    "google": {
+      "useSysPrompt": {
+        "label": "Use System Prompt",
+        "description": "If enabled, the system prompt will be formatted in a way that is more compatible with Google models."
+      }
+    },
+    "koboldcpp": {
+      "header": "KoboldCpp Settings",
+      "tfs": "TFS (Tail Free Sampling)",
+      "typical": "Typical P",
+      "repPenRange": "Repetition Penalty Range",
+      "dynatempRange": "Dynamic Temperature Range",
+      "smoothingFactor": "Smoothing Factor",
+      "dynatempExponent": "Dynamic Temperature Exponent",
+      "mirostat": {
+        "label": "Mirostat Mode",
+        "disabled": "Disabled",
+        "v1": "Mirostat v1",
+        "v2": "Mirostat v2"
+      },
+      "mirostatTau": "Mirostat Tau",
+      "mirostatEta": "Mirostat Eta",
+      "xtcThreshold": "XTC Threshold",
+      "xtcProbability": "XTC Probability",
+      "nsigma": "Top N-Sigma",
+      "dryMultiplier": "DRY Multiplier",
+      "dryBase": "DRY Base",
+      "dryAllowedLength": "DRY Allowed Length",
+      "dryPenaltyLastN": "DRY Penalty Last N",
+      "drySequenceBreakers": "DRY Sequence Breakers (One per line)",
+      "grammar": "GBNF Grammar",
+      "grammarRetainState": "Retain Grammar State",
+      "bannedTokens": "Banned Tokens (One per line)",
+      "samplerOrder": "Sampler Order",
+      "groups": {
+        "basic": "Basic Samplers",
+        "dynatemp": "Dynamic Temperature",
+        "mirostat": "Mirostat",
+        "xtc": "XTC",
+        "dry": "DRY (Don't Repeat Yourself)",
+        "tfs": "Tail Free Sampling & Typical",
+        "grammar": "Grammar & Banned Tokens"
+      }
+    },
+    "ollama": {
+      "header": "Ollama Settings",
+      "groups": {
+        "advanced": "Advanced"
+      },
+      "repeatLastN": "Repeat Last N",
+      "numBatch": "Batch Size",
+      "numKeep": "Keep Context",
+      "tfsZ": "TFS Z",
+      "typicalP": "Typical P"
+    }
+  },
+  "userSettings": {
+    "searchPlaceholder": "Search Settings",
+    "noResults": "No settings found."
   },
   "api": {
-    "connectFailed": "Failed to connect.",
     "connectSuccess": "Connected successfully!",
+    "connectFailed": "Failed to connect.",
     "status": {
       "bypassed": "Status check bypassed",
-      "connecting": "Connecting...",
+      "valid": "Valid",
       "noConnection": "No connection...",
       "notConnected": "Not connected...",
-      "valid": "Valid"
+      "connecting": "Connecting..."
     }
-  },
-  "apiConnections": {
-    "ai21Key": "AI21 API Key",
-    "ai21Model": "Model",
-    "aimlapiKey": "AIML API Key",
-    "aimlapiModel": "Model",
-    "azureApiVersion": "API Version",
-    "azureBaseUrl": "Base URL / Endpoint",
-    "azureDeploymentName": "Deployment Name",
-    "azureKey": "Azure API Key",
-    "azureModel": "Model Name",
-    "claudeKey": "Claude API Key",
-    "claudeModel": "Claude Model",
-    "cohereKey": "Cohere API Key",
-    "cohereModel": "Model",
-    "cometapiKey": "Comet API Key",
-    "cometapiModel": "Model",
-    "connect": "Connect",
-    "connecting": "Connecting",
-    "customKey": "API Key (Optional)",
-    "customModel": "Model Name",
-    "customProxy": {
-      "createProfile": "Create Profile",
-      "deleteProfile": "Delete Profile",
-      "deleteProfileContent": "Are you sure you want to delete the proxy profile \"<b>{name}</b>\"?",
-      "deleteProfileTitle": "Delete Proxy Profile",
-      "password": "Password",
-      "passwordPlaceholder": "Optional",
-      "renameProfile": "Rename Profile",
-      "saveProfile": "Save Profile",
-      "title": "Proxy Settings",
-      "url": "URL",
-      "urlPlaceholder": "http://localhost:8080"
-    },
-    "customUrl": "API Base URL",
-    "deepseekKey": "DeepSeek API Key",
-    "deepseekModel": "DeepSeek Model",
-    "electronhubKey": "ElectronHub API Key",
-    "electronhubModel": "Model",
-    "fireworksKey": "Fireworks API Key",
-    "fireworksModel": "Model",
-    "formatter": "Formatter",
-    "googleKey": "API Key",
-    "googleModel": "Model",
-    "groqKey": "Groq API Key",
-    "groqModel": "Groq Model",
-    "instruct": {
-      "create": "Create Template",
-      "delete": "Delete Template",
-      "deleteContent": "Are you sure you want to delete {name}?",
-      "deleteTitle": "Delete Template",
-      "edit": "Edit Template",
-      "export": "Export Template",
-      "import": "Import Template",
-      "title": "Instruct Template"
-    },
-    "keyPrivacy": "For privacy reasons, your API key will be hidden after you click 'Connect'.",
-    "koboldModel": "Kobold Model",
-    "koboldUrl": "KoboldCpp URL",
-    "manageKeys": "Manage API keys",
-    "middleout": {
-      "auto": "Auto",
-      "off": "Off",
-      "on": "On"
-    },
-    "mistralaiKey": "MistralAI API Key",
-    "mistralaiModel": "MistralAI Model",
-    "moonshotKey": "Moonshot API Key",
-    "moonshotModel": "Model",
-    "nanogptKey": "NanoGPT API Key",
-    "nanogptModel": "Model",
-    "ollamaModel": "Model",
-    "ollamaUrl": "Ollama Server URL",
-    "openaiKey": "OpenAI API key",
-    "openaiModel": "OpenAI Model",
-    "openrouterAllowFallbacks": "Allow Fallbacks",
-    "openrouterFallbackProviders": "Fallback Providers (comma-separated)",
-    "openrouterKey": "OpenRouter API Key",
-    "openrouterMiddleout": "Middle-Out",
-    "openrouterModel": "OpenRouter Model",
-    "openrouterOptions": "OpenRouter Options",
-    "openrouterUseFallback": "Use Fallback Models",
-    "openrouterWebsite": "Use OpenRouter website setting",
-    "perplexityKey": "Perplexity API Key",
-    "perplexityModel": "Model",
-    "pollinationsModel": "Model",
-    "postProcessing": {
-      "description": "Applies additional processing to the prompt before sending it to the API.",
-      "label": "Prompt Post-Processing",
-      "noTools": "No Tools",
-      "prompts": {
-        "merge": "Merge consecutive roles (no tools)",
-        "merge_tools": "Merge consecutive roles (with tools)",
-        "none": "None",
-        "semi": "Semi-strict (alternating roles; no tools)",
-        "semi_tools": "Semi-strict (alternating roles; with tools)",
-        "single": "Single user message (no tools)",
-        "strict": "Strict (user first, alternating roles; no tools)",
-        "strict_tools": "Strict (user first, alternating roles; with tools)"
-      },
-      "tooltip": "Applies additional processing to the prompt before sending it to the API.",
-      "withTools": "With Tools"
-    },
-    "profile": "Connection Profile",
-    "profileManagement": {
-      "create": "Save current connection as new profile",
-      "createPopupTitle": "New Connection Profile",
-      "delete": "Delete current profile",
-      "deletePopupContent": "Are you sure you want to delete the profile \"<b>{name}</b>\"?",
-      "errors": {
-        "deleteNone": "Cannot delete the base profile.",
-        "nameExists": "A profile with this name already exists.",
-        "noSelection": "No profile selected.",
-        "renameNone": "Cannot rename the base profile."
-      },
-      "export": "Export current profile",
-      "fieldsToInclude": "Fields to include in profile",
-      "import": "Import profiles",
-      "none": "None",
-      "profileName": "Profile Name",
-      "rename": "Rename current profile",
-      "renamePopupTitle": "Rename Connection Profile"
-    },
-    "provider": "Provider",
-    "providers": {
-      "ai21": "AI21",
-      "aimlapi": "AI/ML API",
-      "azure_openai": "Azure OpenAI",
-      "claude": "Claude",
-      "cohere": "Cohere",
-      "custom": "Custom (OpenAI-compatible)",
-      "deepseek": "DeepSeek",
-      "electronhub": "Electron Hub",
-      "fireworks": "Fireworks AI",
-      "groq": "Groq",
-      "koboldcpp": "KoboldCpp",
-      "makersuite": "Google AI Studio",
-      "mistralai": "MistralAI",
-      "moonshot": "Moonshot AI",
-      "nanogpt": "NanoGPT",
-      "ollama": "Ollama",
-      "openai": "OpenAI",
-      "openrouter": "OpenRouter",
-      "perplexity": "Perplexity",
-      "pollinations": "Pollinations",
-      "vertexai": "Google Vertex AI",
-      "xai": "xAI (Grok)",
-      "zai": "Z.AI (GLM)"
-    },
-    "tokenizer": "Tokenizer",
-    "tokenizers": {
-      "auto": "Auto (recommended)",
-      "claude": "Claude 1/2",
-      "commanda": "Command-A",
-      "commandr": "Command-R",
-      "deepseek": "DeepSeek V3/R1",
-      "gemma": "Gemma / Gemini",
-      "gpt2": "GPT-2",
-      "gpt35": "GPT-3.5-Turbo / GPT-4",
-      "gpt4o": "GPT-4o / GPT-5",
-      "jamba": "Jamba",
-      "llama": "Llama 1/2",
-      "llama3": "Llama 3",
-      "mistral": "Mistral V1",
-      "nemo": "Mistral Nemo",
-      "none": "None (estimated)",
-      "qwen2": "Qwen2",
-      "yi": "Yi"
-    },
-    "vertexaiKey": "Access Token (ADC/JSON Key)",
-    "vertexaiModel": "Model",
-    "vertexaiProjectId": "Cloud Project ID",
-    "vertexaiRegion": "Region",
-    "xaiModel": "Model",
-    "xapiKey": "xAI API Key",
-    "zaiEndpoint": "Endpoint",
-    "zaiKey": "Zhipu AI Key",
-    "zaiModel": "Model"
-  },
-  "backgrounds": {
-    "actions": {
-      "delete": "Delete Background",
-      "lock": "Lock background for this chat",
-      "rename": "Rename Background",
-      "unlock": "Unlock background"
-    },
-    "add": "Add Background",
-    "autoSelect": "Auto-select",
-    "autoSelectTooltip": "Automatically select a background based on the chat context",
-    "confirmDelete": "Are you sure you want to delete {fileName}?",
-    "errors": {
-      "delete": "Failed to delete background.",
-      "fetch": "Failed to load backgrounds.",
-      "noChatLock": "Select a chat to lock the background for it.",
-      "rename": "Failed to rename background.",
-      "upload": "Failed to upload background."
-    },
-    "fitting": "Background Fitting",
-    "fittingOptions": {
-      "center": "Center",
-      "classic": "Classic",
-      "contain": "Contain",
-      "cover": "Cover",
-      "stretch": "Stretch"
-    },
-    "renameTitle": "Enter new background name:",
-    "searchPlaceholder": "Search...",
-    "systemBackgrounds": "System Backgrounds",
-    "zoomIn": "Make thumbnails smaller",
-    "zoomOut": "Make thumbnails larger"
-  },
-  "character": {
-    "create": {
-      "error": "Failed to create character."
-    },
-    "delete": {
-      "confirmMessage": "Are you sure you want to delete \"{name}\"?",
-      "confirmTitle": "Delete Character",
-      "deleteChats": "Delete associated chats",
-      "error": "Failed to delete character."
-    },
-    "duplicate": {
-      "error": "Failed to duplicate character."
-    },
-    "export": {
-      "error": "Failed to export character."
-    },
-    "fetch": {
-      "overflowWarning": "Character data length limit reached. To resolve this, set \"performance.lazyLoadCharacters\" to \"true\" in config.yaml and restart the server."
-    },
-    "import": {
-      "abortedMessage": "Cannot import characters while generating. Stop the request and try again.",
-      "error": "Could not import character",
-      "errorMessage": "The file is likely invalid or corrupted.",
-      "tagsImported": "Tags Imported",
-      "tagsImportedMessage": "Imported tags for {characterName}:\n{tags}",
-      "unsupportedType": "Unsupported file type: .{ext}"
-    },
-    "save": {
-      "error": "Failed to save character."
-    },
-    "tokenWarning": "Character definition is large ({tokens} tokens), using over {percentage}% of your context window. This may impact performance and context limits.",
-    "updateImage": {
-      "error": "Failed to update character image."
-    }
-  },
-  "characterEditor": {
-    "advanced": {
-      "characterNote": "Character's Note",
-      "characterNotePlaceholder": "(Text to be inserted in-chat)",
-      "characterVersion": "Character Version",
-      "characterVersionPlaceholder": "(If you want to track character versions)",
-      "createdBy": "Created by",
-      "createdByPlaceholder": "(Botmaker's name / Contact info)",
-      "creatorNotes": "Creator's Notes",
-      "creatorNotesPlaceholder": "(Describe the bot, give use tips, etc.)",
-      "depth": "{'@'} Depth",
-      "dialogueExamples": "Examples of dialogue",
-      "dialogueExamplesPlaceholder": "(Examples of chat dialog. Begin each example with <START> on a new line.)",
-      "editingTitle": "Editing: {title}",
-      "metadata": "Creator's Metadata",
-      "metadataHint": "(Not sent with the AI Prompt)",
-      "metadataOptional": "Everything here is optional",
-      "personality": "Personality",
-      "personalityPlaceholder": "(A brief description of the personality)",
-      "postHistoryInstructions": "Post-History Instructions",
-      "postHistoryInstructionsPlaceholder": "Any contents here will replace the default Post-History Instructions.",
-      "promptOverrides": "Prompt Overrides",
-      "role": "Role",
-      "roles": {
-        "assistant": "Assistant",
-        "system": "System",
-        "user": "User"
-      },
-      "scenario": "Scenario",
-      "scenarioPlaceholder": "(Circumstances and context of the interaction)",
-      "tagsToEmbed": "Tags to Embed",
-      "tagsToEmbedPlaceholder": "(Write a comma-separated list of tags)",
-      "talkativeness": "Talkativeness",
-      "talkativenessChatty": "Chatty",
-      "talkativenessHint": "How often the character speaks in group chats!",
-      "talkativenessNormal": "Normal",
-      "talkativenessShy": "Shy"
-    },
-    "alternateGreetings": {
-      "empty": "No alternate greetings added yet.",
-      "label": "Alternate Greetings",
-      "placeholder": "Enter an alternate greeting...",
-      "swapTooltip": "Swap with first message",
-      "title": "Alternate Greetings"
-    },
-    "avatar": "Click to select a new avatar for this character",
-    "creatorNotes": "Creator's Notes",
-    "delete": "Delete",
-    "description": "Description",
-    "descriptionPlaceholder": "Describe your character's physical and mental traits here.",
-    "detailsHidden": "Character details are hidden. Click the above eye icon or enable \"Spoiler Free Mode\" in settings.",
-    "duplicate": "Duplicate",
-    "embeddedLorebook": "Embedded Lorebook",
-    "export": "Export and Download",
-    "exportAsJson": "Export as JSON",
-    "exportAsPng": "Export as PNG",
-    "favorite": "Add to Favorites",
-    "firstMessage": "First message",
-    "firstMessagePlaceholder": "This will be the first message from the character that starts every chat.",
-    "more": "More...",
-    "moreOptions": {
-      "convertToPersona": "Convert to Persona",
-      "importCardLore": "Import Card Lore",
-      "rename": "Rename"
-    },
-    "namePlaceholder": "Enter character name here",
-    "noCreatorNotes": "No Creator's Notes provided.",
-    "openLastChat": "Open last chat with this character",
-    "searchTags": "Search / Create tags",
-    "startNewChat": "Start a new chat with this character",
-    "stats": {
-      "title": "Click for stats!"
-    },
-    "toggleSpoiler": "Show / Hide character details",
-    "tokenCounts": {
-      "permanent": "Permanent",
-      "title": "Token counts may be inaccurate and provided just for reference.",
-      "total": "Total tokens"
-    },
-    "validation": {
-      "avatarRequired": "Please select an avatar.",
-      "nameRequired": "Character name is required."
-    }
-  },
-  "characterPanel": {
-    "createNew": "Create New Character",
-    "editor": {
-      "placeholderButton": "Create New Character",
-      "placeholderText": "Select a character from the list to view or edit their details.",
-      "placeholderTitle": "Select a Character"
-    },
-    "importFile": "Import Character from File",
-    "searchPlaceholder": "Search...",
-    "searchToggle": "Toggle search bar",
-    "sorting": {
-      "favorites": "Favorites",
-      "nameAsc": "A-Z",
-      "nameDesc": "Z-A",
-      "newest": "Newest",
-      "oldest": "Oldest",
-      "title": "Characters sorting order"
-    }
-  },
-  "chat": {
-    "abort": "Abort generation",
-    "buttons": {
-      "addReasoning": "Add/Edit reasoning block",
-      "confirmEdit": "Confirm edit",
-      "copyMessage": "Copy this message",
-      "deleteMessage": "Delete this message",
-      "itemization": "Prompt Itemization",
-      "moveDown": "Move message down",
-      "moveUp": "Move message up",
-      "swipeLeft": "Previous swipe",
-      "swipeRight": "Next swipe"
-    },
-    "copy": {
-      "error": "Failed to copy message."
-    },
-    "createError": "Failed to create chat message.",
-    "delete": {
-      "confirmBulkContent": "Are you sure you want to delete {count} messages?",
-      "confirmBulkTitle": "Delete Messages",
-      "confirmMessage": "Are you sure you want to delete this message?",
-      "confirmSwipeMessage": "Are you sure you want to delete this swipe?",
-      "confirmTitle": "Confirm Deletion",
-      "deleteMessage": "Delete Message",
-      "deleteSwipe": "Delete Swipe",
-      "lastSwipeError": "Cannot delete the last swipe",
-      "plusOne": "+1 related"
-    },
-    "emptyLog": "Empty chat log",
-    "generate": {
-      "errorFallback": "Failed to get a response from the AI.",
-      "noModelError": "No model selected. Please check your API connection settings.",
-      "noPersonaError": "No persona selected. Please check your persona settings.",
-      "noPrompts": "No prompts were built for the AI. Please check your prompt settings.",
-      "noSpeaker": "No valid speaker found for generation.",
-      "postProcessError": "Post-processing failed. Check console for details."
-    },
-    "groupChat": "Group Chat",
-    "inputPlaceholder": "Type a message",
-    "itemization": {
-      "apiModel": "API/Model",
-      "bias": "Bias",
-      "chatHistory": "Chat History",
-      "copy": "Copy Prompt",
-      "description": "Description",
-      "disclaimer": "Only the white numbers really matter. All numbers are estimates. Grey color items may not have been included in the context due to certain prompt format settings.",
-      "examples": "Examples",
-      "extensions": "Extensions",
-      "maxContext": "Max Context",
-      "persona": "Persona",
-      "personality": "Personality",
-      "preset": "Preset",
-      "scenario": "Scenario",
-      "showRaw": "Show Raw Prompt",
-      "showWorldInfo": "Show World Info",
-      "systemInfo": "System Info",
-      "title": "Prompt Itemization",
-      "tokenizer": "Tokenizer",
-      "totalTokens": "Total Tokens",
-      "worldInfo": "World Info"
-    },
-    "loadError": "Failed to load chat.",
-    "loadMoreMessages": "Load more messages",
-    "options": "Options",
-    "optionsMenu": {
-      "continue": "Continue",
-      "generate": "Generate (broken)",
-      "manageChats": "Manage chat",
-      "regenerate": "Regenerate",
-      "selectMessages": "Select Messages"
-    },
-    "reasoning": {
-      "title": "Thinking"
-    },
-    "selection": {
-      "modeFree": "Selection Mode: Free (Click to toggle)",
-      "modeRange": "Selection Mode: To Bottom (Click to select from message to end)"
-    },
-    "send": "Send a message",
-    "typingIndicator": ""
-  },
-  "chatManagement": {
-    "actions": {
-      "delete": "Delete Chat",
-      "export": "Export Chat",
-      "import": "Import Chats",
-      "rename": "Rename Chat"
-    },
-    "chatLorebooks": "Assigned Lorebooks",
-    "connectionProfile": "Connection Profile",
-    "createPrompt": "Enter a name for the new chat:",
-    "deleteConfirmContent": "Are you sure you want to delete the chat file \"{chatFile}\"? This action cannot be undone.",
-    "deleteConfirmTitle": "Delete Chat",
-    "deleteSelectedConfirmContent": "Are you sure you want to delete {count} selected chats?",
-    "errors": {
-      "create": "Failed to create new chat.",
-      "delete": "Failed to delete chat.",
-      "export": "Failed to export chat.",
-      "noActiveChat": "No active chat selected to export.",
-      "noMessagesToExport": "Cannot export empty chat.",
-      "rename": "Failed to rename chat."
-    },
-    "import": {
-      "error": "Failed to import chats",
-      "success": "{count} chat(s) imported successfully"
-    },
-    "newChat": "New Chat",
-    "noChatsFound": "No chats found.",
-    "noRecentChats": "No recent chats found.",
-    "renamePrompt": "Enter the new name for this chat:",
-    "scenarioOverride": "Scenario Override",
-    "scenarioOverridePlaceholder": "Override the scenario for this chat...",
-    "selectLorebooks": "Select lorebooks...",
-    "tabs": {
-      "chats": "Chats",
-      "config": "Configuration",
-      "group": "Group"
-    }
-  },
-  "common": {
-    "activate": "Activate",
-    "add": "Add",
-    "by": "by",
-    "cancel": "Cancel",
-    "chat": "Chat",
-    "close": "Close",
-    "confirm": "Confirm",
-    "confirmDelete": "Confirm Deletion",
-    "create": "Create",
-    "delete": "Delete",
-    "dragToReorder": "Drag to reorder",
-    "edit": "Edit",
-    "expandedEditor": "Expanded Editor",
-    "export": "Export",
-    "global": "Global",
-    "import": "Import",
-    "loading": "Loading...",
-    "messages": "messages",
-    "name": "Name",
-    "new": "New",
-    "no": "No",
-    "noResults": "No results found",
-    "none": "None",
-    "of": "of",
-    "ok": "OK",
-    "refresh": "Refresh",
-    "remove": "Remove",
-    "rename": "Rename",
-    "reset": "Reset",
-    "resetToDefaults": "Reset to Defaults",
-    "save": "Save",
-    "search": "Search",
-    "seconds": "seconds",
-    "select": "Select",
-    "selectAll": "Select All",
-    "selected": "Selected",
-    "text": "Text",
-    "toggle": "Toggle",
-    "tokens": "Tokens",
-    "yes": "Yes"
   },
   "errors": {
     "csrfToken": "Couldn't get CSRF token. Make sure SillyTavern is running in the background. Then refresh the page."
   },
-  "extensions": {
-    "install": "Install extension",
-    "installPopupNotImplemented": "Install extension popup not implemented yet.",
-    "manage": "Manage extensions",
-    "managePopupNotImplemented": "Manage extensions popup not implemented yet.",
-    "notifyUpdates": "Notify on extension updates",
-    "placeholder": {
-      "text": "Select an extension from the list on the left to view its details and settings.",
-      "title": "Select an Extension"
-    }
-  },
-  "extensionsBuiltin": {
-    "chatBranching": {
-      "branchButtonTitle": "Branch from this message",
-      "branchCreationFailed": "Failed to create branch",
-      "branchName": "Branch",
-      "branchPointTitle": "Branched at message #",
-      "branchTreeTitle": "Branch Tree",
-      "chatTreeTitle": "Chat Tree",
-      "createdTitle": "Created: ",
-      "loadChatFailed": "Failed to load selected chat",
-      "noChatLoaded": "No chat is currently loaded.",
-      "rootChatTitle": "Root Chat",
-      "rootLabel": "Root",
-      "totalMessagesTitle": "Total Messages"
-    },
-    "chatTranslation": {
-      "autoMode": {
-        "both": "All Messages",
-        "inputs": "Inputs Only (User)",
-        "label": "Auto-Translate Mode",
-        "none": "None (Manual)",
-        "responses": "Responses Only (Bot)"
-      },
-      "connectionProfile": "Connection Profile",
-      "connectionProfileHint": "Select the API connection profile to use for generating translations.",
-      "promptHint": "Customize how the LLM translates text. Supports Handlebars variables: {'{{prompt}}'}, {'{{sourceLang}}'}, {'{{targetLang}}'}, {'{{name}}'}.",
-      "promptTemplate": "Translation Prompt Template",
-      "sourceLang": "Source Language",
-      "targetLang": "Target Language"
-    },
-    "rerollContinue": {
-      "buildPromptFailed": "Failed to build prompt",
-      "buttonLabel": "Reroll Continue",
-      "contextChanged": "Chat context changed. Cannot reroll.",
-      "divergenceError": "Message content divergence detected. Aborting reroll.",
-      "error": "Failed to reroll continue.",
-      "impersonateButtonLabel": "Impersonate",
-      "impersonateDisabled": "Impersonate is disabled in settings",
-      "impersonating": "Impersonating user...",
-      "impersonationFailed": "Impersonation failed",
-      "noConnectionProfile": "No connection profile selected for impersonate",
-      "noPersona": "No active persona for impersonation",
-      "noSnapshot": "No previous state to reroll.",
-      "rerollDisabled": "Reroll/Continue is disabled in settings",
-      "reverting": "Reverting and rerolling...",
-      "settings": {
-        "connectionProfileDesc": "Select LLM profile for impersonation generation",
-        "connectionProfileLabel": "Connection Profile",
-        "impersonateEnabled": "Enable Impersonate",
-        "impersonateTitle": "Impersonate Settings",
-        "promptDesc": "Custom prompt template for impersonation. Supports {'{{user}}'} and {'{{char}}'} placeholders.",
-        "promptLabel": "Prompt Template",
-        "rerollEnabled": "Enable Reroll/Continue",
-        "reset": "Reset"
-      },
-      "swipeError": "Swipe changed. Cannot reroll previous swipe state."
-    },
-    "undo": {
-      "discardLabel": "Discard saves.",
-      "discardTitle": "Discard all chats from the undo history.",
-      "redoLabel": "Redo.",
-      "redoTitle": "Redo the last chat change.",
-      "saveLabel": "Save.",
-      "saveTitle": "Save the current chat to undo history.",
-      "settings": {
-        "chatLengthWarning": "⚠️ Warning: Increasing Max Chat Length can significantly impact performance on very large chats.",
-        "enableCtrlZ": "Enable the Ctrl+Z/Ctrl+Shift+Z hotkeys",
-        "maxChatLength": "Max Chat Length.",
-        "maxUndoSnapshots": "Max Undo Snapshots.",
-        "showSaveButtons": "Show Save/Reset in ☰",
-        "showToasts": "Show toasts on Undo/Redo.",
-        "showUndoButtons": "Show Undo/Redo in ☰",
-        "snapshotEvents": "Toggle snapshot events (Advanced)",
-        "snapshotEventsDescription": "These events will determine which actions are saved to your \"undo history\"."
-      },
-      "undoLabel": "Undo.",
-      "undoTitle": "Undo the last chat change."
-    }
-  },
-  "formatting": {
-    "description": "Text completion.",
-    "title": "AI Response Formatting"
-  },
-  "group": {
-    "addMember": "Add Member",
-    "allowSelfResponses": "Allow Self Responses",
-    "autoMode": "Auto Mode",
-    "autoModeHint": "Automatically generate responses every X seconds. Set to 0 to disable.",
-    "clearQueue": "Clear Queue",
-    "configuration": "Configuration",
-    "forceTalk": "Force Talk",
-    "handlingMode": "Context Handling Mode",
-    "members": "Members",
-    "modes": {
-      "joinExclude": "Join (Exclude Muted)",
-      "joinInclude": "Join (Include Muted)",
-      "swap": "Swap Character Cards"
-    },
-    "mute": "Mute/Unmute",
-    "peek": "Peek Character",
-    "queue": "Generation Queue",
-    "replyStrategy": "Reply Strategy",
-    "strategies": {
-      "list": "List Order",
-      "manual": "Manual",
-      "natural": "Natural Order",
-      "pooled": "Pooled Order"
-    }
-  },
-  "instruct": {
-    "namesBehavior": {
-      "force": "Force",
-      "include": "Include",
-      "none": "None"
-    }
-  },
-  "navbar": {
-    "aiConfig": "AI Configuration",
-    "backgrounds": "Backgrounds",
-    "characterManagement": "Character Management",
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "expandedEditor": "Expanded Editor",
+    "yes": "Yes",
+    "close": "Close",
+    "no": "No",
+    "none": "None",
+    "global": "Global",
+    "loading": "Loading...",
+    "tokens": "Tokens",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "of": "of",
+    "search": "Search",
+    "resetToDefaults": "Reset to Defaults",
+    "confirmDelete": "Confirm Deletion",
+    "by": "by",
+    "reset": "Reset",
+    "seconds": "seconds",
+    "remove": "Remove",
+    "dragToReorder": "Drag to reorder",
+    "dragHandle": "Drag handle",
+    "toggle": "Toggle",
+    "refresh": "Refresh",
+    "messages": "messages",
+    "noResults": "No results found",
+    "name": "Name",
+    "select": "Select",
+    "selected": "Selected",
+    "selectAll": "Select All",
     "chat": "Chat",
-    "extensions": "Extensions",
-    "personaManagement": "Persona Management",
-    "recentChats": "Recent Chats",
-    "userSettings": "User Settings",
-    "worldInfo": "World Info"
-  },
-  "pagination": {
-    "first": "First Page",
-    "last": "Last Page",
-    "next": "Next Page",
-    "perPage": "{count} / page",
-    "previous": "Previous Page"
-  },
-  "persona": {
-    "createFromCharacter": {
-      "error": "Failed to create persona from character."
-    }
-  },
-  "personaManagement": {
-    "actions": {
-      "changeImage": "Change Image",
-      "delete": "Delete",
-      "duplicate": "Duplicate",
-      "rename": "Rename",
-      "syncName": "Sync Name to Chat"
-    },
-    "activated": "Persona {name} activated.",
-    "connections": {
-      "character": "Character",
-      "chat": "Chat",
-      "default": "Default",
-      "linkedCharacters": "Linked Characters",
-      "title": "Connections"
-    },
-    "create": "Create",
-    "currentPersona": "Current Persona",
-    "default": {
-      "tooltip": "Default Persona"
-    },
-    "delete": {
-      "confirmMessage": "Are you sure you want to delete the persona \"{name}\"? All associated information will be lost.",
-      "confirmTitle": "Delete Persona",
-      "error": "Failed to delete persona."
-    },
-    "description": {
-      "label": "Persona Description",
-      "placeholder": "Example:\n[{'{{user}}'} is a 28-year-old Romanian cat girl.]"
-    },
-    "duplicate": {
-      "error": "Failed to duplicate persona."
-    },
-    "errors": {
-      "importFailed": "Failed to import personas. Please check the file format.",
-      "invalidFileFormat": "Invalid file format. Expected an array of personas."
-    },
-    "export": "Export",
-    "globalSettings": {
-      "showNotifications": "Show notifications on switching personas",
-      "title": "Global Settings"
-    },
+    "new": "New",
+    "text": "Text",
     "import": "Import",
-    "lorebooks": {
-      "label": "Lorebooks"
-    },
-    "noDescription": "[No description]",
-    "rename": {
-      "prompt": "Enter the new name for this persona:",
-      "title": "Rename Persona"
-    },
-    "title": "Persona Management"
+    "export": "Export",
+    "edit": "Edit",
+    "create": "Create",
+    "rename": "Rename",
+    "activate": "Activate",
+    "add": "Add",
+    "collapseSidebar": "Collapse Sidebar",
+    "expandSidebar": "Expand Sidebar",
+    "loadingButton": "Loading",
+    "upload": "Upload",
+    "image": "Image",
+    "info": "Info",
+    "general": "General",
+    "default": "Default",
+    "welcome": "Welcome",
+    "back": "Back",
+    "login": "Login"
   },
   "popup": {
     "cropAvatar": {
@@ -898,304 +541,713 @@
     }
   },
   "secrets": {
-    "addNewKey": "Add New Key",
-    "keyPlaceholder": "Key",
-    "keySaved": "Key saved",
-    "labelPlaceholder": "Key Label",
     "manageKeysFor": "Manage Secret Keys for",
-    "noKeysFound": "No keys found."
+    "addNewKey": "Add New Key",
+    "keySaved": "Key saved",
+    "noKeysFound": "No keys found.",
+    "labelPlaceholder": "Key Label",
+    "keyPlaceholder": "Key"
   },
-  "settings": {
-    "chat": {
-      "stopOnNameHijack": {
-        "description": "Stop generation if the AI tries to speak for another character or user. It is a {'{{name}}'}: check.",
-        "label": "Stop on name hijack",
-        "options": {
-          "all": "All Chats",
-          "group": "Group Chat Only",
-          "none": "None",
-          "single": "Single Chat Only"
-        }
+  "pagination": {
+    "first": "First Page",
+    "previous": "Previous Page",
+    "next": "Next Page",
+    "last": "Last Page",
+    "perPage": "{count} / page",
+    "itemsPerPageLabel": "Items per page"
+  },
+  "chat": {
+    "inputPlaceholder": "Type a message",
+    "options": "Options",
+    "send": "Send a message",
+    "loadError": "Failed to load chat.",
+    "createError": "Failed to create chat message.",
+    "emptyLog": "Empty chat log",
+    "groupChat": "Group Chat",
+    "loadMoreMessages": "Load more messages",
+    "generate": {
+      "noPrompts": "No prompts were built for the AI. Please check your prompt settings.",
+      "errorFallback": "Failed to get a response from the AI.",
+      "noModelError": "No model selected. Please check your API connection settings.",
+      "noPersonaError": "No persona selected. Please check your persona settings.",
+      "noSpeaker": "No valid speaker found for generation.",
+      "postProcessError": "Post-processing failed. Check console for details."
+    },
+    "buttons": {
+      "confirmEdit": "Confirm edit",
+      "copyMessage": "Copy this message",
+      "addReasoning": "Add/Edit reasoning block",
+      "deleteMessage": "Delete this message",
+      "moveUp": "Move message up",
+      "moveDown": "Move message down",
+      "swipeLeft": "Previous swipe",
+      "swipeRight": "Next swipe",
+      "itemization": "Prompt Itemization"
+    },
+    "delete": {
+      "confirmTitle": "Confirm Deletion",
+      "confirmMessage": "Are you sure you want to delete this message?",
+      "confirmSwipeMessage": "Are you sure you want to delete this swipe?",
+      "deleteSwipe": "Delete Swipe",
+      "deleteMessage": "Delete Message",
+      "lastSwipeError": "Cannot delete the last swipe",
+      "plusOne": "+1 related",
+      "confirmBulkTitle": "Delete Messages",
+      "confirmBulkContent": "Are you sure you want to delete {count} messages?"
+    },
+    "selection": {
+      "modeFree": "Selection Mode: Free (Click to toggle)",
+      "modeRange": "Selection Mode: To Bottom (Click to select from message to end)",
+      "toolbar": "Message Selection Toolbar"
+    },
+    "copy": {
+      "error": "Failed to copy message."
+    },
+    "optionsMenu": {
+      "manageChats": "Manage chat",
+      "regenerate": "Regenerate",
+      "continue": "Continue",
+      "generate": "Generate",
+      "selectMessages": "Select Messages"
+    },
+    "typingIndicator": "",
+    "abort": "Abort generation",
+    "reasoning": {
+      "title": "Thinking"
+    },
+    "itemization": {
+      "title": "Prompt Itemization",
+      "apiModel": "API/Model",
+      "preset": "Preset",
+      "tokenizer": "Tokenizer",
+      "disclaimer": "Only the white numbers really matter. All numbers are estimates. Grey color items may not have been included in the context due to certain prompt format settings.",
+      "systemInfo": "System Info",
+      "description": "Description",
+      "personality": "Personality",
+      "scenario": "Scenario",
+      "examples": "Examples",
+      "persona": "Persona",
+      "worldInfo": "World Info",
+      "chatHistory": "Chat History",
+      "extensions": "Extensions",
+      "bias": "Bias",
+      "totalTokens": "Total Tokens",
+      "maxContext": "Max Context",
+      "showRaw": "Show Raw Prompt",
+      "showWorldInfo": "Show World Info",
+      "copy": "Copy Prompt"
+    }
+  },
+  "character": {
+    "import": {
+      "abortedMessage": "Cannot import characters while generating. Stop the request and try again.",
+      "unsupportedType": "Unsupported file type: .{ext}",
+      "error": "Could not import character",
+      "errorMessage": "The file is likely invalid or corrupted.",
+      "tagsImported": "Tags Imported",
+      "tagsImportedMessage": "Imported tags for {characterName}:\n{tags}"
+    },
+    "save": {
+      "error": "Failed to save character."
+    },
+    "export": {
+      "error": "Failed to export character."
+    },
+    "fetch": {
+      "overflowWarning": "Character data length limit reached. To resolve this, set \"performance.lazyLoadCharacters\" to \"true\" in config.yaml and restart the server."
+    },
+    "create": {
+      "error": "Failed to create character."
+    },
+    "delete": {
+      "confirmTitle": "Delete Character",
+      "confirmMessage": "Are you sure you want to delete \"{name}\"?",
+      "deleteChats": "Delete associated chats",
+      "error": "Failed to delete character."
+    },
+    "updateImage": {
+      "error": "Failed to update character image."
+    },
+    "duplicate": {
+      "error": "Failed to duplicate character."
+    },
+    "tokenWarning": "Character definition is large ({tokens} tokens), using over {percentage}% of your context window. This may impact performance and context limits."
+  },
+  "characterPanel": {
+    "toolbar": "Character Panel toolbar",
+    "listLabel": "List of characters",
+    "isFavorite": "Is favorite",
+    "createNew": "Create New Character",
+    "importFile": "Import Character from File",
+    "searchToggle": "Toggle search bar",
+    "searchPlaceholder": "Search...",
+    "sorting": {
+      "title": "Characters sorting order",
+      "nameAsc": "A-Z",
+      "nameDesc": "Z-A",
+      "newest": "Newest",
+      "oldest": "Oldest",
+      "favorites": "Favorites"
+    },
+    "editor": {
+      "placeholderTitle": "Select a Character",
+      "placeholderText": "Select a character from the list to view or edit their details.",
+      "placeholderButton": "Create New Character"
+    }
+  },
+  "characterEditor": {
+    "avatar": "Click to select a new avatar for this character",
+    "favorite": "Add to Favorites",
+    "export": "Export and Download",
+    "exportAsPng": "Export as PNG",
+    "exportAsJson": "Export as JSON",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "more": "More...",
+    "searchTags": "Search / Create tags",
+    "creatorNotes": "Creator's Notes",
+    "toggleSpoiler": "Show / Hide character details",
+    "noCreatorNotes": "No Creator's Notes provided.",
+    "detailsHidden": "Character details are hidden. Click the above eye icon or disable \"Spoiler Free Mode\" in settings.",
+    "description": "Description",
+    "firstMessage": "First message",
+    "namePlaceholder": "Enter character name here",
+    "descriptionPlaceholder": "Describe your character's physical and mental traits here.",
+    "firstMessagePlaceholder": "This will be the first message from the character that starts every chat.",
+    "openLastChat": "Open last chat with this character",
+    "startNewChat": "Start a new chat with this character",
+    "embeddedLorebook": "Embedded Lorebook",
+    "tokenCounts": {
+      "title": "Token counts may be inaccurate and provided just for reference.",
+      "total": "Total tokens",
+      "permanent": "Permanent"
+    },
+    "stats": {
+      "title": "Click for stats!"
+    },
+    "moreOptions": {
+      "importCardLore": "Import Card Lore",
+      "convertToPersona": "Convert to Persona",
+      "rename": "Rename"
+    },
+    "name": "Name",
+    "tags": "Tags",
+    "advanced": {
+      "promptOverrides": "Prompt Overrides",
+      "postHistoryInstructions": "Post-History Instructions",
+      "postHistoryInstructionsPlaceholder": "Any contents here will replace the default Post-History Instructions.",
+      "metadata": "Creator's Metadata",
+      "metadataHint": "(Not sent with the AI Prompt)",
+      "metadataOptional": "Everything here is optional",
+      "createdBy": "Created by",
+      "createdByPlaceholder": "(Botmaker's name / Contact info)",
+      "characterVersion": "Character Version",
+      "characterVersionPlaceholder": "(If you want to track character versions)",
+      "creatorNotes": "Creator's Notes",
+      "creatorNotesPlaceholder": "(Describe the bot, give use tips, etc.)",
+      "tagsToEmbed": "Tags to Embed",
+      "tagsToEmbedPlaceholder": "(Write a comma-separated list of tags)",
+      "personality": "Personality",
+      "personalityPlaceholder": "(A brief description of the personality)",
+      "scenario": "Scenario",
+      "scenarioPlaceholder": "(Circumstances and context of the interaction)",
+      "characterNote": "Character's Note",
+      "characterNotePlaceholder": "(Text to be inserted in-chat)",
+      "depth": "{'@'} Depth",
+      "role": "Role",
+      "talkativeness": "Talkativeness",
+      "talkativenessHint": "How often the character speaks in group chats!",
+      "talkativenessShy": "Shy",
+      "talkativenessNormal": "Normal",
+      "talkativenessChatty": "Chatty",
+      "dialogueExamples": "Examples of dialogue",
+      "dialogueExamplesPlaceholder": "(Examples of chat dialog. Begin each example with <START> on a new line.)",
+      "editingTitle": "Editing: {title}",
+      "roles": {
+        "system": "System",
+        "user": "User",
+        "assistant": "Assistant"
       }
     },
-    "powerUser": {
-      "confirmMessageDelete": {
-        "description": "Show a confirmation dialog before deleting a chat message.",
-        "label": "Confirm Message Deletion"
-      },
-      "neverResizeAvatars": {
-        "description": "Avoid cropping and resizing imported character images. Disables the upload cropping popup.",
-        "label": "Never resize avatars"
-      },
-      "sendOnEnter": {
-        "description": "Determines if the Enter key sends a message.",
-        "label": "Enter to Send",
-        "options": {
-          "auto": "Automatic (PC)",
-          "disabled": "Disabled",
-          "enabled": "Enabled"
-        }
-      },
-      "spoilerFreeMode": {
-        "description": "Hide character definitions from the editor panel behind a spoiler button.",
-        "label": "Spoiler Free Mode"
-      },
-      "tagImportSetting": {
-        "description": "How to handle tags when importing characters.",
-        "label": "Tag Import Behavior (popup not implemented)",
-        "options": {
-          "all": "Import all tags",
-          "ask": "Ask for each character",
-          "none": "Do not import tags",
-          "only_existing": "Import only existing tags"
-        }
-      },
-      "worldImportDialog": {
-        "description": "Ask to import World Info for new characters. If unchecked, a brief message will be shown instead.",
-        "label": "Lorebook Import Dialog"
-      }
+    "validation": {
+      "nameRequired": "Character name is required.",
+      "avatarRequired": "Please select an avatar."
     },
-    "ui": {
-      "chat": {
-        "forbidExternalMedia": {
-          "description": "Prevent loading of external media in chat messages.",
-          "label": "Forbid External Media"
-        },
-        "messagesToLoad": {
-          "description": "Number of messages to load when loading more messages in chat.",
-          "label": "Messages to Load"
-        },
-        "reasoningCollapsed": {
-          "description": "If enabled, the reasoning (thinking) block on messages will be collapsed by default.",
-          "label": "Collapse Reasoning by Default"
-        }
-      },
-      "disableAnimations": {
-        "description": "Disables CSS transitions, Vue transitions, and other animations for better performance and accessibility",
-        "label": "Disable all animations"
-      },
-      "editor": {
-        "codeMirrorExpanded": {
-          "description": "Use the expanded CodeMirror editor for better markdown support.",
-          "label": "Expanded CodeMirror Editor"
-        },
-        "codeMirrorIdentifiers": {
-          "description": "Select which fields should use the CodeMirror editor.",
-          "label": "CodeMirror Fields"
-        },
-        "fields": {
-          "characterNote": "Character's Note",
-          "content": "Content",
-          "creatorNotes": "Creator's Note",
-          "customCss": "Custom CSS",
-          "description": "Description",
-          "dialogueExamples": "Examples of dialogue",
-          "editMessage": "Edit Message",
-          "firstMessage": "First Message",
-          "input": "Input",
-          "personality": "Personality",
-          "postHistoryInstructions": "Post-History Instructions",
-          "scenario": "Scenario"
-        },
-        "groups": {
-          "character": "Character",
-          "chat": "Chat",
-          "persona": "Persona",
-          "promptManager": "Prompt Manager",
-          "theme": "Theme",
-          "worldInfo": "World Info"
-        }
-      }
+    "alternateGreetings": {
+      "title": "Alternate Greetings",
+      "label": "Alternate Greetings",
+      "placeholder": "Enter an alternate greeting...",
+      "empty": "No alternate greetings added yet.",
+      "swapTooltip": "Swap with first message"
+    }
+  },
+  "extensions": {
+    "notifyUpdates": "Notify on extension updates",
+    "manage": "Manage extensions",
+    "install": "Install extension",
+    "managePopupNotImplemented": "Manage extensions popup not implemented yet.",
+    "installPopupNotImplemented": "Install extension popup not implemented yet.",
+    "placeholder": {
+      "title": "Select an Extension",
+      "text": "Select an extension from the list on the left to view its details and settings."
     }
   },
   "themes": {
-    "errors": {
-      "deleteFailed": "Failed to delete theme",
-      "importFailed": "Failed to import theme",
-      "loadFailed": "Failed to load themes",
-      "saveFailed": "Failed to save theme"
-    },
     "title": "Themes",
+    "errors": {
+      "loadFailed": "Failed to load themes",
+      "saveFailed": "Failed to save theme",
+      "deleteFailed": "Failed to delete theme",
+      "importFailed": "Failed to import theme"
+    },
     "variables": {
-      "avatars": {
-        "borderRadius": "Avatar Radius",
-        "height": "Avatar Height",
-        "width": "Avatar Width"
-      },
       "colors": {
-        "accentGreen": "Accent Green",
-        "accentRed": "Accent Red",
-        "backgroundTint": "Background Tint",
-        "borderColor": "Border Color",
-        "botMessageTint": "Bot Message Bubble",
-        "chatTint": "Chat Container Tint",
-        "emphasisColor": "Emphasis Color",
-        "errorColor": "Error Color",
-        "quoteColor": "Quote Color",
-        "shadowColor": "Shadow Color",
         "textColor": "Text Color",
+        "emphasisColor": "Emphasis Color",
         "underlineColor": "Underline Color",
+        "quoteColor": "Quote Color",
+        "backgroundTint": "Background Tint",
+        "chatTint": "Chat Container Tint",
         "userMessageTint": "User Message Bubble",
-        "warningColor": "Warning Color"
+        "botMessageTint": "Bot Message Bubble",
+        "shadowColor": "Shadow Color",
+        "borderColor": "Border Color",
+        "accentRed": "Accent Red",
+        "accentGreen": "Accent Green",
+        "warningColor": "Warning Color",
+        "errorColor": "Error Color"
+      },
+      "scrollbar": {
+        "width": "Width",
+        "thumbColor": "Thumb Color",
+        "trackColor": "Track Color",
+        "thumbRadius": "Thumb Radius",
+        "trackRadius": "Track Radius",
+        "thumbBorderWidth": "Thumb Border Spacing",
+        "thumbShadowColor": "Thumb Inner Shadow"
+      },
+      "typography": {
+        "fontSize": "Base Font Size",
+        "fontFamily": "Main Font Family",
+        "fontFamilyMono": "Monospace Font Family",
+        "borderRadius": "Global Border Radius",
+        "blurStrength": "Blur Strength (px)",
+        "shadowWidth": "Shadow Size (px)"
       },
       "layout": {
         "panelWidth": "Main Panel Width",
         "sidebarWidth": "Sidebar Width"
       },
-      "scrollbar": {
-        "thumbBorderWidth": "Thumb Border Spacing",
-        "thumbColor": "Thumb Color",
-        "thumbRadius": "Thumb Radius",
-        "thumbShadowColor": "Thumb Inner Shadow",
-        "trackColor": "Track Color",
-        "trackRadius": "Track Radius",
-        "width": "Width"
-      },
-      "typography": {
-        "blurStrength": "Blur Strength (px)",
-        "borderRadius": "Global Border Radius",
-        "fontFamily": "Main Font Family",
-        "fontFamilyMono": "Monospace Font Family",
-        "fontSize": "Base Font Size",
-        "shadowWidth": "Shadow Size (px)"
+      "avatars": {
+        "width": "Avatar Width",
+        "height": "Avatar Height",
+        "borderRadius": "Avatar Radius"
       }
     }
   },
-  "userSettings": {
-    "noResults": "No settings found.",
-    "searchPlaceholder": "Search Settings"
+  "apiConnections": {
+    "profile": "Connection Profile",
+    "profileManagement": {
+      "create": "Save current connection as new profile",
+      "rename": "Rename current profile",
+      "delete": "Delete current profile",
+      "import": "Import profiles",
+      "export": "Export current profile",
+      "none": "None",
+      "createPopupTitle": "New Connection Profile",
+      "profileName": "Profile Name",
+      "fieldsToInclude": "Fields to include in profile",
+      "renamePopupTitle": "Rename Connection Profile",
+      "deletePopupContent": "Are you sure you want to delete the profile \"<b>{name}</b>\"?",
+      "errors": {
+        "noSelection": "No profile selected.",
+        "deleteNone": "Cannot delete the base profile.",
+        "renameNone": "Cannot rename the base profile.",
+        "nameExists": "A profile with this name already exists."
+      }
+    },
+    "provider": "Provider",
+    "openaiKey": "OpenAI API key",
+    "claudeKey": "Claude API Key",
+    "openrouterKey": "OpenRouter API Key",
+    "mistralaiKey": "MistralAI API Key",
+    "groqKey": "Groq API Key",
+    "customKey": "API Key (Optional)",
+    "azureKey": "Azure API Key",
+    "manageKeys": "Manage API keys",
+    "keyPrivacy": "For privacy reasons, your API key will be hidden after you click 'Connect'.",
+    "openaiModel": "OpenAI Model",
+    "claudeModel": "Claude Model",
+    "mistralaiModel": "MistralAI Model",
+    "groqModel": "Groq Model",
+    "customModel": "Model Name",
+    "ai21Key": "AI21 API Key",
+    "ai21Model": "Model",
+    "aimlapiKey": "AIML API Key",
+    "aimlapiModel": "Model",
+    "cohereKey": "Cohere API Key",
+    "cohereModel": "Model",
+    "cometapiKey": "Comet API Key",
+    "cometapiModel": "Model",
+    "deepseekKey": "DeepSeek API Key",
+    "electronhubKey": "ElectronHub API Key",
+    "electronhubModel": "Model",
+    "fireworksKey": "Fireworks API Key",
+    "fireworksModel": "Model",
+    "googleKey": "API Key",
+    "googleModel": "Model",
+    "koboldModel": "Kobold Model",
+    "moonshotKey": "Moonshot API Key",
+    "moonshotModel": "Model",
+    "nanogptKey": "NanoGPT API Key",
+    "nanogptModel": "Model",
+    "ollamaModel": "Model",
+    "ollamaUrl": "Ollama Server URL",
+    "perplexityKey": "Perplexity API Key",
+    "perplexityModel": "Model",
+    "pollinationsModel": "Model",
+    "vertexaiKey": "Access Token (ADC/JSON Key)",
+    "vertexaiModel": "Model",
+    "vertexaiProjectId": "Cloud Project ID",
+    "vertexaiRegion": "Region",
+    "xapiKey": "xAI API Key",
+    "xaiModel": "Model",
+    "zaiKey": "Zhipu AI Key",
+    "zaiEndpoint": "Endpoint",
+    "zaiModel": "Model",
+    "customUrl": "API Base URL",
+    "azureBaseUrl": "Base URL / Endpoint",
+    "azureDeploymentName": "Deployment Name",
+    "azureApiVersion": "API Version",
+    "azureModel": "Model Name",
+    "deepseekModel": "DeepSeek Model",
+    "koboldUrl": "KoboldCpp URL",
+    "connect": "Connect",
+    "connecting": "Connecting",
+    "providers": {
+      "openai": "OpenAI",
+      "claude": "Claude",
+      "openrouter": "OpenRouter",
+      "custom": "Custom (OpenAI-compatible)",
+      "ai21": "AI21",
+      "aimlapi": "AI/ML API",
+      "azure_openai": "Azure OpenAI",
+      "cohere": "Cohere",
+      "deepseek": "DeepSeek",
+      "electronhub": "Electron Hub",
+      "fireworks": "Fireworks AI",
+      "groq": "Groq",
+      "makersuite": "Google AI Studio",
+      "vertexai": "Google Vertex AI",
+      "mistralai": "MistralAI",
+      "moonshot": "Moonshot AI",
+      "nanogpt": "NanoGPT",
+      "ollama": "Ollama",
+      "perplexity": "Perplexity",
+      "pollinations": "Pollinations",
+      "xai": "xAI (Grok)",
+      "zai": "Z.AI (GLM)",
+      "koboldcpp": "KoboldCpp"
+    },
+    "openrouterModel": "OpenRouter Model",
+    "openrouterWebsite": "Use OpenRouter website setting",
+    "openrouterOptions": "OpenRouter Options",
+    "openrouterUseFallback": "Use Fallback Models",
+    "openrouterAllowFallbacks": "Allow Fallbacks",
+    "openrouterFallbackProviders": "Fallback Providers (comma-separated)",
+    "openrouterMiddleout": "Middle-Out",
+    "formatter": "Formatter",
+    "instruct": {
+      "title": "Instruct Template",
+      "create": "Create Template",
+      "edit": "Edit Template",
+      "delete": "Delete Template",
+      "import": "Import Template",
+      "export": "Export Template",
+      "deleteTitle": "Delete Template",
+      "deleteContent": "Are you sure you want to delete {name}?"
+    },
+    "middleout": {
+      "on": "On",
+      "off": "Off",
+      "auto": "Auto"
+    },
+    "tokenizer": "Tokenizer",
+    "tokenizers": {
+      "auto": "Auto (recommended)",
+      "none": "None (estimated)",
+      "llama": "Llama 1/2",
+      "llama3": "Llama 3",
+      "mistral": "Mistral V1",
+      "yi": "Yi",
+      "claude": "Claude 1/2",
+      "gemma": "Gemma / Gemini",
+      "jamba": "Jamba",
+      "qwen2": "Qwen2",
+      "commandr": "Command-R",
+      "commanda": "Command-A",
+      "nemo": "Mistral Nemo",
+      "deepseek": "DeepSeek V3/R1",
+      "gpt2": "GPT-2",
+      "gpt35": "GPT-3.5-Turbo / GPT-4",
+      "gpt4o": "GPT-4o / GPT-5"
+    },
+    "postProcessing": {
+      "label": "Prompt Post-Processing",
+      "description": "Applies additional processing to the prompt before sending it to the API.",
+      "tooltip": "Applies additional processing to the prompt before sending it to the API.",
+      "withTools": "With Tools",
+      "noTools": "No Tools",
+      "prompts": {
+        "none": "None",
+        "merge_tools": "Merge consecutive roles (with tools)",
+        "semi_tools": "Semi-strict (alternating roles; with tools)",
+        "strict_tools": "Strict (user first, alternating roles; with tools)",
+        "merge": "Merge consecutive roles (no tools)",
+        "semi": "Semi-strict (alternating roles; no tools)",
+        "strict": "Strict (user first, alternating roles; no tools)",
+        "single": "Single user message (no tools)"
+      }
+    },
+    "customProxy": {
+      "title": "Proxy Settings",
+      "createProfile": "Create Profile",
+      "deleteProfile": "Delete Profile",
+      "saveProfile": "Save Profile",
+      "renameProfile": "Rename Profile",
+      "deleteProfileTitle": "Delete Proxy Profile",
+      "deleteProfileContent": "Are you sure you want to delete the proxy profile \"<b>{name}</b>\"?",
+      "url": "URL",
+      "urlPlaceholder": "http://localhost:8080",
+      "password": "Password",
+      "passwordPlaceholder": "Optional"
+    }
   },
-  "worldInfo": {
-    "activationSettings": "Activation Settings",
-    "activeWorlds": "Active World(s) for all chats",
-    "activeWorldsHint": "These lorebooks will be active in all chats.",
-    "alertOnOverflow": "Alert On Overflow",
-    "alertOnOverflowHint": "Alert if your world info is greater than the allocated budget.",
-    "budgetCap": "Budget Cap",
-    "budgetCapHint": "(0 = disabled)",
-    "caseSensitive": "Case Sensitive",
-    "caseSensitiveHint": "Lookup for the entry keys in the context will respect the case",
-    "contextPercent": "Context %",
-    "deleteBook": "Delete Lorebook '{bookName}'",
-    "duplicate": "Duplicate Lorebook",
-    "entry": {
-      "additionalSources": "Additional Matching Sources",
-      "caseSensitive": "Case Sensitive",
-      "charDescription": "Character Description",
-      "charNote": "Character's Note",
-      "charPersonality": "Character Personality",
-      "characterFilters": "Character Filters",
-      "content": "Content",
-      "contentPlaceholder": "What this keyword should mean to the AI...",
-      "creatorNotes": "Creator's Notes",
-      "delay": "Delay (messages)",
-      "delayUntilRecursion": "Delay until Recursion Level",
-      "delete": "Delete world info entry",
-      "depth": "Depth",
-      "duplicate": "Duplicate world info entry",
-      "entryState": "Entry State",
-      "entryStates": {
-        "constant": "🔵 Constant",
-        "normal": "🟢 Normal"
+  "settings": {
+    "powerUser": {
+      "spoilerFreeMode": {
+        "label": "Spoiler Free Mode",
+        "description": "Hide character definitions from the editor panel behind a spoiler button."
       },
-      "excludeRecursion": "Exclude from Recursion",
-      "filterCharExclude": "Exclude matching characters",
-      "filterCharNames": "Filter by Character Name",
-      "filterCharTags": "Filter by Character Tag",
-      "filterPlaceholder": "Comma separated list (ignored if empty)",
-      "group": "Group",
-      "groupOverride": "Group Override",
-      "groupSettings": "Group & Budget Settings",
-      "groupWeight": "Group Weight",
-      "ignoreBudget": "Ignore Token Budget",
-      "keywordsPlaceholder": "Type and press Enter...",
-      "logic": "Logic",
-      "logicOptions": {
-        "andAll": "AND ALL",
-        "andAny": "AND ANY",
-        "notAll": "NOT ALL",
-        "notAny": "NOT ANY"
+      "neverResizeAvatars": {
+        "label": "Never resize avatars",
+        "description": "Avoid cropping and resizing imported character images. Disables the upload cropping popup."
       },
-      "matchWholeWords": "Match Whole Words",
-      "move": "Move/Copy Entry to Another Lorebook",
-      "order": "Order",
-      "outletName": "Outlet Name (not implemented)",
-      "personaDescription": "Persona Description",
-      "positionLabel": "Position",
-      "positionOptions": {
-        "afterAN": "{'↓'}AN",
-        "afterChar": "{'↓'}Char",
-        "afterEM": "{'↓'}EM",
-        "atDepthSystem": "{'@'}D ⚙️",
-        "beforeAN": "{'↑'}AN",
-        "beforeChar": "{'↑'}Char",
-        "beforeEM": "{'↑'}EM",
-        "outlet": "➡️ Outlet"
+      "sendOnEnter": {
+        "label": "Enter to Send",
+        "description": "Determines if the Enter key sends a message.",
+        "options": {
+          "disabled": "Disabled",
+          "auto": "Automatic (PC)",
+          "enabled": "Enabled"
+        }
       },
-      "positionTooltip": "{'↑'}Char: Before Character Definitions\n{'↓'}Char: After Character Definitions\n{'↑'}EM: Before Example Messages\n{'↓'}EM: After Example Messages\n{'↑'}AN: Before Author's Note\n{'↓'}AN: After Author's Note\n{'@'}D ⚙️: at Depth (System)\n{'@'}D 👤: at Depth (User)\n{'@'}D 🤖: at Depth (Assistant)",
-      "preventRecursion": "Prevent Recursion",
-      "recursionSettings": "Recursion Settings",
-      "scenario": "Scenario",
-      "titlePlaceholder": "Entry Title/Memo",
-      "toggle": "Toggle entry's active state.",
-      "trigger": "Trigger %"
+      "worldImportDialog": {
+        "label": "Lorebook Import Dialog",
+        "description": "Ask to import World Info for new characters. If unchecked, a brief message will be shown instead."
+      },
+      "confirmMessageDelete": {
+        "label": "Confirm Message Deletion",
+        "description": "Show a confirmation dialog before deleting a chat message."
+      },
+      "tagImportSetting": {
+        "label": "Tag Import Behavior (popup not implemented)",
+        "description": "How to handle tags when importing characters.",
+        "options": {
+          "none": "Do not import tags",
+          "all": "Import all tags",
+          "only_existing": "Import only existing tags",
+          "ask": "Ask for each character"
+        }
+      }
     },
-    "errors": {
-      "bookNotFound": "Book not found: {name}.",
-      "createFailed": "Failed to create lorebook.",
-      "deleteFailed": "Failed to delete lorebook.",
-      "exportFailed": "Failed to export lorebook.",
-      "importFailed": "Failed to import lorebook.",
-      "loadFailed": "Could not load lorebook: {name}.",
-      "loadListFailed": "Failed to load lorebooks. Make sure you are on the staging branch on SillyTavern.",
-      "renameFailed": "Failed to rename lorebook.",
-      "saveFailed": "Failed to save lorebook."
+    "ui": {
+      "disableAnimations": {
+        "label": "Disable all animations",
+        "description": "Disables CSS transitions, Vue transitions, and other animations for better performance and accessibility"
+      },
+      "forceMobileMode": {
+        "label": "Force Mobile Mode",
+        "description": "Always use the mobile layout, even on larger screens."
+      },
+      "chat": {
+        "reasoningCollapsed": {
+          "label": "Collapse Reasoning by Default",
+          "description": "If enabled, the reasoning (thinking) block on messages will be collapsed by default."
+        },
+        "forbidExternalMedia": {
+          "label": "Forbid External Media",
+          "description": "Prevent loading of external media in chat messages."
+        },
+        "messagesToLoad": {
+          "label": "Messages to Load",
+          "description": "Number of messages to load when loading more messages in chat."
+        }
+      },
+      "editor": {
+        "codeMirrorExpanded": {
+          "label": "Expanded CodeMirror Editor",
+          "description": "Use the expanded CodeMirror editor for better markdown support."
+        },
+        "codeMirrorIdentifiers": {
+          "label": "CodeMirror Fields",
+          "description": "Select which fields should use the CodeMirror editor."
+        },
+        "fields": {
+          "description": "Description",
+          "firstMessage": "First Message",
+          "personality": "Personality",
+          "scenario": "Scenario",
+          "characterNote": "Character's Note",
+          "dialogueExamples": "Examples of dialogue",
+          "postHistoryInstructions": "Post-History Instructions",
+          "creatorNotes": "Creator's Note",
+          "content": "Content",
+          "input": "Input",
+          "editMessage": "Edit Message",
+          "customCss": "Custom CSS"
+        },
+        "groups": {
+          "character": "Character",
+          "persona": "Persona",
+          "worldInfo": "World Info",
+          "promptManager": "Prompt Manager",
+          "chat": "Chat",
+          "theme": "Theme"
+        }
+      }
     },
-    "export": "Export Lorebook",
-    "globalSettings": "Global Settings",
-    "import": "Import Lorebook",
-    "importSuccess": "Successfully imported embedded lorebook: {name}",
-    "includeNames": "Include Names",
-    "includeNamesHint": "Include names with each message into the context for scanning",
-    "matchWholeWords": "Match Whole Words",
-    "matchWholeWordsHint": "If the entry key consists of only one word, it would not be matched as part of other words",
-    "maxRecursionSteps": "Max Recursion Steps",
-    "maxRecursionStepsHint": "Maximum number of recursion loops to prevent infinite loops",
-    "minActivations": "Min. Activations",
-    "minActivationsDepthMax": "Min. Activations Max Depth",
-    "minActivationsDepthMaxHint": "Maximum scan depth to search for minimum activations",
-    "minActivationsHint": "Minimum number of entries to activate (if possible) regardless of scan depth",
-    "newEntryInBook": "New Entry in {bookName}",
-    "newWorld": "New Lorebook",
-    "popup": {
-      "deleteBookContent": "Are you sure you want to delete the lorebook \"<b>{name}</b>\"?",
-      "deleteEntryContent": "Are you sure you want to delete the entry \"<b>{name}</b>\"?",
-      "deleteEntryTitle": "Confirm Entry Deletion",
-      "duplicateBookInputSuffix": " (copy)",
-      "duplicateBookTitle": "Duplicate Lorebook",
-      "importEmbeddedContent": "This character has an embedded lorebook named \"{name}\". Do you want to import it into your World Info library?",
-      "importEmbeddedTitle": "Import Embedded Lorebook",
-      "newBookContent": "Enter the name for the new lorebook:",
-      "newBookInput": "New Lorebook",
-      "newBookTitle": "New Lorebook",
-      "renameBookTitle": "Rename Lorebook"
+    "chat": {
+      "stopOnNameHijack": {
+        "label": "Stop on name hijack",
+        "description": "Stop generation if the AI tries to speak for another character or user. It is a {'{{name}}'}: check.",
+        "options": {
+          "none": "None",
+          "single": "Single Chat Only",
+          "group": "Group Chat Only",
+          "all": "All Chats"
+        }
+      }
+    }
+  },
+  "extensionsBuiltin": {
+    "chatTranslation": {
+      "connectionProfile": "Connection Profile",
+      "connectionProfileHint": "Select the API connection profile to use for generating translations.",
+      "sourceLang": "Source Language",
+      "targetLang": "Target Language",
+      "autoMode": {
+        "label": "Auto-Translate Mode",
+        "none": "None (Manual)",
+        "responses": "Responses Only (Bot)",
+        "inputs": "Inputs Only (User)",
+        "both": "All Messages"
+      },
+      "promptTemplate": "Translation Prompt Template",
+      "promptHint": "Customize how the LLM translates text. Supports Handlebars variables: {'{{prompt}}'}, {'{{sourceLang}}'}, {'{{targetLang}}'}, {'{{name}}'}."
     },
-    "recursiveScan": "Recursive Scan",
-    "recursiveScanHint": "Entries can activate other entries by mentioning their keywords",
-    "refresh": "Refresh",
-    "rename": "Rename Lorebook",
-    "scanDepth": "Scan Depth",
-    "searchPlaceholder": "Search Lorebooks...",
-    "sorting": {
-      "orderAsc": "Order ↗",
-      "title": "Sort entries by",
-      "titleAsc": "Title A-Z",
-      "titleDesc": "Title Z-A",
-      "uidAsc": "UID ↗",
-      "uidDesc": "UID ↘"
+    "rerollContinue": {
+      "buttonLabel": "Reroll Continue",
+      "noSnapshot": "No previous state to reroll.",
+      "contextChanged": "Chat context changed. Cannot reroll.",
+      "divergenceError": "Message content divergence detected. Aborting reroll.",
+      "swipeError": "Swipe changed. Cannot reroll previous swipe state.",
+      "reverting": "Reverting and rerolling...",
+      "error": "Failed to reroll continue.",
+      "rerollDisabled": "Reroll/Continue is disabled in settings",
+      "impersonateButtonLabel": "Impersonate",
+      "impersonateDisabled": "Impersonate is disabled in settings",
+      "noPersona": "No active persona for impersonation",
+      "buildPromptFailed": "Failed to build prompt",
+      "noConnectionProfile": "No connection profile selected for impersonate",
+      "impersonating": "Impersonating user...",
+      "impersonationFailed": "Impersonation failed",
+      "settings": {
+        "rerollEnabled": "Enable Reroll/Continue",
+        "impersonateEnabled": "Enable Impersonate",
+        "impersonateTitle": "Impersonate Settings",
+        "connectionProfileLabel": "Connection Profile",
+        "connectionProfileDesc": "Select LLM profile for impersonation generation",
+        "promptDesc": "Custom prompt template for impersonation. Supports {'{{user}}'} and {'{{char}}'} placeholders.",
+        "promptLabel": "Prompt Template",
+        "reset": "Reset"
+      }
     },
-    "totalActiveTokens": "Total Active Tokens",
-    "useGroupScoring": "Use Group Scoring",
-    "useGroupScoringHint": "Only the entries with the most number of key matches will be selected for Inclusion Group filtering"
+    "chatBranching": {
+      "branchButtonTitle": "Branch from this message",
+      "branchPointTitle": "Branched at message #",
+      "rootChatTitle": "Root Chat",
+      "rootLabel": "Root",
+      "totalMessagesTitle": "Total Messages",
+      "createdTitle": "Created: ",
+      "branchTreeTitle": "Branch Tree",
+      "chatTreeTitle": "Chat Tree",
+      "noChatLoaded": "No chat is currently loaded.",
+      "branchCreationFailed": "Failed to create branch",
+      "branchName": "Branch",
+      "loadChatFailed": "Failed to load selected chat"
+    }
+  },
+  "persona": {
+    "createFromCharacter": {
+      "error": "Failed to create persona from character."
+    }
+  },
+  "instruct": {
+    "namesBehavior": {
+      "none": "None",
+      "force": "Force",
+      "include": "Include"
+    }
+  },
+  "a11y": {
+    "tagInput": {
+      "description": "Type a tag and press Enter or Comma to add it.",
+      "tagsList": "Selected Tags",
+      "removeTag": "Remove tag: {tag}",
+      "addTag": "Add Tag",
+      "added": "{count} tag(s) added: {tags}",
+      "removed": "Removed tag: {tag}"
+    },
+    "imageCropper": {
+      "cropBoxLabel": "Crop selection box. Drag to move or resize.",
+      "cropBoxDescription": "Use arrow keys to move. Shift + arrow keys to resize. Enter or Space to confirm."
+    },
+    "pagination": {
+      "navigation": "Pagination"
+    },
+    "backgrounds": {
+      "images": "Background Images",
+      "scrollToTop": "Scroll to top"
+    },
+    "navbar": {
+      "navigation": "Application navigation"
+    },
+    "sidebar": {
+      "close": "Close Sidebar",
+      "resizeLeft": "Resize Left Sidebar",
+      "resizeRight": "Resize Right Sidebar",
+      "menu": "Menu",
+      "options": "Options"
+    },
+    "rangeControl": {
+      "value": "Value",
+      "valueLower": "value"
+    },
+    "select": {
+      "filterOptions": "Filter options",
+      "searchPlaceholder": "Search...",
+      "noOptions": "No options found"
+    },
+    "smartAvatar": {
+      "groupAvatar": "Group Avatar",
+      "singleAvatar": "Avatar"
+    },
+    "tabs": {
+      "list": "Tabs"
+    },
+    "codeMirrorEditor": {
+      "label": "Code Editor"
+    }
   }
 }
