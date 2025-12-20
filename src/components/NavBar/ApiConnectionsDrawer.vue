@@ -7,6 +7,7 @@ import { toast } from '../../composables/useToast';
 import { CustomPromptPostProcessing, TokenizerType } from '../../constants';
 import { useApiStore } from '../../stores/api.store';
 import { usePopupStore } from '../../stores/popup.store';
+import { useSecretStore } from '../../stores/secret.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { type AiConfigCondition, api_providers, type ConnectionProfile, POPUP_RESULT, POPUP_TYPE } from '../../types';
 import { uuidv4 } from '../../utils/commons';
@@ -21,6 +22,7 @@ const { t } = useStrictI18n();
 const apiStore = useApiStore();
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
+const secretStore = useSecretStore();
 
 const isProfilePopupVisible = ref(false);
 
@@ -140,6 +142,8 @@ const postProcessingOptions = computed(() => [
 const proxies = computed(() =>
   (settingsStore.settings.proxies ?? []).map((proxy) => ({ label: proxy.name, value: proxy.id })),
 );
+
+const hasPendingSecrets = computed(() => Object.keys(secretStore.pendingSecrets).length > 0);
 
 const isTestingMessage = ref(false);
 
@@ -363,6 +367,10 @@ async function testMessage() {
             />
           </div>
         </FormItem>
+
+        <div v-if="hasPendingSecrets" class="neutral_warning">
+          {{ t('apiConnections.pendingSecretsNote') }}
+        </div>
 
         <div class="api-connections-drawer-actions">
           <Button :loading="isTestingMessage" :disabled="isTestingMessage" @click.prevent="testMessage">

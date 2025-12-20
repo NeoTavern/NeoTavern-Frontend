@@ -1023,6 +1023,7 @@ export interface MessageSchema {
       password: string;
       passwordPlaceholder: string;
     };
+    pendingSecretsNote: string;
     testMessage: {
       label: string;
       testing: string;

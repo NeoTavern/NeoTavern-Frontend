@@ -1020,6 +1020,7 @@
       "password": "Password",
       "passwordPlaceholder": "Optional"
     },
+    "pendingSecretsNote": "You have unsaved API keys. Press 'Test Message' to save and validate them.",
     "testMessage": {
       "label": "Test Message",
       "testing": "Testing...",
