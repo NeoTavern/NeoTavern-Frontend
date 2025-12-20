@@ -663,6 +663,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         generationId,
       });
       if (!responseController.signal.aborted) {
+        if (!response.content || response.content.trim() === '') {
+          toast.error(t('chat.generate.emptyResponseError'));
+          return;
+        }
         await handleGenerationResult(response.content, response.reasoning);
       }
     } else {
@@ -674,47 +678,12 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       )) as unknown as () => AsyncGenerator<StreamedChunk>;
 
       let targetMessageIndex = -1;
+      let messageCreated = false;
 
-      // Initialize placeholder message
-      if (mode === GenerationMode.NEW || mode === GenerationMode.REGENERATE) {
-        const botMessage: ChatMessage = {
-          name: activeCharacter!.name,
-          is_user: false,
-          mes: '',
-          send_date: getMessageTimeStamp(),
-          gen_started: genStarted,
-          is_system: false,
-          swipes: [''],
-          swipe_id: 0,
-          swipe_info: [],
-          extra: { reasoning: '' },
-          original_avatar: activeCharacter!.avatar,
-        };
-        const createController = new AbortController();
-        await eventEmitter.emit('generation:before-message-create', botMessage, {
-          controller: createController,
-          generationId,
-        });
-        if (createController.signal.aborted) return;
-
-        if (deps.activeChat.value !== chatContext) throw new Error('Context switched');
-
-        activeChatMessages.push(botMessage);
-        generatedMessage = botMessage;
+      // For CONTINUE mode, we work on existing message
+      if (mode === GenerationMode.CONTINUE) {
         targetMessageIndex = activeChatMessages.length - 1;
-        await nextTick();
-        await eventEmitter.emit('message:created', botMessage);
-      } else if (mode === GenerationMode.ADD_SWIPE && lastMessage) {
-        targetMessageIndex = activeChatMessages.length - 1;
-        if (!Array.isArray(lastMessage.swipes)) lastMessage.swipes = [lastMessage.mes];
-        lastMessage.swipes.push('');
-        lastMessage.swipe_id = lastMessage.swipes.length - 1;
-        lastMessage.mes = '';
-        lastMessage.extra.display_text = '';
-        lastMessage.extra.reasoning_display_text = '';
-      } else {
-        // Continue
-        targetMessageIndex = activeChatMessages.length - 1;
+        messageCreated = true;
       }
 
       try {
@@ -729,6 +698,52 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
             generationController.value?.abort();
             break;
           }
+
+          // Create message on first chunk with content
+          if (!messageCreated && chunk.delta && chunk.delta.trim()) {
+            if (mode === GenerationMode.NEW || mode === GenerationMode.REGENERATE) {
+              const botMessage: ChatMessage = {
+                name: activeCharacter!.name,
+                is_user: false,
+                mes: '',
+                send_date: getMessageTimeStamp(),
+                gen_started: genStarted,
+                is_system: false,
+                swipes: [''],
+                swipe_id: 0,
+                swipe_info: [],
+                extra: { reasoning: '' },
+                original_avatar: activeCharacter!.avatar,
+              };
+              const createController = new AbortController();
+              await eventEmitter.emit('generation:before-message-create', botMessage, {
+                controller: createController,
+                generationId,
+              });
+              if (createController.signal.aborted) return;
+
+              if (deps.activeChat.value !== chatContext) throw new Error('Context switched');
+
+              activeChatMessages.push(botMessage);
+              generatedMessage = botMessage;
+              targetMessageIndex = activeChatMessages.length - 1;
+              messageCreated = true;
+              await nextTick();
+              await eventEmitter.emit('message:created', botMessage);
+            } else if (mode === GenerationMode.ADD_SWIPE && lastMessage) {
+              targetMessageIndex = activeChatMessages.length - 1;
+              if (!Array.isArray(lastMessage.swipes)) lastMessage.swipes = [lastMessage.mes];
+              lastMessage.swipes.push('');
+              lastMessage.swipe_id = lastMessage.swipes.length - 1;
+              lastMessage.mes = '';
+              lastMessage.extra.display_text = '';
+              lastMessage.extra.reasoning_display_text = '';
+              messageCreated = true;
+            }
+          }
+
+          // Skip processing if no message created yet
+          if (!messageCreated) continue;
 
           const targetMessage = activeChatMessages[targetMessageIndex];
           if (!targetMessage.swipes) targetMessage.swipes = [''];
@@ -775,6 +790,12 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           }
         }
       } finally {
+        // Check if we never created a message (empty response)
+        if (!messageCreated) {
+          toast.error(t('chat.generate.emptyResponseError'));
+          return;
+        }
+
         // Finalize streaming
         const finalMessage = activeChatMessages[targetMessageIndex];
         if (finalMessage) {

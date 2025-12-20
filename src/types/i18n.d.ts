@@ -575,6 +575,7 @@ export interface MessageSchema {
       noPersonaError: string;
       noSpeaker: string;
       postProcessError: string;
+      emptyResponseError: string;
     };
     buttons: {
       confirmEdit: string;

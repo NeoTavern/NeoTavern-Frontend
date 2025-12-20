@@ -571,7 +571,8 @@
       "noModelError": "No model selected. Please check your API connection settings.",
       "noPersonaError": "No persona selected. Please check your persona settings.",
       "noSpeaker": "No valid speaker found for generation.",
-      "postProcessError": "Post-processing failed. Check console for details."
+      "postProcessError": "Post-processing failed. Check console for details.",
+      "emptyResponseError": "The AI returned an empty response."
     },
     "buttons": {
       "confirmEdit": "Confirm edit",
