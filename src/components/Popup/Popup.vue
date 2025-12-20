@@ -34,13 +34,18 @@ const props = defineProps({
 const emit = defineEmits(['close', 'submit']);
 
 const { t } = useStrictI18n();
-const dialog = ref<HTMLDialogElement | null>(null);
 const mainInputComponent = ref<InstanceType<typeof Textarea> | null>(null);
 const cropper = ref<InstanceType<typeof ImageCropper> | null>(null);
 const internalInputValue = ref(props.inputValue);
 const generatedButtons = ref<CustomPopupButton[]>([]);
 const sanitizedTitle = computed(() => DOMPurify.sanitize(props.title));
 const formattedContent = computed(() => formatText(props.content));
+
+function handleBackdropClick(event: MouseEvent) {
+  if (event.target === event.currentTarget) {
+    onCancel();
+  }
+}
 
 function resolveOptions() {
   if (props.customButtons) {
@@ -113,19 +118,13 @@ watch(
     if (isVisible) {
       internalInputValue.value = props.inputValue;
       resolveOptions();
-      if (!dialog.value?.open) {
-        dialog.value?.showModal();
-      }
       setTimeout(() => {
         if (props.type === POPUP_TYPE.INPUT && mainInputComponent.value) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const textarea = (mainInputComponent.value as any).$el.querySelector('textarea');
           textarea?.focus();
-        } else if (props.type !== POPUP_TYPE.CROP) {
         }
       }, 100);
-    } else {
-      dialog.value?.close();
     }
   },
 );
@@ -134,7 +133,6 @@ onMounted(() => {
   if (props.visible) {
     internalInputValue.value = props.inputValue;
     resolveOptions();
-    dialog.value?.showModal();
   }
 });
 
@@ -174,52 +172,57 @@ function onCancel() {
 </script>
 
 <template>
-  <dialog
-    :id="id"
-    ref="dialog"
-    class="popup"
-    :class="{ wide: wide, large: large }"
-    :role="type === POPUP_TYPE.CONFIRM ? 'alertdialog' : 'dialog'"
-    :aria-labelledby="title ? `${id}-title` : undefined"
-    :aria-describedby="content ? `${id}-content` : undefined"
-    @cancel="onCancel"
-  >
-    <div class="popup-body">
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <h3 v-if="title" :id="`${id}-title`" class="popup-title" v-html="sanitizedTitle"></h3>
+  <Teleport to="body">
+    <Transition name="popup-fade">
       <div
-        class="popup-content"
-        :class="{ 'is-input': type === POPUP_TYPE.INPUT, 'is-crop': type === POPUP_TYPE.CROP }"
+        v-if="visible"
+        class="popup-overlay"
+        :role="type === POPUP_TYPE.CONFIRM ? 'alertdialog' : 'dialog'"
+        :aria-labelledby="title ? `${id}-title` : undefined"
+        :aria-describedby="content ? `${id}-content` : undefined"
+        aria-modal="true"
+        @click="handleBackdropClick"
       >
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <div v-if="content" :id="`${id}-content`" class="popup-message" v-html="formattedContent"></div>
+        <div :id="id" class="popup" :class="{ wide: wide, large: large }">
+          <div class="popup-body">
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <h3 v-if="title" :id="`${id}-title`" class="popup-title" v-html="sanitizedTitle"></h3>
+            <div
+              class="popup-content"
+              :class="{ 'is-input': type === POPUP_TYPE.INPUT, 'is-crop': type === POPUP_TYPE.CROP }"
+            >
+              <!-- eslint-disable-next-line vue/no-v-html -->
+              <div v-if="content" :id="`${id}-content`" class="popup-message" v-html="formattedContent"></div>
 
-        <component :is="component" v-if="component" v-bind="componentProps" />
+              <component :is="component" v-if="component" v-bind="componentProps" />
 
-        <Textarea
-          v-if="type === POPUP_TYPE.INPUT"
-          ref="mainInputComponent"
-          v-model="internalInputValue"
-          class="popup-input-wrapper"
-          :rows="rows"
-        />
+              <Textarea
+                v-if="type === POPUP_TYPE.INPUT"
+                ref="mainInputComponent"
+                v-model="internalInputValue"
+                class="popup-input-wrapper"
+                :rows="rows"
+              />
 
-        <div v-if="type === POPUP_TYPE.CROP" class="crop-container">
-          <ImageCropper ref="cropper" :src="cropImage" :aspect-ratio="1" />
+              <div v-if="type === POPUP_TYPE.CROP" class="crop-container">
+                <ImageCropper ref="cropper" :src="cropImage" :aspect-ratio="1" />
+              </div>
+            </div>
+
+            <div class="popup-controls">
+              <Button
+                v-for="button in generatedButtons"
+                :key="button.text"
+                :variant="getButtonVariant(button)"
+                :class="button.classes"
+                @click="handleResult(button.result)"
+              >
+                {{ button.text }}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
-
-      <div class="popup-controls">
-        <Button
-          v-for="button in generatedButtons"
-          :key="button.text"
-          :variant="getButtonVariant(button)"
-          :class="button.classes"
-          @click="handleResult(button.result)"
-        >
-          {{ button.text }}
-        </Button>
-      </div>
-    </div>
-  </dialog>
+    </Transition>
+  </Teleport>
 </template>

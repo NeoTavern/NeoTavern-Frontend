@@ -11,6 +11,7 @@ export interface RewriteTemplate {
   prompt: string; // The instruction
   template: string; // The macro template
   args?: RewriteTemplateArg[];
+  ignoreInput?: boolean; // If true, the template doesn't use {{input}} and UI should hide input-related controls
 }
 
 export interface RewriteTemplateOverride {
@@ -174,6 +175,61 @@ Response:
 Response:
 \`\`\`
 (Rewritten Text)
+\`\`\``,
+  },
+  {
+    id: 'summarize',
+    name: 'Summarize',
+    prompt: 'Condense the text to its key points while preserving essential information.',
+    ignoreInput: true,
+    args: [
+      {
+        key: 'includeChar',
+        label: 'Include Active Character',
+        type: 'boolean',
+        defaultValue: true,
+      },
+      {
+        key: 'includePersona',
+        label: 'Include Active Persona',
+        type: 'boolean',
+        defaultValue: true,
+      },
+    ],
+    template: `You are a professional summarization assistant.
+
+{{#if includeChar}}
+[Character Context]
+{{#if char}}Name: {{char}}{{/if}}
+{{#if description}}Description: {{description}}{{/if}}
+{{#if personality}}Personality: {{personality}}{{/if}}
+{{#if scenario}}Scenario: {{scenario}}{{/if}}
+{{/if}}
+
+{{#if includePersona}}
+[User Context]
+{{#if user}}Name: {{user}}{{/if}}
+{{#if persona}}Description: {{persona}}{{/if}}
+{{/if}}
+
+{{#if contextMessages}}
+[Context Info]
+{{contextMessages}}
+{{/if}}
+
+[Instruction]
+{{prompt}}
+
+[Output Rules]
+1. Extract and condense the main ideas and key points.
+2. Maintain the core meaning and important details.
+3. Be concise but comprehensive.
+4. Keep the same tone as the original.
+5. Output **only** the summarized text inside a code block.
+
+Response:
+\`\`\`
+(Summarized Text)
 \`\`\``,
   },
 ];

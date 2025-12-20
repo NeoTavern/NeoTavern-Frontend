@@ -201,6 +201,7 @@ $base-border-radius-rounded: 8px;
   --interactable-outline-color-faint: var(--white-20a);
 
   // --- Z-Index Scale ---
+  --z-toast: 10000;
   --z-tooltip: 1000;
   --z-dropdown: 900;
   --z-drawer: 800;

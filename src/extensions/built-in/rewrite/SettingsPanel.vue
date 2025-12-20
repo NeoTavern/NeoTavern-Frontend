@@ -226,6 +226,15 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
               <FormItem label="Name">
                 <Input v-model="activeTemplate.name" />
               </FormItem>
+
+              <div class="checkbox-field">
+                <Checkbox
+                  v-model="activeTemplate.ignoreInput!"
+                  label="Ignore Input"
+                  title="If enabled, this template doesn't use {{input}} and the UI will hide input-related controls"
+                />
+              </div>
+
               <FormItem label="Instruction (Prompt)">
                 <div class="input-row">
                   <Input v-model="activeTemplate.prompt" />
@@ -499,5 +508,10 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
   opacity: 0.6;
   font-style: italic;
   padding: 5px 0;
+}
+
+.checkbox-field {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--theme-border-color);
 }
 </style>

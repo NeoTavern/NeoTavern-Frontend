@@ -4,8 +4,10 @@ import LoginView from './components/Login/LoginView.vue';
 import NavBar from './components/NavBar/NavBar.vue';
 import Popup from './components/Popup/Popup.vue';
 import SidebarHost from './components/Shared/SidebarHost.vue';
+import ToastContainer from './components/Toast/ToastContainer.vue';
 import { useAppRegistration } from './composables/useAppRegistration';
 import { useStrictI18n } from './composables/useStrictI18n';
+import { useToastState } from './composables/useToast';
 import { useApiStore } from './stores/api.store';
 import { useAuthStore } from './stores/auth.store';
 import { useBackgroundStore } from './stores/background.store';
@@ -35,6 +37,7 @@ const themeStore = useThemeStore();
 const authStore = useAuthStore();
 const { t } = useStrictI18n();
 const { registerCoreComponents } = useAppRegistration();
+const { toasts } = useToastState();
 
 const isInitializing = ref(true);
 
@@ -198,4 +201,6 @@ onMounted(async () => {
       @close="popupStore.cancel(popup.id)"
     />
   </template>
+
+  <ToastContainer :toasts="toasts" />
 </template>

@@ -36,6 +36,7 @@ export class RewriteService {
     contextData?: { activeCharacter?: Character; characters?: Character[]; persona?: Persona },
     additionalMacros?: Record<string, unknown>,
     argOverrides?: Record<string, boolean | number | string>,
+    signal?: AbortSignal,
   ): Promise<GenerationResponse | (() => AsyncGenerator<StreamedChunk>)> {
     const settings = this.getSettings();
     const template = settings.templates.find((t) => t.id === templateId);
@@ -71,17 +72,28 @@ export class RewriteService {
 
     const response = await this.api.llm.generate(messages, {
       connectionProfileName: profileName,
+      signal,
     });
 
     return response;
   }
 
   public extractCodeBlock(text: string): string {
-    const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
-    const match = text.match(codeBlockRegex);
-    if (match && match[1]) {
-      return match[1].trim();
+    // Try complete code block first (opening and closing ```)
+    const completeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
+    const completeMatch = text.match(completeBlockRegex);
+    if (completeMatch && completeMatch[1]) {
+      return completeMatch[1].trim();
     }
-    return text.trim(); // Fallback to full text if no block found
+
+    // Try incomplete code block (has opening ``` but no closing, e.g., aborted generation)
+    const incompleteBlockRegex = /```(?:[\w]*\n)?([\s\S]*)/i;
+    const incompleteMatch = text.match(incompleteBlockRegex);
+    if (incompleteMatch && incompleteMatch[1]) {
+      return incompleteMatch[1].trim();
+    }
+
+    // No code blocks found, return full text
+    return text.trim();
   }
 }

@@ -4,7 +4,7 @@
 
 #toast-container {
   position: fixed;
-  z-index: var(--z-tooltip);
+  z-index: var(--z-toast);
   pointer-events: none;
   width: 320px;
   max-width: calc(100% - 32px);

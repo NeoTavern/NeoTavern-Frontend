@@ -41,6 +41,7 @@ const argOverrides = ref<Record<string, boolean | number | string>>({});
 // Generation State
 const generatedText = ref<string>('');
 const isGenerating = ref<boolean>(false);
+const abortController = ref<AbortController | null>(null);
 
 // Diff State
 const leftHtml = ref<string>('');
@@ -50,6 +51,7 @@ const rightPaneRef = ref<HTMLElement | null>(null);
 
 // Constants
 const IS_CHARACTER_FIELD = computed(() => props.identifier.startsWith('character.'));
+const IGNORE_INPUT = computed(() => currentTemplate.value?.ignoreInput === true);
 
 onMounted(() => {
   if (!settings.value.lastUsedTemplates) settings.value.lastUsedTemplates = {};
@@ -158,6 +160,12 @@ function updateDiff() {
     return;
   }
 
+  // If ignoreInput, just show the output without diff
+  if (IGNORE_INPUT.value) {
+    rightHtml.value = escapeHtml(generatedText.value);
+    return;
+  }
+
   const diff = Diff.diffWords(props.originalText, generatedText.value);
 
   let lHtml = '';
@@ -239,6 +247,13 @@ function getContextMessagesString(): string {
   return slice.map((m) => `${m.name}: ${m.mes}`).join('\n');
 }
 
+function handleAbort() {
+  if (abortController.value) {
+    abortController.value.abort();
+    abortController.value = null;
+  }
+}
+
 async function handleGenerate() {
   if (!selectedProfile.value) {
     props.api.ui.showToast('Please select a connection profile', 'error');
@@ -248,8 +263,11 @@ async function handleGenerate() {
   saveState();
 
   isGenerating.value = true;
+  abortController.value = new AbortController();
   generatedText.value = '';
-  leftHtml.value = escapeHtml(props.originalText);
+  if (!IGNORE_INPUT.value) {
+    leftHtml.value = escapeHtml(props.originalText);
+  }
   rightHtml.value = '';
 
   try {
@@ -272,6 +290,7 @@ async function handleGenerate() {
         fieldName: props.identifier,
       },
       argOverrides.value,
+      abortController.value?.signal,
     );
 
     if (typeof response === 'function') {
@@ -288,11 +307,17 @@ async function handleGenerate() {
       generatedText.value = service.extractCodeBlock(response.content);
       updateDiff();
     }
-  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
     console.error(error);
-    props.api.ui.showToast('Generation failed', 'error');
+    if (error?.name === 'AbortError' || error?.message?.includes('abort')) {
+      props.api.ui.showToast('Generation aborted', 'info');
+    } else {
+      props.api.ui.showToast('Generation failed', 'error');
+    }
   } finally {
     isGenerating.value = false;
+    abortController.value = null;
   }
 }
 
@@ -305,6 +330,19 @@ function handleApply() {
 function handleCancel() {
   props.onCancel();
   props.closePopup?.();
+}
+
+function handleCopyOutput() {
+  if (!generatedText.value) return;
+
+  navigator.clipboard.writeText(generatedText.value).then(
+    () => {
+      props.api.ui.showToast('Copied to clipboard', 'success');
+    },
+    () => {
+      props.api.ui.showToast('Failed to copy', 'error');
+    },
+  );
 }
 </script>
 
@@ -338,7 +376,7 @@ function handleCancel() {
       </div>
 
       <div class="context-controls">
-        <div class="escape-control">
+        <div v-if="!currentTemplate?.ignoreInput" class="escape-control">
           <Checkbox
             v-model="escapeMacros"
             label="Escape Macros"
@@ -348,7 +386,7 @@ function handleCancel() {
         <div class="flex-spacer"></div>
         <div class="msg-count-control">
           <span class="label">Context Messages:</span>
-          <Input v-model="contextMessageCount" type="number" :min="0" :max="50" style="width: 60px" />
+          <Input v-model="contextMessageCount" type="number" :min="0" />
         </div>
       </div>
       <FormItem label="Instruction">
@@ -366,7 +404,8 @@ function handleCancel() {
       </FormItem>
     </CollapsibleSection>
 
-    <div class="split-view">
+    <!-- Split diff view for templates that use input -->
+    <div v-if="!IGNORE_INPUT" class="split-view">
       <!-- Original / Left Pane -->
       <div class="pane">
         <div class="pane-header">Original</div>
@@ -377,18 +416,48 @@ function handleCancel() {
       <!-- Generated / Right Pane -->
       <div class="pane">
         <div class="pane-header">
-          New
-          <span v-if="isGenerating" class="generating-indicator"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
+          <span>
+            New
+            <span v-if="isGenerating" class="generating-indicator"
+              ><i class="fa-solid fa-circle-notch fa-spin"></i
+            ></span>
+          </span>
+          <button v-if="generatedText" class="copy-btn" title="Copy to clipboard" @click="handleCopyOutput">
+            <i class="fa-solid fa-copy"></i>
+          </button>
         </div>
         <!-- eslint-disable-next-line vue/no-v-html -->
         <div ref="rightPaneRef" class="pane-content diff-content" @scroll="onRightScroll" v-html="rightHtml"></div>
       </div>
     </div>
 
+    <!-- Single output view for templates that ignore input -->
+    <div v-else class="single-view">
+      <div class="pane">
+        <div class="pane-header">
+          <span>
+            Output
+            <span v-if="isGenerating" class="generating-indicator"
+              ><i class="fa-solid fa-circle-notch fa-spin"></i
+            ></span>
+          </span>
+          <button v-if="generatedText" class="copy-btn" title="Copy to clipboard" @click="handleCopyOutput">
+            <i class="fa-solid fa-copy"></i>
+          </button>
+        </div>
+        <!-- eslint-disable-next-line vue/no-v-html -->
+        <div ref="rightPaneRef" class="pane-content" v-html="rightHtml"></div>
+      </div>
+    </div>
+
     <div class="actions-row">
-      <Button :disabled="isGenerating" @click="handleGenerate">
-        <i class="fa-solid" :class="isGenerating ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'"></i>
+      <Button v-if="!isGenerating" @click="handleGenerate">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
         Generate
+      </Button>
+      <Button v-else variant="danger" @click="handleAbort">
+        <i class="fa-solid fa-stop"></i>
+        Abort
       </Button>
       <div class="spacer"></div>
       <Button variant="ghost" @click="handleCancel">Cancel</Button>
@@ -463,6 +532,13 @@ function handleCancel() {
   overflow: hidden;
 }
 
+.single-view {
+  display: flex;
+  flex: 1;
+  min-height: 300px;
+  overflow: hidden;
+}
+
 .pane {
   flex: 1;
   display: flex;
@@ -483,6 +559,22 @@ function handleCancel() {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.copy-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 4px 8px;
+  border-radius: 3px;
+  transition: opacity 0.2s;
+}
+
+.copy-btn:hover {
+  opacity: 1;
+  background-color: var(--black-20a);
 }
 
 .pane-content {
