@@ -149,6 +149,9 @@ async function testMessage() {
   isTestingMessage.value = true;
 
   try {
+    // Process any pending secrets before sending test message
+    await apiStore.processPendingSecrets();
+
     const testMessages = [{ role: 'user' as const, content: 'Hello', name: 'user' }];
 
     const payload = buildChatCompletionPayload({

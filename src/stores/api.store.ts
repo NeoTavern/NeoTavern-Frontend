@@ -562,6 +562,7 @@ export const useApiStore = defineStore('api', () => {
     onlineStatus,
     isConnecting,
     connect,
+    processPendingSecrets,
     activeModel,
     modelList,
     groupedOpenRouterModels,
