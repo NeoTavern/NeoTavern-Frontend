@@ -178,8 +178,8 @@ Response:
 \`\`\``,
   },
   {
-    id: 'summarize',
-    name: 'Summarize',
+    id: 'summarize-chat-history',
+    name: 'Summarize Chat History',
     prompt: 'Condense the text to its key points while preserving essential information.',
     ignoreInput: true,
     args: [
