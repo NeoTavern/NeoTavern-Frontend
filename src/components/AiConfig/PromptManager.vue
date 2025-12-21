@@ -56,7 +56,10 @@ function addFromLibrary(identifier: string | string[]) {
   if (!original) return;
 
   const clone: Prompt = cloneDeep(original);
-  clone.identifier = `${original.identifier}-${Date.now()}` as KnownPromptIdentifiers;
+  clone.identifier = original.identifier;
+  if (!original.marker) {
+    clone.identifier += `-${Date.now()}` as KnownPromptIdentifiers;
+  }
   clone.enabled = true;
 
   presetPrompts.value = [...presetPrompts.value, clone];
