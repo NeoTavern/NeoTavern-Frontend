@@ -333,6 +333,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
     // Trim history for Swipe
     const lastMessage = context.history.length > 0 ? context.history[context.history.length - 1] : null;
+    const previousMessage = context.history.length > 1 ? context.history[context.history.length - 2] : null;
     if (mode === GenerationMode.ADD_SWIPE) {
       if (lastMessage && !lastMessage.is_user) {
         context.history.pop();
@@ -404,7 +405,11 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       bypassPrefill &&
       [GenerationMode.NEW, GenerationMode.REGENERATE, GenerationMode.ADD_SWIPE].includes(mode) &&
       !lastMessage?.is_system &&
-      !lastMessage?.is_user
+      mode === GenerationMode.ADD_SWIPE
+        ? previousMessage
+          ? !previousMessage.is_user
+          : false
+        : !lastMessage?.is_user
     ) {
       const newMessage: ApiChatMessage = {
         role: 'user',
