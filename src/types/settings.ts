@@ -281,6 +281,7 @@ export type CodeMirrorTarget =
   | 'character.mes_example'
   | 'character.post_history_instructions'
   | 'character.creator_notes'
+  | 'character.alternate_greeting'
   | 'persona.description'
   | 'world_info.content'
   | 'prompt.content'

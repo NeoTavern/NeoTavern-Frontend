@@ -96,6 +96,7 @@ function swapWithFirstMes(index: number) {
               :model-value="item.text"
               :rows="6"
               :placeholder="t('characterEditor.alternateGreetings.placeholder')"
+              identifier="character.alternate_greeting"
               @update:model-value="updateGreeting(index, $event)"
             />
           </div>
