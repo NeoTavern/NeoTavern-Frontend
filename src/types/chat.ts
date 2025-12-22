@@ -14,8 +14,7 @@ export interface ChatMetadata {
   };
 
   // Extension specific data storage
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  extra_metadata?: Record<string, any>;
+  extra?: Record<string, unknown>;
 }
 
 export interface SwipeInfo {

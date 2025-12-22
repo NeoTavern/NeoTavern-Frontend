@@ -38,9 +38,8 @@ export class GroupChatService {
       return;
     }
 
-    // Try to load from extra_metadata first (new way), or fallback to old way if legacy
-    // Note: Since we removed 'group' from core types, we should now store it in extra_metadata.
-    let loadedConfig = meta.extra_metadata?.group as GroupChatConfig | undefined;
+    // Try to load from extra first (new way), or fallback to old way if legacy
+    let loadedConfig = meta.extra?.group as GroupChatConfig | undefined;
 
     // Initialize if missing
     if (!loadedConfig) {
@@ -69,8 +68,8 @@ export class GroupChatService {
     const meta = this.api.chat.metadata.get();
     if (!meta) return;
 
-    if (!meta.extra_metadata) meta.extra_metadata = {};
-    meta.extra_metadata.group = config;
+    if (!meta.extra) meta.extra = {};
+    meta.extra.group = config;
 
     // Need to trigger save on core side
     this.api.chat.metadata.set(meta);
