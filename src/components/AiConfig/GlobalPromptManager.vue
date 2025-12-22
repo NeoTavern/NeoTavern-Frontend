@@ -6,7 +6,9 @@ import type { KnownPromptIdentifiers, Prompt } from '../../types';
 import { DraggableList, EmptyState } from '../common';
 import { Button, FormItem, Input, Select, Textarea } from '../UI';
 
-const emit = defineEmits(['close']);
+const props = defineProps<{
+  closePopup?: () => void;
+}>();
 
 const settingsStore = useSettingsStore();
 const { t } = useStrictI18n();
@@ -81,7 +83,7 @@ function getBadgeClass(role?: string) {
         <Button icon="fa-plus" @click="createNewPrompt">
           {{ t('aiConfig.promptManager.newPrompt') }}
         </Button>
-        <Button icon="fa-xmark" variant="ghost" @click="emit('close')" />
+        <Button icon="fa-xmark" variant="ghost" @click="props.closePopup?.()" />
       </div>
     </div>
 

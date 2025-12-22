@@ -30,7 +30,10 @@ export const usePopupStore = defineStore('popup', () => {
 
     const closePopup = () => cancel(id);
 
-    if (newPopup.component && newPopup.componentProps) {
+    if (newPopup.component) {
+      if (!newPopup.componentProps) {
+        newPopup.componentProps = {};
+      }
       newPopup.componentProps.closePopup = closePopup;
     }
 
