@@ -867,6 +867,8 @@
       }
     },
     "provider": "Provider",
+    "apiUrl": "API URL",
+    "secretId": "Secret ID",
     "openaiKey": "OpenAI API key",
     "claudeKey": "Claude API Key",
     "openrouterKey": "OpenRouter API Key",

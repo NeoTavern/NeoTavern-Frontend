@@ -233,6 +233,33 @@ export const FRIENDLY_SECRET_NAMES: Record<string, string> = {
   [SECRET_KEYS.SILICONFLOW]: 'SiliconFlow',
 };
 
+export const PROVIDER_SECRET_KEYS: Record<ApiProvider, string> = {
+  openai: SECRET_KEYS.OPENAI,
+  claude: SECRET_KEYS.CLAUDE,
+  openrouter: SECRET_KEYS.OPENROUTER,
+  mistralai: SECRET_KEYS.MISTRALAI,
+  groq: SECRET_KEYS.GROQ,
+  custom: SECRET_KEYS.CUSTOM,
+  azure_openai: SECRET_KEYS.AZURE_OPENAI,
+  deepseek: SECRET_KEYS.DEEPSEEK,
+  ai21: SECRET_KEYS.AI21,
+  makersuite: SECRET_KEYS.MAKERSUITE,
+  vertexai: SECRET_KEYS.VERTEXAI,
+  cohere: SECRET_KEYS.COHERE,
+  perplexity: SECRET_KEYS.PERPLEXITY,
+  electronhub: SECRET_KEYS.ELECTRONHUB,
+  nanogpt: SECRET_KEYS.NANOGPT,
+  aimlapi: SECRET_KEYS.AIMLAPI,
+  xai: SECRET_KEYS.XAI,
+  moonshot: SECRET_KEYS.MOONSHOT,
+  fireworks: SECRET_KEYS.FIREWORKS,
+  cometapi: SECRET_KEYS.COMETAPI,
+  zai: SECRET_KEYS.ZAI,
+  koboldcpp: SECRET_KEYS.KOBOLDCPP,
+  pollinations: SECRET_KEYS.CUSTOM,
+  ollama: SECRET_KEYS.CUSTOM,
+};
+
 export const defaultPrompts: Prompt[] = [
   {
     identifier: uuidv4() as KnownPromptIdentifiers, // yeah yeah

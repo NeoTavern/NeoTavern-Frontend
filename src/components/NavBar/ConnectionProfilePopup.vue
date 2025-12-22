@@ -2,7 +2,9 @@
 import { computed, ref, watch } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
+import { PROVIDER_SECRET_KEYS } from '../../constants';
 import { useApiStore } from '../../stores/api.store';
+import { useSecretStore } from '../../stores/secret.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { ConnectionProfile } from '../../types';
 import { Button, Checkbox, Input } from '../UI';
@@ -15,6 +17,7 @@ const emit = defineEmits(['close', 'save']);
 const { t } = useStrictI18n();
 const apiStore = useApiStore();
 const settingsStore = useSettingsStore();
+const secretStore = useSecretStore();
 
 const dialog = ref<HTMLDialogElement | null>(null);
 const defaultProfileName = () => {
@@ -27,11 +30,38 @@ const includeProvider = ref(true);
 const includeModel = ref(true);
 const includeSampler = ref(true);
 const includePostProcessing = ref(true);
+const includeApiUrl = ref(false);
+const includeSecretId = ref(false);
 
 const currentProvider = computed(() => settingsStore.settings.api.provider);
 const currentModel = computed(() => apiStore.activeModel);
 const currentSampler = computed(() => settingsStore.settings.api.selectedSampler);
 const currentPostProcessing = computed(() => settingsStore.settings.api.customPromptPostProcessing);
+const currentApiUrl = computed(() => {
+  const provider = currentProvider.value;
+  if (provider === 'custom') {
+    return settingsStore.settings.api.providerSpecific.custom.url;
+  } else if (provider === 'koboldcpp') {
+    return settingsStore.settings.api.providerSpecific.koboldcpp.url;
+  } else if (provider === 'ollama') {
+    return settingsStore.settings.api.providerSpecific.ollama.url;
+  }
+  return '';
+});
+
+const currentSecretKey = computed(() => {
+  return PROVIDER_SECRET_KEYS[currentProvider.value] || null;
+});
+
+const currentSecret = computed(() => {
+  if (!currentSecretKey.value) return null;
+  const secrets = secretStore.secrets[currentSecretKey.value];
+  if (!secrets) return null;
+  return secrets.find((s) => s.active) || null;
+});
+
+const currentSecretId = computed(() => currentSecret.value?.id || '');
+const currentSecretLabel = computed(() => currentSecret.value?.label || '');
 const profileName = ref(defaultProfileName());
 
 const modelLabel = computed(() => {
@@ -80,6 +110,8 @@ watch(
       includeModel.value = true;
       includeSampler.value = true;
       includePostProcessing.value = true;
+      includeApiUrl.value = false;
+      includeSecretId.value = false;
       dialog.value?.showModal();
     } else {
       dialog.value?.close();
@@ -106,6 +138,8 @@ function save() {
   if (includeModel.value) profile.model = currentModel.value;
   if (includeSampler.value) profile.sampler = currentSampler.value;
   if (includePostProcessing.value) profile.customPromptPostProcessing = currentPostProcessing.value;
+  if (includeApiUrl.value) profile.apiUrl = currentApiUrl.value;
+  if (includeSecretId.value && currentSecretId.value) profile.secretId = currentSecretId.value;
 
   emit('save', profile);
   close();
@@ -136,6 +170,16 @@ function save() {
 
           <Checkbox v-model="includePostProcessing" :label="t('apiConnections.postProcessing.label')" />
           <div class="field-value">{{ currentPostProcessing || t('apiConnections.postProcessing.prompts.none') }}</div>
+
+          <template v-if="currentApiUrl">
+            <Checkbox v-model="includeApiUrl" :label="t('apiConnections.apiUrl')" />
+            <div class="field-value">{{ currentApiUrl }}</div>
+          </template>
+
+          <template v-if="currentSecret">
+            <Checkbox v-model="includeSecretId" :label="t('apiConnections.secretId')" />
+            <div class="field-value">{{ currentSecretLabel }}</div>
+          </template>
         </div>
       </div>
 

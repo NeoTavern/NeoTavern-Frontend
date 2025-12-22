@@ -870,6 +870,8 @@ export interface MessageSchema {
       };
     };
     provider: string;
+    apiUrl: string;
+    secretId: string;
     openaiKey: string;
     claudeKey: string;
     openrouterKey: string;

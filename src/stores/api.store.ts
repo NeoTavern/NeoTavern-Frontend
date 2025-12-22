@@ -13,9 +13,9 @@ import {
 import { PROVIDER_CAPABILITIES } from '../api/provider-definitions';
 import { useStrictI18n } from '../composables/useStrictI18n';
 import { toast } from '../composables/useToast';
-import { defaultPrompts } from '../constants';
+import { defaultPrompts, PROVIDER_SECRET_KEYS } from '../constants';
 import { migrateLegacyOaiPreset } from '../services/settings-migration.service';
-import type { ApiModel, ConnectionProfile, LegacyOaiPresetSettings, SamplerSettings } from '../types';
+import type { ApiModel, ApiProvider, ConnectionProfile, LegacyOaiPresetSettings, SamplerSettings } from '../types';
 import { api_providers, POPUP_RESULT, POPUP_TYPE } from '../types';
 import type { InstructTemplate } from '../types/instruct';
 import { downloadFile, readFileAsText, uuidv4 } from '../utils/commons';
@@ -136,7 +136,7 @@ export const useApiStore = defineStore('api', () => {
     );
   }
 
-  function selectConnectionProfile(profileName: string) {
+  async function selectConnectionProfile(profileName: string) {
     settingsStore.settings.api.selectedConnectionProfile = profileName;
 
     const profile = connectionProfiles.value.find((p) => p.name === profileName);
@@ -168,6 +168,28 @@ export const useApiStore = defineStore('api', () => {
     ) {
       settingsStore.settings.api.customPromptPostProcessing = profile.customPromptPostProcessing;
     }
+    if (profile.apiUrl !== undefined) {
+      const provider = profile.provider ?? settingsStore.settings.api.provider;
+      // Set API URL based on provider type
+      if (provider === api_providers.CUSTOM) {
+        settingsStore.settings.api.providerSpecific.custom.url = profile.apiUrl;
+      } else if (provider === api_providers.KOBOLDCPP) {
+        settingsStore.settings.api.providerSpecific.koboldcpp.url = profile.apiUrl;
+      } else if (provider === api_providers.OLLAMA) {
+        settingsStore.settings.api.providerSpecific.ollama.url = profile.apiUrl;
+      }
+    }
+    if (profile.secretId !== undefined) {
+      // Rotate to the specified secret if it exists
+      const provider = profile.provider ?? settingsStore.settings.api.provider;
+      const secretKey = getSecretKeyForProvider(provider);
+      if (secretKey) {
+        const secret = secretStore.secrets[secretKey]?.find((s) => s.id === profile.secretId);
+        if (secret && !secret.active) {
+          await secretStore.rotateSecret(secretKey, profile.secretId);
+        }
+      }
+    }
 
     validateFormatterCapabilities(settingsStore.settings.api.provider);
     connect();
@@ -182,6 +204,10 @@ export const useApiStore = defineStore('api', () => {
         settingsStore.settings.api.formatter = 'text';
       }
     }
+  }
+
+  function getSecretKeyForProvider(provider: ApiProvider): string | null {
+    return PROVIDER_SECRET_KEYS[provider] ?? null;
   }
 
   async function processPendingSecrets() {

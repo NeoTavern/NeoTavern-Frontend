@@ -1,7 +1,7 @@
 import { computed, nextTick, ref, type Ref } from 'vue';
 import { buildChatCompletionPayload, ChatCompletionService } from '../api/generation';
 import { ApiTokenizer } from '../api/tokenizer';
-import { default_user_avatar, GenerationMode } from '../constants';
+import { default_user_avatar, GenerationMode, PROVIDER_SECRET_KEYS } from '../constants';
 import {
   type Character,
   type ChatMessage,
@@ -24,6 +24,7 @@ import { useApiStore } from '../stores/api.store';
 import { useCharacterStore } from '../stores/character.store';
 import { usePersonaStore } from '../stores/persona.store';
 import { usePromptStore } from '../stores/prompt.store';
+import { useSecretStore } from '../stores/secret.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { useUiStore } from '../stores/ui.store';
 import { useWorldInfoStore } from '../stores/world-info.store';
@@ -328,6 +329,28 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     const effectiveTemplateName = profileSettings?.instructTemplate || settings.api.instructTemplateName;
     const effectiveTemplate = apiStore.instructTemplates.find((t) => t.name === effectiveTemplateName);
 
+    // Apply profile-specific API URL if set
+    let effectiveProviderSpecific = settings.api.providerSpecific;
+    if (profileSettings?.apiUrl !== undefined) {
+      effectiveProviderSpecific = JSON.parse(JSON.stringify(settings.api.providerSpecific));
+      if (effectiveProvider === 'custom') {
+        effectiveProviderSpecific.custom.url = profileSettings.apiUrl;
+      } else if (effectiveProvider === 'koboldcpp') {
+        effectiveProviderSpecific.koboldcpp.url = profileSettings.apiUrl;
+      } else if (effectiveProvider === 'ollama') {
+        effectiveProviderSpecific.ollama.url = profileSettings.apiUrl;
+      }
+    }
+
+    // Apply profile-specific secret if set
+    if (profileSettings?.secretId) {
+      const secretStore = useSecretStore();
+      const secretKey = PROVIDER_SECRET_KEYS[effectiveProvider];
+      if (secretKey) {
+        await secretStore.rotateSecret(secretKey, profileSettings.secretId);
+      }
+    }
+
     const tokenizer = new ApiTokenizer({ tokenizerType: settings.api.tokenizer, model: effectiveModel });
 
     // Event-driven Context Resolution
@@ -351,7 +374,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         sampler: clonedSampler,
         provider: effectiveProvider,
         model: effectiveModel,
-        providerSpecific: settings.api.providerSpecific,
+        providerSpecific: effectiveProviderSpecific,
         formatter: effectiveFormatter,
         instructTemplate: effectiveTemplate,
       },

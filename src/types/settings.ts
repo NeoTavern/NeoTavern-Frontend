@@ -463,6 +463,9 @@ export interface LegacySettings {
           preset?: string;
           name: string;
           'prompt-post-processing'?: CustomPromptPostProcessing;
+          'api-url'?: string;
+          'secret-id'?: string;
+          instruct?: string;
         }
       >;
       selected?: string;

@@ -376,25 +376,23 @@ export function migrateLegacyUserSettings(
         },
         reasoning_effort: oai.reasoning_effort ?? defaultSamplerSettings.reasoning_effort,
       },
-      connectionProfiles: Object.entries(legacy.extension_settings?.connectionManager?.profiles || {})
-        .map(
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          ([_name, profile]) => {
-            if (profile.mode !== 'cc') {
-              return undefined;
-            }
-            return {
-              id: profile.id,
-              name: profile.name,
-              formatter: 'chat',
-              sampler: profile.preset,
-              provider: profile.api,
-              model: profile.model,
-              customPromptPostProcessing: profile['prompt-post-processing'],
-            } satisfies ConnectionProfile;
-          },
-        )
-        .filter((p): p is NonNullable<typeof p> => p !== undefined),
+      connectionProfiles: Object.entries(legacy.extension_settings?.connectionManager?.profiles || {}).map(
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        ([_name, profile]) => {
+          return {
+            id: profile.id,
+            name: profile.name,
+            formatter: profile.mode === 'cc' ? ('chat' as const) : ('text' as const),
+            sampler: profile.preset,
+            provider: profile.api,
+            model: profile.model,
+            customPromptPostProcessing: profile['prompt-post-processing'],
+            apiUrl: profile['api-url'],
+            secretId: profile['secret-id'],
+            instructTemplate: profile.instruct,
+          } satisfies ConnectionProfile;
+        },
+      ),
       selectedConnectionProfile: legacy.extension_settings?.connectionManager?.selected,
       tokenizer: TokenizerType.AUTO,
       customPromptPostProcessing: oai.custom_prompt_post_processing ?? CustomPromptPostProcessing.NONE,

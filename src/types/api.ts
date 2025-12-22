@@ -40,6 +40,8 @@ export interface ConnectionProfile {
   formatter?: ApiFormatter;
   instructTemplate?: string;
   customPromptPostProcessing?: CustomPromptPostProcessing;
+  apiUrl?: string;
+  secretId?: string;
 }
 
 export interface ApiModel {
