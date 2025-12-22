@@ -120,9 +120,7 @@ export class GroupChatService {
     if (!meta.extra) meta.extra = {};
     meta.extra.group = config;
 
-    // Need to trigger save on core side
     this.api.chat.metadata.set(meta);
-    this.api.settings.save();
     this.groupConfig.value = config;
   }
 
@@ -156,7 +154,6 @@ export class GroupChatService {
     }
 
     this.api.chat.metadata.set(meta);
-    this.api.settings.save();
   }
 
   public async removeMember(avatar: string) {
@@ -171,7 +168,6 @@ export class GroupChatService {
         this.saveConfig(this.groupConfig.value);
       }
       this.api.chat.metadata.set(meta);
-      this.api.settings.save();
     }
   }
 

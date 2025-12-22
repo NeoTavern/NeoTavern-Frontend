@@ -386,11 +386,17 @@ const baseExtensionAPI: ExtensionAPI = {
       get: () => deepClone(useChatStore().activeChat?.metadata ?? null),
       set: (metadata) => {
         const store = useChatStore();
-        if (store.activeChat) store.activeChat.metadata = metadata;
+        if (store.activeChat) {
+          store.activeChat.metadata = metadata;
+          store.triggerSave();
+        }
       },
       update: (updates) => {
         const store = useChatStore();
-        if (store.activeChat) store.activeChat.metadata = { ...store.activeChat.metadata, ...updates };
+        if (store.activeChat) {
+          store.activeChat.metadata = { ...store.activeChat.metadata, ...updates };
+          store.triggerSave();
+        }
       },
     },
     PromptBuilder,
