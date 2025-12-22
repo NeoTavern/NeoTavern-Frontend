@@ -26,6 +26,14 @@
     cursor: grabbing;
   }
 
+  // Touch dragging state for mobile
+  &.is-touch-dragging {
+    opacity: 0.6;
+    background: var(--white-30a);
+    transform: scale(1.02);
+    z-index: var(--z-dropdown);
+  }
+
   &::before,
   &::after {
     content: '';

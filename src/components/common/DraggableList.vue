@@ -27,6 +27,11 @@ const dropPosition = ref<'top' | 'bottom' | null>(null);
 // State to track if we are currently hovering over a valid handle
 const isHoveringHandle = ref(false);
 
+// Touch event state
+const touchActive = ref(false);
+const touchStartY = ref(0);
+const touchCurrentElement = ref<HTMLElement | null>(null);
+
 function checkHandleHover(event: MouseEvent) {
   if (!props.handleClass) return;
 
@@ -158,6 +163,97 @@ function resetState() {
   draggedIndex.value = null;
   dropTargetIndex.value = null;
   dropPosition.value = null;
+  touchActive.value = false;
+  touchStartY.value = 0;
+  touchCurrentElement.value = null;
+}
+
+// Touch event handlers for mobile support
+function onTouchStart(event: TouchEvent, index: number) {
+  if (props.disabled) return;
+
+  // Check if we're touching a handle if handleClass is specified
+  if (props.handleClass) {
+    const target = event.target as HTMLElement;
+    if (!target.closest(`.${props.handleClass}`)) {
+      return;
+    }
+  }
+
+  const touch = event.touches[0];
+  touchStartY.value = touch.clientY;
+  draggedIndex.value = index;
+  touchActive.value = true;
+  touchCurrentElement.value = event.currentTarget as HTMLElement;
+
+  // Add visual feedback
+  nextTick(() => {
+    if (touchCurrentElement.value) {
+      touchCurrentElement.value.classList.add('is-touch-dragging');
+    }
+  });
+}
+
+function onTouchMove(event: TouchEvent) {
+  if (!touchActive.value || draggedIndex.value === null) return;
+
+  // Prevent scrolling while dragging
+  event.preventDefault();
+
+  const touch = event.touches[0];
+  const elementFromPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+
+  if (!elementFromPoint) {
+    dropTargetIndex.value = null;
+    dropPosition.value = null;
+    return;
+  }
+
+  // Find the closest draggable item wrapper
+  const targetWrapper = elementFromPoint.closest('.draggable-item-wrapper') as HTMLElement;
+
+  if (!targetWrapper) {
+    dropTargetIndex.value = null;
+    dropPosition.value = null;
+    return;
+  }
+
+  // Get the index of the target item
+  const allWrappers = Array.from(targetWrapper.parentElement?.children || []);
+  const targetIndex = allWrappers.indexOf(targetWrapper);
+
+  if (targetIndex === -1 || targetIndex === draggedIndex.value) {
+    dropTargetIndex.value = null;
+    dropPosition.value = null;
+    return;
+  }
+
+  // Determine if we're in the top or bottom half
+  const rect = targetWrapper.getBoundingClientRect();
+  const midY = rect.top + rect.height / 2;
+  const position = touch.clientY < midY ? 'top' : 'bottom';
+
+  dropTargetIndex.value = targetIndex;
+  dropPosition.value = position;
+}
+
+function onTouchEnd() {
+  if (!touchActive.value || draggedIndex.value === null) {
+    resetState();
+    return;
+  }
+
+  // Remove visual feedback
+  if (touchCurrentElement.value) {
+    touchCurrentElement.value.classList.remove('is-touch-dragging');
+  }
+
+  // If we have a valid drop target, finish the drag
+  if (dropTargetIndex.value !== null && dropPosition.value !== null) {
+    finishDrag(dropTargetIndex.value);
+  } else {
+    resetState();
+  }
 }
 </script>
 
@@ -177,6 +273,9 @@ function resetState() {
       @dragover="onDragOver($event, index)"
       @drop="onDrop($event, index)"
       @dragend="onDragEnd"
+      @touchstart="onTouchStart($event, index)"
+      @touchmove="onTouchMove"
+      @touchend="onTouchEnd"
     >
       <!-- 
          Wrap slot in a container to easily bind handle events 
