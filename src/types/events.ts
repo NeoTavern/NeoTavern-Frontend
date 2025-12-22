@@ -1,3 +1,4 @@
+import type { GenerationMode } from '../constants';
 import type { ApiModel, ApiProvider } from './api';
 import type { Character } from './character';
 import type { ChatMessage } from './chat';
@@ -102,6 +103,12 @@ export interface ExtensionEventMap {
    * Extensions can modify the `characters` array in the payload.
    */
   'generation:resolve-context': [payload: { characters: Character[] }];
+
+  /**
+   * Fired when a generation is requested, but the speaker is not forced.
+   * Extensions can set `handled` to true to prevent the default generation behavior (e.g., to implement custom queuing logic like Group Chat).
+   */
+  'chat:generation-requested': [payload: { mode: GenerationMode; generationId: string; handled: boolean }];
 
   /**
    * Fired before the final ChatCompletionPayload is constructed.

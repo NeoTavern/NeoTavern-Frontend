@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import type { ChatMessage, ExtensionAPI } from '../../../types';
 import { GroupGenerationHandlingMode, GroupReplyStrategy, type GroupChatConfig } from './types';
-import { determineNextSpeaker, getMentions } from './utils';
+import { determineNextSpeaker } from './utils';
 
 // TODO: i18n
 
@@ -143,7 +143,7 @@ export class GroupChatService {
 
   // --- Logic ---
 
-  public prepareGenerationQueue(textToScan?: string) {
+  public prepareGenerationQueue() {
     if (this.generationQueue.value.length > 0) return;
     const meta = this.api.chat.metadata.get();
     const activeMembers = meta?.members ?? [];
@@ -154,34 +154,19 @@ export class GroupChatService {
       return;
     }
 
-    const config = this.groupConfig.value.config;
     const membersMap = this.groupConfig.value.members;
     const validMembers = activeMembers.filter((avatar) => !membersMap[avatar]?.muted);
 
     if (validMembers.length === 0) return;
 
-    const strategy = config.replyStrategy;
-
-    if (strategy === GroupReplyStrategy.MANUAL) return;
-
     const activeChars = this.api.character.getActives().filter((c) => validMembers.includes(c.avatar));
 
-    // Natural Order (Scan for mentions)
-    if (strategy === GroupReplyStrategy.NATURAL_ORDER && textToScan) {
-      const mentions = getMentions(textToScan, activeChars);
-      if (mentions.length > 0) {
-        this.addToQueue(mentions);
-        return;
-      }
-    }
-
-    // Use Helper to determine next speaker based on strategy
-    const nextSpeaker = determineNextSpeaker(activeChars, this.groupConfig.value, [
+    const nextSpeakers = determineNextSpeaker(activeChars, this.groupConfig.value, [
       ...this.api.chat.getHistory(),
     ] as ChatMessage[]);
 
-    if (nextSpeaker) {
-      this.addToQueue([nextSpeaker.avatar]);
+    if (nextSpeakers.length > 0) {
+      this.addToQueue(nextSpeakers.map((c) => c.avatar));
     }
   }
 

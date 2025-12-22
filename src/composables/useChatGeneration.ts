@@ -47,6 +47,7 @@ export interface ChatGenerationDependencies {
 export function useChatGeneration(deps: ChatGenerationDependencies) {
   const { t } = useStrictI18n();
   const isGenerating = ref(false);
+  const isPreparing = ref(false);
   const generationController = ref<AbortController | null>(null);
 
   const characterStore = useCharacterStore();
@@ -127,6 +128,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
   ) {
     if (isGenerating.value) return;
 
+    // Prevent race conditions when determining speaker (e.g. double click),
+    // but allow recursive calls if specific speaker is forced (extension handover).
+    if (!forceSpeakerAvatar && isPreparing.value) return;
+
     if (!deps.activeChat.value) {
       console.error('Attempted to generate response without an active chat.');
       return;
@@ -154,22 +159,42 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     }
 
     const finalGenerationId = generationId || uuidv4();
-    isGenerating.value = true;
-    generationController.value = new AbortController();
 
     let generatedMessage: ChatMessage | null = null;
     let generationError: Error | undefined;
+    let handledByExtension = false;
 
     try {
       let activeCharacter: Character | undefined;
 
-      // Determine the Active Speaker
       if (forceSpeakerAvatar) {
         activeCharacter = characterStore.activeCharacters.find((c) => c.avatar === forceSpeakerAvatar);
       } else {
-        // If no force speaker, we assume single chat (first char) OR let extensions override context below
-        // Default to first char
-        activeCharacter = characterStore.activeCharacters[0];
+        // We are entering the "Who speaks?" phase. Lock it.
+        isPreparing.value = true;
+
+        try {
+          // Ask extensions if they want to handle it (e.g. Group Chat Queue)
+          const payload = {
+            mode,
+            generationId: finalGenerationId,
+            handled: false,
+          };
+
+          await eventEmitter.emit('chat:generation-requested', payload);
+
+          if (payload.handled) {
+            // Extension handled it (e.g. scheduled the queue).
+            // We exit here. The extension is responsible for calling generateResponse again with a forced speaker.
+            handledByExtension = true;
+            return;
+          }
+
+          // If no force speaker and not handled by extension, we assume single chat (first char)
+          activeCharacter = characterStore.activeCharacters[0];
+        } finally {
+          isPreparing.value = false;
+        }
       }
 
       if (!activeCharacter) {
@@ -182,6 +207,11 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         }
       }
 
+      // Now we commit to generation
+      isGenerating.value = true;
+      const controller = new AbortController();
+      generationController.value = controller;
+
       const startController = new AbortController();
       await eventEmitter.emit('generation:started', {
         controller: startController,
@@ -190,24 +220,29 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       });
       if (startController.signal.aborted) return;
 
-      // Perform Single Generation
-      generatedMessage = await performSingleGeneration(activeCharacter, mode, finalGenerationId, currentChatContext);
+      generatedMessage = await performSingleGeneration(
+        activeCharacter,
+        mode,
+        finalGenerationId,
+        currentChatContext,
+        controller,
+      );
     } catch (error) {
       console.error('Generation Error:', error);
       generationError = error instanceof Error ? error : new Error(String(error));
       toast.error(generationError.message || t('chat.generate.errorFallback'));
     } finally {
-      isGenerating.value = false;
-      generationController.value = null;
+      if (isGenerating.value && !handledByExtension) {
+        isGenerating.value = false;
+        generationController.value = null;
 
-      // Emit finished event AFTER resetting isGenerating flag
-      // This allows extensions (like Group Chat) to trigger the next generation immediately without recursion block
-      await nextTick();
-      await eventEmitter.emit(
-        'generation:finished',
-        { message: generatedMessage, error: generationError },
-        { generationId: finalGenerationId },
-      );
+        await nextTick();
+        await eventEmitter.emit(
+          'generation:finished',
+          { message: generatedMessage, error: generationError },
+          { generationId: finalGenerationId },
+        );
+      }
     }
   }
 
@@ -216,7 +251,9 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     mode: GenerationMode,
     generationId: string,
     chatContext: ChatStateRef,
+    controller: AbortController,
   ): Promise<ChatMessage | null> {
+    const abortSignal = controller.signal;
     let generatedMessage: ChatMessage | null = null;
 
     const activeChatMessages = chatContext.messages;
@@ -518,10 +555,9 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         return;
       }
 
-      // Apply trimming logic (Post-processing)
+      // Apply trimming logic
       let finalContent = content;
 
-      // Handle name hijack clipping for non-streaming response
       if (shouldCheckHijack) {
         const lines = finalContent.split('\n');
         let cutoffIndex = -1;
@@ -612,7 +648,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       const response = (await ChatCompletionService.generate(
         payload,
         effectiveFormatter,
-        generationController.value!.signal,
+        abortSignal,
       )) as GenerationResponse;
 
       if (deps.activeChat.value !== chatContext) throw new Error('Context switched');
@@ -635,7 +671,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       const streamGenerator = (await ChatCompletionService.generate(
         payload,
         effectiveFormatter,
-        generationController.value!.signal,
+        abortSignal,
       )) as unknown as () => AsyncGenerator<StreamedChunk>;
 
       let targetMessageIndex = -1;
@@ -656,7 +692,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
             generationId,
           });
           if (chunkController.signal.aborted) {
-            generationController.value?.abort();
+            controller.abort();
             break;
           }
 
@@ -732,7 +768,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
             if (match) {
               const detectedName = match[1].trim();
               if (stopNames.has(detectedName)) {
-                generationController.value?.abort();
+                controller.abort();
 
                 // Trim the unwanted line
                 const contentToKeep = lastNewLine === -1 ? '' : targetMessage.mes.slice(0, lastNewLine);
@@ -744,7 +780,6 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
                 ) {
                   targetMessage.swipes[targetMessage.swipe_id] = contentToKeep;
                 }
-
                 break;
               }
             }

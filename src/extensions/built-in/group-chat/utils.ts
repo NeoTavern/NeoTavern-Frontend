@@ -29,22 +29,26 @@ export function determineNextSpeaker(
   activeMembers: Character[],
   groupConfig: GroupChatConfig | null,
   chatMessages: ChatMessage[],
-): Character | null {
+): Character[] {
   if (!groupConfig) {
-    return activeMembers.length > 0 ? activeMembers[0] : null;
+    return activeMembers.length > 0 ? [activeMembers[0]] : [];
   }
 
   const validSpeakers = activeMembers.filter((c) => !groupConfig.members[c.avatar]?.muted);
-  if (validSpeakers.length === 0) return null;
+  if (validSpeakers.length === 0) return [];
 
   const lastMessage = chatMessages.length > 0 ? chatMessages[chatMessages.length - 1] : null;
   const strategy = groupConfig.config.replyStrategy;
 
+  if (strategy === GroupReplyStrategy.MANUAL) {
+    return [];
+  }
+
   if (strategy === GroupReplyStrategy.LIST_ORDER) {
-    if (!lastMessage || lastMessage.is_user) return validSpeakers[0];
+    if (!lastMessage || lastMessage.is_user) return [validSpeakers[0]];
     const lastIndex = validSpeakers.findIndex((c) => c.avatar === lastMessage.original_avatar);
     const nextIndex = lastIndex === -1 ? 0 : (lastIndex + 1) % validSpeakers.length;
-    return validSpeakers[nextIndex];
+    return [validSpeakers[nextIndex]];
   }
 
   if (strategy === GroupReplyStrategy.POOLED_ORDER) {
@@ -63,31 +67,26 @@ export function determineNextSpeaker(
     }
     const available = validSpeakers.filter((c) => !speakersSinceUser.has(c.name));
     if (available.length > 0) {
-      return available[Math.floor(Math.random() * available.length)];
+      return [available[Math.floor(Math.random() * available.length)]];
     }
-    return validSpeakers[Math.floor(Math.random() * validSpeakers.length)];
+    return [validSpeakers[Math.floor(Math.random() * validSpeakers.length)]];
   }
 
   if (strategy === GroupReplyStrategy.NATURAL_ORDER) {
-    if (!lastMessage) return validSpeakers[Math.floor(Math.random() * validSpeakers.length)];
+    if (!lastMessage) return [validSpeakers[Math.floor(Math.random() * validSpeakers.length)]];
 
-    const textToCheck = lastMessage.mes.toLowerCase();
-    const mentions: Character[] = [];
+    // 1. Check Mentions
+    const mentionedAvatars = getMentions(lastMessage.mes, validSpeakers);
+    const validMentions = mentionedAvatars
+      .filter((avatar) => groupConfig.config.allowSelfResponses || avatar !== lastMessage.original_avatar)
+      .map((avatar) => validSpeakers.find((c) => c.avatar === avatar))
+      .filter(Boolean) as Character[];
 
-    // Check mentions
-    for (const char of validSpeakers) {
-      if (!groupConfig.config.allowSelfResponses && lastMessage.original_avatar === char.avatar) continue;
-      const nameParts = char.name.toLowerCase().split(' ');
-      for (const part of nameParts) {
-        if (part.length > 2 && new RegExp(`\\b${part}\\b`).test(textToCheck)) {
-          mentions.push(char);
-          break;
-        }
-      }
+    if (validMentions.length > 0) {
+      return validMentions;
     }
-    if (mentions.length > 0) return mentions[0];
 
-    // Talkativeness RNG
+    // 2. Talkativeness RNG
     const candidates: Character[] = [];
     for (const char of validSpeakers) {
       if (!groupConfig.config.allowSelfResponses && lastMessage.original_avatar === char.avatar) continue;
@@ -96,10 +95,15 @@ export function determineNextSpeaker(
         candidates.push(char);
       }
     }
-    if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
 
-    return validSpeakers[Math.floor(Math.random() * validSpeakers.length)];
+    if (candidates.length > 0) {
+      // Shuffle to prevent deterministic order if talkativeness is high for multiple chars
+      return candidates.sort(() => 0.5 - Math.random());
+    }
+
+    // 3. Fallback: Pick one random
+    return [validSpeakers[Math.floor(Math.random() * validSpeakers.length)]];
   }
 
-  return null;
+  return [];
 }

@@ -1,5 +1,5 @@
 import { h } from 'vue';
-import { EventPriority } from '../../../constants';
+import { EventPriority, GenerationMode } from '../../../constants';
 import type { Character, ExtensionAPI } from '../../../types';
 import { GroupChatService } from './GroupChatService';
 import GroupSettingsTab from './GroupSettingsTab.vue';
@@ -98,14 +98,14 @@ export function activate(api: ExtensionAPI) {
 
   // 5. Events: Generation & Queue
   api.events.on(
-    'message:created',
-    () => {
+    'chat:generation-requested',
+    (payload) => {
       if (!service.isGroupChat) return;
+      if (payload.mode !== GenerationMode.NEW) return;
 
-      const lastMsg = api.chat.getLastMessage();
-
-      if (lastMsg?.is_user) {
-        service.prepareGenerationQueue(lastMsg.mes);
+      service.prepareGenerationQueue();
+      if (service.generationQueue.value.length > 0) {
+        payload.handled = true;
         service.processQueue();
         service.startAutoModeTimer();
       }
