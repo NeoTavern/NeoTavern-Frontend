@@ -1,6 +1,6 @@
 import * as Vue from 'vue';
 import { createVNode, render, type App } from 'vue';
-import { EventPriority, GenerationMode, GroupGenerationHandlingMode, default_avatar } from '../constants';
+import { EventPriority, GenerationMode, default_avatar } from '../constants';
 import type {
   ChatInfo,
   ChatMessage,
@@ -40,7 +40,6 @@ import { useComponentRegistryStore } from '../stores/component-registry.store';
 import { useLayoutStore } from '../stores/layout.store';
 import type { TextareaToolDefinition } from '../types/ExtensionAPI';
 import type { CodeMirrorTarget } from '../types/settings';
-import { getCharactersForContext } from './chat';
 
 // --- Event Emitter ---
 
@@ -265,6 +264,9 @@ const baseExtensionAPI: ExtensionAPI = {
     continueResponse: async (options) => {
       return await useChatStore().generateResponse(GenerationMode.CONTINUE, options);
     },
+    generateResponse: async (options) => {
+      return await useChatStore().generateResponse(GenerationMode.NEW, options);
+    },
     clear: async () => {
       return await useChatStore().clearChat(true);
     },
@@ -317,16 +319,6 @@ const baseExtensionAPI: ExtensionAPI = {
       if (!chatStore.activeChat) throw new Error('No active chat.');
       if (!personaStore.activePersona) throw new Error('No active persona.');
 
-      // Group Logic
-      const groupData = chatStore.activeChat.metadata.group;
-      const handlingMode = groupData?.config.handlingMode ?? GroupGenerationHandlingMode.SWAP;
-      const mutedMap: Record<string, boolean> = {};
-      if (groupData?.members) {
-        for (const [key, val] of Object.entries(groupData.members)) {
-          mutedMap[key] = val.muted;
-        }
-      }
-
       // Determine the character context
       let activeCharacter = characterStore.activeCharacters[0];
       if (options?.characterAvatar) {
@@ -335,13 +327,8 @@ const baseExtensionAPI: ExtensionAPI = {
       }
       if (!activeCharacter) throw new Error('No active character.');
 
-      const charactersForContext = getCharactersForContext(
-        characterStore.activeCharacters,
-        activeCharacter,
-        handlingMode !== GroupGenerationHandlingMode.SWAP,
-        handlingMode === GroupGenerationHandlingMode.JOIN_INCLUDE_MUTED,
-        mutedMap,
-      );
+      const contextCharacters = [activeCharacter];
+      await eventEmitter.emit('generation:resolve-context', { characters: contextCharacters });
 
       const tokenizer = new ApiTokenizer({
         tokenizerType: settingsStore.settings.api.tokenizer,
@@ -356,7 +343,7 @@ const baseExtensionAPI: ExtensionAPI = {
 
       const builder = new PromptBuilder({
         generationId: options?.generationId ?? uuidv4(),
-        characters: charactersForContext,
+        characters: contextCharacters,
         chatMetadata: chatStore.activeChat.metadata,
         chatHistory: [...chatStore.activeChat.messages],
         persona: personaStore.activePersona,
@@ -399,11 +386,17 @@ const baseExtensionAPI: ExtensionAPI = {
       get: () => deepClone(useChatStore().activeChat?.metadata ?? null),
       set: (metadata) => {
         const store = useChatStore();
-        if (store.activeChat) store.activeChat.metadata = metadata;
+        if (store.activeChat) {
+          store.activeChat.metadata = metadata;
+          store.triggerSave();
+        }
       },
       update: (updates) => {
         const store = useChatStore();
-        if (store.activeChat) store.activeChat.metadata = { ...store.activeChat.metadata, ...updates };
+        if (store.activeChat) {
+          store.activeChat.metadata = { ...store.activeChat.metadata, ...updates };
+          store.triggerSave();
+        }
       },
     },
     PromptBuilder,
@@ -533,6 +526,10 @@ const baseExtensionAPI: ExtensionAPI = {
     registerTextareaTool: (identifier, definition) => {
       useComponentRegistryStore().registerTextareaTool(identifier, definition);
       return () => useComponentRegistryStore().unregisterTextareaTool(identifier, definition.id);
+    },
+    registerChatSettingsTab: (id, title, component) => {
+      useComponentRegistryStore().registerChatSettingsTab(id, title, component);
+      return () => useComponentRegistryStore().unregisterChatSettingsTab(id);
     },
     mountComponent: async (container, componentName, props) => {
       if (!container) return;
@@ -781,6 +778,11 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
       const toolId = definition.id.startsWith(extensionId) ? definition.id : `${extensionId}.${definition.id}`;
       useComponentRegistryStore().registerTextareaTool(identifier, { ...definition, id: toolId });
       return () => useComponentRegistryStore().unregisterTextareaTool(identifier, toolId);
+    },
+    registerChatSettingsTab: (id: string, title: string, component: Vue.Component) => {
+      const namespacedId = id.startsWith(extensionId) ? id : `${extensionId}.${id}`;
+      useComponentRegistryStore().registerChatSettingsTab(namespacedId, title, component);
+      return () => useComponentRegistryStore().unregisterChatSettingsTab(namespacedId);
     },
   };
 

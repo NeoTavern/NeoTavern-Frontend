@@ -3,50 +3,30 @@ import { debounce } from 'lodash-es';
 import { computed, nextTick, ref } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
-import { DebounceTimeout, GenerationMode, GroupGenerationHandlingMode, GroupReplyStrategy } from '../../constants';
+import { DebounceTimeout } from '../../constants';
 import { chatService } from '../../services/chat.service';
-import { useCharacterUiStore } from '../../stores/character-ui.store';
 import { useCharacterStore } from '../../stores/character.store';
 import { useChatStore } from '../../stores/chat.store';
-import { useGroupChatStore } from '../../stores/group-chat.store';
+import { useComponentRegistryStore } from '../../stores/component-registry.store';
 import { useLayoutStore } from '../../stores/layout.store';
 import { usePopupStore } from '../../stores/popup.store';
-import { useSettingsStore } from '../../stores/settings.store';
 import { useWorldInfoStore } from '../../stores/world-info.store';
-import { POPUP_RESULT, POPUP_TYPE, type Character, type ChatInfo } from '../../types';
-import { getThumbnailUrl } from '../../utils/character';
+import { POPUP_RESULT, POPUP_TYPE, type ChatInfo } from '../../types';
 import { formatTimeStamp, humanizedDateTime } from '../../utils/commons';
 import { eventEmitter } from '../../utils/extensions';
-import { ConnectionProfileSelector, DraggableList, EmptyState, Pagination } from '../common';
-import {
-  Button,
-  Checkbox,
-  CollapsibleSection,
-  FileInput,
-  FormItem,
-  Input,
-  ListItem,
-  Search,
-  Select,
-  Tabs,
-  Textarea,
-} from '../UI';
+import { ConnectionProfileSelector, EmptyState } from '../common';
+import { Button, FileInput, FormItem, ListItem, Search, Select, Tabs, Textarea } from '../UI';
 
 const { t } = useStrictI18n();
 const chatStore = useChatStore();
-const groupChatStore = useGroupChatStore();
 const characterStore = useCharacterStore();
-const characterUiStore = useCharacterUiStore();
 const popupStore = usePopupStore();
-const settingsStore = useSettingsStore();
 const layoutStore = useLayoutStore();
 const worldInfoStore = useWorldInfoStore();
+const componentRegistry = useComponentRegistryStore();
 
-const activeTab = ref<'config' | 'members' | 'chats'>('config');
+const activeTab = ref<string>('config');
 const chatSearchTerm = ref('');
-
-const addMemberSearchTerm = ref('');
-const addMemberPage = ref(1);
 
 // --- Chat List Logic ---
 const chats = computed<ChatInfo[]>(() => {
@@ -179,53 +159,6 @@ async function handleImportFiles(files: File[]) {
   }
 }
 
-// --- Group / Members Logic ---
-const groupMembers = computed(() => {
-  if (!chatStore.activeChat) return [];
-  return (
-    chatStore.activeChat.metadata.members?.map((avatar) => {
-      return characterStore.characters.find((c) => c.avatar === avatar) || ({ name: avatar, avatar } as Character);
-    }) || []
-  );
-});
-
-const availableCharactersFiltered = computed(() => {
-  if (!chatStore.activeChat) return [];
-  const currentMembers = new Set(chatStore.activeChat.metadata.members || []);
-
-  let list = characterStore.characters.filter((c) => !currentMembers.has(c.avatar));
-
-  if (addMemberSearchTerm.value) {
-    const term = addMemberSearchTerm.value.toLowerCase();
-    list = list.filter((c) => c.name.toLowerCase().includes(term));
-  }
-
-  return list;
-});
-
-const availableCharactersPaginated = computed(() => {
-  const start = (addMemberPage.value - 1) * settingsStore.settings.account.addMemberPageSize;
-  const end = start + settingsStore.settings.account.addMemberPageSize;
-  return availableCharactersFiltered.value.slice(start, end);
-});
-
-const groupConfig = computed(() => chatStore.groupConfig);
-const isGroup = computed(() => groupChatStore.isGroupChat);
-
-// Options for Select
-const replyStrategyOptions = computed(() => [
-  { label: t('group.strategies.manual'), value: GroupReplyStrategy.MANUAL },
-  { label: t('group.strategies.natural'), value: GroupReplyStrategy.NATURAL_ORDER },
-  { label: t('group.strategies.list'), value: GroupReplyStrategy.LIST_ORDER },
-  { label: t('group.strategies.pooled'), value: GroupReplyStrategy.POOLED_ORDER },
-]);
-
-const handlingModeOptions = computed(() => [
-  { label: t('group.modes.swap'), value: GroupGenerationHandlingMode.SWAP },
-  { label: t('group.modes.joinExclude'), value: GroupGenerationHandlingMode.JOIN_EXCLUDE_MUTED },
-  { label: t('group.modes.joinInclude'), value: GroupGenerationHandlingMode.JOIN_INCLUDE_MUTED },
-]);
-
 const availableLorebooks = computed(() => {
   return worldInfoStore.bookInfos.map((info) => ({ label: info.name, value: info.file_id }));
 });
@@ -254,47 +187,23 @@ const activeChatConnectionProfile = computed({
   },
 });
 
-function toggleMute(avatar: string) {
-  groupChatStore.toggleMemberMute(avatar);
-}
-
-function forceTalk(avatar: string) {
-  chatStore.generateResponse(GenerationMode.NEW, { forceSpeakerAvatar: avatar });
-}
-
-function updateMembersOrder(newMembers: Character[]) {
-  if (!chatStore.activeChat) return;
-  const newMemberIds = newMembers.map((m) => m.avatar);
-
-  if (chatStore.activeChat.metadata) {
-    chatStore.activeChat.metadata.members = newMemberIds;
-    chatStore.triggerSave();
-  }
-}
-
-function peekCharacter(avatar: string) {
-  characterUiStore.selectCharacterByAvatar(avatar);
-  layoutStore.activateNavBarItem('character');
-  layoutStore.autoCloseSidebarsOnMobile();
-}
-
-function getCharName(avatar: string) {
-  return characterStore.characters.find((c) => c.avatar === avatar)?.name || avatar;
-}
+const tabs = computed(() => {
+  const baseTabs = [
+    { label: t('chatManagement.tabs.config'), value: 'config' },
+    { label: t('chatManagement.tabs.chats'), value: 'chats' },
+  ];
+  const dynamicTabs = Array.from(componentRegistry.chatSettingsTabRegistry.values()).map((tab) => ({
+    label: tab.title,
+    value: tab.id,
+  }));
+  return [...baseTabs, ...dynamicTabs];
+});
 </script>
 
 <template>
   <div class="popup-body chat-management">
     <div class="chat-management-header">
-      <Tabs
-        v-model="activeTab"
-        style="border-bottom: none; margin-bottom: 0"
-        :options="[
-          { label: t('chatManagement.tabs.config'), value: 'config' },
-          { label: t('chatManagement.tabs.group'), value: 'members' },
-          { label: t('chatManagement.tabs.chats'), value: 'chats' },
-        ]"
-      />
+      <Tabs v-model="activeTab" style="border-bottom: none; margin-bottom: 0" :options="tabs" />
     </div>
 
     <div class="chat-management-content">
@@ -366,173 +275,6 @@ function getCharName(avatar: string) {
         </div>
       </div>
 
-      <!-- Tab: Members / Group Config -->
-      <div v-show="activeTab === 'members' && chatStore.activeChatFile" class="chat-management-tab-content">
-        <!-- Queue Display -->
-        <div v-if="groupChatStore.generationQueue.length > 0" class="queue-section">
-          <div class="queue-header">
-            <span>{{ t('group.queue') }} ({{ groupChatStore.generationQueue.length }})</span>
-            <Button icon="fa-trash" variant="ghost" :title="t('group.clearQueue')" @click="groupChatStore.clearQueue" />
-          </div>
-          <div class="queue-list">
-            <div v-for="(avatar, idx) in groupChatStore.generationQueue" :key="idx" class="queue-item">
-              <div class="queue-avatar-wrapper">
-                <img :src="getThumbnailUrl('avatar', avatar)" :title="getCharName(avatar)" />
-                <div class="queue-order">{{ idx + 1 }}</div>
-              </div>
-              <i v-if="idx < groupChatStore.generationQueue.length - 1" class="fa-solid fa-arrow-right separator"></i>
-            </div>
-          </div>
-        </div>
-
-        <!-- Current Members -->
-        <CollapsibleSection
-          v-model:is-open="settingsStore.settings.account.groupMembersExpanded"
-          :title="t('group.members')"
-        >
-          <DraggableList
-            :items="groupMembers"
-            item-key="avatar"
-            class="group-members-list"
-            handle-class="group-member-handle"
-            @update:items="updateMembersOrder"
-          >
-            <template #default="{ item: member }">
-              <ListItem :class="{ muted: groupConfig?.members[member.avatar]?.muted }" style="margin-bottom: 2px">
-                <template #start>
-                  <div
-                    class="menu-button fa-solid fa-grip-lines group-member-handle"
-                    style="cursor: grab; opacity: 0.5; margin-right: 5px"
-                  ></div>
-                  <img
-                    :src="getThumbnailUrl('avatar', member.avatar)"
-                    style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover"
-                  />
-                </template>
-                <template #default>
-                  <div class="group-member-content-wrapper">
-                    <span
-                      class="group-member-name"
-                      :class="{ 'line-through': groupConfig?.members[member.avatar]?.muted }"
-                      >{{ member.name }}</span
-                    >
-                    <div v-if="groupChatStore.generatingAvatar === member.avatar" class="typing-indicator-small">
-                      <div class="dot" />
-                      <div class="dot" />
-                      <div class="dot" />
-                    </div>
-                  </div>
-                </template>
-                <template #end>
-                  <Button
-                    v-if="isGroup"
-                    variant="ghost"
-                    icon="fa-address-card"
-                    :title="t('group.peek')"
-                    @click="peekCharacter(member.avatar)"
-                  />
-                  <Button
-                    v-if="isGroup"
-                    variant="ghost"
-                    icon="fa-comment-dots"
-                    :title="t('group.forceTalk')"
-                    @click="forceTalk(member.avatar)"
-                  />
-                  <Button
-                    v-if="isGroup"
-                    variant="ghost"
-                    :icon="groupConfig?.members[member.avatar]?.muted ? 'fa-comment-slash' : 'fa-comment'"
-                    :title="t('group.mute')"
-                    @click="toggleMute(member.avatar)"
-                  />
-                  <Button
-                    icon="fa-trash-can"
-                    variant="danger"
-                    :title="t('common.remove')"
-                    @click="groupChatStore.removeMember(member.avatar)"
-                  />
-                </template>
-              </ListItem>
-            </template>
-          </DraggableList>
-        </CollapsibleSection>
-
-        <!-- Add Member Section -->
-        <CollapsibleSection
-          v-model:is-open="settingsStore.settings.account.addMemberExpanded"
-          :title="t('group.addMember')"
-        >
-          <div class="group-add-section">
-            <Search v-model="addMemberSearchTerm" :placeholder="t('common.search')" @input="addMemberPage = 1" />
-
-            <div class="add-member-list">
-              <div v-for="char in availableCharactersPaginated" :key="char.avatar">
-                <ListItem @click="groupChatStore.addMember(char.avatar)">
-                  <template #start>
-                    <img
-                      :src="getThumbnailUrl('avatar', char.avatar)"
-                      style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover"
-                    />
-                  </template>
-                  <template #default>{{ char.name }}</template>
-                  <template #end><i class="fa-solid fa-plus"></i></template>
-                </ListItem>
-              </div>
-              <EmptyState v-if="availableCharactersPaginated.length === 0" :description="t('common.noResults')" />
-            </div>
-            <Pagination
-              v-if="availableCharactersFiltered.length > settingsStore.settings.account.addMemberPageSize"
-              v-model:current-page="addMemberPage"
-              v-model:items-per-page="settingsStore.settings.account.addMemberPageSize"
-              :total-items="availableCharactersFiltered.length"
-              :items-per-page-options="[10, 25, 50, 100]"
-            />
-          </div>
-        </CollapsibleSection>
-
-        <!-- Group Config: Only show if actual group -->
-        <CollapsibleSection
-          v-if="isGroup && groupConfig"
-          v-model:is-open="settingsStore.settings.account.groupConfigExpanded"
-          :title="t('group.configuration')"
-        >
-          <div class="group-config-section">
-            <hr />
-            <FormItem :label="t('group.replyStrategy')">
-              <Select
-                v-model="groupConfig.config.replyStrategy"
-                :options="replyStrategyOptions"
-                @update:model-value="saveDebounced"
-              />
-            </FormItem>
-
-            <FormItem :label="t('group.handlingMode')">
-              <Select
-                v-model="groupConfig.config.handlingMode"
-                :options="handlingModeOptions"
-                @update:model-value="saveDebounced"
-              />
-            </FormItem>
-
-            <Checkbox
-              v-model="groupConfig.config.allowSelfResponses"
-              :label="t('group.allowSelfResponses')"
-              @update:model-value="saveDebounced"
-            />
-
-            <FormItem :label="t('group.autoMode')" :description="t('group.autoModeHint')">
-              <Input
-                v-model="groupConfig.config.autoMode"
-                type="number"
-                :min="0"
-                :placeholder="t('common.seconds')"
-                @update:model-value="saveDebounced"
-              />
-            </FormItem>
-          </div>
-        </CollapsibleSection>
-      </div>
-
       <!-- Tab: Config -->
       <div v-show="activeTab === 'config'" class="chat-management-config-tab">
         <FormItem v-if="chatStore.activeChat?.metadata.promptOverrides" :label="t('chatManagement.scenarioOverride')">
@@ -558,6 +300,13 @@ function getCharName(avatar: string) {
           />
         </FormItem>
       </div>
+
+      <!-- Registered Tabs -->
+      <template v-for="tab in componentRegistry.chatSettingsTabRegistry.values()" :key="tab.id">
+        <div v-show="activeTab === tab.id" class="chat-management-tab-content">
+          <component :is="tab.component" />
+        </div>
+      </template>
     </div>
   </div>
 </template>

@@ -48,7 +48,10 @@ const { floatingStyles: optionsMenuStyles } = useFloating(optionsButtonRef, opti
 });
 
 function submitMessage() {
-  if (!userInput.value.trim()) return;
+  if (!userInput.value.trim()) {
+    generate();
+    return;
+  }
   chatStore.sendMessage(userInput.value);
   userInput.value = '';
 
@@ -62,7 +65,7 @@ function submitMessage() {
 }
 
 function generate() {
-  chatStore.generateResponse(GenerationMode.NEW, { bypassPrefill: true });
+  chatStore.generateResponse(GenerationMode.NEW);
   isOptionsMenuVisible.value = false;
 }
 
@@ -71,7 +74,7 @@ function regenerate() {
   if (isLastMessageUser) {
     chatStore.generateResponse(GenerationMode.NEW);
   } else {
-    chatStore.generateResponse(GenerationMode.REGENERATE, { bypassPrefill: true });
+    chatStore.generateResponse(GenerationMode.REGENERATE);
   }
   isOptionsMenuVisible.value = false;
 }
@@ -391,17 +394,6 @@ watch(
           role="menu"
           aria-labelledby="chat-options-button"
         >
-          <a
-            class="options-menu-item"
-            role="menuitem"
-            tabindex="0"
-            @click="generate"
-            @keydown.enter.prevent="generate"
-            @keydown.space.prevent="generate"
-          >
-            <i class="fa-solid fa-paper-plane"></i>
-            <span>{{ t('chat.optionsMenu.generate') }}</span>
-          </a>
           <a
             class="options-menu-item"
             role="menuitem"

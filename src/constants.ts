@@ -92,19 +92,6 @@ export enum TokenizerType {
   GPT4O = 'gpt-4o',
 }
 
-export enum GroupReplyStrategy {
-  MANUAL = 'manual',
-  NATURAL_ORDER = 'natural_order',
-  LIST_ORDER = 'list_order',
-  POOLED_ORDER = 'pooled_order',
-}
-
-export enum GroupGenerationHandlingMode {
-  SWAP = 'swap',
-  JOIN_EXCLUDE_MUTED = 'join_exclude_muted',
-  JOIN_INCLUDE_MUTED = 'join_include_muted',
-}
-
 export const TOKENIZER_GUESS_MAP: Array<[RegExp, TokenizerType]> = [
   [/gemma|gemini/i, TokenizerType.GEMMA],
   [/deepseek/i, TokenizerType.DEEPSEEK],

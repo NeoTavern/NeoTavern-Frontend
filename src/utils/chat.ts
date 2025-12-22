@@ -1,9 +1,8 @@
 import DOMPurify, { type Config } from 'dompurify';
 import hljs from 'highlight.js';
 import { Marked, type TokenizerAndRendererExtension } from 'marked';
-import { GroupReplyStrategy, talkativeness_default } from '../constants';
 import { macroService, type MacroContextData } from '../services/macro-service';
-import type { Character, ChatMessage, ChatMetadata } from '../types';
+import type { ChatMessage } from '../types';
 import { getMessageTimeStamp } from './commons';
 import { scopeHtml } from './style-scoper';
 
@@ -164,103 +163,4 @@ export function getFirstMessage(context: MacroContextData): ChatMessage | null {
   }
 
   return message;
-}
-
-// --- Group Dynamics ---
-
-export function getCharactersForContext(
-  allMembers: Character[],
-  currentSpeaker: Character,
-  isJoinMode: boolean,
-  includeMuted: boolean,
-  mutedStatus: Record<string, boolean>,
-): Character[] {
-  if (!isJoinMode) {
-    return [currentSpeaker];
-  }
-  return allMembers.filter((char) => {
-    if (char.avatar === currentSpeaker.avatar) return true;
-    const isMuted = mutedStatus[char.avatar] ?? false;
-    if (isMuted && !includeMuted) return false;
-    return true;
-  });
-}
-
-export function determineNextSpeaker(
-  activeMembers: Character[],
-  groupConfig: ChatMetadata['group'] | null,
-  chatMessages: ChatMessage[],
-): Character | null {
-  if (!groupConfig) {
-    return activeMembers.length > 0 ? activeMembers[0] : null;
-  }
-
-  const validSpeakers = activeMembers.filter((c) => !groupConfig.members[c.avatar]?.muted);
-  if (validSpeakers.length === 0) return null;
-
-  const lastMessage = chatMessages.length > 0 ? chatMessages[chatMessages.length - 1] : null;
-  const strategy = groupConfig.config.replyStrategy;
-
-  if (strategy === GroupReplyStrategy.LIST_ORDER) {
-    if (!lastMessage || lastMessage.is_user) return validSpeakers[0];
-    const lastIndex = validSpeakers.findIndex((c) => c.avatar === lastMessage.original_avatar);
-    const nextIndex = lastIndex === -1 ? 0 : (lastIndex + 1) % validSpeakers.length;
-    return validSpeakers[nextIndex];
-  }
-
-  if (strategy === GroupReplyStrategy.POOLED_ORDER) {
-    let lastUserIndex = -1;
-    for (let i = chatMessages.length - 1; i >= 0; i--) {
-      if (chatMessages[i].is_user) {
-        lastUserIndex = i;
-        break;
-      }
-    }
-    const speakersSinceUser = new Set<string>();
-    if (lastUserIndex > -1) {
-      for (let i = lastUserIndex + 1; i < chatMessages.length; i++) {
-        if (!chatMessages[i].is_user) speakersSinceUser.add(chatMessages[i].name);
-      }
-    }
-    const available = validSpeakers.filter((c) => !speakersSinceUser.has(c.name));
-    if (available.length > 0) {
-      return available[Math.floor(Math.random() * available.length)];
-    }
-    return validSpeakers[Math.floor(Math.random() * validSpeakers.length)];
-  }
-
-  if (strategy === GroupReplyStrategy.NATURAL_ORDER) {
-    if (!lastMessage) return validSpeakers[Math.floor(Math.random() * validSpeakers.length)];
-
-    const textToCheck = lastMessage.mes.toLowerCase();
-    const mentions: Character[] = [];
-
-    // Check mentions
-    for (const char of validSpeakers) {
-      if (!groupConfig.config.allowSelfResponses && lastMessage.original_avatar === char.avatar) continue;
-      const nameParts = char.name.toLowerCase().split(' ');
-      for (const part of nameParts) {
-        if (part.length > 2 && new RegExp(`\\b${part}\\b`).test(textToCheck)) {
-          mentions.push(char);
-          break;
-        }
-      }
-    }
-    if (mentions.length > 0) return mentions[0];
-
-    // Talkativeness RNG
-    const candidates: Character[] = [];
-    for (const char of validSpeakers) {
-      if (!groupConfig.config.allowSelfResponses && lastMessage.original_avatar === char.avatar) continue;
-      const chance = (char.talkativeness ?? talkativeness_default) * 100;
-      if (Math.random() * 100 < chance) {
-        candidates.push(char);
-      }
-    }
-    if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
-
-    return validSpeakers[Math.floor(Math.random() * validSpeakers.length)];
-  }
-
-  return null;
 }

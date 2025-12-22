@@ -47,7 +47,6 @@ export interface MessageSchema {
     };
     tabs: {
       chats: string;
-      group: string;
       config: string;
     };
     import: {
@@ -611,7 +610,6 @@ export interface MessageSchema {
       manageChats: string;
       regenerate: string;
       continue: string;
-      generate: string;
       selectMessages: string;
     };
     typingIndicator: string;

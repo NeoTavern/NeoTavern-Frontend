@@ -11,5 +11,5 @@ export * from './tokenizer';
 export * from './ui';
 export * from './world-info';
 
-export type { ExtensionEventMap } from './events';
+export type { ExtensionEventMap, GenerationPayloadBuilderConfig } from './events';
 export type { ExtensionAPI, ExtensionMetadata, LlmGenerationOptions, MountableComponent } from './ExtensionAPI';

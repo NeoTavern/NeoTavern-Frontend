@@ -5,7 +5,6 @@ import { useCharacterUiStore } from '../../stores/character-ui.store';
 import { useCharacterStore } from '../../stores/character.store';
 import { useChatStore } from '../../stores/chat.store';
 import { useComponentRegistryStore } from '../../stores/component-registry.store';
-import { useGroupChatStore } from '../../stores/group-chat.store';
 import { useLayoutStore } from '../../stores/layout.store';
 import { getThumbnailUrl } from '../../utils/character';
 import { formatTimeStamp } from '../../utils/commons';
@@ -17,13 +16,12 @@ const componentRegistryStore = useComponentRegistryStore();
 const characterStore = useCharacterStore();
 const characterUiStore = useCharacterUiStore();
 const chatStore = useChatStore();
-const groupChatStore = useGroupChatStore();
 
 const { t } = useStrictI18n();
 
 const firstCharacter = computed(() => characterStore.activeCharacters?.[0]);
 
-const isGroup = computed(() => groupChatStore.isGroupChat);
+const isGroup = computed(() => characterStore.activeCharacters.length > 1);
 
 const headerTitle = computed(() => {
   if (isGroup.value) {

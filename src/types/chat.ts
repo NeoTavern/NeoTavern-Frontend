@@ -1,9 +1,3 @@
-import type { GroupGenerationHandlingMode, GroupReplyStrategy } from '../constants';
-
-export interface GroupMemberStatus {
-  muted: boolean;
-}
-
 export interface ChatMetadata {
   name?: string;
   integrity: string;
@@ -19,15 +13,8 @@ export interface ChatMetadata {
     scenario?: string;
   };
 
-  group?: {
-    config: {
-      replyStrategy: GroupReplyStrategy;
-      handlingMode: GroupGenerationHandlingMode;
-      allowSelfResponses: boolean;
-      autoMode: number; // seconds, 0 = disabled
-    };
-    members: Record<string, GroupMemberStatus>;
-  };
+  // Extension specific data storage
+  extra?: Record<string, unknown>;
 }
 
 export interface SwipeInfo {

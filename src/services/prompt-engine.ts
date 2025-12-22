@@ -1,4 +1,4 @@
-import { defaultSamplerSettings, GroupGenerationHandlingMode } from '../constants';
+import { defaultSamplerSettings } from '../constants';
 import type {
   ApiChatMessage,
   Character,
@@ -59,11 +59,8 @@ export class PromptBuilder {
    * Helper to process a specific field for all characters in the context.
    * Replaces macros using each character as the specific 'activeCharacter' context.
    */
-  private getProcessedContent(
-    fieldGetter: (char: Character) => string | undefined,
-    singleCharContent?: string,
-  ): string {
-    // If it's a group, we iterate all characters and process their specific field with their own context
+  private getProcessedContent(fieldGetter: (char: Character) => string | undefined): string {
+    // If multiple characters are in context, process all of them
     if (this.characters.length > 1) {
       return this.characters
         .map((c) => {
@@ -79,8 +76,8 @@ export class PromptBuilder {
         .join('\n');
     }
 
-    // Single character case
-    const raw = singleCharContent || '';
+    // Single character case (Including Group Chat SWAP mode where characters.length === 1)
+    const raw = fieldGetter(this.character) || '';
     if (!raw) return '';
     return macroService.process(raw, {
       characters: this.characters,
@@ -128,8 +125,7 @@ export class PromptBuilder {
     }
     const historyPlaceholder = { role: 'system', content: '[[CHAT_HISTORY_PLACEHOLDER]]', name: 'system' } as const;
 
-    const handlingMode = this.chatMetadata.group?.config?.handlingMode ?? GroupGenerationHandlingMode.SWAP;
-    const isGroupContext = this.characters.length > 1 || handlingMode !== GroupGenerationHandlingMode.SWAP;
+    const isGroupContext = (this.chatMetadata.members?.length ?? 0) > 1;
 
     for (const promptDefinition of enabledPrompts) {
       const role = promptDefinition.role ?? 'system';
@@ -141,22 +137,17 @@ export class PromptBuilder {
             : 'System';
       if (promptDefinition.marker) {
         switch (promptDefinition.identifier) {
-          case 'chatHistory':
+          case 'chatHistory': {
             fixedPrompts.push(historyPlaceholder);
             break;
+          }
           case 'charDescription': {
-            const content = this.getProcessedContent(
-              (c) => c.description,
-              isGroupContext ? undefined : this.character.description,
-            );
+            const content = this.getProcessedContent((c) => c.description);
             if (content) fixedPrompts.push({ role, content, name });
             break;
           }
           case 'charPersonality': {
-            const content = this.getProcessedContent(
-              (c) => c.personality,
-              isGroupContext ? undefined : this.character.personality,
-            );
+            const content = this.getProcessedContent((c) => c.personality);
             if (content) fixedPrompts.push({ role, content, name });
             break;
           }
@@ -168,10 +159,7 @@ export class PromptBuilder {
                 persona: this.persona,
               });
             } else {
-              content = this.getProcessedContent(
-                (c) => c.scenario,
-                isGroupContext ? undefined : this.character.scenario,
-              );
+              content = this.getProcessedContent((c) => c.scenario);
             }
             if (content) fixedPrompts.push({ role, content, name });
             break;
@@ -183,10 +171,7 @@ export class PromptBuilder {
               }
             }
 
-            const content = this.getProcessedContent(
-              (c) => c.mes_example,
-              isGroupContext ? undefined : this.character.mes_example,
-            );
+            const content = this.getProcessedContent((c) => c.mes_example);
             const formattedContent = content.split('\n').join('\n\n');
             if (content) fixedPrompts.push({ role, content: formattedContent, name });
 
@@ -197,13 +182,15 @@ export class PromptBuilder {
             }
             break;
           }
-          case 'worldInfoBefore':
+          case 'worldInfoBefore': {
             // WI processor already handles macros
             if (worldInfoBefore) fixedPrompts.push({ role, content: worldInfoBefore, name });
             break;
-          case 'worldInfoAfter':
+          }
+          case 'worldInfoAfter': {
             if (worldInfoAfter) fixedPrompts.push({ role, content: worldInfoAfter, name });
             break;
+          }
           case 'personaDescription': {
             const content = macroService.process(this.persona.description || '', {
               characters: this.characters,
@@ -213,10 +200,7 @@ export class PromptBuilder {
             break;
           }
           case 'jailbreak': {
-            const content = this.getProcessedContent(
-              (c) => c.data?.post_history_instructions,
-              isGroupContext ? undefined : this.character.data?.post_history_instructions,
-            );
+            const content = this.getProcessedContent((c) => c.data?.post_history_instructions);
             if (content) fixedPrompts.push({ role, content, name });
             break;
           }
@@ -282,7 +266,9 @@ export class PromptBuilder {
 
     for (let i = this.chatHistory.length - 1; i >= 0; i--) {
       const msg = this.chatHistory[i];
-      if (msg.is_system) continue;
+      if (msg.is_system) {
+        continue;
+      }
 
       const processedContent = macroService.process(msg.mes, {
         characters: this.characters,
@@ -295,9 +281,12 @@ export class PromptBuilder {
         name: msg.name,
       };
 
-      if (!msg.is_user && (this.chatMetadata.members?.length ?? 0) > 1) {
-        apiMsg.content = `${msg.name}: ${processedContent}`;
-      }
+      await eventEmitter.emit('prompt:history-message-processing', apiMsg, {
+        originalMessage: msg,
+        isGroupContext,
+        characters: this.characters,
+        persona: this.persona,
+      });
 
       const msgTokenCount = await this.tokenizer.getTokenCount(apiMsg.content);
 
@@ -314,7 +303,9 @@ export class PromptBuilder {
       if (depthEntriesMap.has(currentDepth)) {
         const msgs = depthEntriesMap.get(currentDepth)!;
         const success = await insertMessages(msgs);
-        if (!success) break;
+        if (!success) {
+          break;
+        }
       }
     }
 

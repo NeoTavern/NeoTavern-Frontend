@@ -52,10 +52,9 @@ watch(
 
 function getChatAvatars(chat: ChatInfo): string[] {
   // If it's a group chat, get members from group config
-  const groupMembers = chat.chat_metadata.group?.members;
+  const groupMembers = chat.chat_metadata.members;
   if (groupMembers) {
-    const memberIds = Object.keys(groupMembers);
-    return memberIds.slice(0, 4).map((m) => getThumbnailUrl('avatar', m));
+    return groupMembers.slice(0, 4).map((m) => getThumbnailUrl('avatar', m));
   }
 
   // Fallback / Standard chat members
@@ -73,10 +72,10 @@ function isGroupChat(chat: ChatInfo): boolean {
 }
 
 function getMemberCount(chat: ChatInfo): number {
-  if (chat.chat_metadata.group?.members) {
-    return Object.keys(chat.chat_metadata.group.members).length;
+  if (chat.chat_metadata.members) {
+    return chat.chat_metadata.members.length;
   }
-  return chat.chat_metadata.members?.length || 0;
+  return 0;
 }
 
 async function onItemClick(chat: ChatInfo) {

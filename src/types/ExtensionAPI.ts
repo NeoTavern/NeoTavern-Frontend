@@ -300,24 +300,28 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
       messageText: string,
       options?: { triggerGeneration?: boolean; generationId?: string },
     ) => Promise<void>;
-    getHistory: () => readonly ChatMessage[];
+    getHistory: () => ChatMessage[];
     /**
      * Retrieves the current active chat filename (without extension).
      * Returns null if no chat is loaded.
      */
-    getChatInfo: () => Readonly<ChatInfo> | null;
-    getAllChatInfos: () => Readonly<Array<ChatInfo>>;
-    getLastMessage: () => Readonly<ChatMessage> | null;
+    getChatInfo: () => ChatInfo | null;
+    getAllChatInfos: () => Array<ChatInfo>;
+    getLastMessage: () => ChatMessage | null;
     insertMessage: (message: Omit<ChatMessage, 'send_date'> & { send_date?: string }, index?: number) => void;
     updateMessage: (index: number, newContent: string, newReasoning?: string) => Promise<void>;
     updateMessageObject: (index: number, updates: Partial<ChatMessage>) => Promise<void>;
     deleteMessage: (index: number) => Promise<void>;
-    regenerateResponse: (options?: { generationId?: string }) => Promise<void>;
+    regenerateResponse: (options?: { generationId?: string; forceSpeakerAvatar?: string }) => Promise<void>;
     continueResponse: (options?: { generationId?: string }) => Promise<void>;
+    generateResponse: (options?: { generationId?: string; forceSpeakerAvatar?: string }) => Promise<void>;
     clear: () => Promise<void>;
     abortGeneration: () => void;
     getChatInput: () => ChatInputDetail | null;
     setChatInput: (value: string) => void;
+    /**
+     * Low-level generation method. Sends request directly to LLM Service.
+     */
     generate: (
       payload: ChatCompletionPayload,
       formatter: ApiFormatter,
@@ -347,7 +351,7 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
     load: (filename: string) => Promise<void>;
 
     metadata: {
-      get: () => Readonly<ChatMetadata> | null;
+      get: () => ChatMetadata | null;
       set: (metadata: ChatMetadata) => void;
       update: (updates: Partial<ChatMetadata>) => void;
     };
@@ -370,7 +374,7 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
      * @param path The dot-notation path to the global setting (e.g., 'chat.sendOnEnter').
      * @returns The value of the setting.
      */
-    getGlobal: <P extends SettingsPath>(path: P) => Readonly<ValueForPath<Settings, P>>;
+    getGlobal: <P extends SettingsPath>(path: P) => ValueForPath<Settings, P>;
 
     /**
      * (SCOPED) Updates a single setting value in this extension's dedicated storage.
@@ -391,27 +395,27 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
     save: () => void;
   };
   character: {
-    getActives: () => Readonly<Character[]>;
-    getAll: () => readonly Character[];
-    get: (avatar: string) => Readonly<Character> | null;
-    getEditing: () => Readonly<Character> | null;
+    getActives: () => Character[];
+    getAll: () => Character[];
+    get: (avatar: string) => Character | null;
+    getEditing: () => Character | null;
     create: (character: Character, avatarImage?: File) => Promise<void>;
     delete: (avatar: string, deleteChats?: boolean) => Promise<void>;
     update: (avatar: string, data: Partial<Character>) => Promise<void>;
   };
   persona: {
-    getActive: () => Readonly<Persona> | null;
-    getAll: () => readonly Persona[];
+    getActive: () => Persona | null;
+    getAll: () => Persona[];
     setActive: (avatarId: string) => void;
     updateActiveField: <K extends keyof PersonaDescription>(field: K, value: PersonaDescription[K]) => Promise<void>;
     delete: (avatarId: string) => Promise<void>;
   };
   worldInfo: {
-    getSettings: () => Readonly<WorldInfoSettings>;
+    getSettings: () => WorldInfoSettings;
     updateSettings: (settings: Partial<WorldInfoSettings>) => void;
-    getAllBookNames: () => readonly WorldInfoHeader[];
-    getBook: (name: string) => Promise<Readonly<WorldInfoBook> | null>;
-    getActiveBookNames: () => readonly string[];
+    getAllBookNames: () => WorldInfoHeader[];
+    getBook: (name: string) => Promise<WorldInfoBook | null>;
+    getActiveBookNames: () => string[];
     setGlobalBookNames: (names: string[]) => void;
     updateEntry: (bookName: string, entry: WorldInfoEntry) => Promise<void>;
   };
@@ -490,6 +494,15 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
      * @returns A cleanup function to unregister the tool.
      */
     registerTextareaTool: (identifier: CodeMirrorTarget, definition: TextareaToolDefinition) => () => void;
+
+    /**
+     * Registers a custom tab in the Chat Management sidebar.
+     * @param id Unique identifier for the tab.
+     * @param title Title of the tab.
+     * @param component The Vue component to render content.
+     * @returns A cleanup function to unregister the tab.
+     */
+    registerChatSettingsTab: (id: string, title: string, component: Component) => () => void;
 
     /**
      * Mounts a predefined system component to the DOM.

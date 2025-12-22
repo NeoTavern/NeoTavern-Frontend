@@ -4,7 +4,7 @@ import { type ChatExportRequest } from '../api/chat';
 import { useAutoSave } from '../composables/useAutoSave';
 import { useChatGeneration } from '../composables/useChatGeneration';
 import { useStrictI18n } from '../composables/useStrictI18n';
-import { EventPriority, GenerationMode, GroupGenerationHandlingMode, GroupReplyStrategy } from '../constants';
+import { EventPriority, GenerationMode } from '../constants';
 import { chatService } from '../services/chat.service';
 import {
   POPUP_RESULT,
@@ -63,22 +63,6 @@ export const useChatStore = defineStore('chat', () => {
     return mapping;
   });
 
-  const groupConfig = computed(() => {
-    if (!activeChat.value) return null;
-    if (!activeChat.value.metadata.group) {
-      return {
-        config: {
-          replyStrategy: GroupReplyStrategy.NATURAL_ORDER,
-          handlingMode: GroupGenerationHandlingMode.SWAP,
-          allowSelfResponses: false,
-          autoMode: 0,
-        },
-        members: {},
-      };
-    }
-    return activeChat.value.metadata.group;
-  });
-
   // Consolidated Saving Logic
   const { trigger: triggerSave } = useAutoSave(
     async () => {
@@ -126,7 +110,6 @@ export const useChatStore = defineStore('chat', () => {
 
   const { isGenerating, generateResponse, abortGeneration, sendMessage } = useChatGeneration({
     activeChat,
-    groupConfig,
     syncSwipeToMes,
     stopAutoModeTimer,
   });
@@ -199,17 +182,6 @@ export const useChatStore = defineStore('chat', () => {
   );
 
   watch(
-    () => isGenerating.value,
-    (generating) => {
-      if (!generating && groupConfig.value?.config.autoMode && groupConfig.value.config.autoMode > 0) {
-        startAutoModeTimer();
-      } else {
-        stopAutoModeTimer();
-      }
-    },
-  );
-
-  watch(
     () => activeChat.value?.metadata.members,
     (newMembers) => {
       if (newMembers) {
@@ -220,14 +192,6 @@ export const useChatStore = defineStore('chat', () => {
     },
     { immediate: true, deep: true },
   );
-
-  function startAutoModeTimer() {
-    stopAutoModeTimer();
-    if (!groupConfig.value?.config.autoMode) return;
-    autoModeTimer.value = setTimeout(() => {
-      generateResponse(GenerationMode.NEW);
-    }, groupConfig.value.config.autoMode * 1000);
-  }
 
   async function clearChat(recreateFirstMessage = false) {
     chatUiStore.isChatLoading = true;
@@ -519,7 +483,7 @@ export const useChatStore = defineStore('chat', () => {
         currentSwipeId++;
         await syncSwipeToMes(messageIndex, currentSwipeId);
       } else {
-        await generateResponse(GenerationMode.ADD_SWIPE, { bypassPrefill: true });
+        await generateResponse(GenerationMode.ADD_SWIPE);
       }
     }
   }
@@ -691,7 +655,6 @@ export const useChatStore = defineStore('chat', () => {
     isChatLoading: computed(() => chatUiStore.isChatLoading),
     isGenerating,
     activeChatFile,
-    groupConfig,
     chatsMetadataByCharacterAvatars,
     clearChat,
     sendMessage,

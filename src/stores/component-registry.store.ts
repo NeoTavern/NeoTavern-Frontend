@@ -1,14 +1,21 @@
 import { defineStore } from 'pinia';
-import { markRaw, ref } from 'vue';
+import { markRaw, ref, type Component } from 'vue';
 import type { NavBarItemDefinition, SidebarDefinition } from '../types';
 import type { TextareaToolDefinition } from '../types/ExtensionAPI';
 import type { CodeMirrorTarget } from '../types/settings';
+
+export interface ChatSettingsTabDefinition {
+  id: string;
+  title: string;
+  component: Component;
+}
 
 export const useComponentRegistryStore = defineStore('component-registry', () => {
   const leftSidebarRegistry = ref<Map<string, SidebarDefinition>>(new Map());
   const rightSidebarRegistry = ref<Map<string, SidebarDefinition>>(new Map());
   const navBarRegistry = ref<Map<string, NavBarItemDefinition>>(new Map());
   const textareaToolRegistry = ref<Map<string, TextareaToolDefinition[]>>(new Map());
+  const chatSettingsTabRegistry = ref<Map<string, ChatSettingsTabDefinition>>(new Map());
 
   function registerSidebar(id: string, definition: Omit<SidebarDefinition, 'id'>, side: 'left' | 'right') {
     const rawComponent = markRaw(definition.component);
@@ -55,17 +62,32 @@ export const useComponentRegistryStore = defineStore('component-registry', () =>
     }
   }
 
+  function registerChatSettingsTab(id: string, title: string, component: Component) {
+    chatSettingsTabRegistry.value.set(id, {
+      id,
+      title,
+      component: markRaw(component),
+    });
+  }
+
+  function unregisterChatSettingsTab(id: string) {
+    chatSettingsTabRegistry.value.delete(id);
+  }
+
   return {
     leftSidebarRegistry,
     rightSidebarRegistry,
     navBarRegistry,
     textareaToolRegistry,
+    chatSettingsTabRegistry,
     registerSidebar,
     unregisterSidebar,
     registerNavBarItem,
     unregisterNavBarItem,
     registerTextareaTool,
     unregisterTextareaTool,
+    registerChatSettingsTab,
+    unregisterChatSettingsTab,
     getNavBarItem: (id: string) => navBarRegistry.value.get(id),
   };
 });

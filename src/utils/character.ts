@@ -117,7 +117,7 @@ export function filterAndSortCharacters(characters: Character[], searchTerm: str
       case 'fav': {
         const favA = a.fav ? 1 : 0;
         const favB = b.fav ? 1 : 0;
-        if (favA !== favB) return (favB - favA) * dir;
+        if (favA !== favB) return favB - favA;
         return a.name.localeCompare(b.name);
       }
       default:

@@ -1,3 +1,5 @@
+import type { GenerationMode } from '../constants';
+import type { ApiModel, ApiProvider } from './api';
 import type { Character } from './character';
 import type { ChatMessage } from './chat';
 import type {
@@ -8,9 +10,24 @@ import type {
   PromptBuilderOptions,
   StreamedChunk,
 } from './generation';
+import type { InstructTemplate } from './instruct';
 import type { Persona } from './persona';
-import type { SettingsPath } from './settings';
+import type { ApiFormatter, Proxy, SamplerSettings, Settings, SettingsPath } from './settings';
 import type { ProcessedWorldInfo, WorldInfoBook, WorldInfoEntry, WorldInfoOptions } from './world-info';
+
+export interface GenerationPayloadBuilderConfig {
+  messages: ApiChatMessage[];
+  model: string;
+  samplerSettings: SamplerSettings;
+  provider: ApiProvider;
+  providerSpecific: Settings['api']['providerSpecific'];
+  proxy?: Omit<Proxy, 'name'>;
+  playerName?: string;
+  modelList?: ApiModel[];
+  formatter?: ApiFormatter;
+  instructTemplate?: InstructTemplate;
+  activeCharacter?: Character;
+}
 
 export interface ExtensionEventMap {
   // General Application Events
@@ -52,14 +69,27 @@ export interface ExtensionEventMap {
   'world-info:entry-deleted': [bookName: string, uid: number];
 
   // Generation Flow Events
-  'generation:started': [context: { controller: AbortController; generationId: string }];
-  'generation:finished': [result: { message: ChatMessage | null; error?: Error }, context: { generationId: string }];
+  'generation:started': [context: { controller: AbortController; generationId: string; activeCharacter?: Character }];
+  'generation:finished': [
+    result: { message: ChatMessage | null; error?: Error },
+    context: { generationId: string; mode: GenerationMode },
+  ];
+  'generation:aborted': [context: { generationId: string }];
   'generation:before-message-create': [
     message: ChatMessage,
     context: { controller: AbortController; generationId: string },
   ];
 
   'prompt:building-started': [options: PromptBuilderOptions];
+  'prompt:history-message-processing': [
+    apiMessage: ApiChatMessage,
+    context: {
+      originalMessage: ChatMessage;
+      isGroupContext: boolean;
+      characters: Character[];
+      persona: Persona;
+    },
+  ];
   'prompt:built': [messages: ApiChatMessage[], context: { generationId: string }];
   'world-info:processing-started': [options: WorldInfoOptions];
   'world-info:entry-activated': [entry: WorldInfoEntry, context: { generationId: string }];
@@ -71,6 +101,32 @@ export interface ExtensionEventMap {
    * They are fired sequentially and awaited by the core application.
    */
   'process:generation-context': [context: GenerationContext];
+
+  /**
+   * Fired when determining which characters should be included in the context/prompt.
+   * Extensions can modify the `characters` array in the payload.
+   */
+  'generation:resolve-context': [payload: { characters: Character[] }];
+
+  /**
+   * Fired when a generation is requested, but the speaker is not forced.
+   * Extensions can set `handled` to true to prevent the default generation behavior (e.g., to implement custom queuing logic like Group Chat).
+   */
+  'chat:generation-requested': [
+    payload: { mode: GenerationMode; generationId: string; handled: boolean },
+    context: { controller: AbortController },
+  ];
+
+  /**
+   * Fired before the final ChatCompletionPayload is constructed.
+   * This allows extensions to modify the raw configuration (messages, sampler settings, etc.)
+   * before it is normalized for the specific API provider.
+   */
+  'generation:build-payload': [
+    config: GenerationPayloadBuilderConfig,
+    context: { controller: AbortController; generationId: string },
+  ];
+
   'process:request-payload': [
     payload: ChatCompletionPayload,
     context: { controller: AbortController; generationId: string },

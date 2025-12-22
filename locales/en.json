@@ -44,7 +44,6 @@
     },
     "tabs": {
       "chats": "Chats",
-      "group": "Group",
       "config": "Configuration"
     },
     "import": {
@@ -608,7 +607,6 @@
       "manageChats": "Manage chat",
       "regenerate": "Regenerate",
       "continue": "Continue",
-      "generate": "Generate",
       "selectMessages": "Select Messages"
     },
     "typingIndicator": "",
