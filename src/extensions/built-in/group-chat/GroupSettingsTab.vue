@@ -198,6 +198,14 @@ function updateSummary(avatar: string, value: string) {
                     :class="{ 'line-through': groupConfig?.members[member.avatar]?.muted }"
                     >{{ member.name }}</span
                   >
+                  <i
+                    v-if="
+                      groupConfig?.config.handlingMode === GroupGenerationHandlingMode.SWAP_INCLUDE_SUMMARIES &&
+                      !groupConfig?.members[member.avatar]?.summary
+                    "
+                    class="fa-solid fa-triangle-exclamation no-summary-indicator"
+                    title="No summary set"
+                  ></i>
                   <div v-if="service.generatingAvatar.value === member.avatar" class="typing-indicator-small">
                     <div class="dot" />
                     <div class="dot" />
@@ -405,6 +413,14 @@ function updateSummary(avatar: string, value: string) {
     overflow: hidden;
     text-overflow: ellipsis;
     flex-grow: 1;
+  }
+
+  .no-summary-indicator {
+    color: var(--color-warning-amber);
+    font-size: 0.9em;
+    flex-shrink: 0;
+    margin-left: var(--spacing-xs);
+    opacity: 0.8;
   }
 
   .typing-indicator-small {

@@ -305,6 +305,21 @@ export class GroupChatService {
     const meta = this.api.chat.metadata.get();
     const activeMembers = meta?.members ?? [];
 
+    // Warn if missing summaries in SWAP_INCLUDE_SUMMARIES mode
+    if (this.groupConfig.value?.config.handlingMode === GroupGenerationHandlingMode.SWAP_INCLUDE_SUMMARIES) {
+      const membersMap = this.groupConfig.value.members;
+      const missingCount = activeMembers.filter(
+        (avatar) => !membersMap[avatar]?.muted && !membersMap[avatar]?.summary,
+      ).length;
+
+      if (missingCount > 0) {
+        this.api.ui.showToast(
+          `Warning: ${missingCount} character${missingCount > 1 ? 's' : ''} missing ${missingCount > 1 ? 'summaries' : 'summary'} in Swap+Summaries mode`,
+          'warning',
+        );
+      }
+    }
+
     // Single Chat / Fallback
     if (!this.isGroupChat || !this.groupConfig.value) {
       // Core handles single chat defaults usually, but we can enforce it if we want
