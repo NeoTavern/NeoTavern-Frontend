@@ -147,13 +147,49 @@ export const PROVIDER_CONFIG: Partial<Record<ApiProvider, ProviderConfig>> = {
 
 // --- Response Handlers ---
 
+/**
+ * Robust generic message extractor mimicking SillyTavern's extraction logic.
+ * Used as a fallback and for default providers (OpenAI etc).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function extractMessageGeneric(data: any): string {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const processContent = (content: any): string => {
+    if (Array.isArray(content)) {
+      return (
+        content
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((x: any) => (typeof x === 'string' ? x : x?.text))
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .filter((x: any) => x)
+          .join('')
+      );
+    }
+    return typeof content === 'string' ? content : '';
+  };
+
+  const candidate =
+    data?.choices?.[0]?.message?.content ?? // OpenAI / Standard
+    data?.choices?.[0]?.text ?? // Text Completion
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data?.content?.find?.((p: any) => p.type === 'text')?.text ?? // Claude / OpenAI Vision
+    data?.results?.[0]?.text ?? // Kobold
+    data?.results?.[0]?.output?.text ?? // Legacy
+    data?.text ?? // KoboldHorde / Simple
+    data?.output ?? // NovelAI
+    data?.response ?? // Ollama
+    data?.content ?? // TextGenWebUI
+    data?.[0]?.content ??
+    data?.message?.content?.[0]?.text ??
+    data?.message?.tool_plan ?? // Cohere
+    '';
+
+  const processed = processContent(candidate);
+  return processed;
+}
+
 const DEFAULT_HANDLER: ProviderResponseHandler = {
-  extractMessage: (data) =>
-    data?.choices?.[0]?.message?.content ??
-    data?.choices?.[0]?.text ??
-    data?.results?.[0]?.output?.text ??
-    data?.content?.[0]?.text ??
-    '',
+  extractMessage: extractMessageGeneric,
   getStreamingReply: (data) => ({
     delta: data?.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '',
   }),
@@ -247,7 +283,13 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
     }),
   },
   [api_providers.MISTRALAI]: {
-    extractMessage: (data) => data?.choices?.[0]?.message?.content ?? '',
+    extractMessage: (data) => {
+      const content = data?.choices?.[0]?.message?.content;
+      return Array.isArray(content)
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          content.map((x: any) => x.text).join('')
+        : (content ?? '');
+    },
     extractReasoning: (data) =>
       data?.choices?.[0]?.message?.content?.[0]?.thinking
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -255,19 +297,26 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ?.filter((x: any) => x)
         ?.join('\n\n') ?? '',
-    getStreamingReply: (data) => ({
-      delta:
-        data.choices?.[0]?.delta?.content
+    getStreamingReply: (data) => {
+      const content = data.choices?.[0]?.delta?.content;
+      // Handle array or string content safely
+      const delta = Array.isArray(content)
+        ? content
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((x: any) => x.text)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .filter((x: any) => x)
+            .join('')
+        : content || '';
+
+      return {
+        delta,
+        reasoning:
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ?.map((x: any) => x.text)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .filter((x: any) => x)
-          .join('') || '',
-      reasoning:
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data.choices?.filter((x: any) => x?.delta?.content?.[0]?.thinking)?.[0]?.delta?.content?.[0]?.thinking?.[0]
-          ?.text || '',
-    }),
+          data.choices?.filter((x: any) => x?.delta?.content?.[0]?.thinking)?.[0]?.delta?.content?.[0]?.thinking?.[0]
+            ?.text || '',
+      };
+    },
   },
 };
 

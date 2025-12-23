@@ -17,6 +17,7 @@ import type { ApiFormatter, SamplerSettings, Settings, SettingsPath } from '../t
 import { getRequestHeaders } from '../utils/client';
 import { convertMessagesToInstructString } from '../utils/instruct';
 import {
+  extractMessageGeneric,
   getProviderHandler,
   MODEL_INJECTIONS,
   PARAMETER_DEFINITIONS,
@@ -411,7 +412,13 @@ export class ChatCompletionService {
       }
       handleApiError(responseData);
 
-      const messageContent = responseHandler.extractMessage(responseData);
+      let messageContent = responseHandler.extractMessage(responseData);
+
+      // Fallback to generic extraction if specific handler fails to find content
+      if (!messageContent) {
+        messageContent = extractMessageGeneric(responseData);
+      }
+
       const reasoning = responseHandler.extractReasoning ? responseHandler.extractReasoning(responseData) : undefined;
 
       return {
