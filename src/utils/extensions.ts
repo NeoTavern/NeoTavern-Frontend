@@ -157,7 +157,7 @@ export function unloadStyle(name: string) {
 
 // --- API Implementation ---
 
-function deepClone<T>(obj: T): T {
+export function deepClone<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== 'object') return obj;
   return JSON.parse(JSON.stringify(obj)) as T;
