@@ -1197,6 +1197,27 @@
       "branchCreationFailed": "Failed to create branch",
       "branchName": "Branch",
       "loadChatFailed": "Failed to load selected chat"
+    },
+    "undo": {
+      "discardLabel": "Discard saves.",
+      "discardTitle": "Discard all chats from the undo history.",
+      "redoLabel": "Redo.",
+      "redoTitle": "Redo the last chat change.",
+      "saveLabel": "Save.",
+      "saveTitle": "Save the current chat to undo history.",
+      "settings": {
+        "chatLengthWarning": "⚠️ Warning: Increasing Max Chat Length can significantly impact performance on very large chats.",
+        "enableCtrlZ": "Enable the Ctrl+Z/Ctrl+Shift+Z hotkeys",
+        "maxChatLength": "Max Chat Length.",
+        "maxUndoSnapshots": "Max Undo Snapshots.",
+        "showSaveButtons": "Show Save/Reset in ☰",
+        "showToasts": "Show toasts on Undo/Redo.",
+        "showUndoButtons": "Show Undo/Redo in ☰",
+        "snapshotEvents": "Toggle snapshot events (Advanced)",
+        "snapshotEventsDescription": "These events will determine which actions are saved to your \"undo history\"."
+      },
+      "undoLabel": "Undo.",
+      "undoTitle": "Undo the last chat change."
     }
   },
   "persona": {
