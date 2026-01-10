@@ -270,6 +270,10 @@ async function showPromptItemization() {
     okButton: true,
   });
 }
+
+function toggleHidden() {
+  chatStore.updateMessageObject(props.index, { is_system: !props.message.is_system });
+}
 </script>
 
 <template>
@@ -281,6 +285,7 @@ async function showPromptItemization() {
       'is-selected': isSelected,
       'is-selection-mode': isSelectionMode,
       'animations-disabled': animationsDisabled,
+      'is-system-message': message.is_system,
     }"
     :data-message-index="index"
     :aria-label="`${displayName} - ${formattedTimestamp}`"
@@ -329,6 +334,12 @@ async function showPromptItemization() {
             @click="showPromptItemization"
           />
           <Button variant="ghost" icon="fa-copy" :title="t('chat.buttons.copyMessage')" @click="copyMessage" />
+          <Button
+            variant="ghost"
+            :icon="message.is_system ? 'fa-eye' : 'fa-eye-slash'"
+            :title="message.is_system ? t('chat.buttons.showInPrompt') : t('chat.buttons.hideFromPrompt')"
+            @click="toggleHidden"
+          />
           <Button variant="ghost" icon="fa-pencil" title="Edit" @click="startEditing" />
           <Button
             icon="fa-trash-can"

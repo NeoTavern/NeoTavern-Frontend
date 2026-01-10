@@ -582,7 +582,9 @@
       "moveDown": "Move message down",
       "swipeLeft": "Previous swipe",
       "swipeRight": "Next swipe",
-      "itemization": "Prompt Itemization"
+      "itemization": "Prompt Itemization",
+      "showInPrompt": "Include message in prompt",
+      "hideFromPrompt": "Hide message from prompt"
     },
     "delete": {
       "confirmTitle": "Confirm Deletion",

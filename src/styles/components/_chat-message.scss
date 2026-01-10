@@ -66,6 +66,9 @@
     }
   }
 
+  &.is-system-message {
+    opacity: 0.6;
+  }
   // --- Standard Layout ---
 
   &-avatar-wrapper {

@@ -586,6 +586,8 @@ export interface MessageSchema {
       swipeLeft: string;
       swipeRight: string;
       itemization: string;
+      showInPrompt: string;
+      hideFromPrompt: string;
     };
     delete: {
       confirmTitle: string;
