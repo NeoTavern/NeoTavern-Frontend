@@ -1,6 +1,7 @@
 import Button from './Button.vue';
 import Checkbox from './Checkbox.vue';
 import CollapsibleSection from './CollapsibleSection.vue';
+import ColorPicker from './ColorPicker.vue';
 import FileInput from './FileInput.vue';
 import FormItem from './FormItem.vue';
 import Icon from './Icon.vue';
@@ -20,6 +21,7 @@ export {
   Button,
   Checkbox,
   CollapsibleSection,
+  ColorPicker,
   FileInput,
   FormItem,
   Icon,
