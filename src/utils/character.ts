@@ -32,8 +32,17 @@ export function getCharacterDifferences(oldChar: Character, newChar: Character):
     const oldData = oldChar.data || {};
     const ignoreKeys = ['extensions'];
 
+    // Get the list of data fields that are already mapped to top-level properties
+    // e.g., 'data.description' -> we should ignore 'description' key in data object
+    const mappedDataFields = Object.values(CHARACTER_FIELD_MAPPINGS)
+      .filter((path) => path.startsWith('data.'))
+      .map((path) => path.replace('data.', ''));
+
     for (const key in newData) {
       if (ignoreKeys.includes(key)) continue;
+      // If this data field is already handled by a top-level mapping, skip it
+      if (mappedDataFields.includes(key)) continue;
+
       const newSubValue = newData[key];
       const oldSubValue = oldData[key];
       if (JSON.stringify(newSubValue) !== JSON.stringify(oldSubValue)) {

@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+import { merge } from 'lodash-es';
 import { defineStore } from 'pinia';
 import { computed, nextTick, ref } from 'vue';
 import { useAutoSave } from '../composables/useAutoSave';
@@ -63,7 +64,7 @@ export const useCharacterStore = defineStore('character', () => {
     // Optimistic Update
     const index = characters.value.findIndex((c) => c.avatar === avatar);
     if (index !== -1) {
-      const updatedCharacter = { ...characters.value[index], ...changes };
+      const updatedCharacter = merge({}, characters.value[index], changes);
       updatedCharacter.name = DOMPurify.sanitize(updatedCharacter.name);
       characters.value[index] = updatedCharacter;
 
