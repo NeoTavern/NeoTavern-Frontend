@@ -486,6 +486,7 @@ export interface MessageSchema {
   common: {
     ok: string;
     cancel: string;
+    cancelled: string;
     save: string;
     expandedEditor: string;
     yes: string;
@@ -1203,6 +1204,7 @@ export interface MessageSchema {
     };
     chatMemory: {
       noProfile: string;
+      overlapWarning: string;
     };
   };
   persona: {

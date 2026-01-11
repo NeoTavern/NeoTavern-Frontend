@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
 import { Button, FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
 import { useStrictI18n } from '../../../composables/useStrictI18n';
@@ -29,6 +29,8 @@ const startIndex = ref<number>(0);
 const endIndex = ref<number>(0);
 const summaryResult = ref<string>('');
 const isGenerating = ref(false);
+const isSaving = ref(false);
+const abortController = ref<AbortController | null>(null);
 
 // Persistent Settings
 const connectionProfile = ref<string | undefined>(undefined);
@@ -52,18 +54,108 @@ const isValidRange = computed(() => {
   return startIndex.value >= 0 && endIndex.value <= maxIndex.value && startIndex.value <= endIndex.value;
 });
 
+// Existing memories retrieved from Chat Metadata
+const existingMemories = computed(() => {
+  const currentMetadata = props.api.chat.metadata.get();
+  if (!currentMetadata) return [];
+  const memoryExtra = (currentMetadata.extra?.[EXTENSION_KEY] as ChatMemoryMetadata) || { memories: [] };
+  return memoryExtra.memories || [];
+});
+
+// Check for overlaps
+const overlapWarning = computed(() => {
+  if (!isValidRange.value) return null;
+
+  const start = startIndex.value;
+  const end = endIndex.value;
+
+  for (const memory of existingMemories.value) {
+    const [mStart, mEnd] = memory.range;
+    // Check intersection
+    if (Math.max(start, mStart) <= Math.min(end, mEnd)) {
+      return t('extensionsBuiltin.chatMemory.overlapWarning');
+    }
+  }
+  return null;
+});
+
+// Timeline Data
+interface TimelineSegment {
+  start: number;
+  end: number;
+  type: 'memory' | 'selection' | 'overlap';
+  widthPercent: number;
+  leftPercent: number;
+  title: string;
+}
+
+const timelineSegments = computed(() => {
+  const totalMessages = maxIndex.value + 1;
+  if (totalMessages <= 0) return [];
+
+  const segments: TimelineSegment[] = [];
+
+  // 1. Existing memories
+  existingMemories.value.forEach((mem) => {
+    const [s, e] = mem.range;
+    segments.push({
+      start: s,
+      end: e,
+      type: 'memory',
+      leftPercent: (s / totalMessages) * 100,
+      widthPercent: ((e - s + 1) / totalMessages) * 100,
+      title: `Memory: ${s} - ${e}`,
+    });
+  });
+
+  // 2. Current Selection
+  if (isValidRange.value) {
+    const s = startIndex.value;
+    const e = endIndex.value;
+
+    const type = overlapWarning.value ? 'overlap' : 'selection';
+
+    segments.push({
+      start: s,
+      end: e,
+      type,
+      leftPercent: (s / totalMessages) * 100,
+      widthPercent: ((e - s + 1) / totalMessages) * 100,
+      title: `Current Selection: ${s} - ${e}`,
+    });
+  }
+
+  return segments;
+});
+
 // --- Lifecycle ---
 
 onMounted(async () => {
-  // Initialize range to sensible defaults (e.g., last 20 messages or entire chat)
   endIndex.value = maxIndex.value;
-  startIndex.value = Math.max(0, endIndex.value - 20);
+
+  // Suggest start index based on last memory
+  const memories = existingMemories.value;
+  let suggestedStart = 0;
+  if (memories.length > 0) {
+    const lastMemoryEnd = Math.max(...memories.map((m) => m.range[1]));
+    suggestedStart = Math.min(lastMemoryEnd + 1, endIndex.value);
+  } else {
+    suggestedStart = Math.max(0, endIndex.value - 20);
+  }
+
+  startIndex.value = suggestedStart;
 
   refreshLorebooks();
   loadSettings();
 });
 
-// Auto-save settings when specific fields change
+onUnmounted(() => {
+  if (abortController.value) {
+    abortController.value.abort();
+  }
+});
+
+// Auto-save settings
 watch(
   [connectionProfile, prompt, autoHideMessages, selectedLorebook],
   () => {
@@ -82,14 +174,12 @@ function loadSettings() {
     if (settings.prompt) prompt.value = settings.prompt;
     if (settings.autoHideMessages !== undefined) autoHideMessages.value = settings.autoHideMessages;
     if (settings.lastLorebook) {
-      // Only set if it still exists in available books
       if (availableLorebooks.value.some((b) => b.value === settings.lastLorebook)) {
         selectedLorebook.value = settings.lastLorebook;
       }
     }
   }
 
-  // Fallback for connection profile if not saved in extension settings: check global active profile
   if (!connectionProfile.value) {
     const globalProfile = props.api.settings.get('connectionProfile');
     if (globalProfile) {
@@ -116,7 +206,6 @@ function refreshLorebooks() {
     value: b.file_id,
   }));
 
-  // If no persistent selection, try to select the currently active one
   if (!selectedLorebook.value) {
     const activeBooks = props.api.worldInfo.getActiveBookNames();
     if (activeBooks.length > 0) {
@@ -129,6 +218,15 @@ function refreshLorebooks() {
 
 function resetPrompt() {
   prompt.value = DEFAULT_PROMPT;
+}
+
+function cancelGeneration() {
+  if (abortController.value) {
+    abortController.value.abort();
+    abortController.value = null;
+    isGenerating.value = false;
+    props.api.ui.showToast(t('common.cancelled'), 'info');
+  }
 }
 
 async function handleSummarize() {
@@ -144,6 +242,7 @@ async function handleSummarize() {
 
   isGenerating.value = true;
   summaryResult.value = '';
+  abortController.value = new AbortController();
 
   try {
     const messagesSlice = chatHistory.value.slice(startIndex.value, endIndex.value + 1);
@@ -154,15 +253,16 @@ async function handleSummarize() {
     });
     const messages: Array<ApiChatMessage> = [{ role: 'system', content: compiledPrompt, name: 'System' }];
 
-    // Use streaming for better UX
     const response = await props.api.llm.generate(messages, {
       connectionProfileName: connectionProfile.value,
+      signal: abortController.value.signal,
     });
 
     let fullContent = '';
     if (typeof response === 'function') {
       const generator = response();
       for await (const chunk of generator) {
+        if (!isGenerating.value) break;
         fullContent += chunk.delta;
         summaryResult.value = fullContent;
       }
@@ -170,23 +270,31 @@ async function handleSummarize() {
       fullContent = response.content;
     }
 
-    // Extract code block if present
-    const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
-    const match = fullContent.match(codeBlockRegex);
-    if (match && match[1]) {
-      summaryResult.value = match[1].trim();
-    } else {
-      summaryResult.value = fullContent.trim();
+    if (isGenerating.value) {
+      const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
+      const match = fullContent.match(codeBlockRegex);
+      if (match && match[1]) {
+        summaryResult.value = match[1].trim();
+      } else {
+        summaryResult.value = fullContent.trim();
+      }
     }
-  } catch (error) {
-    console.error('Summarization failed', error);
-    props.api.ui.showToast('Summarization failed', 'error');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+    } else {
+      console.error('Summarization failed', error);
+      props.api.ui.showToast('Summarization failed', 'error');
+    }
   } finally {
     isGenerating.value = false;
+    abortController.value = null;
   }
 }
 
 async function createEntry() {
+  if (isSaving.value) return;
+
   if (!selectedLorebook.value) {
     props.api.ui.showToast('Please select a Lorebook', 'error');
     return;
@@ -202,6 +310,8 @@ async function createEntry() {
     props.api.ui.showToast('Chat ID not found', 'error');
     return;
   }
+
+  isSaving.value = true;
 
   try {
     const book = await props.api.worldInfo.getBook(selectedLorebook.value);
@@ -221,7 +331,7 @@ async function createEntry() {
 
     await props.api.worldInfo.createEntry(selectedLorebook.value, newEntry);
 
-    // 1. Update Chat Metadata
+    // 1. Update Chat Metadata to store the range mapping
     const currentMetadata = props.api.chat.metadata.get();
     if (currentMetadata) {
       const memoryExtra = (currentMetadata.extra?.[EXTENSION_KEY] as ChatMemoryMetadata) || { memories: [] };
@@ -270,6 +380,8 @@ async function createEntry() {
   } catch (error) {
     console.error('Failed to create memory entry', error);
     props.api.ui.showToast('Failed to create memory entry', 'error');
+  } finally {
+    isSaving.value = false;
   }
 }
 
@@ -358,6 +470,26 @@ async function handleReset() {
   <div class="memory-popup">
     <div class="section">
       <div class="section-title">1. {{ t('common.select') }} Range</div>
+
+      <!-- Timeline Visualization -->
+      <div class="timeline-container" title="Memory Timeline">
+        <div class="timeline-bar">
+          <!-- Segments -->
+          <div
+            v-for="(seg, idx) in timelineSegments"
+            :key="idx"
+            class="timeline-segment"
+            :class="seg.type"
+            :style="{ left: seg.leftPercent + '%', width: seg.widthPercent + '%' }"
+            :title="seg.title"
+          ></div>
+        </div>
+        <div class="timeline-labels">
+          <span>0</span>
+          <span>{{ maxIndex + 1 }} msgs</span>
+        </div>
+      </div>
+
       <div class="row">
         <FormItem label="Start Index" style="flex: 1">
           <Input v-model.number="startIndex" type="number" :min="0" :max="endIndex" />
@@ -366,7 +498,11 @@ async function handleReset() {
           <Input v-model.number="endIndex" type="number" :min="startIndex" :max="maxIndex" />
         </FormItem>
       </div>
-      <div class="info-text">Total Messages in Chat: {{ maxIndex + 1 }}</div>
+
+      <div v-if="overlapWarning" class="warning-banner">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{ overlapWarning }}</span>
+      </div>
     </div>
 
     <div class="section">
@@ -388,7 +524,11 @@ async function handleReset() {
       </FormItem>
 
       <div class="actions">
+        <Button v-if="isGenerating" variant="danger" icon="fa-stop" @click="cancelGeneration">
+          {{ t('common.cancel') }}
+        </Button>
         <Button
+          v-else
           :loading="isGenerating"
           :disabled="!isValidRange || !connectionProfile"
           icon="fa-wand-magic-sparkles"
@@ -417,7 +557,13 @@ async function handleReset() {
       </FormItem>
 
       <div class="actions">
-        <Button variant="confirm" icon="fa-save" :disabled="!summaryResult || !selectedLorebook" @click="createEntry">
+        <Button
+          variant="confirm"
+          icon="fa-save"
+          :loading="isSaving"
+          :disabled="!summaryResult || !selectedLorebook"
+          @click="createEntry"
+        >
           Create Constant Entry & Hide Messages
         </Button>
       </div>
@@ -486,13 +632,8 @@ async function handleReset() {
 .actions {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
   margin: 5px 0;
-}
-
-.info-text {
-  font-size: 0.9em;
-  color: var(--theme-emphasis-color);
-  text-align: right;
 }
 
 .header-row {
@@ -503,6 +644,83 @@ async function handleReset() {
 
   .form-item-label {
     font-weight: 600;
+  }
+}
+
+/* Timeline Visualization */
+.timeline-container {
+  margin-bottom: 15px;
+  padding: 10px 0;
+}
+
+.timeline-bar {
+  position: relative;
+  height: 12px;
+  background-color: var(--black-50a);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--theme-border-color);
+  width: 100%;
+}
+
+.timeline-segment {
+  position: absolute;
+  height: 100%;
+  top: 0;
+  transition: all 0.2s ease;
+
+  &.memory {
+    background-color: var(--color-accent-green-70a);
+    opacity: 0.8;
+  }
+
+  &.selection {
+    background-color: var(--color-info-cobalt);
+    opacity: 0.7;
+    z-index: 2;
+    border: 1px solid var(--white-50a);
+  }
+
+  &.overlap {
+    background-color: var(--color-warning);
+    opacity: 0.9;
+    z-index: 3;
+    animation: pulse 2s infinite;
+  }
+}
+
+.timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8em;
+  color: var(--theme-emphasis-color);
+  margin-top: 5px;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.7;
+  }
+}
+
+.warning-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background-color: var(--black-30a);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--base-border-radius);
+  color: var(--color-warning-amber);
+
+  i {
+    font-size: 1.2em;
   }
 }
 </style>

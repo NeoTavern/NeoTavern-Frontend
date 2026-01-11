@@ -483,6 +483,7 @@
   "common": {
     "ok": "OK",
     "cancel": "Cancel",
+    "cancelled": "Cancelled",
     "save": "Save",
     "expandedEditor": "Expanded Editor",
     "yes": "Yes",
@@ -1199,7 +1200,8 @@
       "loadChatFailed": "Failed to load selected chat"
     },
     "chatMemory": {
-      "noProfile": "No connection profile selected"
+      "noProfile": "No connection profile selected",
+      "overlapWarning": "Warning: Selected range overlaps with an existing memory."
     }
   },
   "persona": {
