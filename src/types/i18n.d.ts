@@ -1201,6 +1201,9 @@ export interface MessageSchema {
       branchName: string;
       loadChatFailed: string;
     };
+    chatMemory: {
+      noProfile: string;
+    };
   };
   persona: {
     createFromCharacter: {

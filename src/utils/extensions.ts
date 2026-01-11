@@ -34,7 +34,7 @@ import { ApiTokenizer } from '../api/tokenizer';
 import VanillaSidebar from '../components/Shared/VanillaSidebar.vue';
 import { macroService } from '../services/macro-service';
 import { PromptBuilder } from '../services/prompt-engine';
-import { WorldInfoProcessor } from '../services/world-info';
+import { WorldInfoProcessor, createDefaultEntry } from '../services/world-info';
 import { useCharacterUiStore } from '../stores/character-ui.store';
 import { useComponentRegistryStore } from '../stores/component-registry.store';
 import { useLayoutStore } from '../stores/layout.store';
@@ -438,6 +438,9 @@ const baseExtensionAPI: ExtensionAPI = {
     delete: async (avatarId) => usePersonaStore().deletePersona(avatarId),
   },
   worldInfo: {
+    createDefaultEntry(uid) {
+      return createDefaultEntry(uid);
+    },
     getSettings: () => deepClone(useSettingsStore().settings.worldInfo),
     updateSettings: (settings) => {
       const store = useSettingsStore();

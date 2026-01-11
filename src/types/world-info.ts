@@ -49,6 +49,7 @@ export interface WorldInfoEntry {
   characterFilterTags: string[];
   characterFilterExclude: boolean;
   triggers: string[];
+  extensions?: Record<string, unknown>;
 }
 
 export interface WorldInfoBook {

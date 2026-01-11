@@ -411,6 +411,7 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
     delete: (avatarId: string) => Promise<void>;
   };
   worldInfo: {
+    createDefaultEntry(uid: number): WorldInfoEntry;
     getSettings: () => WorldInfoSettings;
     updateSettings: (settings: Partial<WorldInfoSettings>) => void;
     getAllBookNames: () => WorldInfoHeader[];
