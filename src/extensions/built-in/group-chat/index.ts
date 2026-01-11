@@ -283,7 +283,7 @@ export function activate(api: ExtensionAPI) {
           apiMsg.content = `${context.originalMessage.name}: ${apiMsg.content}`;
         }
       },
-      EventPriority.HIGH,
+      EventPriority.LOW, // allow other extensions to modify the message first
     ),
   );
 
