@@ -42,9 +42,12 @@ const argOverrides = ref<Record<string, boolean | number | string>>({});
 const selectedContextLorebooks = ref<string[]>([]);
 const selectedContextEntries = ref<Record<string, number[]>>({});
 
-// World Info Data
+const selectedContextCharacters = ref<string[]>([]);
+
+// Data Cache
 const allBookHeaders = ref<WorldInfoHeader[]>([]);
 const bookCache = ref<Record<string, WorldInfoBook>>({});
+const allCharacters = ref<Character[]>([]);
 
 // Generation State
 const generatedText = ref<string>('');
@@ -93,6 +96,7 @@ onMounted(async () => {
 
   // Load world info data if needed
   allBookHeaders.value = props.api.worldInfo.getAllBookNames();
+  allCharacters.value = props.api.character.getAll();
 
   // Get current context if available
   const currentCtx = props.api.worldInfo.getSelectedEntry();
@@ -150,6 +154,12 @@ const showWorldInfoContextSection = computed(() => {
   return !!argOverrides.value['includeSelectedBookContext'];
 });
 
+const showCharacterContextSection = computed(() => {
+  const arg = currentTemplate.value?.args?.find((a) => a.key === 'includeSelectedCharacters');
+  if (!arg) return false;
+  return !!argOverrides.value['includeSelectedCharacters'];
+});
+
 const canResetPrompt = computed(() => {
   if (!currentTemplate.value) return false;
   return promptOverride.value !== currentTemplate.value.prompt;
@@ -157,6 +167,17 @@ const canResetPrompt = computed(() => {
 
 const availableLorebooks = computed(() => {
   return allBookHeaders.value.map((b) => ({ label: b.name, value: b.name }));
+});
+
+const availableCharacters = computed(() => {
+  let excludeAvatar = '';
+  // If editing a character field, exclude that character to prevent duplication/confusion
+  if (IS_CHARACTER_FIELD.value) {
+    const editing = props.api.character.getEditing();
+    if (editing) excludeAvatar = editing.avatar;
+  }
+
+  return allCharacters.value.filter((c) => c.avatar !== excludeAvatar).map((c) => ({ label: c.name, value: c.avatar }));
 });
 
 function getEntriesForBook(bookName: string) {
@@ -186,6 +207,7 @@ function loadTemplateOverrides() {
   escapeMacros.value = overrides.escapeInputMacros ?? true;
   selectedContextLorebooks.value = overrides.selectedContextLorebooks || [];
   selectedContextEntries.value = overrides.selectedContextEntries ? { ...overrides.selectedContextEntries } : {};
+  selectedContextCharacters.value = overrides.selectedContextCharacters || [];
 
   // Load args
   const args: Record<string, boolean | number | string> = {};
@@ -222,6 +244,7 @@ function saveState() {
     args: argOverrides.value,
     selectedContextLorebooks: selectedContextLorebooks.value,
     selectedContextEntries: { ...selectedContextEntries.value },
+    selectedContextCharacters: selectedContextCharacters.value,
   };
 
   settings.value.templateOverrides[tplId] = overrides;
@@ -335,6 +358,25 @@ function getContextMessagesString(): string {
   return slice.map((m) => `${m.name}: ${m.mes}`).join('\n');
 }
 
+function getAdditionalCharactersContext(): string {
+  if (selectedContextCharacters.value.length === 0) return '';
+
+  const chars = selectedContextCharacters.value
+    .map((avatar) => props.api.character.get(avatar))
+    .filter((c) => c !== null) as Character[];
+
+  return chars
+    .map((c) => {
+      let text = `Name: ${c.name}`;
+      if (c.description) text += `\nDescription: ${c.description}`;
+      if (c.personality) text += `\nPersonality: ${c.personality}`;
+      if (c.scenario) text += `\nScenario: ${c.scenario}`;
+      if (c.mes_example) text += `\nExample Messages: ${c.mes_example}`;
+      return text;
+    })
+    .join('\n\n');
+}
+
 async function getWorldInfoContext() {
   const macros: Record<string, unknown> = {};
 
@@ -428,6 +470,7 @@ async function handleGenerate() {
     const contextData = getContextData();
     const contextMessagesStr = getContextMessagesString();
     const worldInfoMacros = await getWorldInfoContext();
+    const otherCharactersStr = getAdditionalCharactersContext();
 
     let inputToProcess = props.originalText;
     let promptToUse = promptOverride.value;
@@ -445,6 +488,7 @@ async function handleGenerate() {
       {
         contextMessages: contextMessagesStr,
         fieldName: props.identifier,
+        otherCharacters: otherCharactersStr,
         ...worldInfoMacros,
       },
       argOverrides.value,
@@ -545,6 +589,27 @@ function handleCopyOutput() {
           <Input v-model="contextMessageCount" type="number" :min="0" />
         </div>
       </div>
+
+      <!-- Character Context Section -->
+      <CollapsibleSection
+        v-if="showCharacterContextSection"
+        class="inner-collapsible"
+        title="Related Characters"
+        :is-open="false"
+      >
+        <FormItem
+          label="Context Characters"
+          description="Select additional characters to include in the context."
+          class="character-select"
+        >
+          <Select
+            v-model="selectedContextCharacters"
+            :options="availableCharacters"
+            multiple
+            placeholder="Select characters..."
+          />
+        </FormItem>
+      </CollapsibleSection>
 
       <!-- World Info Context Section -->
       <CollapsibleSection
@@ -735,7 +800,8 @@ function handleCopyOutput() {
   border-bottom: 1px solid var(--theme-border-color);
 }
 
-.lorebook-select {
+.lorebook-select,
+.character-select {
   margin-bottom: 10px;
 }
 

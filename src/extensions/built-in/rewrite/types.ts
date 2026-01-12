@@ -22,6 +22,7 @@ export interface RewriteTemplateOverride {
   args?: Record<string, boolean | number | string>;
   selectedContextLorebooks?: string[];
   selectedContextEntries?: Record<string, number[]>; // Map bookName -> list of entry UIDs
+  selectedContextCharacters?: string[];
 }
 
 export interface RewriteSettings {
@@ -83,6 +84,12 @@ Response:
         type: 'boolean',
         defaultValue: true,
       },
+      {
+        key: 'includeSelectedCharacters',
+        label: 'Include Selected Characters',
+        type: 'boolean',
+        defaultValue: false,
+      },
     ],
     template: `You are an expert character creator for LLM roleplay.
 You are refining a specific field of a Character Card (V2 spec).
@@ -126,6 +133,13 @@ Name: {{user}}
 {{#if persona}}
 Description: {{persona}}
 {{/if}}
+{{/if}}
+{{/if}}
+
+{{#if includeSelectedCharacters}}
+{{#if otherCharacters}}
+[Other Characters Context]
+{{otherCharacters}}
 {{/if}}
 {{/if}}
 
@@ -182,6 +196,13 @@ Comment: {{selectedEntry.comment}}
 {{/if}}
 {{/if}}
 
+{{#if includeSelectedCharacters}}
+{{#if otherCharacters}}
+[Related Characters]
+{{otherCharacters}}
+{{/if}}
+{{/if}}
+
 {{#if includePersona}}
 {{#if user}}
 [User Context]
@@ -223,6 +244,12 @@ Response:
         defaultValue: true,
       },
       {
+        key: 'includeSelectedCharacters',
+        label: 'Include Selected Characters',
+        type: 'boolean',
+        defaultValue: true,
+      },
+      {
         key: 'includePersona',
         label: 'Include Active Persona',
         type: 'boolean',
@@ -247,6 +274,18 @@ Response:
         type: 'boolean',
         defaultValue: true,
       },
+      {
+        key: 'includeSelectedBookContext',
+        label: 'Include Selected Lorebooks',
+        type: 'boolean',
+        defaultValue: true,
+      },
+      {
+        key: 'includeSelectedCharacters',
+        label: 'Include Selected Characters',
+        type: 'boolean',
+        defaultValue: true,
+      },
     ],
     template: `You are a helpful writing assistant.
 
@@ -262,6 +301,20 @@ Response:
 [User Context]
 {{#if user}}Name: {{user}}{{/if}}
 {{#if persona}}Description: {{persona}}{{/if}}
+{{/if}}
+
+{{#if includeSelectedCharacters}}
+{{#if otherCharacters}}
+[Other Characters Context]
+{{otherCharacters}}
+{{/if}}
+{{/if}}
+
+{{#if includeSelectedBookContext}}
+{{#if otherWorldInfo}}
+[World Info Context]
+{{otherWorldInfo}}
+{{/if}}
 {{/if}}
 
 {{#if contextMessages}}
