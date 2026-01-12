@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Button, FormItem, Input, Select, Textarea, Toggle } from '../../../../components/UI';
+import { WorldInfoPosition } from '../../../../constants';
 import type { ApiChatMessage, ChatMessage, ExtensionAPI } from '../../../../types';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../../types';
 import type { TextareaToolDefinition } from '../../../../types/ExtensionAPI';
@@ -287,6 +288,7 @@ async function createEntry() {
       content: summaryResult.value,
       constant: true,
       order: endIndex.value,
+      position: WorldInfoPosition.AFTER_CHAR,
     };
 
     await props.api.worldInfo.createEntry(selectedLorebook.value, newEntry);
