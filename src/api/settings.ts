@@ -1,4 +1,4 @@
-import type { LegacyOaiPresetSettings, LegacyOaiSettings, LegacySettings, Settings } from '../types';
+import type { LegacyOaiPresetSettings, LegacyOaiSettings, LegacySettings, ReasoningTemplate, Settings } from '../types';
 import type { InstructTemplate } from '../types/instruct';
 import { getRequestHeaders } from '../utils/client';
 
@@ -8,6 +8,7 @@ export interface UserSettingsResponse {
   openai_settings: string[]; // JSON string of LegacyOaiPresetSettings
   world_names: string[];
   instruct: InstructTemplate[];
+  reasoning: ReasoningTemplate[];
 }
 
 export interface ParsedUserSettingsResponse {
@@ -16,6 +17,7 @@ export interface ParsedUserSettingsResponse {
   openai_settings: LegacyOaiPresetSettings[];
   world_names: string[];
   instruct: InstructTemplate[];
+  reasoning: ReasoningTemplate[];
 }
 
 let cachedResponse: ParsedUserSettingsResponse | null = null;
@@ -60,6 +62,7 @@ export async function fetchUserSettings(force = false): Promise<ParsedUserSettin
         openai_settings: data.openai_settings.map((s) => JSON.parse(s) as LegacyOaiSettings),
         world_names: data.world_names,
         instruct: data.instruct,
+        reasoning: data.reasoning ?? [],
       };
 
       cachedResponse = parsed;

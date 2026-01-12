@@ -128,6 +128,7 @@ async function initializeAppData() {
       apiStore.initialize(),
       apiStore.loadPresetsForApi(),
       apiStore.loadInstructTemplates(),
+      apiStore.loadReasoningTemplates(),
       backgroundStore.initialize(),
       worldInfoStore.initialize(),
       personaStore.initialize(),

@@ -390,6 +390,7 @@ export function migrateLegacyUserSettings(
             apiUrl: profile['api-url'],
             secretId: profile['secret-id'],
             instructTemplate: profile.instruct,
+            reasoningTemplate: profile['reasoning-template'],
           } satisfies ConnectionProfile;
         },
       ),

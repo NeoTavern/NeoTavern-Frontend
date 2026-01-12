@@ -3,9 +3,12 @@ import { computed, ref, watch } from 'vue';
 import { fetchChatCompletionStatus, fetchTextCompletionStatus } from '../api/connection';
 import {
   deleteInstructTemplate as apiDeleteInstructTemplate,
+  deleteReasoningTemplate as apiDeleteReasoningTemplate,
   deleteSamplerPreset as apideleteSamplerPreset,
   saveInstructTemplate as apiSaveInstructTemplate,
+  saveReasoningTemplate as apiSaveReasoningTemplate,
   fetchAllInstructTemplates,
+  fetchAllReasoningTemplates,
   fetchAllSamplerPresets,
   saveSamplerPreset,
   type Preset,
@@ -15,7 +18,14 @@ import { useStrictI18n } from '../composables/useStrictI18n';
 import { toast } from '../composables/useToast';
 import { defaultPrompts, PROVIDER_SECRET_KEYS } from '../constants';
 import { migrateLegacyOaiPreset } from '../services/settings-migration.service';
-import type { ApiModel, ApiProvider, ConnectionProfile, LegacyOaiPresetSettings, SamplerSettings } from '../types';
+import type {
+  ApiModel,
+  ApiProvider,
+  ConnectionProfile,
+  LegacyOaiPresetSettings,
+  ReasoningTemplate,
+  SamplerSettings,
+} from '../types';
 import { api_providers, POPUP_RESULT, POPUP_TYPE } from '../types';
 import type { InstructTemplate } from '../types/instruct';
 import { downloadFile, readFileAsText, uuidv4 } from '../utils/commons';
@@ -35,6 +45,7 @@ export const useApiStore = defineStore('api', () => {
   const presets = ref<Preset<SamplerSettings>[]>([]);
 
   const instructTemplates = ref<InstructTemplate[]>([]);
+  const reasoningTemplates = ref<ReasoningTemplate[]>([]);
 
   const watchersInitialized = ref(false);
 
@@ -161,6 +172,9 @@ export const useApiStore = defineStore('api', () => {
     }
     if (profile.instructTemplate && profile.instructTemplate !== settingsStore.settings.api.instructTemplateName) {
       settingsStore.settings.api.instructTemplateName = profile.instructTemplate;
+    }
+    if (profile.reasoningTemplate && profile.reasoningTemplate !== settingsStore.settings.api.reasoningTemplateName) {
+      settingsStore.settings.api.reasoningTemplateName = profile.reasoningTemplate;
     }
     if (
       profile.customPromptPostProcessing !== undefined &&
@@ -583,6 +597,66 @@ export const useApiStore = defineStore('api', () => {
     }
   }
 
+  // Reasoning Templates
+  async function loadReasoningTemplates() {
+    try {
+      const fetchedTemplates = await fetchAllReasoningTemplates();
+      reasoningTemplates.value = fetchedTemplates;
+    } catch (e) {
+      console.warn('Failed to load reasoning templates', e);
+      reasoningTemplates.value = [];
+    }
+  }
+
+  async function saveReasoningTemplate(template: ReasoningTemplate) {
+    try {
+      await apiSaveReasoningTemplate(template);
+      await loadReasoningTemplates();
+      settingsStore.settings.api.reasoningTemplateName = template.name;
+    } catch (e) {
+      toast.error('Error saving reasoning template');
+      console.error(e);
+    }
+  }
+
+  async function deleteReasoningTemplate(name: string) {
+    try {
+      await apiDeleteReasoningTemplate(name);
+      await loadReasoningTemplates();
+      if (settingsStore.settings.api.reasoningTemplateName === name) {
+        settingsStore.settings.api.reasoningTemplateName = undefined;
+      }
+    } catch {
+      toast.error('Error deleting reasoning template');
+    }
+  }
+
+  function importReasoningTemplate() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const content = await readFileAsText(file);
+        const data = JSON.parse(content);
+        await saveReasoningTemplate(data);
+        toast.success('Template imported');
+      } catch {
+        toast.error('Invalid template file');
+      }
+    };
+    input.click();
+  }
+
+  function exportReasoningTemplate(name: string) {
+    const tpl = reasoningTemplates.value.find((t) => t.name === name);
+    if (tpl) {
+      downloadFile(JSON.stringify(tpl, null, 2), `${name}.json`, 'application/json');
+    }
+  }
+
   return {
     initialize,
     onlineStatus,
@@ -616,5 +690,12 @@ export const useApiStore = defineStore('api', () => {
     deleteInstructTemplate,
     importInstructTemplate,
     exportInstructTemplate,
+    // Reasoning
+    reasoningTemplates,
+    loadReasoningTemplates,
+    saveReasoningTemplate,
+    deleteReasoningTemplate,
+    importReasoningTemplate,
+    exportReasoningTemplate,
   };
 });

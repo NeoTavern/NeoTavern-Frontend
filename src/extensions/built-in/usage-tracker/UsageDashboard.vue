@@ -432,7 +432,7 @@ const chartYLabels = computed(() => {
         <!-- Time Series Chart -->
         <div class="chart-container-wrapper card-base">
           <h3>Token Usage Over Time</h3>
-          <div v-if="chartPoints.length > 1" class="svg-container" ref="chartContainer">
+          <div v-if="chartPoints.length > 1" ref="chartContainer" class="svg-container">
             <svg :viewBox="`0 0 ${chartWidth} ${chartHeight}`" preserveAspectRatio="none" class="usage-chart">
               <!-- Grid Lines -->
               <g class="grid">

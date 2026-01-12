@@ -1,4 +1,4 @@
-import type { SamplerSettings } from '../types';
+import type { ReasoningTemplate, SamplerSettings } from '../types';
 import type { InstructTemplate } from '../types/instruct';
 import type { Theme } from '../types/theme';
 import { getRequestHeaders } from '../utils/client';
@@ -115,6 +115,46 @@ export async function deleteInstructTemplate(name: string): Promise<void> {
 
   if (!response.ok) {
     throw new Error('Failed to delete instruct template');
+  }
+
+  await response.json();
+}
+
+export async function fetchAllReasoningTemplates(): Promise<ReasoningTemplate[]> {
+  const userSettingsResponse = await fetchUserSettings();
+  return userSettingsResponse.reasoning;
+}
+
+export async function saveReasoningTemplate(template: ReasoningTemplate): Promise<void> {
+  const response = await fetch('/api/presets/save', {
+    method: 'POST',
+    headers: getRequestHeaders(),
+    body: JSON.stringify({
+      apiId: 'reasoning',
+      name: template.name,
+      preset: template,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to save reasoning template');
+  }
+
+  await response.json();
+}
+
+export async function deleteReasoningTemplate(name: string): Promise<void> {
+  const response = await fetch('/api/presets/delete', {
+    method: 'POST',
+    headers: getRequestHeaders(),
+    body: JSON.stringify({
+      apiId: 'reasoning',
+      name: name,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to delete reasoning template');
   }
 
   await response.json();

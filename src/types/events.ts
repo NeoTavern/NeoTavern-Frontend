@@ -12,7 +12,7 @@ import type {
 } from './generation';
 import type { InstructTemplate } from './instruct';
 import type { Persona } from './persona';
-import type { ApiFormatter, Proxy, SamplerSettings, Settings, SettingsPath } from './settings';
+import type { ApiFormatter, Proxy, ReasoningTemplate, SamplerSettings, Settings, SettingsPath } from './settings';
 import type { ProcessedWorldInfo, WorldInfoBook, WorldInfoEntry, WorldInfoOptions } from './world-info';
 
 export interface GenerationPayloadBuilderConfig {
@@ -26,6 +26,7 @@ export interface GenerationPayloadBuilderConfig {
   modelList?: ApiModel[];
   formatter?: ApiFormatter;
   instructTemplate?: InstructTemplate;
+  reasoningTemplate?: ReasoningTemplate;
   activeCharacter?: Character;
 }
 

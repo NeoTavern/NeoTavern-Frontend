@@ -174,6 +174,9 @@ async function testMessage() {
       instructTemplate: apiStore.instructTemplates.find(
         (t) => t.name === settingsStore.settings.api.instructTemplateName,
       ),
+      reasoningTemplate: apiStore.reasoningTemplates.find(
+        (t) => t.name === settingsStore.settings.api.reasoningTemplateName,
+      ),
       playerName: 'User',
       modelList: apiStore.modelList,
     });

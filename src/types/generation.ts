@@ -5,7 +5,7 @@ import type { ChatMessage, ChatMetadata } from './chat';
 import type { MessageRole } from './common';
 import type { InstructTemplate } from './instruct';
 import type { Persona } from './persona';
-import type { ApiFormatter, Proxy, SamplerSettings, Settings } from './settings';
+import type { ApiFormatter, Proxy, ReasoningTemplate, SamplerSettings, Settings } from './settings';
 import type { Tokenizer } from './tokenizer';
 import type { WorldInfoBook, WorldInfoEntry, WorldInfoSettings } from './world-info';
 
@@ -135,6 +135,7 @@ export type BuildChatCompletionPayloadOptions = {
   modelList?: ApiModel[];
   formatter?: ApiFormatter;
   instructTemplate?: InstructTemplate;
+  reasoningTemplate?: ReasoningTemplate;
   activeCharacter?: Character;
 };
 
@@ -153,6 +154,7 @@ export type GenerationContext = {
     providerSpecific: Settings['api']['providerSpecific'];
     formatter: ApiFormatter;
     instructTemplate?: InstructTemplate;
+    reasoningTemplate?: ReasoningTemplate;
   };
   // Other relevant data available to the interceptor for read-only purposes or modification
   playerName: string;
@@ -245,4 +247,8 @@ export interface GenerationOptions {
    * Provides stats about the generation.
    */
   onCompletion?: (data: { outputTokens: number; duration: number }) => void;
+  /**
+   * Reasoning template to use for parsing reasoning from the response.
+   */
+  reasoningTemplate?: ReasoningTemplate;
 }

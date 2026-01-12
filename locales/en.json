@@ -971,6 +971,18 @@
       "deleteTitle": "Delete Template",
       "deleteContent": "Are you sure you want to delete {name}?"
     },
+    "reasoning": {
+      "title": "Reasoning Templates",
+      "create": "Create Template",
+      "edit": "Edit Template",
+      "delete": "Delete Template",
+      "import": "Import Template",
+      "export": "Export Template",
+      "deleteContent": "Are you sure you want to delete the reasoning template \"{name}\"?",
+      "prefix": "Prefix",
+      "suffix": "Suffix",
+      "separator": "Separator"
+    },
     "middleout": {
       "on": "On",
       "off": "Off",
@@ -1012,6 +1024,14 @@
         "strict": "Strict (user first, alternating roles; no tools)",
         "single": "Single user message (no tools)"
       }
+    },
+    "instructTemplate": {
+      "label": "Instruct Template",
+      "none": "None"
+    },
+    "reasoningTemplate": {
+      "label": "Reasoning Template",
+      "none": "None"
     },
     "customProxy": {
       "title": "Proxy Settings",

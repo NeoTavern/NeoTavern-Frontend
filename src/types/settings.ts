@@ -148,6 +148,13 @@ export interface SamplerSettings {
   disabled_fields?: string[];
 }
 
+export interface ReasoningTemplate {
+  name: string;
+  prefix: string;
+  suffix: string;
+  separator: string;
+}
+
 export interface LegacyOaiSettings {
   chat_completion_source: ApiProvider;
   openai_model?: string;
@@ -342,6 +349,7 @@ export interface Settings {
 
     formatter: ApiFormatter;
     instructTemplateName?: string;
+    reasoningTemplateName?: string;
     customPromptPostProcessing: CustomPromptPostProcessing;
 
     providerSpecific: {
@@ -437,6 +445,7 @@ export interface LegacySettings {
     persona_allow_multi_connections: boolean;
     persona_auto_lock: boolean;
     reduced_motion: boolean;
+    reasoning?: ReasoningTemplate;
   };
   background: {
     name: string;
@@ -466,6 +475,7 @@ export interface LegacySettings {
           'api-url'?: string;
           'secret-id'?: string;
           instruct?: string;
+          'reasoning-template'?: string;
         }
       >;
       selected?: string;

@@ -39,6 +39,7 @@ export interface ConnectionProfile {
   sampler?: string;
   formatter?: ApiFormatter;
   instructTemplate?: string;
+  reasoningTemplate?: string;
   customPromptPostProcessing?: CustomPromptPostProcessing;
   apiUrl?: string;
   secretId?: string;
