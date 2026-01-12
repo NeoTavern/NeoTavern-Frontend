@@ -307,6 +307,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       samplerSettings: effectiveSamplerSettings,
       formatter: effectiveFormatter,
       instructTemplate: effectiveTemplate,
+      reasoningTemplate: effectiveReasoningTemplate,
       providerSpecific: effectiveProviderSpecific,
       customPromptPostProcessing: effectivePostProcessing,
     } = await resolveConnectionProfileSettings({
@@ -341,6 +342,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         providerSpecific: effectiveProviderSpecific,
         formatter: effectiveFormatter,
         instructTemplate: effectiveTemplate,
+        reasoningTemplate: effectiveReasoningTemplate,
       },
       playerName: uiStore.activePlayerName || 'User',
       controller: new AbortController(),
@@ -672,6 +674,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         inputTokens: promptTotal,
         context: activeCharacter.name,
       },
+      reasoningTemplate: context.settings.reasoningTemplate,
       onCompletion: (data: { outputTokens: number }) => {
         // Update token count for streaming scenario (and redundant check for non-stream)
         if (generatedMessage) {

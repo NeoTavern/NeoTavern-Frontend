@@ -605,6 +605,7 @@ const baseExtensionAPI: ExtensionAPI = {
         samplerSettings,
         formatter,
         instructTemplate,
+        reasoningTemplate,
         providerSpecific,
         customPromptPostProcessing,
       } = await resolveConnectionProfileSettings({
@@ -686,6 +687,7 @@ const baseExtensionAPI: ExtensionAPI = {
           model: model,
           inputTokens: inputTokens,
         },
+        reasoningTemplate: reasoningTemplate,
       });
     },
   },

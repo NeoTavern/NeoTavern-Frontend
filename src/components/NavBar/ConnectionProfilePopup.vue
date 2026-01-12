@@ -30,6 +30,8 @@ const includeProvider = ref(true);
 const includeModel = ref(true);
 const includeSampler = ref(true);
 const includePostProcessing = ref(true);
+const includeInstructTemplate = ref(true);
+const includeReasoningTemplate = ref(true);
 const includeApiUrl = ref(false);
 const includeSecretId = ref(false);
 
@@ -37,6 +39,8 @@ const currentProvider = computed(() => settingsStore.settings.api.provider);
 const currentModel = computed(() => apiStore.activeModel);
 const currentSampler = computed(() => settingsStore.settings.api.selectedSampler);
 const currentPostProcessing = computed(() => settingsStore.settings.api.customPromptPostProcessing);
+const currentInstructTemplate = computed(() => settingsStore.settings.api.instructTemplateName);
+const currentReasoningTemplate = computed(() => settingsStore.settings.api.reasoningTemplateName);
 const currentApiUrl = computed(() => {
   const provider = currentProvider.value;
   if (provider === 'custom') {
@@ -110,6 +114,8 @@ watch(
       includeModel.value = true;
       includeSampler.value = true;
       includePostProcessing.value = true;
+      includeInstructTemplate.value = true;
+      includeReasoningTemplate.value = true;
       includeApiUrl.value = false;
       includeSecretId.value = false;
       dialog.value?.showModal();
@@ -180,6 +186,12 @@ function save() {
             <Checkbox v-model="includeSecretId" :label="t('apiConnections.secretId')" />
             <div class="field-value">{{ currentSecretLabel }}</div>
           </template>
+
+          <Checkbox v-model="includeInstructTemplate" :label="t('apiConnections.instructTemplate.label')" />
+          <div class="field-value">{{ currentInstructTemplate || t('apiConnections.instructTemplate.none') }}</div>
+
+          <Checkbox v-model="includeReasoningTemplate" :label="t('apiConnections.reasoningTemplate.label')" />
+          <div class="field-value">{{ currentReasoningTemplate || t('apiConnections.reasoningTemplate.none') }}</div>
         </div>
       </div>
 

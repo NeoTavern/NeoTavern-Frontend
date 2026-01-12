@@ -85,6 +85,11 @@ export async function resolveConnectionProfileSettings(options: {
   const effectiveTemplateName = profileSettings?.instructTemplate || settingsStore.settings.api.instructTemplateName;
   const effectiveTemplate = apiStore.instructTemplates.find((t) => t.name === effectiveTemplateName);
 
+  // Determine reasoning template
+  const effectiveReasoningTemplateName =
+    profileSettings?.reasoningTemplate || settingsStore.settings.api.reasoningTemplateName;
+  const effectiveReasoningTemplate = apiStore.reasoningTemplates.find((t) => t.name === effectiveReasoningTemplateName);
+
   // Apply profile-specific API URL if set
   const effectiveProviderSpecific = JSON.parse(
     JSON.stringify(settingsStore.settings.api.providerSpecific),
@@ -114,6 +119,7 @@ export async function resolveConnectionProfileSettings(options: {
     samplerSettings: effectiveSamplerSettings,
     formatter: effectiveFormatter,
     instructTemplate: effectiveTemplate,
+    reasoningTemplate: effectiveReasoningTemplate,
     providerSpecific: effectiveProviderSpecific,
     customPromptPostProcessing: profileSettings?.customPromptPostProcessing,
   };
@@ -347,6 +353,128 @@ function handleApiError(data: any): void {
   }
 }
 
+/**
+ * A helper class to parse reasoning content from a stream based on a template.
+ */
+class StreamReasoningParser {
+  private buffer = '';
+  private state: 'SEARCHING_PREFIX' | 'IN_REASONING' | 'DONE' = 'SEARCHING_PREFIX';
+  private prefix: string;
+  private suffix: string;
+
+  constructor(template: ReasoningTemplate) {
+    this.prefix = template.prefix;
+    this.suffix = template.suffix;
+
+    // If template is invalid (empty prefix/suffix), effectively disable logic by setting state to DONE immediately.
+    if (!this.prefix || !this.suffix) {
+      this.state = 'DONE';
+    }
+  }
+
+  public process(delta: string): { delta: string; reasoning: string } {
+    if (this.state === 'DONE') {
+      return { delta, reasoning: '' };
+    }
+
+    this.buffer += delta;
+    let deltaOut = '';
+    let reasoningOut = '';
+
+    // Loop to handle cases where multiple transitions happen in one chunk
+    // Use a 'processed' flag to continue loop as long as we have state changes,
+    // even if buffer becomes empty (to handle zero-length transitions if needed).
+    let processed = true;
+    while (processed) {
+      processed = false;
+
+      if (this.state === 'SEARCHING_PREFIX') {
+        const prefixIndex = this.buffer.indexOf(this.prefix);
+        if (prefixIndex !== -1) {
+          // Found prefix
+          // Content before prefix is valid output
+          deltaOut += this.buffer.substring(0, prefixIndex);
+          // Remove prefix from buffer, switch state
+          this.buffer = this.buffer.substring(prefixIndex + this.prefix.length);
+          this.state = 'IN_REASONING';
+          processed = true;
+        } else {
+          // Optimization: flush non-matching parts immediately
+          let matchLen = 0;
+          // Max possible partial match is prefix.length - 1.
+          const checkLen = Math.min(this.buffer.length, this.prefix.length - 1);
+
+          // Check for partial matches at the end of buffer
+          for (let i = checkLen; i > 0; i--) {
+            // Check if buffer ends with the first i chars of prefix
+            if (this.buffer.endsWith(this.prefix.substring(0, i))) {
+              matchLen = i;
+              break;
+            }
+          }
+
+          const flushLen = this.buffer.length - matchLen;
+          if (flushLen > 0) {
+            deltaOut += this.buffer.substring(0, flushLen);
+            this.buffer = this.buffer.substring(flushLen);
+          }
+        }
+      } else if (this.state === 'IN_REASONING') {
+        const suffixIndex = this.buffer.indexOf(this.suffix);
+        if (suffixIndex !== -1) {
+          // Found suffix
+          // Everything before is reasoning
+          reasoningOut += this.buffer.substring(0, suffixIndex);
+          // Remove suffix
+          this.buffer = this.buffer.substring(suffixIndex + this.suffix.length);
+          this.state = 'DONE';
+          processed = true;
+        } else {
+          // Optimization: flush confirmed reasoning immediately
+          // Check for partial matches of suffix at end of buffer
+          let matchLen = 0;
+          const checkLen = Math.min(this.buffer.length, this.suffix.length - 1);
+
+          for (let i = checkLen; i > 0; i--) {
+            if (this.buffer.endsWith(this.suffix.substring(0, i))) {
+              matchLen = i;
+              break;
+            }
+          }
+
+          const flushLen = this.buffer.length - matchLen;
+          if (flushLen > 0) {
+            reasoningOut += this.buffer.substring(0, flushLen);
+            this.buffer = this.buffer.substring(flushLen);
+          }
+        }
+      } else {
+        // DONE
+        deltaOut += this.buffer;
+        this.buffer = '';
+      }
+    }
+
+    return { delta: deltaOut, reasoning: reasoningOut };
+  }
+
+  /**
+   * Called when stream ends to flush any remaining buffer.
+   */
+  public flush(): { delta: string; reasoning: string } {
+    const result = { delta: '', reasoning: '' };
+    if (this.state === 'IN_REASONING') {
+      // Stream ended while in reasoning -> assume rest is reasoning
+      result.reasoning = this.buffer;
+    } else {
+      // Stream ended while searching or done -> assume content
+      result.delta = this.buffer;
+    }
+    this.buffer = '';
+    return result;
+  }
+}
+
 export class ChatCompletionService {
   static async formatMessages(messages: ApiChatMessage[], type: CustomPromptPostProcessing): Promise<ApiChatMessage[]> {
     const payload = {
@@ -438,6 +566,26 @@ export class ChatCompletionService {
       return outputTokens;
     };
 
+    // Helper to extract reasoning via template
+    const extractReasoningWithTemplate = (
+      content: string,
+      template: ReasoningTemplate,
+    ): { content: string; reasoning?: string } => {
+      const { prefix, suffix } = template;
+      if (!prefix || !suffix) return { content };
+
+      const prefixIndex = content.indexOf(prefix);
+      if (prefixIndex !== -1) {
+        const suffixIndex = content.indexOf(suffix, prefixIndex + prefix.length);
+        if (suffixIndex !== -1) {
+          const reasoning = content.substring(prefixIndex + prefix.length, suffixIndex);
+          const newContent = content.substring(0, prefixIndex) + content.substring(suffixIndex + suffix.length);
+          return { content: newContent, reasoning };
+        }
+      }
+      return { content };
+    };
+
     if (!payload.stream) {
       const response = await fetch(endpoint, commonOptions);
       const responseData = await response.json().catch(() => ({ error: 'Failed to parse JSON response' }));
@@ -455,8 +603,21 @@ export class ChatCompletionService {
         messageContent = extractMessageGeneric(responseData);
       }
 
-      const reasoning = responseHandler.extractReasoning ? responseHandler.extractReasoning(responseData) : undefined;
-      const finalContent = messageContent.trim();
+      let reasoning = responseHandler.extractReasoning ? responseHandler.extractReasoning(responseData) : undefined;
+      let finalContent = messageContent.trim();
+
+      // Apply Reasoning Template if provided and reasoning wasn't already extracted (or even if it was, maybe additional reasoning in content)
+      if (options.reasoningTemplate) {
+        const extracted = extractReasoningWithTemplate(messageContent, options.reasoningTemplate);
+        // If we found reasoning in content, prioritize it or append?
+        // Usually if model supports native reasoning, content is clean.
+        // If model puts reasoning in content, we extract it.
+        if (extracted.reasoning) {
+          finalContent = extracted.content.trim();
+          reasoning = reasoning ? `${reasoning}\n${extracted.reasoning}` : extracted.reasoning;
+        }
+      }
+
       const tokenCount = await finalizeUsage(finalContent);
 
       return {
@@ -488,6 +649,9 @@ export class ChatCompletionService {
       let reasoning = '';
       let buffer = '';
       let isFirstChunk = true;
+      let stopStream = false;
+
+      const reasoningParser = options.reasoningTemplate ? new StreamReasoningParser(options.reasoningTemplate) : null;
 
       try {
         while (true) {
@@ -504,7 +668,8 @@ export class ChatCompletionService {
             if (line.trim().startsWith('data: ')) {
               const data = line.trim().substring(6);
               if (data === '[DONE]') {
-                return;
+                stopStream = true;
+                break;
               }
               try {
                 const parsed = JSON.parse(data);
@@ -515,28 +680,54 @@ export class ChatCompletionService {
 
                 const chunk = responseHandler.getStreamingReply(parsed, formatter);
 
-                const hasNewReasoning = chunk.reasoning && chunk.reasoning.length > 0;
-                const hasNewDelta = chunk.delta && chunk.delta.length > 0;
-
-                if (hasNewReasoning) {
+                // Accumulate native reasoning
+                if (chunk.reasoning) {
                   reasoning += chunk.reasoning;
-                  reasoning.trim();
                 }
 
-                if (hasNewDelta || hasNewReasoning) {
-                  let delta = chunk.delta || '';
-                  if (isFirstChunk && delta) {
-                    delta = delta.trimStart();
+                let deltaToYield = chunk.delta || '';
+                let reasoningDelta = ''; // From parser
+
+                if (reasoningParser) {
+                  const parsed = reasoningParser.process(deltaToYield);
+                  deltaToYield = parsed.delta;
+                  reasoningDelta = parsed.reasoning;
+                  if (reasoningDelta) {
+                    reasoning += reasoningDelta;
+                  }
+                }
+
+                const hasContentChange = deltaToYield.length > 0;
+                const hasReasoningChange = (chunk.reasoning && chunk.reasoning.length > 0) || reasoningDelta.length > 0;
+
+                if (hasContentChange || hasReasoningChange) {
+                  if (isFirstChunk && deltaToYield) {
+                    deltaToYield = deltaToYield.trimStart();
                     isFirstChunk = false;
                   }
-                  yield { delta, reasoning: reasoning };
+
+                  yield { delta: deltaToYield, reasoning: reasoning };
                 }
               } catch (e) {
                 console.error('Error parsing stream chunk:', data, e);
               }
             }
           }
+
+          if (stopStream) {
+            break;
+          }
         }
+
+        // Flush reasoning parser if needed
+        if (reasoningParser) {
+          const flushed = reasoningParser.flush();
+          if (flushed.delta || flushed.reasoning) {
+            if (flushed.reasoning) reasoning += flushed.reasoning;
+            yield { delta: flushed.delta, reasoning: reasoning };
+          }
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         if (error.name === 'AbortError') {

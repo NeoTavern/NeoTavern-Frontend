@@ -1028,6 +1028,14 @@ export interface MessageSchema {
         single: string;
       };
     };
+    instructTemplate: {
+      label: string;
+      none: string;
+    };
+    reasoningTemplate: {
+      label: string;
+      none: string;
+    };
     customProxy: {
       title: string;
       createProfile: string;

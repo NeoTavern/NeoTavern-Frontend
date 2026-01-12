@@ -1025,6 +1025,14 @@
         "single": "Single user message (no tools)"
       }
     },
+    "instructTemplate": {
+      "label": "Instruct Template",
+      "none": "None"
+    },
+    "reasoningTemplate": {
+      "label": "Reasoning Template",
+      "none": "None"
+    },
     "customProxy": {
       "title": "Proxy Settings",
       "createProfile": "Create Profile",

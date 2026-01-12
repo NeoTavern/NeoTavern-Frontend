@@ -247,4 +247,8 @@ export interface GenerationOptions {
    * Provides stats about the generation.
    */
   onCompletion?: (data: { outputTokens: number; duration: number }) => void;
+  /**
+   * Reasoning template to use for parsing reasoning from the response.
+   */
+  reasoningTemplate?: ReasoningTemplate;
 }
