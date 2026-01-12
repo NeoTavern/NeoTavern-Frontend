@@ -1,12 +1,242 @@
 import { markRaw } from 'vue';
-import type { ExtensionAPI } from '../../../types';
+import type { ChatMessage, ExtensionAPI, SettingsPath } from '../../../types';
+import { MountableComponent } from '../../../types/ExtensionAPI';
 import { manifest } from './manifest';
 import MemoryPopup from './MemoryPopup.vue';
-import { type ExtensionSettings } from './types';
+import {
+  DEFAULT_MESSAGE_SUMMARY_PROMPT,
+  EXTENSION_KEY,
+  type ExtensionSettings,
+  type MemoryMessageExtra,
+} from './types';
 
 export { manifest };
 
 export function activate(api: ExtensionAPI<ExtensionSettings>) {
+  // --- Styles ---
+  const injectStyles = () => {
+    if (document.getElementById('chat-memory-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'chat-memory-styles';
+    style.innerHTML = `
+      .message-content.content-dimmed {
+        opacity: 0.6;
+        font-size: 0.9em;
+        max-height: 150px;
+        overflow-y: auto;
+        mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+        -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+        transition: all 0.2s ease;
+      }
+      .message-content.content-dimmed:hover {
+        opacity: 0.9;
+        mask-image: none;
+        -webkit-mask-image: none;
+      }
+      .memory-summary-injection {
+        margin-top: 8px;
+        padding: 8px 12px;
+        background-color: var(--black-30a);
+        border-left: 3px solid var(--color-info-cobalt);
+        border-radius: var(--base-border-radius);
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        font-size: 0.95em;
+        color: var(--theme-text-color);
+        animation: fadeIn 0.3s ease;
+      }
+      .memory-summary-injection i {
+        color: var(--color-info-cobalt);
+        margin-top: 2px;
+      }
+      .memory-summary-injection span {
+        flex: 1;
+        line-height: 1.4;
+      }
+    `;
+    document.head.appendChild(style);
+  };
+
+  // --- Message Summarization Logic ---
+
+  const summarizeMessage = async (messageIndex: number) => {
+    const history = api.chat.getHistory();
+    const message = history[messageIndex];
+    if (!message) return;
+
+    const settings = api.settings.get();
+    const promptTemplate = settings?.messageSummaryPrompt || DEFAULT_MESSAGE_SUMMARY_PROMPT;
+    const connectionProfile = settings?.connectionProfile;
+
+    if (!connectionProfile) {
+      api.ui.showToast('No connection profile selected', 'error');
+      return;
+    }
+
+    try {
+      api.ui.showToast('Summarizing message...', 'info');
+
+      const prompt = api.macro.process(promptTemplate, undefined, {
+        text: message.mes,
+      });
+
+      const response = await api.llm.generate(
+        [
+          {
+            role: 'system',
+            content: prompt,
+            name: 'System',
+          },
+        ],
+        {
+          connectionProfileName: connectionProfile,
+        },
+      );
+
+      let fullContent = '';
+      if (typeof response === 'function') {
+        const generator = response();
+        for await (const chunk of generator) {
+          fullContent += chunk.delta;
+        }
+      } else {
+        fullContent = response.content;
+      }
+
+      // Extract from code block if present
+      const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
+      const match = fullContent.match(codeBlockRegex);
+      const summaryText = match && match[1] ? match[1].trim() : fullContent.trim();
+
+      // Update message
+      const extra: MemoryMessageExtra = (message.extra?.[EXTENSION_KEY] as MemoryMessageExtra) || {};
+      const updatedExtra: MemoryMessageExtra = {
+        ...extra,
+        summary: summaryText,
+      };
+
+      await api.chat.updateMessageObject(messageIndex, {
+        extra: {
+          ...message.extra,
+          [EXTENSION_KEY]: updatedExtra,
+        },
+      });
+
+      api.ui.showToast('Message summarized', 'success');
+    } catch (error) {
+      console.error('Message summarization failed', error);
+      api.ui.showToast('Summarization failed', 'error');
+    }
+  };
+
+  // --- DOM Manipulation ---
+
+  const injectSummaryDisplay = (messageElement: HTMLElement, summaryText: string) => {
+    // 1. Dim the content
+    const contentEl = messageElement.querySelector('.message-content');
+    if (contentEl) {
+      contentEl.classList.add('content-dimmed');
+    }
+
+    // 2. Inject Summary Component
+    const mainEl = messageElement.querySelector('.message-main');
+    if (!mainEl) return;
+
+    // Remove existing if any
+    const existing = mainEl.querySelector('.memory-summary-injection');
+    if (existing) existing.remove();
+
+    const summaryContainer = document.createElement('div');
+    summaryContainer.className = 'memory-summary-injection';
+    summaryContainer.innerHTML = `<i class="fa-solid fa-brain"></i><span>${summaryText}</span>`;
+
+    // Insert before footer (swipes) or edit area, but after content
+    const editArea = mainEl.querySelector('.message-edit-area');
+    const footer = mainEl.querySelector('.message-footer');
+
+    if (editArea) {
+      mainEl.insertBefore(summaryContainer, editArea);
+    } else if (footer) {
+      mainEl.insertBefore(summaryContainer, footer);
+    } else {
+      mainEl.appendChild(summaryContainer);
+    }
+  };
+
+  const removeSummaryDisplay = (messageElement: HTMLElement) => {
+    const contentEl = messageElement.querySelector('.message-content');
+    if (contentEl) {
+      contentEl.classList.remove('content-dimmed');
+    }
+    const existing = messageElement.querySelector('.memory-summary-injection');
+    if (existing) existing.remove();
+  };
+
+  const processMessageElement = (element: HTMLElement, index: number) => {
+    const history = api.chat.getHistory();
+    const message = history[index];
+    if (!message) return;
+
+    const extra = message.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
+
+    // Summary Display
+    if (extra?.summary) {
+      injectSummaryDisplay(element, extra.summary);
+    } else {
+      removeSummaryDisplay(element);
+    }
+
+    // Button Injection
+    injectSummarizeButton(element, index);
+  };
+
+  const injectSummarizeButton = async (messageElement: HTMLElement, messageIndex: number) => {
+    const settings = api.settings.get();
+    if (!settings?.enableMessageSummarization) return;
+
+    const buttonsContainer = messageElement.querySelector('.message-buttons');
+    if (!buttonsContainer) return;
+
+    if (buttonsContainer.querySelector('.summary-button-wrapper')) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'summary-button-wrapper';
+    wrapper.style.display = 'inline-flex';
+
+    buttonsContainer.insertBefore(wrapper, buttonsContainer.firstChild);
+
+    await api.ui.mountComponent(wrapper, MountableComponent.Button, {
+      icon: 'fa-brain',
+      title: 'Summarize Message',
+      variant: 'ghost',
+      onClick: (e: MouseEvent) => {
+        e.stopPropagation();
+        summarizeMessage(messageIndex);
+      },
+    });
+  };
+
+  const updateAllMessages = () => {
+    const settings = api.settings.get();
+    if (!settings?.enableMessageSummarization) {
+      document.querySelectorAll('.message').forEach((el) => {
+        removeSummaryDisplay(el as HTMLElement);
+        el.querySelector('.summary-button-wrapper')?.remove();
+      });
+      return;
+    }
+
+    const messageElements = document.querySelectorAll('.message');
+    messageElements.forEach((el) => {
+      const indexAttr = el.getAttribute('data-message-index');
+      if (indexAttr === null) return;
+      const messageIndex = parseInt(indexAttr, 10);
+      if (isNaN(messageIndex)) return;
+      processMessageElement(el as HTMLElement, messageIndex);
+    });
+  };
+
   const injectMenuOption = () => {
     const menu = document.querySelector('#chat-form .options-menu');
     if (!menu) return;
@@ -42,20 +272,88 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     menu.insertBefore(item, menu.firstChild);
   };
 
+  // --- Event Listeners ---
+
   const unbinds: Array<() => void> = [];
 
   unbinds.push(
     api.events.on('chat:entered', () => {
       injectMenuOption();
+      setTimeout(updateAllMessages, 100); // Wait for Vue render
     }),
   );
 
+  unbinds.push(
+    api.events.on('message:created', (message: ChatMessage) => {
+      const history = api.chat.getHistory();
+      const messageIndex = history.length - 1;
+
+      // Wait for DOM
+      setTimeout(() => {
+        const el = document.querySelector(`.message[data-message-index="${messageIndex}"]`);
+        if (el) processMessageElement(el as HTMLElement, messageIndex);
+      }, 50);
+
+      // Auto Summarize
+      const settings = api.settings.get();
+      if (settings?.enableMessageSummarization && settings?.autoMessageSummarize) {
+        if (message.is_system || !message.mes.trim()) return;
+        summarizeMessage(messageIndex);
+      }
+    }),
+  );
+
+  unbinds.push(
+    api.events.on('message:updated', async (index: number) => {
+      // Re-process DOM
+      setTimeout(() => {
+        const el = document.querySelector(`.message[data-message-index="${index}"]`);
+        if (el) processMessageElement(el as HTMLElement, index);
+      }, 50);
+
+      // Handle Content Changes vs Summary
+      // const extra = message.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
+      // // If content changed (logic handled by core triggering update), we might want to clear summary or re-summarize
+      // // But we need to distinguish between update caused by US (setting summary) and USER (editing text)
+      // // This is hard without comparing old vs new message content.
+      // // For now, we rely on manual re-summarize or bulk if user edits text.
+    }),
+  );
+
+  // Prompt Injection: Replace content with summary
+  unbinds.push(
+    api.events.on('prompt:history-message-processing', (apiMessage, context) => {
+      const settings = api.settings.get();
+      if (!settings?.enableMessageSummarization) return;
+
+      const extra = context.originalMessage.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
+      if (extra?.summary && extra.summary.trim().length > 0) {
+        apiMessage.content = extra.summary;
+      }
+    }),
+  );
+
+  unbinds.push(
+    api.events.on('setting:changed', (path) => {
+      if (path === 'core.chat-memory' as SettingsPath || path?.startsWith('core.chat-memory')) {
+        updateAllMessages();
+      }
+    }),
+  );
+
+  // Initial Boot
+  injectStyles();
   if (api.chat.getChatInfo()) {
     injectMenuOption();
+    updateAllMessages();
   }
 
   return () => {
     unbinds.forEach((u) => u());
     document.querySelectorAll('.chat-memory-option').forEach((el) => el.remove());
+    document.querySelectorAll('.summary-button-wrapper').forEach((el) => el.remove());
+    document.querySelectorAll('.memory-summary-injection').forEach((el) => el.remove());
+    document.querySelectorAll('.content-dimmed').forEach((el) => el.classList.remove('content-dimmed'));
+    document.getElementById('chat-memory-styles')?.remove();
   };
 }

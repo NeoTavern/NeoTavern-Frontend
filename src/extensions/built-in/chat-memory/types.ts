@@ -10,15 +10,21 @@ export interface ChatMemoryMetadata {
 }
 
 export interface MemoryMessageExtra {
-  summarized: boolean;
+  summarized?: boolean; // Used by Lorebook summary to mark hidden messages
   original_is_system?: boolean;
+  summary?: string; // Per-message summary
 }
 
 export interface ExtensionSettings {
   connectionProfile?: string;
-  prompt: string;
+  prompt: string; // Lorebook summary prompt
   autoHideMessages: boolean;
   lastLorebook?: string;
+
+  // Message Summary Settings
+  enableMessageSummarization: boolean;
+  autoMessageSummarize: boolean;
+  messageSummaryPrompt: string;
 }
 
 export const EXTENSION_KEY = 'core.chat-memory';
@@ -40,4 +46,21 @@ Focus on key events, decisions, and facts that should be remembered for the futu
 Example format:
 \`\`\`
 The user and the character met at the tavern. They discussed...
+\`\`\``;
+
+export const DEFAULT_MESSAGE_SUMMARY_PROMPT = `# Task: Summarize Message
+
+Summarize the following message in one concise sentence. Capture the core meaning and any actions taken.
+
+## Message
+\`\`\`
+{{text}}
+\`\`\`
+
+## Instructions
+1. Your response **must** only contain the summary, enclosed in a single markdown code block.
+
+Example format:
+\`\`\`
+He agreed to the terms and shook hands.
 \`\`\``;
