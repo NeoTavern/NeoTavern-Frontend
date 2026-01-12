@@ -14,6 +14,7 @@ import { useSettingsStore } from '../../stores/settings.store';
 import { useUiStore } from '../../stores/ui.store';
 import type { ChatMessage, PopupShowOptions } from '../../types';
 import { POPUP_RESULT, POPUP_TYPE } from '../../types';
+import type { TextareaToolDefinition } from '../../types/ExtensionAPI';
 import { resolveAvatarUrls } from '../../utils/character';
 import { formatMessage, formatReasoning } from '../../utils/chat';
 import { formatTimeStamp } from '../../utils/commons';
@@ -274,6 +275,44 @@ async function showPromptItemization() {
 function toggleHidden() {
   chatStore.updateMessageObject(props.index, { is_system: !props.message.is_system });
 }
+
+const editTools = computed<TextareaToolDefinition[]>(() => {
+  return [
+    {
+      id: 'confirm-edit',
+      icon: 'fa-check',
+      title: t('chat.buttons.confirmEdit'),
+      variant: 'confirm',
+      onClick: () => saveEdit(),
+    },
+    {
+      id: 'toggle-reasoning',
+      icon: 'fa-lightbulb',
+      title: t('chat.buttons.addReasoning'),
+      active: isEditingReasoning.value,
+      onClick: () => toggleReasoningEdit(),
+    },
+    {
+      id: 'move-up',
+      icon: 'fa-chevron-up',
+      title: t('chat.buttons.moveUp'),
+      onClick: () => moveUp(),
+    },
+    {
+      id: 'move-down',
+      icon: 'fa-chevron-down',
+      title: t('chat.buttons.moveDown'),
+      onClick: () => moveDown(),
+    },
+    {
+      id: 'cancel-edit',
+      icon: 'fa-xmark',
+      title: t('common.cancel'),
+      variant: 'danger',
+      onClick: () => cancelEdit(),
+    },
+  ];
+});
 </script>
 
 <template>
@@ -348,27 +387,6 @@ function toggleHidden() {
             @click="handleDeleteClick"
           />
         </div>
-
-        <!-- Buttons for Editing Mode -->
-        <div v-show="isEditing" class="message-edit-actions">
-          <Button
-            icon="fa-check"
-            variant="default"
-            class="confirm-btn"
-            :title="t('chat.buttons.confirmEdit')"
-            @click="saveEdit"
-          />
-          <Button
-            variant="ghost"
-            icon="fa-lightbulb"
-            :active="isEditingReasoning"
-            :title="t('chat.buttons.addReasoning')"
-            @click="toggleReasoningEdit"
-          />
-          <Button variant="ghost" icon="fa-chevron-up" :title="t('chat.buttons.moveUp')" @click="moveUp" />
-          <Button variant="ghost" icon="fa-chevron-down" :title="t('chat.buttons.moveDown')" @click="moveDown" />
-          <Button icon="fa-xmark" variant="danger" class="cancel-btn" :title="t('common.cancel')" @click="cancelEdit" />
-        </div>
       </div>
 
       <div v-if="!isEditing && hasReasoning" class="message-reasoning">
@@ -406,7 +424,8 @@ function toggleHidden() {
               identifier="chat.edit_message"
               :label="t('chat.reasoning.title')"
               :rows="3"
-              :resizable="true"
+              resizable
+              allow-maximize
             />
           </div>
         </transition>
@@ -415,7 +434,9 @@ function toggleHidden() {
           v-model="editedContent"
           identifier="chat.edit_message"
           :rows="5"
-          :resizable="true"
+          resizable
+          allow-maximize
+          :tools="editTools"
           @keydown="handleEditKeydown"
         />
       </div>

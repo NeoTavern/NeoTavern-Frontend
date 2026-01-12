@@ -5,7 +5,7 @@ import { markdown } from '@codemirror/lang-markdown';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, keymap, placeholder as placeholderExt, ViewUpdate } from '@codemirror/view';
 import { basicSetup } from 'codemirror';
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch, type StyleValue } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 
 const props = withDefaults(
@@ -19,6 +19,7 @@ const props = withDefaults(
     language?: 'markdown' | 'css';
     ariaLabel?: string;
     id?: string;
+    resizable?: boolean;
   }>(),
   {
     disabled: false,
@@ -29,6 +30,7 @@ const props = withDefaults(
     language: 'markdown',
     ariaLabel: undefined,
     id: undefined,
+    resizable: true,
   },
 );
 
@@ -40,56 +42,63 @@ const editorContainer = ref<HTMLElement>();
 let editorView: EditorView | null = null;
 const readOnlyCompartment = new Compartment();
 const languageCompartment = new Compartment();
+const themeCompartment = new Compartment();
 
 // Custom theme to match application styles
-const appTheme = EditorView.theme(
-  {
-    '&': {
-      color: 'var(--theme-text-color)',
-      backgroundColor: 'var(--black-30a)',
-      border: '1px solid var(--theme-border-color)',
-      borderRadius: 'var(--base-border-radius)',
-      fontSize: 'var(--font-size-main)',
-      fontFamily: 'var(--font-family-mono, monospace)',
-      minHeight: props.minHeight,
-      maxHeight: props.maxHeight,
-      overflow: 'hidden',
+const getThemeExtension = () => {
+  return EditorView.theme(
+    {
+      '&': {
+        color: 'var(--theme-text-color)',
+        backgroundColor: 'var(--black-30a)',
+        border: '1px solid var(--theme-border-color)',
+        borderRadius: 'var(--base-border-radius)',
+        fontSize: 'var(--font-size-main)',
+        fontFamily: 'var(--font-family-mono, monospace)',
+        // @ts-expect-error hehe
+        height: props.resizable ? '100%' : undefined,
+        // @ts-expect-error hehe
+        minHeight: props.resizable ? undefined : props.minHeight,
+        // @ts-expect-error hehe
+        maxHeight: props.resizable ? undefined : props.maxHeight,
+        overflow: 'hidden',
+      },
+      '&.cm-focused': {
+        outline: 'none',
+        borderColor: 'var(--theme-underline-color)',
+        backgroundColor: 'var(--black-50a)',
+      },
+      '.cm-content': {
+        padding: 'var(--textarea-padding-y) var(--textarea-padding-x)',
+        caretColor: 'var(--theme-text-color)',
+      },
+      '.cm-scroller': {
+        fontFamily: 'inherit',
+        overflow: 'auto',
+      },
+      '.cm-gutters': {
+        display: 'none',
+      },
+      '.cm-activeLineGutter': {
+        backgroundColor: 'var(--white-20a)',
+      },
+      '.cm-placeholder': {
+        color: 'var(--theme-emphasis-color)',
+      },
+      // Selection
+      '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection': {
+        backgroundColor: 'var(--color-accent-cobalt-30a) !important',
+      },
+      // Basic Syntax Highlighting matching dark theme generic colors
+      '.cm-header': { color: 'var(--color-golden)', fontWeight: 'bold' },
+      '.cm-strong': { fontWeight: 'bold' },
+      '.cm-em': { fontStyle: 'italic' },
+      '.cm-link': { color: 'var(--color-info-cobalt)', textDecoration: 'underline' },
+      '.cm-code': { fontFamily: 'var(--font-family-mono)', backgroundColor: 'var(--white-20a)', borderRadius: '3px' },
     },
-    '&.cm-focused': {
-      outline: 'none',
-      borderColor: 'var(--theme-underline-color)',
-      backgroundColor: 'var(--black-50a)',
-    },
-    '.cm-content': {
-      padding: 'var(--textarea-padding-y) var(--textarea-padding-x)',
-      caretColor: 'var(--theme-text-color)',
-    },
-    '.cm-scroller': {
-      fontFamily: 'inherit',
-      overflow: 'auto',
-    },
-    '.cm-gutters': {
-      display: 'none',
-    },
-    '.cm-activeLineGutter': {
-      backgroundColor: 'var(--white-20a)',
-    },
-    '.cm-placeholder': {
-      color: 'var(--theme-emphasis-color)',
-    },
-    // Selection
-    '.cm-selectionBackground, &.cm-focused .cm-selectionBackground, ::selection': {
-      backgroundColor: 'var(--color-accent-cobalt-30a) !important',
-    },
-    // Basic Syntax Highlighting matching dark theme generic colors
-    '.cm-header': { color: 'var(--color-golden)', fontWeight: 'bold' },
-    '.cm-strong': { fontWeight: 'bold' },
-    '.cm-em': { fontStyle: 'italic' },
-    '.cm-link': { color: 'var(--color-info-cobalt)', textDecoration: 'underline' },
-    '.cm-code': { fontFamily: 'var(--font-family-mono)', backgroundColor: 'var(--white-20a)', borderRadius: '3px' },
-  },
-  { dark: true },
-);
+    { dark: true },
+  );
+};
 
 const getLanguageExtension = (lang: 'markdown' | 'css') => {
   return lang === 'css' ? css() : markdown();
@@ -104,7 +113,7 @@ const initEditor = () => {
       basicSetup,
       keymap.of([indentWithTab]),
       languageCompartment.of(getLanguageExtension(props.language)),
-      appTheme,
+      themeCompartment.of(getThemeExtension()),
       EditorView.lineWrapping,
       EditorView.contentAttributes.of({
         'aria-label': props.ariaLabel || t('a11y.codeMirrorEditor.label'),
@@ -180,13 +189,38 @@ watch(
   },
 );
 
+// Watch for resizing/height props changes to reconfigure theme
+watch(
+  () => [props.minHeight, props.maxHeight, props.resizable],
+  () => {
+    if (editorView) {
+      editorView.dispatch({
+        effects: themeCompartment.reconfigure(getThemeExtension()),
+      });
+    }
+  },
+);
+
 defineExpose({
   focus: () => editorView?.focus(),
+});
+
+const wrapperStyle = computed<StyleValue>(() => {
+  if (props.resizable) {
+    return {
+      resize: 'vertical' as const,
+      overflow: 'hidden',
+      height: props.minHeight,
+      minHeight: props.minHeight,
+      maxHeight: props.maxHeight !== 'none' ? props.maxHeight : undefined,
+    };
+  }
+  return {};
 });
 </script>
 
 <template>
-  <div ref="editorContainer" class="codemirror-wrapper"></div>
+  <div ref="editorContainer" class="codemirror-wrapper" :style="wrapperStyle"></div>
 </template>
 
 <style scoped>

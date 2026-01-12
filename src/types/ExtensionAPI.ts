@@ -33,6 +33,8 @@ export interface TextareaToolDefinition {
   id: string;
   icon: string;
   title: string;
+  variant?: 'default' | 'danger' | 'confirm' | 'ghost';
+  active?: boolean;
   onClick: (payload: { value: string; setValue: (val: string) => void }) => void;
 }
 

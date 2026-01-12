@@ -135,6 +135,11 @@ const cmMinHeight = computed(() => {
           v-for="tool in activeTools"
           :key="tool.id"
           class="tool-btn"
+          :class="{
+            active: tool.active,
+            danger: tool.variant === 'danger',
+            confirm: tool.variant === 'confirm',
+          }"
           :title="tool.title"
           @click="handleToolClick(tool)"
         >
@@ -161,8 +166,9 @@ const cmMinHeight = computed(() => {
       :disabled="disabled"
       :placeholder="placeholder"
       :min-height="cmMinHeight"
-      :max-height="cmMinHeight"
+      :max-height="resizable ? 'none' : cmMinHeight"
       :aria-label="label || placeholder"
+      :resizable="resizable"
       @update:model-value="onCodeMirrorUpdate"
     />
 

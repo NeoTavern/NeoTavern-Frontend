@@ -247,6 +247,25 @@
     &:hover {
       opacity: 1;
     }
+
+    &.active {
+      opacity: 1;
+      color: var(--theme-quote-color);
+    }
+
+    &.danger {
+      color: var(--color-warning);
+      &:hover {
+        color: var(--color-accent-red);
+      }
+    }
+
+    &.confirm {
+      color: var(--color-accent-green);
+      &:hover {
+        filter: brightness(120%);
+      }
+    }
   }
 
   .textarea-header {
