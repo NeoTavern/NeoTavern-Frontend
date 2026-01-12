@@ -1,4 +1,6 @@
 import { markRaw } from 'vue';
+import type { StrictT } from '../../../composables/useStrictI18n';
+import i18n from '../../../i18n';
 import type { ChatMessage, ExtensionAPI } from '../../../types';
 import { MountableComponent } from '../../../types/ExtensionAPI';
 import { manifest } from './manifest';
@@ -11,6 +13,9 @@ import {
 } from './types';
 
 export { manifest };
+
+// @ts-expect-error 'i18n.global' is of type 'unknown'
+const t = i18n.global.t as StrictT;
 
 export function activate(api: ExtensionAPI<ExtensionSettings>) {
   // --- Styles ---
@@ -70,12 +75,12 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     const connectionProfile = settings?.connectionProfile;
 
     if (!connectionProfile) {
-      api.ui.showToast('No connection profile selected', 'error');
+      api.ui.showToast(t('extensionsBuiltin.chatMemory.noProfile'), 'error');
       return;
     }
 
     try {
-      api.ui.showToast('Summarizing message...', 'info');
+      api.ui.showToast(t('extensionsBuiltin.chatMemory.summarizing'), 'info');
 
       const prompt = api.macro.process(promptTemplate, undefined, {
         text: message.mes,
@@ -123,10 +128,10 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
         },
       });
 
-      api.ui.showToast('Message summarized', 'success');
+      api.ui.showToast(t('extensionsBuiltin.chatMemory.summarized'), 'success');
     } catch (error) {
       console.error('Message summarization failed', error);
-      api.ui.showToast('Summarization failed', 'error');
+      api.ui.showToast(t('extensionsBuiltin.chatMemory.failed'), 'error');
     }
   };
 
@@ -208,7 +213,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
 
     await api.ui.mountComponent(wrapper, MountableComponent.Button, {
       icon: 'fa-brain',
-      title: 'Summarize Message',
+      title: t('extensionsBuiltin.chatMemory.summarizeButton'),
       variant: 'ghost',
       onClick: (e: MouseEvent) => {
         e.stopPropagation();
@@ -247,7 +252,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     item.className = 'options-menu-item chat-memory-option';
     item.setAttribute('role', 'menuitem');
     item.tabIndex = 0;
-    item.innerHTML = '<i class="fa-solid fa-brain"></i><span>Chat Memory</span>';
+    item.innerHTML = `<i class="fa-solid fa-brain"></i><span>${t('extensionsBuiltin.chatMemory.menuItem')}</span>`;
 
     item.onclick = async (e) => {
       e.preventDefault();
@@ -259,7 +264,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       }
 
       await api.ui.showPopup({
-        title: 'Chat Memory Manager',
+        title: t('extensionsBuiltin.chatMemory.popupTitle'),
         component: markRaw(MemoryPopup),
         componentProps: { api },
         wide: true,

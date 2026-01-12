@@ -1205,6 +1205,106 @@ export interface MessageSchema {
     chatMemory: {
       noProfile: string;
       overlapWarning: string;
+      menuItem: string;
+      popupTitle: string;
+      summarizing: string;
+      summarized: string;
+      failed: string;
+      summarizeButton: string;
+      tabs: {
+        lorebook: string;
+        messages: string;
+      };
+      labels: {
+        connectionProfile: string;
+        connectionProfileDesc: string;
+        startIndex: string;
+        endIndex: string;
+        prompt: string;
+        result: string;
+        targetLorebook: string;
+        autoHide: string;
+      };
+      buttons: {
+        generate: string;
+        create: string;
+        reset: string;
+        deleteAll: string;
+        stop: string;
+        clearRange: string;
+        resummarize: string;
+        summarizeMissing: string;
+      };
+      placeholders: {
+        selectLorebook: string;
+        summaryResult: string;
+      };
+      errors: {
+        emptySummary: string;
+        bookNotFound: string;
+        createFailed: string;
+        noMessages: string;
+        required: string;
+        negative: string;
+        outOfBounds: string;
+        startGreaterThanEnd: string;
+        endLessThanStart: string;
+        exceedTotal: string;
+        noMatchingMessages: string;
+        noSummariesToClear: string;
+        noMetadata: string;
+      };
+      success: {
+        memoryCreated: string;
+        restored: string;
+        cleared: string;
+        removedAll: string;
+        summarizationComplete: string;
+      };
+      tooltips: {
+        noMemoriesToReset: string;
+      };
+      popups: {
+        reset: {
+          title: string;
+          content: string;
+        };
+        summarizeRange: {
+          title: string;
+          contentAll: string;
+          contentMissing: string;
+        };
+        clearRange: {
+          title: string;
+          content: string;
+        };
+        deleteAll: {
+          title: string;
+          content: string;
+        };
+      };
+      manage: string;
+      manageRange: string;
+      globalActions: string;
+      settings: {
+        title: string;
+        enable: string;
+        autoLabel: string;
+        autoDesc: string;
+        promptLabel: string;
+        promptDesc: string;
+      };
+      stats: {
+        total: string;
+        summarized: string;
+      };
+      timeline: {
+        memory: string;
+        selection: string;
+        currentSelection: string;
+        summarized: string;
+        summarizedSingle: string;
+      };
     };
   };
   persona: {

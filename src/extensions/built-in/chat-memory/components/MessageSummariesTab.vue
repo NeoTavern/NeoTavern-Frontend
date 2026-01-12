@@ -66,13 +66,13 @@ const timelineSegments = computed<TimelineSegment[]>(() => {
       const lastSeg = segments[segments.length - 1];
       if (lastSeg && lastSeg.type === 'summarized' && lastSeg.end === idx - 1) {
         lastSeg.end = idx;
-        lastSeg.title = `Summarized: ${lastSeg.start} - ${idx}`;
+        lastSeg.title = t('extensionsBuiltin.chatMemory.timeline.summarized', { start: lastSeg.start, end: idx });
       } else {
         segments.push({
           start: idx,
           end: idx,
           type: 'summarized',
-          title: `Summarized: ${idx}`,
+          title: t('extensionsBuiltin.chatMemory.timeline.summarizedSingle', { index: idx }),
         });
       }
     }
@@ -84,7 +84,7 @@ const timelineSegments = computed<TimelineSegment[]>(() => {
       start: startIndex.value,
       end: endIndex.value,
       type: 'selection',
-      title: `Selection: ${startIndex.value} - ${endIndex.value}`,
+      title: t('extensionsBuiltin.chatMemory.timeline.selection', { start: startIndex.value, end: endIndex.value }),
     });
   }
 
@@ -92,20 +92,21 @@ const timelineSegments = computed<TimelineSegment[]>(() => {
 });
 
 const startIndexError = computed(() => {
-  if (!hasMessages.value) return 'No messages available';
-  if (startIndex.value === undefined || startIndex.value === null) return 'Value is required';
-  if (startIndex.value < 0) return 'Cannot be negative';
-  if (startIndex.value > maxIndex.value) return 'Index out of bounds';
-  if (startIndex.value > endIndex.value) return 'Start cannot be greater than End';
+  if (!hasMessages.value) return t('extensionsBuiltin.chatMemory.errors.noMessages');
+  if (startIndex.value === undefined || startIndex.value === null)
+    return t('extensionsBuiltin.chatMemory.errors.required');
+  if (startIndex.value < 0) return t('extensionsBuiltin.chatMemory.errors.negative');
+  if (startIndex.value > maxIndex.value) return t('extensionsBuiltin.chatMemory.errors.outOfBounds');
+  if (startIndex.value > endIndex.value) return t('extensionsBuiltin.chatMemory.errors.startGreaterThanEnd');
   return undefined;
 });
 
 const endIndexError = computed(() => {
-  if (!hasMessages.value) return 'No messages available';
-  if (endIndex.value === undefined || endIndex.value === null) return 'Value is required';
-  if (endIndex.value < 0) return 'Cannot be negative';
-  if (endIndex.value > maxIndex.value) return 'Cannot exceed total messages';
-  if (endIndex.value < startIndex.value) return 'End cannot be less than Start';
+  if (!hasMessages.value) return t('extensionsBuiltin.chatMemory.errors.noMessages');
+  if (endIndex.value === undefined || endIndex.value === null) return t('extensionsBuiltin.chatMemory.errors.required');
+  if (endIndex.value < 0) return t('extensionsBuiltin.chatMemory.errors.negative');
+  if (endIndex.value > maxIndex.value) return t('extensionsBuiltin.chatMemory.errors.exceedTotal');
+  if (endIndex.value < startIndex.value) return t('extensionsBuiltin.chatMemory.errors.endLessThanStart');
   return undefined;
 });
 
@@ -211,7 +212,7 @@ function cancelGeneration() {
 
 async function summarizeRange(mode: 'missing-only' | 'force-all') {
   if (!props.connectionProfile) {
-    props.api.ui.showToast('No connection profile selected', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.chatMemory.noProfile'), 'error');
     return;
   }
   if (!isValidRange.value) return;
@@ -232,18 +233,18 @@ async function summarizeRange(mode: 'missing-only' | 'force-all') {
   }
 
   if (targetIndices.length === 0) {
-    props.api.ui.showToast('No matching messages in range', 'info');
+    props.api.ui.showToast(t('extensionsBuiltin.chatMemory.errors.noMatchingMessages'), 'info');
     return;
   }
 
   const confirmMessage =
     mode === 'force-all'
-      ? `This will re-summarize ${targetIndices.length} messages in the selected range, overwriting existing summaries.`
-      : `This will summarize ${targetIndices.length} unsummarized messages in the selected range.`;
+      ? t('extensionsBuiltin.chatMemory.popups.summarizeRange.contentAll', { count: targetIndices.length })
+      : t('extensionsBuiltin.chatMemory.popups.summarizeRange.contentMissing', { count: targetIndices.length });
 
   const { result } = await props.api.ui.showPopup({
-    title: 'Summarize Messages',
-    content: `${confirmMessage} Continue?`,
+    title: t('extensionsBuiltin.chatMemory.popups.summarizeRange.title'),
+    content: confirmMessage,
     type: POPUP_TYPE.CONFIRM,
   });
 
@@ -290,11 +291,11 @@ async function summarizeRange(mode: 'missing-only' | 'force-all') {
     }
 
     if (!abortController.value?.signal.aborted) {
-      props.api.ui.showToast('Summarization complete', 'success');
+      props.api.ui.showToast(t('extensionsBuiltin.chatMemory.success.summarizationComplete'), 'success');
     }
   } catch (error) {
     console.error('Range summarization error', error);
-    props.api.ui.showToast('Error during summarization', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.chatMemory.failed'), 'error');
   } finally {
     isGenerating.value = false;
     bulkProgress.value = null;
@@ -307,13 +308,13 @@ async function clearRange() {
 
   const count = countSummarizedInRange.value;
   if (count === 0) {
-    props.api.ui.showToast('No summaries to clear in range', 'info');
+    props.api.ui.showToast(t('extensionsBuiltin.chatMemory.errors.noSummariesToClear'), 'info');
     return;
   }
 
   const { result } = await props.api.ui.showPopup({
-    title: 'Clear Summaries',
-    content: `This will delete summaries for ${count} messages in the selected range. Are you sure?`,
+    title: t('extensionsBuiltin.chatMemory.popups.clearRange.title'),
+    content: t('extensionsBuiltin.chatMemory.popups.clearRange.content', { count }),
     type: POPUP_TYPE.CONFIRM,
     okButton: 'common.delete',
     cancelButton: 'common.cancel',
@@ -337,13 +338,13 @@ async function clearRange() {
       deletedCount++;
     }
   }
-  props.api.ui.showToast(`Cleared ${deletedCount} summaries`, 'success');
+  props.api.ui.showToast(t('extensionsBuiltin.chatMemory.success.cleared', { count: deletedCount }), 'success');
 }
 
 async function handleDeleteAll() {
   const { result } = await props.api.ui.showPopup({
-    title: 'Delete All Summaries',
-    content: 'This will delete all per-message summaries in the entire chat. Are you sure?',
+    title: t('extensionsBuiltin.chatMemory.popups.deleteAll.title'),
+    content: t('extensionsBuiltin.chatMemory.popups.deleteAll.content'),
     type: POPUP_TYPE.CONFIRM,
     okButton: 'common.delete',
     cancelButton: 'common.cancel',
@@ -367,7 +368,7 @@ async function handleDeleteAll() {
       count++;
     }
   }
-  props.api.ui.showToast(`Removed summaries from ${count} messages`, 'success');
+  props.api.ui.showToast(t('extensionsBuiltin.chatMemory.success.removedAll', { count }), 'success');
 }
 
 onMounted(() => {
@@ -392,17 +393,20 @@ watch(
 <template>
   <div class="message-summaries-tab">
     <div class="section">
-      <div class="section-title">Settings</div>
+      <div class="section-title">{{ t('extensionsBuiltin.chatMemory.settings.title') }}</div>
       <FormItem>
-        <Toggle v-model="enableMessageSummarization" label="Enable Message Summarization" />
+        <Toggle v-model="enableMessageSummarization" :label="t('extensionsBuiltin.chatMemory.settings.enable')" />
       </FormItem>
       <FormItem
-        label="Auto-summarize new messages"
-        description="Automatically generate summaries for new messages as they arrive."
+        :label="t('extensionsBuiltin.chatMemory.settings.autoLabel')"
+        :description="t('extensionsBuiltin.chatMemory.settings.autoDesc')"
       >
         <Toggle v-model="autoMessageSummarize" :disabled="!enableMessageSummarization" label="Auto-trigger" />
       </FormItem>
-      <FormItem label="Message Summary Prompt" description="Prompt used to summarize a single message.">
+      <FormItem
+        :label="t('extensionsBuiltin.chatMemory.settings.promptLabel')"
+        :description="t('extensionsBuiltin.chatMemory.settings.promptDesc')"
+      >
         <Textarea
           v-model="messageSummaryPrompt"
           :rows="4"
@@ -414,18 +418,18 @@ watch(
     </div>
 
     <div class="section highlight">
-      <div class="section-title">Manage Range</div>
+      <div class="section-title">{{ t('extensionsBuiltin.chatMemory.manageRange') }}</div>
       <TimelineVisualizer :total-items="maxIndex + 1" :segments="timelineSegments" />
       <div class="stats-row">
-        <span>Total: {{ messageStats.total }}</span>
-        <span>Summarized: {{ messageStats.summarized }}</span>
+        <span>{{ t('extensionsBuiltin.chatMemory.stats.total', { count: messageStats.total }) }}</span>
+        <span>{{ t('extensionsBuiltin.chatMemory.stats.summarized', { count: messageStats.summarized }) }}</span>
       </div>
 
       <div class="row">
-        <FormItem label="Start Index" style="flex: 1" :error="startIndexError">
+        <FormItem :label="t('extensionsBuiltin.chatMemory.labels.startIndex')" style="flex: 1" :error="startIndexError">
           <Input v-model.number="startIndex" type="number" :min="0" :max="endIndex" />
         </FormItem>
-        <FormItem label="End Index" style="flex: 1" :error="endIndexError">
+        <FormItem :label="t('extensionsBuiltin.chatMemory.labels.endIndex')" style="flex: 1" :error="endIndexError">
           <Input v-model.number="endIndex" type="number" :min="startIndex" :max="maxIndex" />
         </FormItem>
       </div>
@@ -437,7 +441,9 @@ watch(
 
       <div class="actions">
         <template v-if="isGenerating">
-          <Button variant="danger" icon="fa-stop" @click="cancelGeneration"> Stop </Button>
+          <Button variant="danger" icon="fa-stop" @click="cancelGeneration">
+            {{ t('extensionsBuiltin.chatMemory.buttons.stop') }}
+          </Button>
         </template>
         <template v-else>
           <Button
@@ -446,7 +452,7 @@ watch(
             :disabled="!isValidRange || countSummarizedInRange === 0"
             @click="clearRange"
           >
-            Clear Range
+            {{ t('extensionsBuiltin.chatMemory.buttons.clearRange') }}
           </Button>
           <Button
             icon="fa-rotate"
@@ -456,7 +462,7 @@ watch(
             title="Re-summarize all messages in range, including existing ones"
             @click="summarizeRange('force-all')"
           >
-            Resummarize All
+            {{ t('extensionsBuiltin.chatMemory.buttons.resummarize') }}
           </Button>
           <Button
             icon="fa-wand-magic-sparkles"
@@ -466,16 +472,18 @@ watch(
             :title="`Summarize ${countUnsummarizedInRange} missing messages in range`"
             @click="summarizeRange('missing-only')"
           >
-            Summarize Missing
+            {{ t('extensionsBuiltin.chatMemory.buttons.summarizeMissing') }}
           </Button>
         </template>
       </div>
     </div>
 
     <div class="section danger-zone">
-      <div class="section-title">Global Actions</div>
+      <div class="section-title">{{ t('extensionsBuiltin.chatMemory.globalActions') }}</div>
       <div class="actions">
-        <Button variant="danger" icon="fa-trash-can" @click="handleDeleteAll"> Delete All Summaries </Button>
+        <Button variant="danger" icon="fa-trash-can" @click="handleDeleteAll">
+          {{ t('extensionsBuiltin.chatMemory.buttons.deleteAll') }}
+        </Button>
       </div>
     </div>
   </div>

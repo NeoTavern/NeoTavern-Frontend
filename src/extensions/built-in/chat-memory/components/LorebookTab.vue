@@ -44,20 +44,21 @@ const maxIndex = computed(() => {
 const hasMessages = computed(() => chatHistory.value.length > 0);
 
 const startIndexError = computed(() => {
-  if (!hasMessages.value) return 'No messages available';
-  if (startIndex.value === undefined || startIndex.value === null) return 'Value is required';
-  if (startIndex.value < 0) return 'Cannot be negative';
-  if (startIndex.value > maxIndex.value) return 'Index out of bounds';
-  if (startIndex.value > endIndex.value) return 'Start cannot be greater than End';
+  if (!hasMessages.value) return t('extensionsBuiltin.chatMemory.errors.noMessages');
+  if (startIndex.value === undefined || startIndex.value === null)
+    return t('extensionsBuiltin.chatMemory.errors.required');
+  if (startIndex.value < 0) return t('extensionsBuiltin.chatMemory.errors.negative');
+  if (startIndex.value > maxIndex.value) return t('extensionsBuiltin.chatMemory.errors.outOfBounds');
+  if (startIndex.value > endIndex.value) return t('extensionsBuiltin.chatMemory.errors.startGreaterThanEnd');
   return undefined;
 });
 
 const endIndexError = computed(() => {
-  if (!hasMessages.value) return 'No messages available';
-  if (endIndex.value === undefined || endIndex.value === null) return 'Value is required';
-  if (endIndex.value < 0) return 'Cannot be negative';
-  if (endIndex.value > maxIndex.value) return 'Cannot exceed total messages';
-  if (endIndex.value < startIndex.value) return 'End cannot be less than Start';
+  if (!hasMessages.value) return t('extensionsBuiltin.chatMemory.errors.noMessages');
+  if (endIndex.value === undefined || endIndex.value === null) return t('extensionsBuiltin.chatMemory.errors.required');
+  if (endIndex.value < 0) return t('extensionsBuiltin.chatMemory.errors.negative');
+  if (endIndex.value > maxIndex.value) return t('extensionsBuiltin.chatMemory.errors.exceedTotal');
+  if (endIndex.value < startIndex.value) return t('extensionsBuiltin.chatMemory.errors.endLessThanStart');
   return undefined;
 });
 
@@ -93,7 +94,7 @@ const timelineSegments = computed<TimelineSegment[]>(() => {
       start: s,
       end: e,
       type: 'memory',
-      title: `Memory: ${s} - ${e}`,
+      title: t('extensionsBuiltin.chatMemory.timeline.memory', { start: s, end: e }),
     });
   });
 
@@ -102,7 +103,10 @@ const timelineSegments = computed<TimelineSegment[]>(() => {
       start: startIndex.value,
       end: endIndex.value,
       type: overlapWarning.value ? 'overlap' : 'selection',
-      title: `Current Selection: ${startIndex.value} - ${endIndex.value}`,
+      title: t('extensionsBuiltin.chatMemory.timeline.currentSelection', {
+        start: startIndex.value,
+        end: endIndex.value,
+      }),
     });
   }
   return segments;
@@ -249,7 +253,7 @@ async function handleLorebookSummarize() {
   } catch (error: any) {
     if (error.name !== 'AbortError') {
       console.error('Summarization failed', error);
-      props.api.ui.showToast('Summarization failed', 'error');
+      props.api.ui.showToast(t('extensionsBuiltin.chatMemory.failed'), 'error');
     }
   } finally {
     isGenerating.value = false;
@@ -260,11 +264,11 @@ async function handleLorebookSummarize() {
 async function createEntry() {
   if (isSaving.value) return;
   if (!selectedLorebook.value) {
-    props.api.ui.showToast('Please select a Lorebook', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.chatMemory.placeholders.selectLorebook'), 'error');
     return;
   }
   if (!summaryResult.value.trim()) {
-    props.api.ui.showToast('Summary is empty', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.chatMemory.errors.emptySummary'), 'error');
     return;
   }
 
@@ -273,7 +277,7 @@ async function createEntry() {
   try {
     const book = await props.api.worldInfo.getBook(selectedLorebook.value);
     if (!book) {
-      props.api.ui.showToast('Selected Lorebook not found', 'error');
+      props.api.ui.showToast(t('extensionsBuiltin.chatMemory.errors.bookNotFound'), 'error');
       return;
     }
 
@@ -322,10 +326,10 @@ async function createEntry() {
       }
       await props.api.chat.updateMessageObject(i, updates);
     }
-    props.api.ui.showToast('Memory created', 'success');
+    props.api.ui.showToast(t('extensionsBuiltin.chatMemory.success.memoryCreated'), 'success');
   } catch (error) {
     console.error('Failed to create memory entry', error);
-    props.api.ui.showToast('Failed to create memory entry', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.chatMemory.errors.createFailed'), 'error');
   } finally {
     isSaving.value = false;
   }
@@ -333,9 +337,8 @@ async function createEntry() {
 
 async function handleLorebookReset() {
   const { result } = await props.api.ui.showPopup({
-    title: 'Reset Memory',
-    content:
-      'This will remove all auto-generated memory entries for this chat and unhide the original messages. Are you sure?',
+    title: t('extensionsBuiltin.chatMemory.popups.reset.title'),
+    content: t('extensionsBuiltin.chatMemory.popups.reset.content'),
     type: POPUP_TYPE.CONFIRM,
     okButton: 'common.confirm',
     cancelButton: 'common.cancel',
@@ -345,7 +348,7 @@ async function handleLorebookReset() {
 
   const currentMetadata = props.api.chat.metadata.get();
   if (!currentMetadata) {
-    props.api.ui.showToast('No chat metadata found', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.chatMemory.errors.noMetadata'), 'error');
     return;
   }
 
@@ -388,10 +391,13 @@ async function handleLorebookReset() {
         restoredCount++;
       }
     }
-    props.api.ui.showToast(`Restored ${restoredCount} messages, deleted ${entriesRemoved} entries.`, 'success');
+    props.api.ui.showToast(
+      t('extensionsBuiltin.chatMemory.success.restored', { restored: restoredCount, deleted: entriesRemoved }),
+      'success',
+    );
   } catch (error) {
     console.error('Reset failed', error);
-    props.api.ui.showToast('Reset failed', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.chatMemory.failed'), 'error');
   }
 }
 
@@ -418,13 +424,13 @@ watch(
 <template>
   <div class="lorebook-tab">
     <div class="section">
-      <div class="section-title">1. {{ t('common.select') }} Range</div>
+      <div class="section-title">1. {{ t('extensionsBuiltin.chatMemory.manageRange') }}</div>
       <TimelineVisualizer :total-items="maxIndex + 1" :segments="timelineSegments" />
       <div class="row">
-        <FormItem label="Start Index" style="flex: 1" :error="startIndexError">
+        <FormItem :label="t('extensionsBuiltin.chatMemory.labels.startIndex')" style="flex: 1" :error="startIndexError">
           <Input v-model.number="startIndex" type="number" :min="0" :max="endIndex" />
         </FormItem>
-        <FormItem label="End Index" style="flex: 1" :error="endIndexError">
+        <FormItem :label="t('extensionsBuiltin.chatMemory.labels.endIndex')" style="flex: 1" :error="endIndexError">
           <Input v-model.number="endIndex" type="number" :min="startIndex" :max="maxIndex" />
         </FormItem>
       </div>
@@ -436,7 +442,7 @@ watch(
 
     <div class="section">
       <div class="section-title">2. Summarize</div>
-      <FormItem label="Lorebook Summarization Prompt">
+      <FormItem :label="t('extensionsBuiltin.chatMemory.labels.prompt')">
         <Textarea
           v-model="lorebookPrompt"
           :rows="4"
@@ -456,14 +462,14 @@ watch(
           icon="fa-wand-magic-sparkles"
           @click="handleLorebookSummarize"
         >
-          Generate Summary
+          {{ t('extensionsBuiltin.chatMemory.buttons.generate') }}
         </Button>
       </div>
-      <FormItem label="Result">
+      <FormItem :label="t('extensionsBuiltin.chatMemory.labels.result')">
         <Textarea
           v-model="summaryResult"
           :rows="6"
-          placeholder="Generated summary will appear here..."
+          :placeholder="t('extensionsBuiltin.chatMemory.placeholders.summaryResult')"
           identifier="extension.chat-memory.summary-result"
           allow-maximize
         />
@@ -473,12 +479,16 @@ watch(
     <div class="section highlight">
       <div class="section-title">3. Create Memory</div>
       <div class="row">
-        <FormItem label="Target Lorebook" style="flex: 1">
-          <Select v-model="selectedLorebook" :options="availableLorebooks" placeholder="Select a Lorebook" />
+        <FormItem :label="t('extensionsBuiltin.chatMemory.labels.targetLorebook')" style="flex: 1">
+          <Select
+            v-model="selectedLorebook"
+            :options="availableLorebooks"
+            :placeholder="t('extensionsBuiltin.chatMemory.placeholders.selectLorebook')"
+          />
         </FormItem>
       </div>
-      <FormItem label="Auto-hide messages">
-        <Toggle v-model="autoHideMessages" label="Auto-hide messages" />
+      <FormItem :label="t('extensionsBuiltin.chatMemory.labels.autoHide')">
+        <Toggle v-model="autoHideMessages" :label="t('extensionsBuiltin.chatMemory.labels.autoHide')" />
       </FormItem>
       <div class="actions">
         <Button
@@ -488,22 +498,22 @@ watch(
           :disabled="!summaryResult || !selectedLorebook"
           @click="createEntry"
         >
-          Create Constant Entry & Hide Messages
+          {{ t('extensionsBuiltin.chatMemory.buttons.create') }}
         </Button>
       </div>
     </div>
 
     <div class="section danger-zone">
-      <div class="section-title">Manage</div>
+      <div class="section-title">{{ t('extensionsBuiltin.chatMemory.manage') }}</div>
       <div class="actions">
         <Button
           variant="danger"
           icon="fa-rotate-left"
           :disabled="!hasMemories"
-          :title="!hasMemories ? 'No memories to reset for this chat' : ''"
+          :title="!hasMemories ? t('extensionsBuiltin.chatMemory.tooltips.noMemoriesToReset') : ''"
           @click="handleLorebookReset"
         >
-          Reset Memories for Current Chat
+          {{ t('extensionsBuiltin.chatMemory.buttons.reset') }}
         </Button>
       </div>
     </div>

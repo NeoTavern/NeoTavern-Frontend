@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
 import { FormItem, Tabs } from '../../../components/UI';
+import { useStrictI18n } from '../../../composables/useStrictI18n';
 import type { ExtensionAPI } from '../../../types';
 import LorebookTab from './components/LorebookTab.vue';
 import MessageSummariesTab from './components/MessageSummariesTab.vue';
@@ -11,12 +12,14 @@ const props = defineProps<{
   api: ExtensionAPI<ExtensionSettings>;
 }>();
 
+const { t } = useStrictI18n();
+
 // --- Tabs ---
 const activeTab = ref('lorebook');
-const tabs = [
-  { label: 'Lorebook Summaries', value: 'lorebook', icon: 'fa-book-atlas' },
-  { label: 'Message Summaries', value: 'messages', icon: 'fa-message' },
-];
+const tabs = computed(() => [
+  { label: t('extensionsBuiltin.chatMemory.tabs.lorebook'), value: 'lorebook', icon: 'fa-book-atlas' },
+  { label: t('extensionsBuiltin.chatMemory.tabs.messages'), value: 'messages', icon: 'fa-message' },
+]);
 
 // --- Shared State ---
 const connectionProfile = ref<string | undefined>(undefined);
@@ -81,7 +84,10 @@ function saveTabState() {
 
     <!-- Connection Profile Global Setting for the Popup -->
     <div class="profile-section">
-      <FormItem label="Connection Profile" description="Used for generating summaries">
+      <FormItem
+        :label="t('extensionsBuiltin.chatMemory.labels.connectionProfile')"
+        :description="t('extensionsBuiltin.chatMemory.labels.connectionProfileDesc')"
+      >
         <ConnectionProfileSelector v-model="connectionProfile" />
       </FormItem>
     </div>

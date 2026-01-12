@@ -1201,7 +1201,107 @@
     },
     "chatMemory": {
       "noProfile": "No connection profile selected",
-      "overlapWarning": "Warning: Selected range overlaps with an existing memory."
+      "overlapWarning": "Warning: Selected range overlaps with an existing memory.",
+      "menuItem": "Chat Memory",
+      "popupTitle": "Chat Memory Manager",
+      "summarizing": "Summarizing message...",
+      "summarized": "Message summarized",
+      "failed": "Summarization failed",
+      "summarizeButton": "Summarize Message",
+      "tabs": {
+        "lorebook": "Lorebook Summaries",
+        "messages": "Message Summaries"
+      },
+      "labels": {
+        "connectionProfile": "Connection Profile",
+        "connectionProfileDesc": "Used for generating summaries",
+        "startIndex": "Start Index",
+        "endIndex": "End Index",
+        "prompt": "Lorebook Summarization Prompt",
+        "result": "Result",
+        "targetLorebook": "Target Lorebook",
+        "autoHide": "Auto-hide messages"
+      },
+      "buttons": {
+        "generate": "Generate Summary",
+        "create": "Create Constant Entry & Hide Messages",
+        "reset": "Reset Memories for Current Chat",
+        "deleteAll": "Delete All Summaries",
+        "stop": "Stop",
+        "clearRange": "Clear Range",
+        "resummarize": "Resummarize All",
+        "summarizeMissing": "Summarize Missing"
+      },
+      "placeholders": {
+        "selectLorebook": "Select a Lorebook",
+        "summaryResult": "Generated summary will appear here..."
+      },
+      "errors": {
+        "emptySummary": "Summary is empty",
+        "bookNotFound": "Selected Lorebook not found",
+        "createFailed": "Failed to create memory entry",
+        "noMessages": "No messages available",
+        "required": "Value is required",
+        "negative": "Cannot be negative",
+        "outOfBounds": "Index out of bounds",
+        "startGreaterThanEnd": "Start cannot be greater than End",
+        "endLessThanStart": "End cannot be less than Start",
+        "exceedTotal": "Cannot exceed total messages",
+        "noMatchingMessages": "No matching messages in range",
+        "noSummariesToClear": "No summaries to clear in range",
+        "noMetadata": "No chat metadata found"
+      },
+      "success": {
+        "memoryCreated": "Memory created",
+        "restored": "Restored {restored} messages, deleted {deleted} entries.",
+        "cleared": "Cleared {count} summaries",
+        "removedAll": "Removed summaries from {count} messages",
+        "summarizationComplete": "Summarization complete"
+      },
+      "tooltips": {
+        "noMemoriesToReset": "No memories to reset for this chat"
+      },
+      "popups": {
+        "reset": {
+          "title": "Reset Memory",
+          "content": "This will remove all auto-generated memory entries for this chat and unhide the original messages. Are you sure?"
+        },
+        "summarizeRange": {
+          "title": "Summarize Messages",
+          "contentAll": "This will re-summarize {count} messages in the selected range, overwriting existing summaries. Continue?",
+          "contentMissing": "This will summarize {count} unsummarized messages in the selected range. Continue?"
+        },
+        "clearRange": {
+          "title": "Clear Summaries",
+          "content": "This will delete summaries for {count} messages in the selected range. Are you sure?"
+        },
+        "deleteAll": {
+          "title": "Delete All Summaries",
+          "content": "This will delete all per-message summaries in the entire chat. Are you sure?"
+        }
+      },
+      "manage": "Manage",
+      "manageRange": "Manage Range",
+      "globalActions": "Global Actions",
+      "settings": {
+        "title": "Settings",
+        "enable": "Enable Message Summarization",
+        "autoLabel": "Auto-summarize new messages",
+        "autoDesc": "Automatically generate summaries for new messages as they arrive.",
+        "promptLabel": "Message Summary Prompt",
+        "promptDesc": "Prompt used to summarize a single message."
+      },
+      "stats": {
+        "total": "Total: {count}",
+        "summarized": "Summarized: {count}"
+      },
+      "timeline": {
+        "memory": "Memory: {start} - {end}",
+        "selection": "Selection: {start} - {end}",
+        "currentSelection": "Current Selection: {start} - {end}",
+        "summarized": "Summarized: {start} - {end}",
+        "summarizedSingle": "Summarized: {index}"
+      }
     }
   },
   "persona": {
