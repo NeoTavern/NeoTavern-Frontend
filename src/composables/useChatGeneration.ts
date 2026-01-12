@@ -567,7 +567,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
     // --- Generation Execution ---
 
-    const handleGenerationResult = async (content: string, reasoning?: string) => {
+    const handleGenerationResult = async (content: string, reasoning?: string, tokenCount?: number) => {
       if (deps.activeChat.value !== chatContext) {
         console.warn('Chat context changed during generation. Result ignored.');
         return;
@@ -600,7 +600,8 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       }
 
       const genFinished = new Date().toISOString();
-      const token_count = await tokenizer.getTokenCount(finalContent);
+      const token_count = tokenCount ?? (await tokenizer.getTokenCount(finalContent));
+
       const swipeInfo: SwipeInfo = {
         send_date: getMessageTimeStamp(),
         gen_started: genStarted,
@@ -662,11 +663,29 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       }
     };
 
+    const generationOptions = {
+      signal: abortSignal,
+      tokenizer: tokenizer,
+      tracking: {
+        source: 'core',
+        model: context.settings.model,
+        inputTokens: promptTotal,
+        context: activeCharacter.name,
+      },
+      onCompletion: (data: { outputTokens: number }) => {
+        // Update token count for streaming scenario (and redundant check for non-stream)
+        if (generatedMessage) {
+          if (!generatedMessage.extra) generatedMessage.extra = {};
+          generatedMessage.extra.token_count = data.outputTokens;
+        }
+      },
+    };
+
     if (!payload.stream) {
       const response = (await ChatCompletionService.generate(
         payload,
         effectiveFormatter,
-        abortSignal,
+        generationOptions,
       )) as GenerationResponse;
 
       if (deps.activeChat.value !== chatContext) throw new Error('Context switched');
@@ -682,14 +701,14 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           toast.error(t('chat.generate.emptyResponseError'));
           return null;
         }
-        await handleGenerationResult(response.content, response.reasoning);
+        await handleGenerationResult(response.content, response.reasoning, response.token_count);
       }
     } else {
       // Streaming
       const streamGenerator = (await ChatCompletionService.generate(
         payload,
         effectiveFormatter,
-        abortSignal,
+        generationOptions,
       )) as unknown as () => AsyncGenerator<StreamedChunk>;
 
       let targetMessageIndex = -1;
@@ -825,7 +844,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
           finalMessage.gen_finished = new Date().toISOString();
           if (!finalMessage.extra) finalMessage.extra = {};
-          finalMessage.extra.token_count = await tokenizer.getTokenCount(finalMessage.mes);
+
+          if (finalMessage.extra.token_count === undefined) {
+            finalMessage.extra.token_count = await tokenizer.getTokenCount(finalMessage.mes);
+          }
 
           const swipeInfo: SwipeInfo = {
             send_date: finalMessage.send_date!,

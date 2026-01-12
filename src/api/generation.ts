@@ -7,6 +7,7 @@ import type {
   ApiProvider,
   ChatCompletionPayload,
   ConnectionProfile,
+  GenerationOptions,
   GenerationResponse,
   StreamedChunk,
 } from '../types';
@@ -15,6 +16,7 @@ import type { BuildChatCompletionPayloadOptions } from '../types/generation';
 import type { InstructTemplate } from '../types/instruct';
 import type { ApiFormatter, SamplerSettings, Settings, SettingsPath } from '../types/settings';
 import { getRequestHeaders } from '../utils/client';
+import { eventEmitter } from '../utils/extensions';
 import { convertMessagesToInstructString } from '../utils/instruct';
 import {
   extractMessageGeneric,
@@ -373,8 +375,9 @@ export class ChatCompletionService {
   static async generate(
     payload: ChatCompletionPayload,
     formatter: ApiFormatter,
-    signal?: AbortSignal,
+    options: GenerationOptions = {},
   ): Promise<GenerationResponse | (() => AsyncGenerator<StreamedChunk>)> {
+    const startTime = Date.now();
     let endpoint = '/api/backends/chat-completions/generate';
     let body: string = JSON.stringify(payload);
 
@@ -396,11 +399,43 @@ export class ChatCompletionService {
       headers: getRequestHeaders(),
       body: body,
       cache: 'no-cache',
-      signal,
+      signal: options.signal,
     } satisfies RequestInit;
 
     // Response Handling Helpers
     const responseHandler = getProviderHandler(providerKey);
+
+    // --- Usage Tracking Helper ---
+    const finalizeUsage = async (finalContent: string) => {
+      const duration = Date.now() - startTime;
+      let outputTokens = 0;
+
+      if (options.tokenizer && finalContent) {
+        try {
+          outputTokens = await options.tokenizer.getTokenCount(finalContent);
+        } catch (e) {
+          console.warn('[Generation] Failed to count output tokens:', e);
+        }
+      }
+
+      if (options.tracking) {
+        await eventEmitter.emit('llm:usage', {
+          source: options.tracking.source,
+          model: options.tracking.model,
+          inputTokens: options.tracking.inputTokens,
+          outputTokens: outputTokens,
+          timestamp: Date.now(),
+          duration: duration,
+          context: options.tracking.context,
+        });
+      }
+
+      if (options.onCompletion) {
+        options.onCompletion({ outputTokens, duration });
+      }
+
+      return outputTokens;
+    };
 
     if (!payload.stream) {
       const response = await fetch(endpoint, commonOptions);
@@ -420,10 +455,13 @@ export class ChatCompletionService {
       }
 
       const reasoning = responseHandler.extractReasoning ? responseHandler.extractReasoning(responseData) : undefined;
+      const finalContent = messageContent.trim();
+      const tokenCount = await finalizeUsage(finalContent);
 
       return {
-        content: messageContent.trim(),
+        content: finalContent,
         reasoning: reasoning?.trim(),
+        token_count: tokenCount,
       };
     }
 
@@ -443,7 +481,9 @@ export class ChatCompletionService {
 
     const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
 
-    return async function* streamData(): AsyncGenerator<StreamedChunk> {
+    // Streaming Logic
+    // We wrap the generator to intercept chunks for token counting
+    const originalGenerator = async function* streamData(): AsyncGenerator<StreamedChunk> {
       let reasoning = '';
       let buffer = '';
       let isFirstChunk = true;
@@ -503,6 +543,20 @@ export class ChatCompletionService {
         } else {
           throw error;
         }
+      }
+    };
+
+    // Return a wrapped generator that handles usage tracking upon completion
+    return async function* () {
+      let fullContent = '';
+      try {
+        for await (const chunk of originalGenerator()) {
+          fullContent += chunk.delta;
+          yield chunk;
+        }
+      } finally {
+        // This runs when the stream is exhausted or the consumer breaks the loop
+        await finalizeUsage(fullContent);
       }
     };
   }

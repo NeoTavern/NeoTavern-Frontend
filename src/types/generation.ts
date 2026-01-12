@@ -116,6 +116,7 @@ export type ChatCompletionPayload = Partial<{
 export interface GenerationResponse {
   content: string;
   reasoning?: string;
+  token_count?: number;
 }
 
 export interface StreamedChunk {
@@ -207,4 +208,41 @@ export interface ItemizedPrompt {
   timestamp: number;
 
   worldInfoEntries: Record<string, WorldInfoEntry[]>;
+}
+
+export interface GenerationTrackingOptions {
+  /**
+   * Source of the generation request (e.g. 'core', 'extension:my-ext')
+   */
+  source: string;
+  /**
+   * Optional context identifier (e.g. character name)
+   */
+  context?: string;
+  /**
+   * The model used for generation.
+   */
+  model: string;
+  /**
+   * Calculated input tokens before generation.
+   */
+  inputTokens: number;
+}
+
+export interface GenerationOptions {
+  signal?: AbortSignal;
+  /**
+   * Tokenizer instance to calculate output tokens for usage tracking.
+   */
+  tokenizer?: Tokenizer;
+  /**
+   * Configuration for automatic usage tracking events.
+   * If provided, an 'llm:usage' event will be emitted upon completion.
+   */
+  tracking?: GenerationTrackingOptions;
+  /**
+   * Callback executed when generation finishes (successfully or aborted).
+   * Provides stats about the generation.
+   */
+  onCompletion?: (data: { outputTokens: number; duration: number }) => void;
 }

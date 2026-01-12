@@ -27,6 +27,12 @@ export interface LlmGenerationOptions {
   instructTemplateName?: string;
   signal?: AbortSignal;
   generationId?: string;
+  /**
+   * Identity of the requester.
+   * Automatically populated for extensions using the scoped API.
+   * Defaults to 'unknown' if not provided.
+   */
+  source?: string;
 }
 
 export interface TextareaToolDefinition {

@@ -29,6 +29,16 @@ export interface GenerationPayloadBuilderConfig {
   activeCharacter?: Character;
 }
 
+export interface LlmUsageData {
+  source: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  timestamp: number;
+  duration?: number;
+  context?: string; // Optional context (e.g. chat file name, functionality name)
+}
+
 export interface ExtensionEventMap {
   // General Application Events
   'app:loaded': [];
@@ -141,4 +151,7 @@ export interface ExtensionEventMap {
     chunk: StreamedChunk,
     context: { payload: ChatCompletionPayload; controller: AbortController; generationId: string },
   ];
+
+  // Analytics / Usage
+  'llm:usage': [data: LlmUsageData];
 }

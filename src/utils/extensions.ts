@@ -2,6 +2,7 @@ import * as Vue from 'vue';
 import { createVNode, render, type App } from 'vue';
 import { CustomPromptPostProcessing, EventPriority, GenerationMode, default_avatar } from '../constants';
 import type {
+  ApiChatMessage,
   ChatInfo,
   ChatMessage,
   ExtensionAPI,
@@ -39,7 +40,7 @@ import { WorldInfoProcessor, createDefaultEntry } from '../services/world-info';
 import { useCharacterUiStore } from '../stores/character-ui.store';
 import { useComponentRegistryStore } from '../stores/component-registry.store';
 import { useLayoutStore } from '../stores/layout.store';
-import type { TextareaToolDefinition } from '../types/ExtensionAPI';
+import type { LlmGenerationOptions, TextareaToolDefinition } from '../types/ExtensionAPI';
 import type { CodeMirrorTarget } from '../types/settings';
 
 // --- Event Emitter ---
@@ -291,7 +292,7 @@ const baseExtensionAPI: ExtensionAPI = {
       }
     },
     generate: async (payload, formatter, signal) => {
-      return await ChatCompletionService.generate(payload, formatter, signal);
+      return await ChatCompletionService.generate(payload, formatter, { signal });
     },
     buildPayload: (messages, samplerOverrides) => {
       const settingsStore = useSettingsStore();
@@ -582,6 +583,8 @@ const baseExtensionAPI: ExtensionAPI = {
   },
   llm: {
     generate: async (messages, options = {}) => {
+      const settingsStore = useSettingsStore();
+
       // Resolve connection profile settings
       const {
         provider,
@@ -642,7 +645,35 @@ const baseExtensionAPI: ExtensionAPI = {
         formatter: effectiveFormatter,
         instructTemplate: effectiveInstructTemplate,
       });
-      return await ChatCompletionService.generate(payload, effectiveFormatter, options.signal);
+
+      // Prepare usage tracking
+      const tokenizer = new ApiTokenizer({
+        tokenizerType: settingsStore.settings.api.tokenizer,
+        model: model,
+      });
+
+      let inputTokens = 0;
+      try {
+        if (payload.messages) {
+          for (const msg of payload.messages) {
+            inputTokens += await tokenizer.getTokenCount(msg.content);
+          }
+        } else if (payload.prompt) {
+          inputTokens = await tokenizer.getTokenCount(payload.prompt);
+        }
+      } catch (err) {
+        console.warn('[ExtensionAPI] Failed to count input tokens for tracking:', err);
+      }
+
+      return await ChatCompletionService.generate(payload, effectiveFormatter, {
+        signal: options.signal,
+        tokenizer: tokenizer,
+        tracking: {
+          source: options.source || 'unknown',
+          model: model,
+          inputTokens: inputTokens,
+        },
+      });
     },
   },
   i18n: {
@@ -739,6 +770,14 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
     emit: baseExtensionAPI.events.emit,
   };
 
+  const scopedLlm = {
+    generate: (messages: ApiChatMessage[], options: LlmGenerationOptions = {}) => {
+      // Inject source
+      const optionsWithSource = { ...options, source: extensionId };
+      return baseExtensionAPI.llm.generate(messages, optionsWithSource);
+    },
+  };
+
   const scopedUi = {
     ...baseExtensionAPI.ui,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -815,7 +854,14 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
     listenerMap.clear();
   });
 
-  return { ...baseExtensionAPI, meta, settings: scopedSettings, events: scopedEvents, ui: scopedUi };
+  return {
+    ...baseExtensionAPI,
+    meta,
+    settings: scopedSettings,
+    events: scopedEvents,
+    ui: scopedUi,
+    llm: scopedLlm,
+  };
 }
 
 globalThis.NeoTavern = {
