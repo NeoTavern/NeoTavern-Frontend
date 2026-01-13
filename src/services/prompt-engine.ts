@@ -85,6 +85,23 @@ export class PromptBuilder {
     });
   }
 
+  /**
+   * Helper to safely count tokens for message content (string or array)
+   */
+  private async countTokens(content: string | unknown[]): Promise<number> {
+    if (typeof content === 'string') {
+      return await this.tokenizer.getTokenCount(content);
+    }
+    // For PromptBuilder initial phase, we assume content is string.
+    // If it were array (e.g. from extensions), we extract text parts.
+    if (Array.isArray(content)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const text = content.map((p: any) => (p.type === 'text' ? p.text : '')).join('');
+      return await this.tokenizer.getTokenCount(text);
+    }
+    return 0;
+  }
+
   public async build(): Promise<ApiChatMessage[]> {
     const options: PromptBuilderOptions = {
       books: this.books,
@@ -218,7 +235,7 @@ export class PromptBuilder {
 
     for (const prompt of fixedPrompts) {
       if (prompt.content !== historyPlaceholder.content) {
-        currentTokenCount += await this.tokenizer.getTokenCount(prompt.content);
+        currentTokenCount += await this.countTokens(prompt.content);
       }
     }
 
@@ -230,7 +247,7 @@ export class PromptBuilder {
     const insertMessages = async (msgs: ApiChatMessage[]): Promise<boolean> => {
       for (let i = msgs.length - 1; i >= 0; i--) {
         const msg = msgs[i];
-        const tokenCount = await this.tokenizer.getTokenCount(msg.content);
+        const tokenCount = await this.countTokens(msg.content);
         if (historyTokenCount + tokenCount <= historyBudget) {
           historyTokenCount += tokenCount;
           historyMessages.unshift(msg);
@@ -258,7 +275,6 @@ export class PromptBuilder {
     let currentDepth = 0;
 
     // Process Depth 0 (At the very end of history)
-    // TODO: Logic for 'continue' generation handling for depth 0 injection
     if (depthEntriesMap.has(0)) {
       const msgs = depthEntriesMap.get(0)!;
       await insertMessages(msgs);
@@ -290,7 +306,7 @@ export class PromptBuilder {
         chatLength: this.chatHistory.length,
       });
 
-      const msgTokenCount = await this.tokenizer.getTokenCount(apiMsg.content);
+      const msgTokenCount = await this.countTokens(apiMsg.content);
 
       if (historyTokenCount + msgTokenCount <= historyBudget) {
         historyTokenCount += msgTokenCount;

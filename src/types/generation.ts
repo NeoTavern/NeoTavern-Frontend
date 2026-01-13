@@ -11,9 +11,22 @@ import type { WorldInfoBook, WorldInfoEntry, WorldInfoSettings } from './world-i
 
 export { type MessageRole, type ReasoningEffort };
 
+export interface ApiChatImage {
+  url: string;
+  detail?: 'auto' | 'low' | 'high';
+}
+
+export interface ApiChatContentPart {
+  type: 'text' | 'image_url' | 'video_url' | 'audio_url';
+  text?: string;
+  image_url?: ApiChatImage;
+  video_url?: ApiChatImage;
+  audio_url?: { url: string };
+}
+
 export interface ApiChatMessage {
   role: MessageRole;
-  content: string;
+  content: string | ApiChatContentPart[];
   name: string;
 }
 
@@ -117,11 +130,13 @@ export interface GenerationResponse {
   content: string;
   reasoning?: string;
   token_count?: number;
+  images?: string[];
 }
 
 export interface StreamedChunk {
   delta: string;
   reasoning?: string; // Full reasoning
+  images?: string[];
 }
 
 export type BuildChatCompletionPayloadOptions = {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { uploadMedia } from '../../api/media';
 import { useMobile } from '../../composables/useMobile';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
@@ -15,9 +16,10 @@ import { usePopupStore } from '../../stores/popup.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useWorldInfoStore } from '../../stores/world-info.store';
-import { POPUP_RESULT, POPUP_TYPE } from '../../types';
+import { POPUP_RESULT, POPUP_TYPE, type ChatMediaItem } from '../../types';
 import { Button, Textarea } from '../UI';
 import ChatMessage from './ChatMessage.vue';
+import { getBase64Async } from '../../utils/commons';
 
 const chatStore = useChatStore();
 const chatUiStore = useChatUiStore();
@@ -34,6 +36,10 @@ const { t } = useStrictI18n();
 const userInput = ref('');
 const messagesContainer = ref<HTMLElement | null>(null);
 const chatInput = ref<InstanceType<typeof Textarea> | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
+
+const attachedMedia = ref<ChatMediaItem[]>([]);
+const isUploading = ref(false);
 
 const isOptionsMenuVisible = ref(false);
 const optionsButtonRef = ref<HTMLElement | null>(null);
@@ -47,13 +53,18 @@ const { floatingStyles: optionsMenuStyles } = useFloating(optionsButtonRef, opti
   middleware: [offset(8), flip(), shift({ padding: 10 })],
 });
 
-function submitMessage() {
-  if (!userInput.value.trim()) {
-    generate();
+// TODO: i18n
+
+async function submitMessage() {
+  if ((!userInput.value.trim() && attachedMedia.value.length === 0) || isUploading.value) {
+    if (!userInput.value.trim() && attachedMedia.value.length === 0) {
+      generate();
+    }
     return;
   }
-  chatStore.sendMessage(userInput.value);
+  chatStore.sendMessage(userInput.value, { media: attachedMedia.value });
   userInput.value = '';
+  attachedMedia.value = [];
 
   nextTick(() => {
     chatInput.value?.focus();
@@ -208,6 +219,57 @@ const handleStreamingScroll = () => {
   });
 };
 
+function triggerFileUpload() {
+  fileInput.value?.click();
+}
+
+async function handleFileSelect(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (!input.files || input.files.length === 0) return;
+
+  isUploading.value = true;
+  try {
+    for (const file of Array.from(input.files)) {
+      if (!file.type.startsWith('image/')) {
+        toast.warning(t('chat.media.unsupportedType', { type: file.type }));
+        continue;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
+        toast.warning(t('chat.media.tooLarge', { name: file.name }));
+        continue;
+      }
+
+      const base64 = await getBase64Async(file);
+
+      const response = await uploadMedia({
+        ch_name: characterStore.activeCharacters?.[0]?.name,
+        filename: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        format: file.type.split('/')[1] || 'png',
+        image: base64.split(',')[1],
+      });
+
+      attachedMedia.value.push({
+        source: 'upload',
+        type: 'image',
+        url: response.path,
+        title: file.name,
+      });
+    }
+  } catch (error) {
+    console.error('Error uploading media:', error);
+    toast.error(error instanceof Error ? error.message : t('chat.media.uploadError'));
+  } finally {
+    isUploading.value = false;
+    // Reset file input to allow selecting the same file again
+    if (input) input.value = '';
+  }
+}
+
+function removeAttachedMedia(index: number) {
+  attachedMedia.value.splice(index, 1);
+}
+
 // Scroll watcher
 watch(
   visibleMessages,
@@ -286,6 +348,7 @@ watch(
     if (newFile) {
       const savedInput = await promptStore.loadUserTyping(newFile);
       userInput.value = savedInput;
+      attachedMedia.value = [];
 
       if (!isDeviceMobile.value) {
         await nextTick();
@@ -293,6 +356,7 @@ watch(
       }
     } else {
       userInput.value = '';
+      attachedMedia.value = [];
     }
   },
 );
@@ -340,6 +404,15 @@ watch(
         id="chat-form"
         class="chat-form"
       >
+        <div v-if="attachedMedia.length > 0" class="chat-form-media-previews">
+          <div v-for="(media, index) in attachedMedia" :key="index" class="media-preview-item">
+            <img :src="media.url" :alt="media.title" />
+            <button class="remove-media-btn" :aria-label="`Remove ${media.title}`" @click="removeAttachedMedia(index)">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
         <div class="chat-form-inner">
           <div ref="optionsButtonRef" class="chat-form-actions-left">
             <Button
@@ -352,6 +425,22 @@ watch(
               :aria-expanded="isOptionsMenuVisible"
               @click.stop="isOptionsMenuVisible = !isOptionsMenuVisible"
             />
+            <Button
+              class="chat-form-button"
+              variant="ghost"
+              icon="fa-paperclip"
+              :title="t('chat.media.attach')"
+              :disabled="isUploading"
+              @click="triggerFileUpload"
+            />
+            <input
+              ref="fileInput"
+              type="file"
+              hidden
+              multiple
+              accept="image/png, image/jpeg, image/webp"
+              @change="handleFileSelect"
+            />
           </div>
           <Textarea
             id="chat-input"
@@ -359,7 +448,7 @@ watch(
             v-model="userInput"
             :placeholder="t('chat.inputPlaceholder')"
             autocomplete="off"
-            :disabled="chatStore.isGenerating"
+            :disabled="chatStore.isGenerating || isUploading"
             :allow-maximize="false"
             identifier="chat.input"
             @keydown="handleKeydown"
@@ -379,7 +468,7 @@ watch(
                 icon="fa-paper-plane"
                 variant="ghost"
                 :title="t('chat.send')"
-                :disabled="chatStore.isGenerating"
+                :disabled="chatStore.isGenerating || isUploading"
                 @click="submitMessage"
               />
             </div>

@@ -157,7 +157,8 @@ export const useCharacterStore = defineStore('character', () => {
   }
 
   async function deleteCharacter(avatar: string, deleteChats: boolean) {
-    if (deleteChats) { // TODO: Move to noetavern backend
+    if (deleteChats) {
+      // TODO: Move to noetavern backend
       const character = characters.value.find((c) => c.avatar === avatar);
       if (character && character.chat) {
         await chatService.delete(character.chat);

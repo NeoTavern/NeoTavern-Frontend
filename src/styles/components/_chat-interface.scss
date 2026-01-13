@@ -97,6 +97,50 @@
   position: relative;
   padding: var(--spacing-xs);
 
+  &-media-previews {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-xs) 0;
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: var(--spacing-xs);
+
+    .media-preview-item {
+      position: relative;
+      flex-shrink: 0;
+
+      img {
+        width: 64px;
+        height: 64px;
+        object-fit: cover;
+        border-radius: var(--base-border-radius);
+        border: 1px solid var(--theme-border-color);
+      }
+
+      .remove-media-btn {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background-color: var(--black-90a);
+        color: var(--white-100);
+        border: 1px solid var(--white-50a);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.8em;
+        transition: background-color var(--animation-duration-sm);
+
+        &:hover {
+          background-color: var(--color-accent-crimson-hover);
+        }
+      }
+    }
+  }
+
   &-inner {
     width: 100%;
     @include flex-container(row);

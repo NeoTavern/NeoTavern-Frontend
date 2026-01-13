@@ -605,6 +605,7 @@ export class ChatCompletionService {
 
       let reasoning = responseHandler.extractReasoning ? responseHandler.extractReasoning(responseData) : undefined;
       let finalContent = messageContent.trim();
+      const images = responseHandler.extractImages ? responseHandler.extractImages(responseData) : undefined;
 
       // Apply Reasoning Template if provided and reasoning wasn't already extracted (or even if it was, maybe additional reasoning in content)
       if (options.reasoningTemplate && options.reasoningTemplate.prefix && options.reasoningTemplate.suffix) {
@@ -624,6 +625,7 @@ export class ChatCompletionService {
         content: finalContent,
         reasoning: reasoning?.trim(),
         token_count: tokenCount,
+        images,
       };
     }
 
@@ -702,14 +704,15 @@ export class ChatCompletionService {
 
                 const hasContentChange = deltaToYield.length > 0;
                 const hasReasoningChange = (chunk.reasoning && chunk.reasoning.length > 0) || reasoningDelta.length > 0;
+                const hasImages = chunk.images && chunk.images.length > 0;
 
-                if (hasContentChange || hasReasoningChange) {
+                if (hasContentChange || hasReasoningChange || hasImages) {
                   if (isFirstChunk && deltaToYield) {
                     deltaToYield = deltaToYield.trimStart();
                     isFirstChunk = false;
                   }
 
-                  yield { delta: deltaToYield, reasoning: reasoning };
+                  yield { delta: deltaToYield, reasoning: reasoning, images: chunk.images };
                 }
               } catch (e) {
                 console.error('Error parsing stream chunk:', data, e);

@@ -1,3 +1,10 @@
+export interface ChatMediaItem {
+  source: 'upload' | 'url';
+  type: 'image' | 'video' | 'audio';
+  url: string;
+  title?: string;
+}
+
 export interface ChatMetadata {
   name?: string;
   integrity: string;
@@ -49,6 +56,7 @@ export interface ChatMessage {
     display_text?: string;
     reasoning_display_text?: string;
     token_count?: number;
+    media?: ChatMediaItem[];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } & Record<string, any>;
 }

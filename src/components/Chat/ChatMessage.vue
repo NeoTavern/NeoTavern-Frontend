@@ -18,6 +18,7 @@ import type { TextareaToolDefinition } from '../../types/ExtensionAPI';
 import { resolveAvatarUrls } from '../../utils/character';
 import { formatMessage, formatReasoning } from '../../utils/chat';
 import { formatTimeStamp } from '../../utils/commons';
+import { isDataURL } from '../../utils/media';
 import { SmartAvatar } from '../common';
 import { Button, Textarea } from '../UI';
 import PromptItemizationPopup from './PromptItemizationPopup.vue';
@@ -32,6 +33,8 @@ const props = defineProps({
     required: true,
   },
 });
+
+// TODO: i18n
 
 const { t } = useStrictI18n();
 const characterStore = useCharacterStore();
@@ -127,6 +130,39 @@ const formattedContent = computed(() => {
 const formattedReasoning = computed(() => {
   return formatReasoning(props.message, forbidExternalMedia.value);
 });
+
+const hasMedia = computed(() => props.message.extra?.media && props.message.extra.media.length > 0);
+
+const mediaItems = computed(() => {
+  if (!hasMedia.value) return [];
+  return (props.message.extra?.media ?? []).map((item, idx) => {
+    const key = `${props.index}-${props.message.swipe_id ?? 0}-${idx}`;
+    let src = item.url;
+    // Data URLs are used directly. Uploaded files that are saved will have a relative path.
+    if (item.source === 'upload' && !isDataURL(src)) {
+      // Assuming saved uploads are served from a known endpoint if not a data URL
+      // No change needed if the URL is already a correct relative path like '/user-uploads/...'
+    }
+    return {
+      ...item,
+      key,
+      src: src, // URL for display
+      fullSrc: src, // URL for zoom
+    };
+  });
+});
+
+function handleMediaClick(mediaItem: (typeof mediaItems.value)[0]) {
+  if (isSelectionMode.value) return; // Disable zoom in selection mode
+
+  if (mediaItem.type === 'image') {
+    uiStore.toggleZoomedAvatar({
+      src: mediaItem.fullSrc,
+      charName: mediaItem.title || 'Image',
+    });
+  }
+  // Could add handlers for video/audio later
+}
 
 const isLastMessage = computed(
   () => !!chatStore.activeChat?.messages.length && props.index === chatStore.activeChat?.messages.length - 1,
@@ -414,7 +450,29 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
       </div>
 
       <!-- eslint-disable-next-line vue/no-v-html -->
-      <div v-show="!isEditing" class="message-content" v-html="formattedContent"></div>
+      <div v-show="!isEditing && formattedContent" class="message-content" v-html="formattedContent"></div>
+
+      <div v-if="!isEditing && hasMedia" class="message-media-container">
+        <div
+          v-for="item in mediaItems"
+          :key="item.key"
+          class="media-item"
+          role="button"
+          tabindex="0"
+          :aria-label="`View media: ${item.title || item.type}`"
+          @click.stop="handleMediaClick(item)"
+          @keydown.enter.stop.prevent="handleMediaClick(item)"
+          @keydown.space.stop.prevent="handleMediaClick(item)"
+        >
+          <img v-if="item.type === 'image'" :src="item.src" :alt="item.title || 'Image content'" />
+          <div v-else class="media-placeholder">
+            <i v-if="item.type === 'video'" class="fa-solid fa-film"></i>
+            <i v-else-if="item.type === 'audio'" class="fa-solid fa-volume-high"></i>
+            <i v-else class="fa-solid fa-file"></i>
+            <span>{{ item.title || item.type }}</span>
+          </div>
+        </div>
+      </div>
 
       <div v-show="isEditing" class="message-edit-area">
         <transition name="expand">

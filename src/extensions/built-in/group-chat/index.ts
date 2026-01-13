@@ -279,8 +279,21 @@ export function activate(api: ExtensionAPI) {
       (apiMsg, context) => {
         if (!context.isGroupContext) return;
 
-        if (!apiMsg.content.startsWith(`${context.originalMessage.name}:`)) {
-          apiMsg.content = `${context.originalMessage.name}: ${apiMsg.content}`;
+        if (typeof apiMsg.content === 'string') {
+          const namePrefix = `${context.originalMessage.name}:`;
+          if (!apiMsg.content.startsWith(namePrefix)) {
+            apiMsg.content = `${namePrefix} ${apiMsg.content}`;
+          }
+        } else if (Array.isArray(apiMsg.content)) {
+          for (let i = 0; i < apiMsg.content.length; i++) {
+            const part = apiMsg.content[i];
+            if (part.type === 'text' && part.text) {
+              const namePrefix = `${context.originalMessage.name}:`;
+              if (!part.text.startsWith(namePrefix)) {
+                part.text = `${namePrefix} ${part.text}`;
+              }
+            }
+          }
         }
       },
       EventPriority.LOW, // allow other extensions to modify the message first

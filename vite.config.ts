@@ -35,6 +35,7 @@ const proxyRules = {
   '/api': { target: 'http://localhost:8000', changeOrigin: true },
   '/csrf-token': { target: 'http://localhost:8000', changeOrigin: true },
   '/thumbnail': { target: 'http://localhost:8000', changeOrigin: true },
+  '/user': { target: 'http://localhost:8000', changeOrigin: true },
   '/login-check': {
     target: 'http://localhost:8000',
     changeOrigin: true,
@@ -111,7 +112,14 @@ export default defineConfig(({ mode }) => {
         workbox: {
           skipWaiting: false,
           clientsClaim: false,
-          navigateFallbackDenylist: [/^\/api/, /^\/characters/, /^\/backgrounds/, /^\/personas/, /^\/login-check/],
+          navigateFallbackDenylist: [
+            /^\/api/,
+            /^\/characters/,
+            /^\/backgrounds/,
+            /^\/personas/,
+            /^\/login-check/,
+            /^\/user/,
+          ],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
           cleanupOutdatedCaches: true,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
