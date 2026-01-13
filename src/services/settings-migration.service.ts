@@ -46,8 +46,8 @@ export function createDefaultSettings(): Settings {
       selectedConnectionProfile: undefined,
       tokenizer: TokenizerType.AUTO,
       customPromptPostProcessing: CustomPromptPostProcessing.NONE,
-      inlineImageQuality: 'auto',
-      mediaInlining: true,
+      imageQuality: 'auto',
+      sendMedia: true,
       instructTemplateName: '',
     },
     character: {
@@ -399,8 +399,8 @@ export function migrateLegacyUserSettings(
       selectedConnectionProfile: legacy.extension_settings?.connectionManager?.selected,
       tokenizer: TokenizerType.AUTO,
       customPromptPostProcessing: oai.custom_prompt_post_processing ?? CustomPromptPostProcessing.NONE,
-      inlineImageQuality: 'auto', // TODO: Get from legacy
-      mediaInlining: true, // TODO: Get from legacy
+      imageQuality: 'auto', // TODO: Get from legacy
+      sendMedia: true, // TODO: Get from legacy
     },
     account: defaultAccountSettings,
     worldInfo: {

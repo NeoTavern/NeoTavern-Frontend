@@ -438,11 +438,11 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     let historyIdx = context.history.length - 1;
 
     let mediaTokenCost = 0;
-    const mediaInliningEnabled = settings.api.mediaInlining;
+    const mediaSendingEnabled = settings.api.sendMedia;
     const modelCapabilities = getModelCapabilities(effectiveProvider, effectiveModel, apiStore.modelList);
 
-    // Only attach media if formatter is not 'text' and media inlining is enabled
-    if (context.settings.formatter !== 'text' && mediaInliningEnabled) {
+    // Only attach media if formatter is not 'text' and media sending is enabled
+    if (context.settings.formatter !== 'text' && mediaSendingEnabled) {
       while (promptIdx >= 0 && historyIdx >= 0) {
         const pMsg = messages[promptIdx];
         const hMsg = context.history[historyIdx];
@@ -480,10 +480,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
                     type: 'image_url',
                     image_url: {
                       url: compressed,
-                      detail: settings.api.inlineImageQuality,
+                      detail: settings.api.imageQuality,
                     },
                   });
-                  mediaTokenCost += await getImageTokenCost(compressed, settings.api.inlineImageQuality);
+                  mediaTokenCost += await getImageTokenCost(compressed, settings.api.imageQuality);
                 } else if (
                   (mediaItem.type === 'video' && modelCapabilities.video) ||
                   (mediaItem.type === 'audio' && modelCapabilities.audio)

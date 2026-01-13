@@ -462,12 +462,12 @@
       "typicalP": "Typical P"
     },
     "media": {
-      "inlining": {
-        "label": "Send Inline Media",
-        "description": "Sends attached media in prompts if supported by the model."
+      "send": {
+        "label": "Send Media",
+        "description": "Sends media in prompts if supported by the model."
       },
       "imageQuality": {
-        "label": "Inline Image Quality",
+        "label": "Image Quality",
         "options": {
           "auto": "Auto",
           "low": "Low",

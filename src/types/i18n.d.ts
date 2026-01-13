@@ -465,7 +465,7 @@ export interface MessageSchema {
       typicalP: string;
     };
     media: {
-      inlining: {
+      send: {
         label: string;
         description: string;
       };

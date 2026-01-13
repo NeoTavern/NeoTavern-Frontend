@@ -177,13 +177,13 @@ export const aiConfigDefinition: AiConfigSection[] = [
     items: [
       { widget: 'hr' },
       {
-        id: 'api.mediaInlining',
+        id: 'api.sendMedia',
         widget: 'checkbox',
-        label: 'aiConfig.media.inlining.label',
-        description: 'aiConfig.media.inlining.description',
+        label: 'aiConfig.media.send.label',
+        description: 'aiConfig.media.send.description',
       },
       {
-        id: 'api.inlineImageQuality',
+        id: 'api.imageQuality',
         widget: 'select',
         label: 'aiConfig.media.imageQuality.label',
         options: [
