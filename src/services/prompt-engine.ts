@@ -12,7 +12,7 @@ import type {
   WorldInfoBook,
   WorldInfoSettings,
 } from '../types';
-import { eventEmitter } from '../utils/extensions';
+import { countTokens, eventEmitter } from '../utils/extensions';
 import { macroService } from './macro-service';
 import { WorldInfoProcessor } from './world-info';
 
@@ -83,23 +83,6 @@ export class PromptBuilder {
       characters: this.characters,
       persona: this.persona,
     });
-  }
-
-  /**
-   * Helper to safely count tokens for message content (string or array)
-   */
-  private async countTokens(content: string | unknown[]): Promise<number> {
-    if (typeof content === 'string') {
-      return await this.tokenizer.getTokenCount(content);
-    }
-    // For PromptBuilder initial phase, we assume content is string.
-    // If it were array (e.g. from extensions), we extract text parts.
-    if (Array.isArray(content)) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const text = content.map((p: any) => (p.type === 'text' ? p.text : '')).join('');
-      return await this.tokenizer.getTokenCount(text);
-    }
-    return 0;
   }
 
   public async build(): Promise<ApiChatMessage[]> {
@@ -235,7 +218,7 @@ export class PromptBuilder {
 
     for (const prompt of fixedPrompts) {
       if (prompt.content !== historyPlaceholder.content) {
-        currentTokenCount += await this.countTokens(prompt.content);
+        currentTokenCount += await countTokens(prompt.content, this.tokenizer);
       }
     }
 
@@ -247,7 +230,7 @@ export class PromptBuilder {
     const insertMessages = async (msgs: ApiChatMessage[]): Promise<boolean> => {
       for (let i = msgs.length - 1; i >= 0; i--) {
         const msg = msgs[i];
-        const tokenCount = await this.countTokens(msg.content);
+        const tokenCount = await countTokens(msg.content, this.tokenizer);
         if (historyTokenCount + tokenCount <= historyBudget) {
           historyTokenCount += tokenCount;
           historyMessages.unshift(msg);
@@ -306,7 +289,7 @@ export class PromptBuilder {
         chatLength: this.chatHistory.length,
       });
 
-      const msgTokenCount = await this.countTokens(apiMsg.content);
+      const msgTokenCount = await countTokens(apiMsg.content, this.tokenizer);
 
       if (historyTokenCount + msgTokenCount <= historyBudget) {
         historyTokenCount += msgTokenCount;

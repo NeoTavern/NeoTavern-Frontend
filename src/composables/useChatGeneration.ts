@@ -1,5 +1,10 @@
 import { computed, nextTick, ref, type Ref } from 'vue';
-import { buildChatCompletionPayload, ChatCompletionService, resolveConnectionProfileSettings } from '../api/generation';
+import {
+  buildChatCompletionPayload,
+  ChatCompletionService,
+  processMessagesWithPrefill,
+  resolveConnectionProfileSettings,
+} from '../api/generation';
 import { getModelCapabilities } from '../api/provider-definitions';
 import { ApiTokenizer } from '../api/tokenizer';
 import { CustomPromptPostProcessing, default_user_avatar, GenerationMode } from '../constants';
@@ -29,7 +34,7 @@ import {
 import { getThumbnailUrl } from '../utils/character';
 import { extractMediaFromMarkdown } from '../utils/chat';
 import { getMessageTimeStamp, uuidv4 } from '../utils/commons';
-import { eventEmitter } from '../utils/extensions';
+import { countTokens, eventEmitter } from '../utils/extensions';
 import { trimInstructResponse } from '../utils/instruct';
 import { compressImage, getImageTokenCost, getMediaDurationFromDataURL, isDataURL } from '../utils/media';
 import { useStrictI18n } from './useStrictI18n';
@@ -543,19 +548,9 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       });
     }
 
-    const promptTotalText = await Promise.all(
-      messages.map(async (m) => {
-        if (typeof m.content === 'string') return await tokenizer.getTokenCount(m.content);
-        if (Array.isArray(m.content)) {
-          const textParts = m.content
-            .filter((p) => p.type === 'text')
-            .map((p) => p.text || '')
-            .join('');
-          return await tokenizer.getTokenCount(textParts);
-        }
-        return 0;
-      }),
-    ).then((counts) => counts.reduce((a, b) => a + b, 0));
+    const promptTotalText = await Promise.all(messages.map(async (m) => await countTokens(m.content, tokenizer))).then(
+      (counts) => counts.reduce((a, b) => a + b, 0),
+    );
 
     const promptTotal = promptTotalText + mediaTokenCost;
 
@@ -573,14 +568,14 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         ...Object.values(processedWorldInfo.outletEntries).flat(),
       ];
       const fullWiText = parts.filter(Boolean).join('\n');
-      if (fullWiText) wiTokens = await tokenizer.getTokenCount(fullWiText);
+      if (fullWiText) wiTokens = await countTokens(fullWiText, tokenizer);
     }
 
-    const charDesc = await tokenizer.getTokenCount(activeCharacter.description || '');
-    const charPers = await tokenizer.getTokenCount(activeCharacter.personality || '');
-    const charScen = await tokenizer.getTokenCount(activeCharacter.scenario || '');
-    const charEx = await tokenizer.getTokenCount(activeCharacter.mes_example || '');
-    const personaDesc = await tokenizer.getTokenCount(activePersona.description || '');
+    const charDesc = await countTokens(activeCharacter.description || '', tokenizer);
+    const charPers = await countTokens(activeCharacter.personality || '', tokenizer);
+    const charScen = await countTokens(activeCharacter.scenario || '', tokenizer);
+    const charEx = await countTokens(activeCharacter.mes_example || '', tokenizer);
+    const personaDesc = await countTokens(activePersona.description || '', tokenizer);
 
     const breakdown: PromptTokenBreakdown = {
       systemTotal: 0,
@@ -599,15 +594,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     };
 
     for (const m of messages) {
-      let textContent = '';
-      if (typeof m.content === 'string') textContent = m.content;
-      else if (Array.isArray(m.content))
-        textContent = m.content
-          .filter((x) => x.type === 'text')
-          .map((x) => x.text)
-          .join('');
-
-      const count = await tokenizer.getTokenCount(textContent);
+      const count = await countTokens(m.content, tokenizer);
       if (m.role === 'system') breakdown.systemTotal += count;
       else breakdown.chatHistory += count;
     }
@@ -643,39 +630,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     let effectiveMessages = [...messages];
     if (postProcessing !== CustomPromptPostProcessing.NONE) {
       try {
-        const lastMsg = effectiveMessages.length > 0 ? effectiveMessages[effectiveMessages.length - 1] : null;
-        let isPrefill = false;
-
-        if (lastMsg && lastMsg.role === 'assistant') {
-          const contentStr =
-            typeof lastMsg.content === 'string'
-              ? lastMsg.content
-              : Array.isArray(lastMsg.content) &&
-                  lastMsg.content.length > 0 &&
-                  lastMsg.content[lastMsg.content.length - 1].type === 'text'
-                ? lastMsg.content[lastMsg.content.length - 1].text || ''
-                : '';
-          isPrefill = contentStr.trim().endsWith(':');
-        }
-
-        const lastPrefillMessage = isPrefill ? effectiveMessages.pop() : null;
-
-        effectiveMessages = await ChatCompletionService.formatMessages(effectiveMessages || [], postProcessing);
-
-        if (lastPrefillMessage) {
-          if (
-            typeof lastPrefillMessage.content === 'string' &&
-            !lastPrefillMessage.content.startsWith(`${lastPrefillMessage.name}: `)
-          ) {
-            lastPrefillMessage.content = `${lastPrefillMessage.name}: ${lastPrefillMessage.content}`;
-          } else if (Array.isArray(lastPrefillMessage.content)) {
-            const textPart = lastPrefillMessage.content.find((p) => p.type === 'text');
-            if (textPart && textPart.text && !textPart.text.startsWith(`${lastPrefillMessage.name}: `)) {
-              textPart.text = `${lastPrefillMessage.name}: ${textPart.text}`;
-            }
-          }
-          effectiveMessages.push(lastPrefillMessage);
-        }
+        effectiveMessages = await processMessagesWithPrefill(effectiveMessages, postProcessing);
       } catch (e) {
         console.error('Post-processing failed:', e);
         toast.error(t('chat.generate.postProcessError'));
@@ -753,7 +708,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       }
 
       const genFinished = new Date().toISOString();
-      const token_count = tokenCount ?? (await tokenizer.getTokenCount(finalContent));
+      const token_count = tokenCount ?? (await countTokens(finalContent, tokenizer));
 
       // Handle generated images from both payload and inline markdown
       const mediaItems: ChatMediaItem[] = [];
@@ -785,7 +740,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         lastMessage.mes += finalContent;
         lastMessage.gen_finished = genFinished;
         if (!lastMessage.extra) lastMessage.extra = {};
-        lastMessage.extra.token_count = await tokenizer.getTokenCount(lastMessage.mes);
+        lastMessage.extra.token_count = await countTokens(lastMessage.mes, tokenizer);
 
         const existingNonInline = lastMessage.extra.media?.filter((m) => m.source !== 'inline') ?? [];
         const newInline = extractMediaFromMarkdown(lastMessage.mes);
@@ -1068,7 +1023,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           if (!finalMessage.extra.media) delete finalMessage.extra.media;
 
           if (finalMessage.extra.token_count === undefined) {
-            finalMessage.extra.token_count = await tokenizer.getTokenCount(finalMessage.mes);
+            finalMessage.extra.token_count = await countTokens(finalMessage.mes, tokenizer);
           }
 
           const swipeInfo: SwipeInfo = {

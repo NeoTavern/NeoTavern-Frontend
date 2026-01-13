@@ -2,6 +2,7 @@ import * as Vue from 'vue';
 import { createVNode, render, type App } from 'vue';
 import { CustomPromptPostProcessing, EventPriority, GenerationMode, default_avatar } from '../constants';
 import type {
+  ApiChatContentPart,
   ApiChatMessage,
   ChatInfo,
   ChatMessage,
@@ -10,13 +11,19 @@ import type {
   ExtensionMetadata,
   MountableComponent,
   SettingsPath,
+  Tokenizer,
   WorldInfoBook,
 } from '../types';
 import { sanitizeSelector } from './client';
 import { formatFileSize, getMessageTimeStamp, uuidv4 } from './commons';
 
 // Internal Store Imports
-import { ChatCompletionService, buildChatCompletionPayload, resolveConnectionProfileSettings } from '../api/generation';
+import {
+  ChatCompletionService,
+  buildChatCompletionPayload,
+  processMessagesWithPrefill,
+  resolveConnectionProfileSettings,
+} from '../api/generation';
 import { toast } from '../composables/useToast';
 import { chatService } from '../services/chat.service';
 import { useApiStore } from '../stores/api.store';
@@ -43,6 +50,33 @@ import { useLayoutStore } from '../stores/layout.store';
 import { useWorldInfoUiStore } from '../stores/world-info-ui.store';
 import type { LlmGenerationOptions, TextareaToolDefinition } from '../types/ExtensionAPI';
 import type { CodeMirrorTarget } from '../types/settings';
+
+/**
+ * A centralized utility to count tokens for message content (string or array of parts).
+ * This correctly handles both simple string content and complex content with text and media.
+ * @param content The content to tokenize.
+ * @param tokenizer The tokenizer instance to use.
+ * @returns The number of tokens in the text parts of the content.
+ */
+export async function countTokens(
+  content: string | ApiChatContentPart[] | unknown,
+  tokenizer: Tokenizer,
+): Promise<number> {
+  if (typeof content === 'string') {
+    return await tokenizer.getTokenCount(content);
+  }
+
+  if (Array.isArray(content)) {
+    // It's an array of content parts (e.g. text and images), count only text parts.
+    const textContent = content
+      .filter((part): part is ApiChatContentPart & { type: 'text' } => part.type === 'text')
+      .map((part) => part.text || '')
+      .join('');
+    return await tokenizer.getTokenCount(textContent);
+  }
+
+  return 0;
+}
 
 // --- Event Emitter ---
 
@@ -624,16 +658,8 @@ const baseExtensionAPI: ExtensionAPI = {
 
       // Apply custom prompt post-processing if defined in profile
       let processedMessages = [...messages];
-      if (customPromptPostProcessing !== undefined && customPromptPostProcessing !== CustomPromptPostProcessing.NONE) {
-        const isPrefill = messages.length > 1 ? messages[messages.length - 1].role === 'assistant' : false;
-        const lastPrefillMessage = isPrefill ? processedMessages.pop() : null;
-        processedMessages = await ChatCompletionService.formatMessages(processedMessages, customPromptPostProcessing);
-        if (lastPrefillMessage) {
-          if (!lastPrefillMessage.content.startsWith(`${lastPrefillMessage.name}: `)) {
-            lastPrefillMessage.content = `${lastPrefillMessage.name}: ${lastPrefillMessage.content}`;
-          }
-          processedMessages.push(lastPrefillMessage);
-        }
+      if (customPromptPostProcessing && customPromptPostProcessing !== CustomPromptPostProcessing.NONE) {
+        processedMessages = await processMessagesWithPrefill(processedMessages, customPromptPostProcessing);
 
         // Add stop sequences for character and persona names
         if (!samplerSettings?.stop) samplerSettings.stop = [];
@@ -670,10 +696,10 @@ const baseExtensionAPI: ExtensionAPI = {
       try {
         if (payload.messages) {
           for (const msg of payload.messages) {
-            inputTokens += await tokenizer.getTokenCount(msg.content);
+            inputTokens += await countTokens(msg.content, tokenizer);
           }
         } else if (payload.prompt) {
-          inputTokens = await tokenizer.getTokenCount(payload.prompt);
+          inputTokens = await countTokens(payload.prompt, tokenizer);
         }
       } catch (err) {
         console.warn('[ExtensionAPI] Failed to count input tokens for tracking:', err);
