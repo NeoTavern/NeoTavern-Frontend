@@ -30,6 +30,9 @@ export const api_providers = {
 } as const;
 
 export type ApiProvider = (typeof api_providers)[keyof typeof api_providers];
+export type ModelCapability = 'vision' | 'video' | 'audio';
+
+export type ModelCapabilities = Record<ModelCapability, boolean>;
 
 export interface ConnectionProfile {
   id: string;
@@ -55,6 +58,7 @@ export interface ApiModel {
 export interface AiConfigCondition {
   provider?: ApiProvider | ApiProvider[];
   formatter?: ApiFormatter | ApiFormatter[];
+  capability?: ModelCapability | ModelCapability[];
 }
 
 /**

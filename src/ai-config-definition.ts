@@ -171,25 +171,7 @@ export const aiConfigDefinition: AiConfigSection[] = [
     id: 'media-settings',
     conditions: [
       {
-        provider: [
-          'openai',
-          'aimlapi',
-          'openrouter',
-          'mistralai',
-          'makersuite',
-          'vertexai',
-          'claude',
-          'custom',
-          'xai',
-          'pollinations',
-          'moonshot',
-          'cohere',
-          'cometapi',
-          'nanogpt',
-          'electronhub',
-          'azure_openai',
-          'zai',
-        ],
+        capability: 'vision',
       },
     ],
     items: [

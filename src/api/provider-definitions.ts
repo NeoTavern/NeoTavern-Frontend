@@ -1,6 +1,6 @@
 import YAML from 'yaml';
 import { ReasoningEffort } from '../constants';
-import type { ApiModel, ApiProvider, ChatCompletionPayload, StreamedChunk } from '../types';
+import type { ApiModel, ApiProvider, ChatCompletionPayload, ModelCapability, StreamedChunk } from '../types';
 import { api_providers } from '../types';
 import type { BuildChatCompletionPayloadOptions } from '../types/generation';
 import type { ApiFormatter, SamplerSettings } from '../types/settings';
@@ -226,17 +226,35 @@ const audioSupportedModels = [
   'gemini-exp-1206',
 ];
 
-export function isImageInliningSupported(provider: ApiProvider, modelId: string, modelList?: ApiModel[]): boolean {
-  if (!modelId) return false;
+export interface ModelCapabilities {
+  vision: boolean;
+  video: boolean;
+  audio: boolean;
+}
+
+export function getModelCapabilities(
+  provider: ApiProvider,
+  modelId: string,
+  modelList?: ApiModel[],
+): ModelCapabilities {
+  const capabilities: ModelCapabilities = {
+    vision: false,
+    video: false,
+    audio: false,
+  };
+
+  if (!modelId) return capabilities;
+
   const currentModel = modelList?.find((m) => m.id === modelId);
 
+  // Vision Capability
   switch (provider) {
     case api_providers.OPENAI:
     case api_providers.AZURE_OPENAI:
-      return (
+      capabilities.vision =
         visionSupportedModels.some((m) => modelId.includes(m)) &&
-        !visionUnsupportedModels.some((m) => modelId.includes(m))
-      );
+        !visionUnsupportedModels.some((m) => modelId.includes(m));
+      break;
     case api_providers.MAKERSUITE:
     case api_providers.VERTEXAI:
     case api_providers.CLAUDE:
@@ -244,59 +262,69 @@ export function isImageInliningSupported(provider: ApiProvider, modelId: string,
     case api_providers.XAI:
     case api_providers.MOONSHOT:
     case api_providers.ZAI:
-      return visionSupportedModels.some((m) => modelId.includes(m));
+      capabilities.vision = visionSupportedModels.some((m) => modelId.includes(m));
+      break;
     case api_providers.OPENROUTER:
-      return !!currentModel?.architecture?.input_modalities?.includes('image');
+      capabilities.vision = !!currentModel?.architecture?.input_modalities?.includes('image');
+      break;
     case api_providers.MISTRALAI:
-      return !!currentModel?.capabilities?.vision;
+      capabilities.vision = !!currentModel?.capabilities?.vision;
+      break;
     case api_providers.AIMLAPI:
-      return !!currentModel?.features?.includes('openai/chat-completion.vision');
+      capabilities.vision = !!currentModel?.features?.includes('openai/chat-completion.vision');
+      break;
     case api_providers.ELECTRONHUB:
-      return !!currentModel?.metadata?.vision;
+      capabilities.vision = !!currentModel?.metadata?.vision;
+      break;
     case api_providers.POLLINATIONS:
-      return !!currentModel?.vision;
+      capabilities.vision = !!currentModel?.vision;
+      break;
     case api_providers.NANOGPT:
-      return !!currentModel?.capabilities?.vision;
+      capabilities.vision = !!currentModel?.capabilities?.vision;
+      break;
     case api_providers.CUSTOM:
     case api_providers.COMETAPI:
-      return true;
-    default:
-      return false;
+      capabilities.vision = true;
+      break;
   }
-}
 
-export function isVideoInliningSupported(provider: ApiProvider, modelId: string, modelList?: ApiModel[]): boolean {
-  if (!modelId) return false;
-  const currentModel = modelList?.find((m) => m.id === modelId);
-
+  // Video Capability
   switch (provider) {
     case api_providers.MAKERSUITE:
     case api_providers.VERTEXAI:
     case api_providers.ZAI:
-      return videoSupportedModels.some((m) => modelId.includes(m));
+      capabilities.video = videoSupportedModels.some((m) => modelId.includes(m));
+      break;
     case api_providers.OPENROUTER:
-      return !!currentModel?.architecture?.input_modalities?.includes('video');
-    default:
-      return false;
+      capabilities.video = !!currentModel?.architecture?.input_modalities?.includes('video');
+      break;
   }
-}
 
-export function isAudioInliningSupported(provider: ApiProvider, modelId: string, modelList?: ApiModel[]): boolean {
-  if (!modelId) return false;
-  const currentModel = modelList?.find((m) => m.id === modelId);
-
+  // Audio Capability
   switch (provider) {
     case api_providers.OPENAI:
     case api_providers.MAKERSUITE:
     case api_providers.VERTEXAI:
-      return audioSupportedModels.some((m) => modelId.includes(m));
+      capabilities.audio = audioSupportedModels.some((m) => modelId.includes(m));
+      break;
     case api_providers.OPENROUTER:
-      return !!currentModel?.architecture?.input_modalities?.includes('audio');
+      capabilities.audio = !!currentModel?.architecture?.input_modalities?.includes('audio');
+      break;
     case api_providers.CUSTOM:
-      return true;
-    default:
-      return false;
+      capabilities.audio = true;
+      break;
   }
+
+  return capabilities;
+}
+
+export function isCapabilitySupported(
+  capability: ModelCapability,
+  provider: ApiProvider,
+  modelId: string,
+  modelList?: ApiModel[],
+): boolean {
+  return getModelCapabilities(provider, modelId, modelList)[capability];
 }
 
 // --- Response Handlers ---

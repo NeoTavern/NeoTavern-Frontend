@@ -2,9 +2,10 @@
 import { computed, ref } from 'vue';
 import { aiConfigDefinition } from '../../ai-config-definition';
 import { Tabs } from '../../components/UI';
+import { useModelCapabilities } from '../../composables/useModelCapabilities';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
-import type { AiConfigCondition } from '../../types';
+import type { AiConfigCondition, ModelCapability } from '../../types';
 import AiConfigItemRenderer from '../AiConfig/AiConfigItemRenderer.vue';
 import PromptManager from '../AiConfig/PromptManager.vue';
 import { SidebarHeader } from '../common';
@@ -12,6 +13,7 @@ import ApiConnectionsDrawer from './ApiConnectionsDrawer.vue';
 
 const { t } = useStrictI18n();
 const settingsStore = useSettingsStore();
+const { capabilities } = useModelCapabilities();
 
 const activeTab = ref<'connections' | 'sampler' | 'prompts'>('connections');
 
@@ -22,7 +24,7 @@ function checkConditions(conditions?: AiConfigCondition | AiConfigCondition[]): 
   // OR Logic: If ANY condition object in the list matches, return true.
   return conditionsList.some((cond) => {
     // AND Logic within object
-    const { provider, formatter } = cond;
+    const { provider, formatter, capability } = cond;
 
     if (provider) {
       const providers = Array.isArray(provider) ? provider : [provider];
@@ -34,6 +36,12 @@ function checkConditions(conditions?: AiConfigCondition | AiConfigCondition[]): 
       const formatters = Array.isArray(formatter) ? formatter : [formatter];
       const current = settingsStore.settings.api.formatter;
       if (!current || !formatters.includes(current)) return false;
+    }
+
+    if (capability) {
+      const capabilitiesArr = Array.isArray(capability) ? capability : [capability];
+      const hasAllRequired = capabilitiesArr.every((c: ModelCapability) => capabilities.value[c]);
+      if (!hasAllRequired) return false;
     }
 
     return true;
@@ -57,6 +65,9 @@ const sectionsFromPostProcessing = computed(() => {
   if (ppIndex === -1) return [];
   return sections.slice(ppIndex);
 });
+
+const provider = computed(() => settingsStore.settings.api.provider);
+const formatter = computed(() => settingsStore.settings.api.formatter);
 </script>
 
 <template>
@@ -96,13 +107,23 @@ const sectionsFromPostProcessing = computed(() => {
 
         <template v-for="section in sectionsBeforePostProcessing" :key="section.id">
           <div v-for="item in section.items" :key="item.id || item.widget" class="ai-config-drawer-item">
-            <AiConfigItemRenderer :item="item" />
+            <AiConfigItemRenderer
+              :item="item"
+              :provider="provider"
+              :formatter="formatter"
+              :capabilities="capabilities"
+            />
           </div>
         </template>
 
         <template v-for="section in sectionsFromPostProcessing" :key="section.id">
           <div v-for="item in section.items" :key="item.id || item.widget" class="ai-config-drawer-item">
-            <AiConfigItemRenderer :item="item" />
+            <AiConfigItemRenderer
+              :item="item"
+              :provider="provider"
+              :formatter="formatter"
+              :capabilities="capabilities"
+            />
           </div>
         </template>
       </div>

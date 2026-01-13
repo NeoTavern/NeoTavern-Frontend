@@ -661,6 +661,11 @@
       "metadataError": "Failed to read media metadata.",
       "tooLarge": "File '{name}' is too large.",
       "unsupportedType": "Unsupported file type: {type}",
+      "notSupported": "Media uploads not supported by this model",
+      "unsupportedVision": "The current model does not support image uploads.",
+      "unsupportedVideo": "The current model does not support video uploads.",
+      "unsupportedAudio": "The current model does not support audio uploads.",
+      "dropFiles": "Drop files here to upload",
       "uploadError": "Failed to upload media.",
       "attach": "Upload Media"
     }

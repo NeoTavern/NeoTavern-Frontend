@@ -1,10 +1,6 @@
 import { computed, nextTick, ref, type Ref } from 'vue';
 import { buildChatCompletionPayload, ChatCompletionService, resolveConnectionProfileSettings } from '../api/generation';
-import {
-  isAudioInliningSupported,
-  isImageInliningSupported,
-  isVideoInliningSupported,
-} from '../api/provider-definitions';
+import { getModelCapabilities } from '../api/provider-definitions';
 import { ApiTokenizer } from '../api/tokenizer';
 import { CustomPromptPostProcessing, default_user_avatar, GenerationMode } from '../constants';
 import { PromptBuilder } from '../services/prompt-engine';
@@ -434,6 +430,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
     let mediaTokenCost = 0;
     const mediaInliningEnabled = settings.api.mediaInlining;
+    const modelCapabilities = getModelCapabilities(effectiveProvider, effectiveModel, apiStore.modelList);
 
     // Only attach media if formatter is not 'text' and media inlining is enabled
     if (context.settings.formatter !== 'text' && mediaInliningEnabled) {
@@ -478,10 +475,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
                   }
                 }
 
-                if (
-                  mediaItem.type === 'image' &&
-                  isImageInliningSupported(effectiveProvider, effectiveModel, apiStore.modelList)
-                ) {
+                if (mediaItem.type === 'image' && modelCapabilities.vision) {
                   const compressed = await compressImage(dataUrl);
                   contentParts.push({
                     type: 'image_url',
@@ -491,16 +485,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
                     },
                   });
                   mediaTokenCost += await getImageTokenCost(compressed, settings.api.inlineImageQuality);
-                } else if (
-                  mediaItem.type === 'video' &&
-                  isVideoInliningSupported(effectiveProvider, effectiveModel, apiStore.modelList)
-                ) {
+                } else if (mediaItem.type === 'video' && modelCapabilities.video) {
                   contentParts.push({ type: 'video_url', video_url: { url: dataUrl } });
                   mediaTokenCost += 263 * Math.ceil(await getMediaDurationFromDataURL(dataUrl, 'video'));
-                } else if (
-                  mediaItem.type === 'audio' &&
-                  isAudioInliningSupported(effectiveProvider, effectiveModel, apiStore.modelList)
-                ) {
+                } else if (mediaItem.type === 'audio' && modelCapabilities.audio) {
                   contentParts.push({ type: 'audio_url', audio_url: { url: dataUrl } });
                   mediaTokenCost += 32 * Math.ceil(await getMediaDurationFromDataURL(dataUrl, 'audio'));
                 }

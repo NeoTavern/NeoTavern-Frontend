@@ -664,6 +664,11 @@ export interface MessageSchema {
       metadataError: string;
       tooLarge: string;
       unsupportedType: string;
+      notSupported: string;
+      unsupportedVision: string;
+      unsupportedVideo: string;
+      unsupportedAudio: string;
+      dropFiles: string;
       uploadError: string;
       attach: string;
     };

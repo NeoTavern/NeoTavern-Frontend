@@ -4,7 +4,14 @@ import { useStrictI18n } from '../../composables/useStrictI18n';
 import { usePopupStore } from '../../stores/popup.store';
 import { useSecretStore } from '../../stores/secret.store';
 import { useSettingsStore } from '../../stores/settings.store';
-import type { AiConfigItem, AiConfigValueItem, ApiProvider } from '../../types';
+import type {
+  AiConfigItem,
+  AiConfigValueItem,
+  ApiFormatter,
+  ApiProvider,
+  ModelCapabilities,
+  ModelCapability,
+} from '../../types';
 import type { I18nKey } from '../../types/i18n';
 import { DraggableList } from '../common';
 import SecretManagerPopup from '../Secrets/SecretManager.vue';
@@ -25,6 +32,9 @@ import PresetManager from './PresetManager.vue';
 
 const props = defineProps<{
   item: AiConfigItem;
+  provider: ApiProvider;
+  formatter: ApiFormatter;
+  capabilities: ModelCapabilities;
 }>();
 
 const settingsStore = useSettingsStore();
@@ -40,18 +50,24 @@ const isVisible = computed(() => {
   // OR Logic: If ANY condition object in the list matches, return true.
   return conditionsList.some((cond) => {
     // AND Logic within object
-    const { provider, formatter } = cond;
+    const { provider, formatter, capability } = cond;
 
     if (provider) {
       const providers = Array.isArray(provider) ? provider : [provider];
-      const current = settingsStore.settings.api.provider;
+      const current = props.provider;
       if (!current || !providers.includes(current)) return false;
     }
 
     if (formatter) {
       const formatters = Array.isArray(formatter) ? formatter : [formatter];
-      const current = settingsStore.settings.api.formatter;
+      const current = props.formatter;
       if (!current || !formatters.includes(current)) return false;
+    }
+
+    if (capability) {
+      const capabilities = Array.isArray(capability) ? capability : [capability];
+      const hasAllRequired = capabilities.every((c: ModelCapability) => props.capabilities[c]);
+      if (!hasAllRequired) return false;
     }
 
     return true;
@@ -61,7 +77,7 @@ const isVisible = computed(() => {
 // Group Enable/Disable Logic
 function isGroupDisabled(groupId?: string): boolean {
   if (!groupId) return false;
-  const provider = settingsStore.settings.api.provider;
+  const provider = props.provider;
   if (!provider) return false;
 
   const disabledMap = settingsStore.settings.api.samplers.providers.disabled_fields;
@@ -74,7 +90,7 @@ function isGroupDisabled(groupId?: string): boolean {
 }
 
 function toggleGroupEnabled(groupId: string, enabled: boolean) {
-  const provider = settingsStore.settings.api.provider;
+  const provider = props.provider;
   if (!provider) return;
 
   const samplers = settingsStore.settings.api.samplers;
@@ -186,7 +202,15 @@ function openSecretManager() {
           </FormItem>
         </template>
         <div :class="{ 'is-disabled-group': item.id && isGroupDisabled(item.id) }">
-          <AiConfigItemRenderer v-for="(subItem, idx) in item.items" :key="idx" :item="subItem" class="sub-item" />
+          <AiConfigItemRenderer
+            v-for="(subItem, idx) in item.items"
+            :key="idx"
+            :item="subItem"
+            :provider="provider"
+            :formatter="formatter"
+            :capabilities="capabilities"
+            class="sub-item"
+          />
         </div>
       </CollapsibleSection>
     </template>
