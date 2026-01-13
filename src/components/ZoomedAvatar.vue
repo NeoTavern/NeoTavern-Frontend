@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PropType } from 'vue';
-import { onMounted, ref } from 'vue';
+import { computed, isRef, onMounted, ref } from 'vue';
 import { useDraggable } from '../composables/useDraggable';
 import { useUiStore } from '../stores/ui.store';
 import type { ZoomedAvatar } from '../types';
@@ -16,6 +16,11 @@ const uiStore = useUiStore();
 
 const zoomedAvatarEl = ref<HTMLElement | null>(null);
 const dragHandleEl = ref<HTMLElement | null>(null);
+
+const normalizedTools = computed(() => {
+  if (!props.avatar.tools) return [];
+  return isRef(props.avatar.tools) ? props.avatar.tools.value : props.avatar.tools;
+});
 
 useDraggable(zoomedAvatarEl, dragHandleEl);
 
@@ -36,6 +41,14 @@ onMounted(() => {
 <template>
   <div ref="zoomedAvatarEl" class="zoomed-avatar">
     <div class="panel-control-bar">
+      <div
+        v-for="tool in normalizedTools"
+        :key="tool.id"
+        class="tool-icon fa-fw"
+        :class="`fa-solid fa-${tool.icon}`"
+        :title="tool.title"
+        @click="tool.onClick"
+      />
       <div ref="dragHandleEl" class="fa-fw fa-solid fa-grip drag-grabber"></div>
       <div class="fa-fw fa-solid fa-circle-xmark drag-close" @click="close"></div>
     </div>

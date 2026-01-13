@@ -17,7 +17,7 @@ import {
   type FullChat,
 } from '../types';
 import { getCharacterDifferences } from '../utils/character';
-import { getFirstMessage } from '../utils/chat';
+import { extractMediaFromMarkdown, getFirstMessage } from '../utils/chat';
 import { downloadFile, formatFileSize, getMessageTimeStamp, uuidv4 } from '../utils/commons';
 import { eventEmitter } from '../utils/extensions';
 import { useCharacterStore } from './character.store';
@@ -432,6 +432,16 @@ export const useChatStore = defineStore('chat', () => {
       if (message.extra) {
         delete message.extra.display_text;
         delete message.extra.reasoning_display_text;
+      }
+
+      const existingNonInlineMedia = message.extra?.media?.filter((item) => item.source !== 'inline') ?? [];
+      const newInlineMedia = extractMediaFromMarkdown(newContent);
+      const allMedia = [...existingNonInlineMedia, ...newInlineMedia];
+
+      if (!message.extra) message.extra = {};
+      message.extra.media = allMedia.length > 0 ? allMedia : undefined;
+      if (message.extra.media === undefined) {
+        delete message.extra.media;
       }
 
       if (typeof newReasoning === 'string' && newReasoning.trim() !== '') {

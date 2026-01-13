@@ -1,8 +1,24 @@
+import type { Ref } from 'vue';
+
 export interface ChatMediaItem {
-  source: 'upload' | 'url';
+  source: 'upload' | 'url' | 'inline';
   type: 'image' | 'video' | 'audio';
   url: string;
   title?: string;
+}
+
+export interface ZoomedAvatarTool {
+  id: string;
+  icon: string;
+  title: string;
+  onClick: () => void;
+}
+
+export interface ZoomedAvatar {
+  id: string;
+  src: string;
+  charName: string;
+  tools?: Ref<ZoomedAvatarTool[]> | ZoomedAvatarTool[];
 }
 
 export interface ChatMetadata {
@@ -57,6 +73,7 @@ export interface ChatMessage {
     reasoning_display_text?: string;
     token_count?: number;
     media?: ChatMediaItem[];
+    ignored_media?: string[];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } & Record<string, any>;
 }

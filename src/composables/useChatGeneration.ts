@@ -27,6 +27,7 @@ import {
   type WorldInfoBook,
 } from '../types';
 import { getThumbnailUrl } from '../utils/character';
+import { extractMediaFromMarkdown } from '../utils/chat';
 import { getMessageTimeStamp, uuidv4 } from '../utils/commons';
 import { eventEmitter } from '../utils/extensions';
 import { trimInstructResponse } from '../utils/instruct';
@@ -104,6 +105,9 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
     const currentChatContext = deps.activeChat.value;
 
+    const inlineMedia = extractMediaFromMarkdown(messageText);
+    const allMedia = [...media, ...inlineMedia];
+
     const userMessage: ChatMessage = {
       name: uiStore.activePlayerName || 'User',
       is_user: true,
@@ -113,7 +117,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       original_avatar: personaStore.activePersona.avatarId,
       is_system: false,
       extra: {
-        media: media.length > 0 ? media : undefined,
+        media: allMedia.length > 0 ? allMedia : undefined,
       },
       swipe_id: 0,
       swipes: [messageText.trim()],
@@ -453,15 +457,33 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
               contentParts.push(...pMsg.content);
             }
 
+            const ignoredMedia = hMsg.extra.ignored_media ?? [];
             for (const mediaItem of hMsg.extra.media) {
+              // Skip ignored media items
+              if (
+                ignoredMedia.includes(mediaItem.url) ||
+                (mediaItem.source === 'inline' && settingsStore.settings.ui.chat.forbidExternalMedia)
+              ) {
+                continue;
+              }
+
               try {
                 let dataUrl = mediaItem.url;
-                const isLocalUpload = mediaItem.source === 'upload' && !isDataURL(dataUrl);
-                const isRemoteUrl = mediaItem.source === 'url' && !isDataURL(dataUrl);
-
-                if (isLocalUpload || isRemoteUrl) {
-                  // Fetch and convert to base64 if it's a relative path or a remote URL we need to inline
-                  if (dataUrl.startsWith('/') || isLocalUpload) {
+                if (mediaItem.type === 'image' && modelCapabilities.vision) {
+                  const compressed = await compressImage(dataUrl);
+                  contentParts.push({
+                    type: 'image_url',
+                    image_url: {
+                      url: compressed,
+                      detail: settings.api.inlineImageQuality,
+                    },
+                  });
+                  mediaTokenCost += await getImageTokenCost(compressed, settings.api.inlineImageQuality);
+                } else if (
+                  (mediaItem.type === 'video' && modelCapabilities.video) ||
+                  (mediaItem.type === 'audio' && modelCapabilities.audio)
+                ) {
+                  if (!isDataURL(dataUrl)) {
                     const response = await fetch(dataUrl);
                     if (response.ok) {
                       const blob = await response.blob();
@@ -473,24 +495,14 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
                       });
                     }
                   }
-                }
 
-                if (mediaItem.type === 'image' && modelCapabilities.vision) {
-                  const compressed = await compressImage(dataUrl);
-                  contentParts.push({
-                    type: 'image_url',
-                    image_url: {
-                      url: compressed,
-                      detail: settings.api.inlineImageQuality,
-                    },
-                  });
-                  mediaTokenCost += await getImageTokenCost(compressed, settings.api.inlineImageQuality);
-                } else if (mediaItem.type === 'video' && modelCapabilities.video) {
-                  contentParts.push({ type: 'video_url', video_url: { url: dataUrl } });
-                  mediaTokenCost += 263 * Math.ceil(await getMediaDurationFromDataURL(dataUrl, 'video'));
-                } else if (mediaItem.type === 'audio' && modelCapabilities.audio) {
-                  contentParts.push({ type: 'audio_url', audio_url: { url: dataUrl } });
-                  mediaTokenCost += 32 * Math.ceil(await getMediaDurationFromDataURL(dataUrl, 'audio'));
+                  if (mediaItem.type === 'video') {
+                    contentParts.push({ type: 'video_url', video_url: { url: dataUrl } });
+                    mediaTokenCost += 263 * Math.ceil(await getMediaDurationFromDataURL(dataUrl, 'video'));
+                  } else {
+                    contentParts.push({ type: 'audio_url', audio_url: { url: dataUrl } });
+                    mediaTokenCost += 32 * Math.ceil(await getMediaDurationFromDataURL(dataUrl, 'audio'));
+                  }
                 }
               } catch (e) {
                 console.error('Failed to process media item:', e);
@@ -743,19 +755,23 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       const genFinished = new Date().toISOString();
       const token_count = tokenCount ?? (await tokenizer.getTokenCount(finalContent));
 
-      // Handle generated images
-      let mediaItems: ChatMediaItem[] = [];
+      // Handle generated images from both payload and inline markdown
+      const mediaItems: ChatMediaItem[] = [];
       if (images && images.length > 0) {
-        mediaItems = images.map(
-          (url) =>
-            ({
-              source: 'url',
-              type: 'image',
-              url: url,
-              title: 'Generated Image',
-            }) as ChatMediaItem,
+        mediaItems.push(
+          ...images.map(
+            (url) =>
+              ({
+                source: 'url',
+                type: 'image',
+                url: url,
+                title: 'Generated Image',
+              }) as ChatMediaItem,
+          ),
         );
       }
+      const inlineMedia = extractMediaFromMarkdown(finalContent);
+      mediaItems.push(...inlineMedia);
 
       const swipeInfo: SwipeInfo = {
         send_date: getMessageTimeStamp(),
@@ -770,10 +786,12 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         lastMessage.gen_finished = genFinished;
         if (!lastMessage.extra) lastMessage.extra = {};
         lastMessage.extra.token_count = await tokenizer.getTokenCount(lastMessage.mes);
-        if (mediaItems.length > 0) {
-          if (!lastMessage.extra.media) lastMessage.extra.media = [];
-          lastMessage.extra.media.push(...mediaItems);
-        }
+
+        const existingNonInline = lastMessage.extra.media?.filter((m) => m.source !== 'inline') ?? [];
+        const newInline = extractMediaFromMarkdown(lastMessage.mes);
+        lastMessage.extra.media = [...existingNonInline, ...newInline];
+        if (lastMessage.extra.media.length === 0) delete lastMessage.extra.media;
+
         if (
           lastMessage.swipes &&
           lastMessage.swipe_id !== undefined &&
@@ -1028,9 +1046,11 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           finalMessage.gen_finished = new Date().toISOString();
           if (!finalMessage.extra) finalMessage.extra = {};
 
+          const existingNonInline = finalMessage.extra.media?.filter((m) => m.source !== 'inline') ?? [];
+          const inlineMedia = extractMediaFromMarkdown(finalMessage.mes);
+
           if (streamImages.length > 0) {
-            if (!finalMessage.extra.media) finalMessage.extra.media = [];
-            finalMessage.extra.media.push(
+            existingNonInline.push(
               ...streamImages.map(
                 (url) =>
                   ({
@@ -1042,6 +1062,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
               ),
             );
           }
+
+          const allMedia = [...existingNonInline, ...inlineMedia];
+          finalMessage.extra.media = allMedia.length > 0 ? allMedia : undefined;
+          if (!finalMessage.extra.media) delete finalMessage.extra.media;
 
           if (finalMessage.extra.token_count === undefined) {
             finalMessage.extra.token_count = await tokenizer.getTokenCount(finalMessage.mes);

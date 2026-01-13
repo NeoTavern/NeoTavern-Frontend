@@ -15,13 +15,13 @@
   max-height: 90vh;
   display: flex;
   align-items: flex-start;
-  z-index: var(--z-modal);
+  z-index: calc(var(--z-toast) - 5);
 
   .panel-control-bar {
     position: absolute;
     right: 5px;
     top: 5px;
-    z-index: var(--z-tooltip); // Above the image
+    z-index: calc(var(--z-toast) - 4); // Above the image
     min-width: 55px;
     display: flex;
     justify-content: flex-end;
@@ -35,6 +35,7 @@
       }
     }
 
+    .tool-icon,
     .drag-close {
       cursor: pointer;
       height: 15px;

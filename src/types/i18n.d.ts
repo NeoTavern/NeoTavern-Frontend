@@ -606,6 +606,8 @@ export interface MessageSchema {
       itemization: string;
       showInPrompt: string;
       hideFromPrompt: string;
+      ignoreImage: string;
+      unignoreImage: string;
     };
     delete: {
       confirmTitle: string;

@@ -602,7 +602,9 @@
       "swipeRight": "Next swipe",
       "itemization": "Prompt Itemization",
       "showInPrompt": "Include message in prompt",
-      "hideFromPrompt": "Hide message from prompt"
+      "hideFromPrompt": "Hide message from prompt",
+      "ignoreImage": "Ignore image in prompt",
+      "unignoreImage": "Include image in prompt"
     },
     "delete": {
       "confirmTitle": "Confirm Deletion",

@@ -46,6 +46,18 @@ export function calculateThumbnailSize(
 }
 
 /**
+ * Helper to convert Blob to Data URL.
+ */
+function blobToDataURL(blob: Blob): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+/**
  * Creates a thumbnail from a data URL.
  */
 export function createThumbnail(
@@ -91,29 +103,52 @@ export function createThumbnail(
 
 /**
  * Compress an image if it exceeds the size threshold or has an unsafe mime type.
- * @param image Data URL of the image.
+ * Can handle both Data URLs and remote URLs.
+ * @param image Data URL or remote URL of the image.
  * @param forceResize If true, forces resize regardless of size.
  * @param maxSizeThreshold Bytes threshold (default 2MB).
+ * @returns A Data URL of the (potentially compressed) image.
  */
 export async function compressImage(
   image: string,
   forceResize = false,
   maxSizeThreshold = 2 * 1024 * 1024,
 ): Promise<string> {
-  // Approximate size calculation for Base64 (3/4 of string length)
-  const dataSize = image.length * 0.75;
   const safeMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
-  const mimeType = image.split(';')?.[0]?.split(':')?.[1];
 
-  // If we need to compress due to size or unsafe type
-  if (forceResize || dataSize > maxSizeThreshold || (mimeType && !safeMimeTypes.includes(mimeType))) {
-    const maxSide = 2048;
-    // createThumbnail handles the resizing and conversion to jpeg if type not specified (defaults to image/jpeg)
-    // If original was transparent png, it becomes white background jpeg which is usually safer for LLMs
-    return await createThumbnail(image, maxSide, maxSide);
+  if (isDataURL(image)) {
+    const dataSize = image.length * 0.75; // Approximate size
+    const mimeType = image.split(';')?.[0]?.split(':')?.[1];
+
+    if (forceResize || dataSize > maxSizeThreshold || (mimeType && !safeMimeTypes.includes(mimeType))) {
+      const maxSide = 2048;
+      return await createThumbnail(image, maxSide, maxSide);
+    }
+    return image;
   }
 
-  return image;
+  // Handle remote URL
+  try {
+    const response = await fetch(image);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.statusText}`);
+    }
+    const blob = await response.blob();
+    const dataSize = blob.size;
+    const mimeType = blob.type;
+
+    if (forceResize || dataSize > maxSizeThreshold || (mimeType && !safeMimeTypes.includes(mimeType))) {
+      const dataUrl = await blobToDataURL(blob);
+      const maxSide = 2048;
+      return await createThumbnail(dataUrl, maxSide, maxSide);
+    }
+
+    // No compression needed, but we must return a Data URL
+    return await blobToDataURL(blob);
+  } catch (e) {
+    console.error(`Error processing image from URL: ${image}`, e);
+    throw e;
+  }
 }
 
 /**

@@ -1,8 +1,8 @@
 import DOMPurify, { type Config } from 'dompurify';
 import hljs from 'highlight.js';
-import { Marked, type TokenizerAndRendererExtension } from 'marked';
+import { Marked, type Token, type TokenizerAndRendererExtension } from 'marked';
 import { macroService, type MacroContextData } from '../services/macro-service';
-import type { ChatMessage } from '../types';
+import type { ChatMediaItem, ChatMessage } from '../types';
 import { getMessageTimeStamp } from './commons';
 import { scopeHtml } from './style-scoper';
 
@@ -79,7 +79,7 @@ const PLACEHOLDER_TAG = 'x-style-placeholder';
 // Helper to handle DOMPurify in both Browser and Test (Node/JSDOM) environments
 let sanitizerInstance: typeof DOMPurify | null = null;
 
-function getSanitizer() {
+function getSanitizer(): typeof DOMPurify {
   if (sanitizerInstance) return sanitizerInstance;
 
   if (typeof DOMPurify === 'function') {
@@ -88,10 +88,10 @@ function getSanitizer() {
   } else {
     sanitizerInstance = DOMPurify;
   }
-  return sanitizerInstance;
+  return sanitizerInstance as typeof DOMPurify;
 }
 
-export function formatText(text: string, forbidExternalMedia: boolean = false): string {
+export function formatText(text: string, forbidExternalMedia: boolean = false, ignoredMedia: string[] = []): string {
   if (!text) return '';
 
   let rawHtml: string;
@@ -106,10 +106,28 @@ export function formatText(text: string, forbidExternalMedia: boolean = false): 
   // <\/\1>$                : Ends with </tagname> (matching the captured tag name)
   const isHtmlWrapper = /^<([a-z][a-z0-9-]*)\b[\s\S]*<\/\1>$/i.test(trimmed);
 
+  const customRenderer = new marked.Renderer();
+  Object.assign(customRenderer, renderer);
+
+  customRenderer.image = ({ href, title, text }) => {
+    if (!href) return text;
+
+    const sanitizedHref = getSanitizer().sanitize(href) as string;
+    const isIgnored = ignoredMedia.includes(sanitizedHref);
+
+    const sanitizedTitle = title ? (getSanitizer().sanitize(title) as string) : '';
+    const sanitizedText = getSanitizer().sanitize(text) as string;
+    const ignoredClass = isIgnored ? 'is-ignored' : '';
+
+    return `<img src="${sanitizedHref}" alt="${sanitizedText}" title="${
+      sanitizedTitle || sanitizedText
+    }" class="message-content-image ${ignoredClass}">`;
+  };
+
   if (isHtmlWrapper) {
     rawHtml = text;
   } else {
-    rawHtml = marked.parse(text) as string;
+    rawHtml = marked.parse(text, { renderer: customRenderer }) as string;
   }
 
   // Mask <style> tags to prevent DOMPurify from stripping them (e.g. due to @keyframes or other complex CSS)
@@ -150,13 +168,41 @@ export function formatText(text: string, forbidExternalMedia: boolean = false): 
 
 export function formatMessage(message: ChatMessage, forbidExternalMedia: boolean = false): string {
   const textToFormat = message?.extra?.display_text || message.mes;
-  return formatText(textToFormat, forbidExternalMedia);
+  const ignored = message.extra?.ignored_media ?? [];
+  return formatText(textToFormat, forbidExternalMedia, ignored);
 }
 
 export function formatReasoning(message: ChatMessage, forbidExternalMedia: boolean = false): string {
   if (!message.extra?.reasoning) return '';
   const textToFormat = message.extra.reasoning_display_text || message.extra.reasoning;
-  return formatText(textToFormat, forbidExternalMedia);
+  const ignored = message.extra?.ignored_media ?? [];
+  return formatText(textToFormat, forbidExternalMedia, ignored);
+}
+
+export function extractMediaFromMarkdown(text: string): ChatMediaItem[] {
+  const tokens = marked.lexer(text);
+  const mediaItems: ChatMediaItem[] = [];
+  const seenUrls = new Set<string>();
+
+  function walkTokens(tokens: Token[]) {
+    for (const token of tokens) {
+      if (token.type === 'image' && token.href && !seenUrls.has(token.href)) {
+        mediaItems.push({
+          source: 'inline',
+          type: 'image',
+          url: token.href,
+          title: token.title ?? token.text,
+        });
+        seenUrls.add(token.href);
+      }
+      if ('tokens' in token && token.tokens) {
+        walkTokens(token.tokens);
+      }
+    }
+  }
+
+  walkTokens(tokens);
+  return mediaItems;
 }
 
 // --- Chat Initialization ---

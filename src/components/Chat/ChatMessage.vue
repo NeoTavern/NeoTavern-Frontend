@@ -12,7 +12,7 @@ import { usePopupStore } from '../../stores/popup.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useUiStore } from '../../stores/ui.store';
-import type { ChatMessage, PopupShowOptions } from '../../types';
+import type { ChatMessage, PopupShowOptions, ZoomedAvatarTool } from '../../types';
 import { POPUP_RESULT, POPUP_TYPE } from '../../types';
 import type { TextareaToolDefinition } from '../../types/ExtensionAPI';
 import { resolveAvatarUrls } from '../../utils/character';
@@ -131,37 +131,114 @@ const formattedReasoning = computed(() => {
   return formatReasoning(props.message, forbidExternalMedia.value);
 });
 
-const hasMedia = computed(() => props.message.extra?.media && props.message.extra.media.length > 0);
-
-const mediaItems = computed(() => {
-  if (!hasMedia.value) return [];
-  return (props.message.extra?.media ?? []).map((item, idx) => {
-    const key = `${props.index}-${props.message.swipe_id ?? 0}-${idx}`;
-    let src = item.url;
-    // Data URLs are used directly. Uploaded files that are saved will have a relative path.
-    if (item.source === 'upload' && !isDataURL(src)) {
-      // Assuming saved uploads are served from a known endpoint if not a data URL
-      // No change needed if the URL is already a correct relative path like '/user-uploads/...'
-    }
-    return {
-      ...item,
-      key,
-      src: src, // URL for display
-      fullSrc: src, // URL for zoom
-    };
-  });
+const attachmentMediaItems = computed(() => {
+  if (!props.message.extra?.media) return [];
+  return (
+    props.message.extra.media
+      // Filter for non-inline media to show in the grid
+      .filter((item) => item.source !== 'inline')
+      .map((item, idx) => {
+        const key = `${props.index}-${props.message.swipe_id ?? 0}-${idx}`;
+        let src = item.url;
+        // Data URLs are used directly. Uploaded files that are saved will have a relative path.
+        if (item.source === 'upload' && !isDataURL(src)) {
+          // Assuming saved uploads are served from a known endpoint if not a data URL
+          // No change needed if the URL is already a correct relative path like '/user-uploads/...'
+        }
+        return {
+          ...item,
+          key,
+          src: src, // URL for display
+          fullSrc: src, // URL for zoom
+        };
+      })
+  );
 });
 
-function handleMediaClick(mediaItem: (typeof mediaItems.value)[0]) {
+const hasAttachments = computed(() => attachmentMediaItems.value.length > 0);
+
+function handleAttachmentClick(mediaItem: (typeof attachmentMediaItems.value)[0]) {
   if (isSelectionMode.value) return; // Disable zoom in selection mode
 
   if (mediaItem.type === 'image') {
+    const tools = computed<ZoomedAvatarTool[]>(() => {
+      const currentIgnored = props.message.extra?.ignored_media ?? [];
+      const isIgnored = currentIgnored.includes(mediaItem.src);
+      return [
+        {
+          id: 'toggle-ignore-image',
+          icon: isIgnored ? 'eye' : 'eye-slash',
+          title: isIgnored ? t('chat.buttons.unignoreImage') : t('chat.buttons.ignoreImage'),
+          onClick: () => {
+            toggleIgnoredMedia(mediaItem.src);
+          },
+        },
+      ];
+    });
+
     uiStore.toggleZoomedAvatar({
       src: mediaItem.fullSrc,
       charName: mediaItem.title || 'Image',
+      tools,
     });
   }
   // Could add handlers for video/audio later
+}
+
+function toggleIgnoredMedia(url: string) {
+  const currentIgnored = props.message.extra?.ignored_media ?? [];
+  const isIgnored = currentIgnored.includes(url);
+
+  let newIgnored: string[];
+  if (isIgnored) {
+    newIgnored = currentIgnored.filter((u) => u !== url);
+  } else {
+    newIgnored = [...currentIgnored, url];
+  }
+
+  // Create a new extra object to ensure reactivity
+  const newExtra = {
+    ...props.message.extra,
+    ignored_media: newIgnored.length > 0 ? newIgnored : undefined,
+  };
+  if (newExtra.ignored_media === undefined) {
+    delete newExtra.ignored_media;
+  }
+
+  chatStore.updateMessageObject(props.index, { extra: newExtra });
+}
+
+function handleContentClick(event: MouseEvent) {
+  if (isSelectionMode.value) return;
+
+  const target = event.target as HTMLElement;
+  if (target.tagName === 'IMG' && target.classList.contains('message-content-image')) {
+    const imgElement = target as HTMLImageElement;
+    const src = imgElement.src;
+    const alt = imgElement.alt || 'Inline Image';
+
+    const tools = computed<ZoomedAvatarTool[]>(() => {
+      const currentIgnored = props.message.extra?.ignored_media ?? [];
+      const isIgnored = currentIgnored.includes(src);
+
+      return [
+        {
+          id: 'toggle-ignore-image',
+          icon: isIgnored ? 'eye' : 'eye-slash',
+          title: isIgnored ? t('chat.buttons.unignoreImage') : t('chat.buttons.ignoreImage'),
+          onClick: () => {
+            toggleIgnoredMedia(src);
+          },
+        },
+      ];
+    });
+
+    uiStore.toggleZoomedAvatar({
+      src,
+      charName: alt,
+      tools,
+    });
+  }
 }
 
 const isLastMessage = computed(
@@ -450,19 +527,24 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
       </div>
 
       <!-- eslint-disable-next-line vue/no-v-html -->
-      <div v-show="!isEditing && formattedContent" class="message-content" v-html="formattedContent"></div>
+      <div
+        v-show="!isEditing && formattedContent"
+        class="message-content"
+        @click="handleContentClick"
+        v-html="formattedContent"
+      ></div>
 
-      <div v-if="!isEditing && hasMedia" class="message-media-container">
+      <div v-if="!isEditing && hasAttachments" class="message-media-container">
         <div
-          v-for="item in mediaItems"
+          v-for="item in attachmentMediaItems"
           :key="item.key"
           class="media-item"
           role="button"
           tabindex="0"
           :aria-label="`View media: ${item.title || item.type}`"
-          @click.stop="handleMediaClick(item)"
-          @keydown.enter.stop.prevent="handleMediaClick(item)"
-          @keydown.space.stop.prevent="handleMediaClick(item)"
+          @click.stop="handleAttachmentClick(item)"
+          @keydown.enter.stop.prevent="handleAttachmentClick(item)"
+          @keydown.space.stop.prevent="handleAttachmentClick(item)"
         >
           <img v-if="item.type === 'image'" :src="item.src" :alt="item.title || 'Image content'" />
           <div v-else class="media-placeholder">
