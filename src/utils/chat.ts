@@ -6,6 +6,21 @@ import type { ChatMediaItem, ChatMessage } from '../types';
 import { getMessageTimeStamp } from './commons';
 import { scopeHtml } from './style-scoper';
 
+/**
+ * Heuristic to check if a string is a self-contained HTML block.
+ * This is used to decide whether to parse as Markdown or treat as raw HTML.
+ * It helps preserve structure and <style> tags that Markdown might mangle.
+ * @param text The string to check.
+ */
+function isHtmlBlock(text: string): boolean {
+  const trimmed = text.trim();
+  // Regex Breakdown:
+  // ^<([a-z][a-z0-9-]*)\b  : Starts with <tagname (word boundary ensures strict match)
+  // [\s\S]*                : Any content in between
+  // <\/\1>$                : Ends with </tagname> (matching the captured tag name)
+  return /^<([a-z][a-z0-9-]*)\b[\s\S]*<\/\1>$/i.test(trimmed);
+}
+
 // --- Markdown & Formatting ---
 
 const marked = new Marked({
@@ -95,16 +110,6 @@ export function formatText(text: string, forbidExternalMedia: boolean = false, i
   if (!text) return '';
 
   let rawHtml: string;
-  const trimmed = text.trim();
-
-  // Heuristic: If text is a self-contained HTML block (starts with <tag and ends with </tag>),
-  // treat it as raw HTML. This preserves structure and <style> tags that Markdown might mangle.
-  //
-  // Regex Breakdown:
-  // ^<([a-z][a-z0-9-]*)\b  : Starts with <tagname (word boundary ensures strict match)
-  // [\s\S]*                : Any content in between
-  // <\/\1>$                : Ends with </tagname> (matching the captured tag name)
-  const isHtmlWrapper = /^<([a-z][a-z0-9-]*)\b[\s\S]*<\/\1>$/i.test(trimmed);
 
   const customRenderer = new marked.Renderer();
   Object.assign(customRenderer, renderer);
@@ -124,7 +129,7 @@ export function formatText(text: string, forbidExternalMedia: boolean = false, i
     }" class="message-content-image ${ignoredClass}">`;
   };
 
-  if (isHtmlWrapper) {
+  if (isHtmlBlock(text)) {
     rawHtml = text;
   } else {
     rawHtml = marked.parse(text, { renderer: customRenderer }) as string;
@@ -180,6 +185,10 @@ export function formatReasoning(message: ChatMessage, forbidExternalMedia: boole
 }
 
 export function extractMediaFromMarkdown(text: string): ChatMediaItem[] {
+  if (isHtmlBlock(text)) {
+    return [];
+  }
+
   const tokens = marked.lexer(text);
   const mediaItems: ChatMediaItem[] = [];
   const seenUrls = new Set<string>();
