@@ -40,6 +40,21 @@ export interface ApiChatToolCall {
   signature?: string;
 }
 
+/**
+ * Represents a piece of a tool call as it is being streamed.
+ * Fields are optional and are merged to form a complete ApiChatToolCall.
+ */
+export type ApiChatToolCallDelta = {
+  index: number; // The index of the tool call in the list
+  id?: string;
+  type?: 'function';
+  function?: {
+    name?: string;
+    arguments?: string;
+  };
+  signature?: string;
+};
+
 export interface ApiChatMessage {
   role: MessageRole;
   content: string | ApiChatContentPart[];

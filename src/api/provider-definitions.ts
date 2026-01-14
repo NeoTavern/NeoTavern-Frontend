@@ -2,6 +2,7 @@ import YAML from 'yaml';
 import { ReasoningEffort } from '../constants';
 import type {
   ApiChatToolCall,
+  ApiChatToolCallDelta,
   ApiModel,
   ApiProvider,
   ChatCompletionPayload,
@@ -114,8 +115,11 @@ export interface ProviderResponseHandler {
   extractImages?: (data: any) => string[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   extractToolCalls?: (data: any) => ApiChatToolCall[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getStreamingReply: (data: any, formatter?: ApiFormatter) => StreamedChunk;
+  getStreamingReply: (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data: any,
+    formatter?: ApiFormatter,
+  ) => Omit<StreamedChunk, 'tool_calls'> & { tool_call_deltas?: ApiChatToolCallDelta[] };
 }
 
 // --- Capability Definitions ---
@@ -468,7 +472,7 @@ const DEFAULT_HANDLER: ProviderResponseHandler = {
   extractToolCalls: extractToolsGeneric,
   getStreamingReply: (data) => ({
     delta: data?.choices?.[0]?.delta?.content ?? data.choices?.[0]?.message?.content ?? data.choices?.[0]?.text ?? '',
-    tool_calls: data?.choices?.[0]?.delta?.tool_calls || undefined,
+    tool_call_deltas: data?.choices?.[0]?.delta?.tool_calls || undefined,
   }),
 };
 
@@ -486,7 +490,7 @@ const GENERIC_REASONING_STREAMER = (data: any) => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data.choices?.filter((x: any) => x?.delta?.reasoning)?.[0]?.delta?.reasoning ??
     '',
-  tool_calls: data?.choices?.[0]?.delta?.tool_calls || undefined,
+  tool_call_deltas: data?.choices?.[0]?.delta?.tool_calls || undefined,
 });
 
 export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHandler>> = {
@@ -519,17 +523,11 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
       // Claude Streaming Logic
       const deltaText = data?.delta?.text || '';
       const thinking = data?.delta?.thinking || '';
-      const toolCalls: ApiChatToolCall[] = [];
+      const toolCallDeltas: ApiChatToolCallDelta[] = [];
 
       // 1. Tool Start (content_block_start with tool_use)
-      // data: { type: 'content_block_start', index: X, content_block: { type: 'tool_use', id: '...', name: '...' } }
-      // The calling code often passes 'data' as the event data object.
-      // Need to verify how the generator in generation.ts calls this.
-      // It passes `parsed` JSON from the stream line.
-
       if (data?.type === 'content_block_start' && data.content_block?.type === 'tool_use') {
-        toolCalls.push({
-          // @ts-expect-error index property used by accumulator
+        toolCallDeltas.push({
           index: data.index,
           id: data.content_block.id,
           type: 'function',
@@ -541,14 +539,10 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
       }
 
       // 2. Tool Delta (content_block_delta with input_json_delta)
-      // data: { type: 'content_block_delta', index: X, delta: { type: 'input_json_delta', partial_json: '...' } }
       if (data?.type === 'content_block_delta' && data.delta?.type === 'input_json_delta') {
-        toolCalls.push({
-          // @ts-expect-error index property used by accumulator
+        toolCallDeltas.push({
           index: data.index,
-          type: 'function',
           function: {
-            name: '',
             arguments: data.delta.partial_json,
           },
         });
@@ -557,7 +551,7 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
       return {
         delta: deltaText,
         reasoning: thinking,
-        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+        tool_call_deltas: toolCallDeltas.length > 0 ? toolCallDeltas : undefined,
       };
     },
   },
@@ -573,7 +567,7 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
       // Cohere text delta is in a 'text-generation' event type
       const deltaText = data.type === 'text-generation' ? (data.text ?? '') : '';
 
-      const toolCalls: ApiChatToolCall[] = [];
+      const toolCallDeltas: ApiChatToolCallDelta[] = [];
       const cohereToolEvents = ['tool-call-start', 'tool-call-delta', 'tool-call-end'];
 
       // Process Cohere's structured tool call stream events
@@ -581,12 +575,12 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
         const toolCallDelta = data.delta.message;
         // Add the tool call's index for the accumulator to correctly merge deltas
         toolCallDelta.index = data.index ?? 0;
-        toolCalls.push(toolCallDelta);
+        toolCallDeltas.push(toolCallDelta);
       }
 
       return {
         delta: deltaText,
-        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+        tool_call_deltas: toolCallDeltas.length > 0 ? toolCallDeltas : undefined,
       };
     },
   },
@@ -662,17 +656,14 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
         images.push(...inlineData.map((x: any) => `data:${x.mimeType};base64,${x.data}`).filter(isDataURL));
       }
 
-      // Handle Google Streaming Tool Calls
-      // Google sends full function calls in parts, not deltas usually, but in streaming it might come chunked.
-      // However, typical Google AI Studio streaming behavior sends full parts when complete or text deltas.
-      // We'll check for functionCall in parts.
-      const toolCalls: ApiChatToolCall[] = [];
+      const toolCallDeltas: ApiChatToolCallDelta[] = [];
       const parts = data?.candidates?.[0]?.content?.parts;
       if (Array.isArray(parts)) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        parts.forEach((p: any) => {
+        parts.forEach((p: any, index: number) => {
           if (p.functionCall) {
-            toolCalls.push({
+            toolCallDeltas.push({
+              index: index,
               id: Math.random().toString(36).substring(7),
               type: 'function',
               function: {
@@ -696,7 +687,7 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data?.candidates?.[0]?.content?.parts?.filter((x: any) => x.thought)?.map((x: any) => x.text)?.[0] || '',
         images,
-        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+        tool_call_deltas: toolCallDeltas.length > 0 ? toolCallDeltas : undefined,
       };
     },
   },
@@ -760,13 +751,14 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
       }
 
       // Handle Vertex Streaming Tool Calls (Same as MakerSuite)
-      const toolCalls: ApiChatToolCall[] = [];
+      const toolCallDeltas: ApiChatToolCallDelta[] = [];
       const parts = data?.candidates?.[0]?.content?.parts;
       if (Array.isArray(parts)) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        parts.forEach((p: any) => {
+        parts.forEach((p: any, index: number) => {
           if (p.functionCall) {
-            toolCalls.push({
+            toolCallDeltas.push({
+              index: index,
               id: Math.random().toString(36).substring(7),
               type: 'function',
               function: {
@@ -790,7 +782,7 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data?.candidates?.[0]?.content?.parts?.filter((x: any) => x.thought)?.map((x: any) => x.text)?.[0] || '',
         images,
-        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+        tool_call_deltas: toolCallDeltas.length > 0 ? toolCallDeltas : undefined,
       };
     },
   },
@@ -828,7 +820,7 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           data.choices?.filter((x: any) => x?.delta?.content?.[0]?.thinking)?.[0]?.delta?.content?.[0]?.thinking?.[0]
             ?.text || '',
-        tool_calls: data?.choices?.[0]?.delta?.tool_calls || undefined,
+        tool_call_deltas: data?.choices?.[0]?.delta?.tool_calls || undefined,
       };
     },
   },
@@ -870,7 +862,7 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
           data.choices?.filter((x: any) => x?.delta?.reasoning)?.[0]?.delta?.reasoning ??
           '',
         images,
-        tool_calls: data?.choices?.[0]?.delta?.tool_calls || undefined,
+        tool_call_deltas: data?.choices?.[0]?.delta?.tool_calls || undefined,
       };
     },
   },

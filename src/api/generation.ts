@@ -6,6 +6,7 @@ import { useSettingsStore } from '../stores/settings.store';
 import type {
   ApiChatMessage,
   ApiChatToolCall,
+  ApiChatToolCallDelta,
   ApiProvider,
   ApiToolDefinition,
   ChatCompletionPayload,
@@ -545,42 +546,78 @@ class StreamReasoningParser {
   }
 }
 
+/**
+ * Accumulates tool call deltas from a stream into a complete list of tool calls.
+ * Uses a recursive merge strategy to handle nested objects and string concatenation.
+ */
 class ToolCallAccumulator {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private tools: Record<number, any> = {};
+  private tools: ApiChatToolCall[] = [];
 
+  /**
+   * Deeply merges a delta object into a target object.
+   * @param target The object to merge into.
+   * @param delta The partial object to merge.
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  add(deltas: any[]) {
-    if (!Array.isArray(deltas)) return;
-    for (const delta of deltas) {
-      // Use index from delta if present, or infer from list order if implied (rare in streams, usually explicit)
-      const index = delta.index ?? 0;
+  private mergeDelta(target: any, delta: any) {
+    for (const key in delta) {
+      if (!Object.prototype.hasOwnProperty.call(delta, key)) continue;
 
-      if (!this.tools[index]) {
-        this.tools[index] = {
-          id: delta.id || '',
-          type: delta.type || 'function',
-          function: {
-            name: delta.function?.name || '',
-            arguments: delta.function?.arguments || '',
-          },
-          // Copy signature if present (e.g. from Google or decrypted metadata)
-          signature: delta.signature || undefined,
-        };
+      const deltaValue = delta[key];
+      const targetValue = target[key];
+
+      if (deltaValue === null || deltaValue === undefined) {
+        if (!targetValue) {
+          target[key] = deltaValue;
+        }
+        continue;
+      }
+
+      if (typeof deltaValue === 'string') {
+        target[key] = (typeof targetValue === 'string' ? targetValue : '') + deltaValue;
+      } else if (typeof deltaValue === 'object' && !Array.isArray(deltaValue)) {
+        if (typeof targetValue !== 'object' || targetValue === null || Array.isArray(targetValue)) {
+          target[key] = {};
+        }
+        this.mergeDelta(target[key], deltaValue);
       } else {
-        const t = this.tools[index];
-        if (delta.id) t.id = delta.id;
-        if (delta.type) t.type = delta.type;
-        if (delta.function?.name) t.function.name += delta.function.name;
-        if (delta.function?.arguments) t.function.arguments += delta.function.arguments;
-        // Signature might come late or in chunks, just overwrite if present
-        if (delta.signature) t.signature = delta.signature;
+        target[key] = deltaValue;
       }
     }
   }
 
-  getCalls(): ApiChatToolCall[] {
-    return Object.values(this.tools);
+  /**
+   * Processes an array of tool call deltas from the API.
+   * @param deltas An array of partial tool call updates.
+   */
+  public add(deltas: ApiChatToolCallDelta[]) {
+    if (!Array.isArray(deltas)) return;
+
+    for (const delta of deltas) {
+      const index = delta.index;
+      if (typeof index !== 'number') continue;
+
+      // Ensure the array is large enough
+      while (this.tools.length <= index) {
+        this.tools.push({
+          id: '',
+          type: 'function',
+          function: { name: '', arguments: '' },
+        });
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { index: _, ...deltaData } = delta;
+      this.mergeDelta(this.tools[index], deltaData);
+    }
+  }
+
+  /**
+   * Returns the current state of accumulated tool calls.
+   * @returns A fresh array of the complete tool calls.
+   */
+  public getCalls(): ApiChatToolCall[] {
+    return JSON.parse(JSON.stringify(this.tools));
   }
 }
 
@@ -817,9 +854,8 @@ export class ChatCompletionService {
                   reasoning += chunk.reasoning;
                 }
 
-                if (chunk.tool_calls) {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  toolAccumulator.add(chunk.tool_calls as any[]);
+                if (chunk.tool_call_deltas) {
+                  toolAccumulator.add(chunk.tool_call_deltas);
                 }
 
                 let deltaToYield = chunk.delta || '';
@@ -837,7 +873,7 @@ export class ChatCompletionService {
                 const hasContentChange = deltaToYield.length > 0;
                 const hasReasoningChange = (chunk.reasoning && chunk.reasoning.length > 0) || reasoningDelta.length > 0;
                 const hasImages = chunk.images && chunk.images.length > 0;
-                const hasToolCalls = chunk.tool_calls && chunk.tool_calls.length > 0;
+                const hasToolCalls = chunk.tool_call_deltas && chunk.tool_call_deltas.length > 0;
 
                 if (hasContentChange || hasReasoningChange || hasImages || hasToolCalls) {
                   if (isFirstChunk && deltaToYield) {
