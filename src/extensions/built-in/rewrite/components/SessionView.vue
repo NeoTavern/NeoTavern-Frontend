@@ -199,10 +199,6 @@ async function handleDelete(msgId: string) {
           <div v-if="getJustification(msg)" class="justification-content">
             {{ getJustification(msg) }}
           </div>
-          <!-- Response Display -->
-          <div v-if="getResponseText(msg)" class="raw-response">
-            <pre>{{ getResponseText(msg) }}</pre>
-          </div>
 
           <!-- Message Controls -->
           <div class="assistant-controls">

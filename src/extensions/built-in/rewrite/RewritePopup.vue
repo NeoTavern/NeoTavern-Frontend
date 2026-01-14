@@ -512,7 +512,23 @@ async function executeSessionGeneration() {
       abortController.value?.signal,
     );
 
-    const previousState = props.originalText; // Simplified diff reference. In advanced usage, this could track history changes.
+    // Calculate previous state for diff
+    let previousState = activeSession.value.originalText;
+    const messages = activeSession.value.messages;
+    // Iterate backwards to find the last assistant message
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role === 'assistant') {
+        const content = m.content;
+        if (typeof content === 'string') {
+          previousState = content;
+          break;
+        } else if ((content as RewriteLLMResponse).response) {
+          previousState = (content as RewriteLLMResponse).response as string;
+          break;
+        }
+      }
+    }
 
     activeSession.value.messages.push({
       id: props.api.uuid(),
