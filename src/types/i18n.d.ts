@@ -595,6 +595,9 @@ export interface MessageSchema {
       noSpeaker: string;
       postProcessError: string;
       emptyResponseError: string;
+      usingTools: string;
+      toolError: string;
+      maxRecursionError: string;
     };
     buttons: {
       confirmEdit: string;

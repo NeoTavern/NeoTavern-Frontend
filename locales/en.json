@@ -591,7 +591,10 @@
       "noPersonaError": "No persona selected. Please check your persona settings.",
       "noSpeaker": "No valid speaker found for generation.",
       "postProcessError": "Post-processing failed. Check console for details.",
-      "emptyResponseError": "The AI returned an empty response."
+      "emptyResponseError": "The AI returned an empty response.",
+      "usingTools": "Using tools...",
+      "toolError": "Tool execution failed. Check console for details.",
+      "maxRecursionError": "Maximum recursion steps reached."
     },
     "buttons": {
       "confirmEdit": "Confirm edit",

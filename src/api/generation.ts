@@ -601,7 +601,8 @@ class ToolCallAccumulator {
       while (this.tools.length <= index) {
         this.tools.push({
           id: '',
-          type: 'function',
+          // @ts-expect-error yeah yeah
+          type: '',
           function: { name: '', arguments: '' },
         });
       }

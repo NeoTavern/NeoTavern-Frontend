@@ -352,7 +352,7 @@ export class PromptBuilder {
       });
 
       // Insert the generated messages, checking budget for each one
-      const success = await insertMessages(apiMessagesToInsert.slice().reverse());
+      const success = await insertMessages(apiMessagesToInsert);
       if (!success) {
         break;
       }

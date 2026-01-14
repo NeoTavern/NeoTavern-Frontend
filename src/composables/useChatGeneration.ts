@@ -9,6 +9,7 @@ import { getModelCapabilities } from '../api/provider-definitions';
 import { ApiTokenizer } from '../api/tokenizer';
 import { CustomPromptPostProcessing, default_user_avatar, GenerationMode } from '../constants';
 import { PromptBuilder } from '../services/prompt-engine';
+import { ToolService } from '../services/tool.service';
 import { useApiStore } from '../stores/api.store';
 import { useCharacterStore } from '../stores/character.store';
 import { usePersonaStore } from '../stores/persona.store';
@@ -18,6 +19,7 @@ import { useUiStore } from '../stores/ui.store';
 import { useWorldInfoStore } from '../stores/world-info.store';
 import {
   type ApiChatContentPart,
+  type ApiChatToolCall,
   type Character,
   type ChatMediaItem,
   type ChatMessage,
@@ -50,6 +52,13 @@ export interface ChatGenerationDependencies {
   syncSwipeToMes: (msgIndex: number, swipeIndex: number) => Promise<void>;
   stopAutoModeTimer: () => void;
 }
+
+interface GenerationStepResult {
+  message: ChatMessage | null;
+  response: GenerationResponse;
+}
+
+const MAX_TOOL_CALL_RECURSION = 5;
 
 export function useChatGeneration(deps: ChatGenerationDependencies) {
   const { t } = useStrictI18n();
@@ -174,21 +183,23 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
     let mode = initialMode;
     const currentChatContext = deps.activeChat.value;
+    let historyForGen = [...currentChatContext.messages];
 
     // Handle Regenerate Logic
     if (mode === GenerationMode.REGENERATE) {
-      const lastMsg = currentChatContext.messages[currentChatContext.messages.length - 1];
+      const lastMsg = historyForGen[historyForGen.length - 1];
       if (lastMsg) {
         if (lastMsg.is_user) {
           mode = GenerationMode.NEW;
         } else {
           forceSpeakerAvatar = forceSpeakerAvatar ?? lastMsg.original_avatar;
           // Pop the message to be regenerated
+          historyForGen.pop();
           currentChatContext.messages.pop();
         }
       }
     } else if (mode === GenerationMode.ADD_SWIPE || mode === GenerationMode.CONTINUE) {
-      const lastMsg = currentChatContext.messages[currentChatContext.messages.length - 1];
+      const lastMsg = historyForGen[historyForGen.length - 1];
       if (!lastMsg || lastMsg.is_user) return;
       forceSpeakerAvatar = forceSpeakerAvatar ?? lastMsg.original_avatar;
     }
@@ -200,7 +211,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     const overallController = new AbortController();
     generationController.value = overallController;
 
-    let generatedMessage: ChatMessage | null = null;
+    let finalMessage: ChatMessage | null = null;
     let generationError: Error | undefined;
     let handledByExtension = false;
 
@@ -266,13 +277,85 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       if (startController.signal.aborted) return;
       if (overallController.signal.aborted) return;
 
-      generatedMessage = await performSingleGeneration(
-        activeCharacter,
-        mode,
-        finalGenerationId,
-        currentChatContext,
-        overallController,
-      );
+      // --- Tool Calling Loop ---
+      let recursionDepth = 0;
+      let modeForLoop = mode;
+
+      while (recursionDepth < MAX_TOOL_CALL_RECURSION) {
+        recursionDepth++;
+
+        const stepResult = await _generationStep(
+          activeCharacter,
+          modeForLoop,
+          finalGenerationId,
+          currentChatContext,
+          historyForGen,
+          overallController,
+        );
+
+        if (!stepResult || overallController.signal.aborted) {
+          finalMessage = null;
+          break;
+        }
+
+        finalMessage = stepResult.message;
+        const toolCalls = stepResult.response.tool_calls;
+
+        if (toolCalls && toolCalls.length > 0) {
+          toast.info(t('chat.generate.usingTools'));
+          const { invocations, errors } = await ToolService.processToolCalls(toolCalls);
+
+          // Create a system message to show results to the user
+          if (invocations.length > 0 || errors.length > 0) {
+            const resultMessages = invocations.map(
+              (inv) => `**Tool Used: ${inv.displayName}**\n**Result:**\n\`\`\`\n${inv.result}\n\`\`\``,
+            );
+            const errorMessages = errors.map(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (err) => `**Tool Error: ${(err as any).cause ?? 'Unknown Tool'}**\n\`\`\`\n${err.message}\n\`\`\``,
+            );
+            const finalContent = [...resultMessages, ...errorMessages].join('\n\n---\n\n');
+
+            const toolResultMessage: ChatMessage = {
+              name: 'System',
+              is_user: false,
+              is_system: true,
+              mes: finalContent,
+              send_date: getMessageTimeStamp(),
+              original_avatar: activeCharacter.avatar,
+              swipes: [finalContent],
+              swipe_id: 0,
+              swipe_info: [{ send_date: getMessageTimeStamp(), extra: {} }],
+              extra: {},
+            };
+            currentChatContext.messages.push(toolResultMessage);
+            await nextTick();
+            await eventEmitter.emit('message:created', toolResultMessage);
+          }
+
+          if (errors.length > 0) {
+            toast.error(t('chat.generate.toolError', { error: errors[0].message }));
+          }
+
+          // Update the assistant message that made the call with the results
+          if (finalMessage) {
+            if (!finalMessage.extra) finalMessage.extra = {};
+            finalMessage.extra.tool_invocations = invocations;
+
+            // Update history for the next iteration
+            historyForGen = [...currentChatContext.messages];
+            modeForLoop = GenerationMode.NEW; // Subsequent calls are not regens/swipes
+            continue; // Continue the loop to get the final response
+          }
+        }
+
+        // No tool calls, so we are done
+        break;
+      }
+
+      if (recursionDepth >= MAX_TOOL_CALL_RECURSION) {
+        toast.warning(t('chat.generate.maxRecursionError'));
+      }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         // Silent catch for user abort
@@ -292,20 +375,21 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         await nextTick();
         await eventEmitter.emit(
           'generation:finished',
-          { message: generatedMessage, error: generationError },
+          { message: finalMessage, error: generationError },
           { generationId: finalGenerationId, mode },
         );
       }
     }
   }
 
-  async function performSingleGeneration(
+  async function _generationStep(
     activeCharacter: Character,
     mode: GenerationMode,
     generationId: string,
     chatContext: ChatStateRef,
+    historyForStep: ChatMessage[],
     controller: AbortController,
-  ): Promise<ChatMessage | null> {
+  ): Promise<GenerationStepResult | null> {
     const abortSignal = controller.signal;
     let generatedMessage: ChatMessage | null = null;
 
@@ -350,7 +434,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       mode,
       characters: charactersForContext,
       chatMetadata: chatMetadata,
-      history: [...activeChatMessages],
+      history: [...historyForStep],
       persona: activePersona,
       settings: {
         sampler: clonedSampler,
@@ -651,6 +735,9 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       instructTemplate: context.settings.instructTemplate,
       activeCharacter: activeCharacter,
       customPromptPostProcessing: postProcessing,
+      toolConfig: {
+        includeRegisteredTools: true,
+      },
     };
 
     const payloadController = new AbortController();
@@ -676,6 +763,8 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       reasoning?: string,
       tokenCount?: number,
       images?: string[],
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      _tool_calls?: ApiChatToolCall[],
     ) => {
       if (deps.activeChat.value !== chatContext) {
         console.warn('Chat context changed during generation. Result ignored.');
@@ -794,7 +883,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           controller: createController,
           generationId,
         });
-        if (createController.signal.aborted) return null;
+        if (createController.signal.aborted) return;
 
         activeChatMessages.push(botMessage);
         generatedMessage = botMessage;
@@ -839,12 +928,20 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       if (!responseController.signal.aborted) {
         if (
           (!response.content || response.content.trim() === '') &&
-          (!response.images || response.images.length === 0)
+          (!response.images || response.images.length === 0) &&
+          (!response.tool_calls || response.tool_calls.length === 0)
         ) {
           toast.error(t('chat.generate.emptyResponseError'));
           return null;
         }
-        await handleGenerationResult(response.content, response.reasoning, response.token_count, response.images);
+        await handleGenerationResult(
+          response.content,
+          response.reasoning,
+          response.token_count,
+          response.images,
+          response.tool_calls,
+        );
+        return { message: generatedMessage, response };
       }
     } else {
       // Streaming
@@ -857,6 +954,9 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       let targetMessageIndex = -1;
       let messageCreated = false;
       const streamImages: string[] = [];
+      let finalToolCalls: ApiChatToolCall[] | undefined;
+      let fullResponseContent = '';
+      let finalReasoning: string | undefined;
 
       // For CONTINUE mode, we work on existing message
       if (mode === GenerationMode.CONTINUE) {
@@ -877,15 +977,16 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
             break;
           }
 
-          if (chunk.images) {
-            streamImages.push(...chunk.images);
-          }
+          if (chunk.images) streamImages.push(...chunk.images);
+          if (chunk.tool_calls) finalToolCalls = chunk.tool_calls;
+          if (chunk.reasoning) finalReasoning = chunk.reasoning;
+          fullResponseContent += chunk.delta;
 
           // Create message on first chunk with content or images
           const hasContent = chunk.delta && chunk.delta.trim();
           const hasImages = chunk.images && chunk.images.length > 0;
 
-          if (!messageCreated && (hasContent || hasImages)) {
+          if (!messageCreated && (hasContent || hasImages || (chunk.tool_calls && chunk.tool_calls.length > 0))) {
             if (mode === GenerationMode.NEW || mode === GenerationMode.REGENERATE) {
               const botMessage: ChatMessage = {
                 name: activeCharacter!.name,
@@ -978,8 +1079,12 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       } finally {
         // Check if we never created a message (empty response)
         if (!messageCreated) {
-          toast.error(t('chat.generate.emptyResponseError'));
-          return null;
+          if (!finalToolCalls || finalToolCalls.length === 0) {
+            toast.error(t('chat.generate.emptyResponseError'));
+            return null;
+          }
+          // If there are only tool calls, we still need to create an empty message to attach them to
+          await handleGenerationResult('');
         }
 
         // Finalize streaming
@@ -1042,10 +1147,16 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
             finalMessage.swipe_info.push(swipeInfo);
           }
         }
+        const response: GenerationResponse = {
+          content: fullResponseContent,
+          tool_calls: finalToolCalls,
+          reasoning: finalReasoning,
+          images: streamImages.length > 0 ? streamImages : undefined,
+        };
+        return { message: generatedMessage, response };
       }
     }
-
-    return generatedMessage;
+    return null;
   }
 
   return {
