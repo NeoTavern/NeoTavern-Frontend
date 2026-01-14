@@ -285,13 +285,9 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
     // Inject stopping strings from template
     const stop = [...(samplerSettings.stop || [])];
     if (instructTemplate.stop_sequence && instructTemplate.sequences_as_stop_strings) {
-      // Stop sequence might be single string or multiple
-      // In the type we defined it as string, but JSON can implies list logic sometimes.
-      // Based on reference logic, we merge various sequences.
       if (instructTemplate.stop_sequence) stop.push(instructTemplate.stop_sequence);
       if (instructTemplate.input_sequence) stop.push(instructTemplate.input_sequence);
       if (instructTemplate.system_sequence) stop.push(instructTemplate.system_sequence);
-      // Remove empty strings
       payload.stop = stop.filter((s) => s && s.trim());
     } else {
       payload.stop = stop;
@@ -306,7 +302,6 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
   for (const key in samplerSettings) {
     const samplerKey = key as keyof SamplerSettings;
 
-    // Explicitly skip internal/non-payload settings
     if (
       samplerKey === 'prompts' ||
       samplerKey === 'providers' ||
@@ -318,7 +313,6 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
       continue;
     }
 
-    // For top-level sampler keys, ID is typically "api.samplers.{key}"
     const settingsId = `api.samplers.${samplerKey}`;
     if (isParameterDisabled(settingsId, provider, samplerSettings)) {
       continue;
@@ -329,25 +323,22 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
 
     const providerRule = config.providers?.[provider];
     if (providerRule === undefined || providerRule === null) {
-      // Not allowed for this provider
       continue;
     }
 
     let rule: ParamHandling = config.defaults || {};
     rule = { ...rule, ...providerRule };
 
-    // Apply Formatter-specific overrides
     if (config.formatterRules && formatter) {
       for (const fmtRule of config.formatterRules) {
         if (fmtRule.formatter.includes(formatter)) {
-          // If providers constraint is present, check it
           if (fmtRule.providers && !fmtRule.providers.includes(provider)) {
             continue;
           }
 
           if (fmtRule.rule === null) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            rule = null as any; // Treat as disabled
+            rule = null as any;
           } else if (fmtRule.rule) {
             rule = { ...rule, ...fmtRule.rule };
           }
@@ -355,7 +346,6 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
       }
     }
 
-    // Apply model specific overrides
     if (config.modelRules) {
       for (const modelRule of config.modelRules) {
         if (modelRule.pattern.test(model)) {
@@ -369,23 +359,19 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
       }
     }
 
-    // If the rule is explicitly null (via formatter/model override), skip this parameter.
     if (rule === null) continue;
 
     let value = samplerSettings[samplerKey];
 
-    // Transform / Validation
     if (rule.transform) {
       value = rule.transform(value, options);
     }
 
-    // Clamping
     if (typeof value === 'number') {
       if (rule.min !== undefined) value = Math.max(value, rule.min);
       if (rule.max !== undefined) value = Math.min(value, rule.max);
     }
 
-    // Assignment (ignoring undefined)
     if (value !== undefined) {
       const payloadKey = (rule.remoteKey || samplerKey) as string;
       if (payloadKey.includes('.')) {
@@ -397,13 +383,13 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
     }
   }
 
-  // 2. Apply Provider Specific Injections (auth tokens, strict deletions, etc.)
+  // 2. Apply Provider Specific Injections
   const providerInject = PROVIDER_INJECTIONS[provider];
   if (providerInject) {
     providerInject(payload, options);
   }
 
-  // 3. Apply Model Specific Injections (O1 role swaps, GPT-5 cleanups, Reasoning Effort)
+  // 3. Apply Model Specific Injections
   for (const rule of MODEL_INJECTIONS) {
     if (rule.pattern.test(model)) {
       rule.inject(payload, options);
@@ -440,7 +426,6 @@ class StreamReasoningParser {
     this.prefix = template.prefix;
     this.suffix = template.suffix;
 
-    // If template is invalid (empty prefix/suffix), effectively disable logic by setting state to DONE immediately.
     if (!this.prefix || !this.suffix) {
       this.state = 'DONE';
     }
@@ -455,9 +440,6 @@ class StreamReasoningParser {
     let deltaOut = '';
     let reasoningOut = '';
 
-    // Loop to handle cases where multiple transitions happen in one chunk
-    // Use a 'processed' flag to continue loop as long as we have state changes,
-    // even if buffer becomes empty (to handle zero-length transitions if needed).
     let processed = true;
     while (processed) {
       processed = false;
@@ -465,22 +447,15 @@ class StreamReasoningParser {
       if (this.state === 'SEARCHING_PREFIX') {
         const prefixIndex = this.buffer.indexOf(this.prefix);
         if (prefixIndex !== -1) {
-          // Found prefix
-          // Content before prefix is valid output
           deltaOut += this.buffer.substring(0, prefixIndex);
-          // Remove prefix from buffer, switch state
           this.buffer = this.buffer.substring(prefixIndex + this.prefix.length);
           this.state = 'IN_REASONING';
           processed = true;
         } else {
-          // Optimization: flush non-matching parts immediately
           let matchLen = 0;
-          // Max possible partial match is prefix.length - 1.
           const checkLen = Math.min(this.buffer.length, this.prefix.length - 1);
 
-          // Check for partial matches at the end of buffer
           for (let i = checkLen; i > 0; i--) {
-            // Check if buffer ends with the first i chars of prefix
             if (this.buffer.endsWith(this.prefix.substring(0, i))) {
               matchLen = i;
               break;
@@ -496,16 +471,11 @@ class StreamReasoningParser {
       } else if (this.state === 'IN_REASONING') {
         const suffixIndex = this.buffer.indexOf(this.suffix);
         if (suffixIndex !== -1) {
-          // Found suffix
-          // Everything before is reasoning
           reasoningOut += this.buffer.substring(0, suffixIndex);
-          // Remove suffix
           this.buffer = this.buffer.substring(suffixIndex + this.suffix.length);
           this.state = 'DONE';
           processed = true;
         } else {
-          // Optimization: flush confirmed reasoning immediately
-          // Check for partial matches of suffix at end of buffer
           let matchLen = 0;
           const checkLen = Math.min(this.buffer.length, this.suffix.length - 1);
 
@@ -523,7 +493,6 @@ class StreamReasoningParser {
           }
         }
       } else {
-        // DONE
         deltaOut += this.buffer;
         this.buffer = '';
       }
@@ -532,16 +501,11 @@ class StreamReasoningParser {
     return { delta: deltaOut, reasoning: reasoningOut };
   }
 
-  /**
-   * Called when stream ends to flush any remaining buffer.
-   */
   public flush(): { delta: string; reasoning: string } {
     const result = { delta: '', reasoning: '' };
     if (this.state === 'IN_REASONING') {
-      // Stream ended while in reasoning -> assume rest is reasoning
       result.reasoning = this.buffer;
     } else {
-      // Stream ended while searching or done -> assume content
       result.delta = this.buffer;
     }
     this.buffer = '';
@@ -579,7 +543,7 @@ export class ChatCompletionService {
     payload: ChatCompletionPayload,
     formatter: ApiFormatter,
     options: GenerationOptions = {},
-  ): Promise<GenerationResponse | (() => AsyncGenerator<StreamedChunk>)> {
+  ): Promise<GenerationResponse | AsyncGenerator<StreamedChunk>> {
     const startTime = Date.now();
     let endpoint = '/api/backends/chat-completions/generate';
     let body: string = JSON.stringify(payload);
@@ -591,7 +555,7 @@ export class ChatCompletionService {
       endpoint = providerConfig.textCompletionEndpoint;
       const genericPayload = {
         ...payload,
-        api_type: providerKey, // 'ollama', 'koboldcpp', etc.
+        api_type: providerKey,
         api_server: payload.api_server || payload.ollama_server || payload.koboldcpp_server,
       };
       body = JSON.stringify(genericPayload);
@@ -672,7 +636,6 @@ export class ChatCompletionService {
 
       let messageContent = responseHandler.extractMessage(responseData);
 
-      // Fallback to generic extraction if specific handler fails to find content
       if (!messageContent) {
         messageContent = extractMessageGeneric(responseData);
       }
@@ -681,12 +644,8 @@ export class ChatCompletionService {
       let finalContent = messageContent.trim();
       const images = responseHandler.extractImages ? responseHandler.extractImages(responseData) : undefined;
 
-      // Apply Reasoning Template if provided and reasoning wasn't already extracted (or even if it was, maybe additional reasoning in content)
       if (options.reasoningTemplate && options.reasoningTemplate.prefix && options.reasoningTemplate.suffix) {
         const extracted = extractReasoningWithTemplate(messageContent, options.reasoningTemplate);
-        // If we found reasoning in content, prioritize it or append?
-        // Usually if model supports native reasoning, content is clean.
-        // If model puts reasoning in content, we extract it.
         if (extracted.reasoning) {
           finalContent = extracted.content.trim();
           reasoning = reasoning ? `${reasoning}\n${extracted.reasoning}` : extracted.reasoning;
@@ -696,17 +655,14 @@ export class ChatCompletionService {
       let structured_content: object | undefined;
       let parse_error: Error | undefined;
 
-      // Parse structured response if requested
       if (options.structuredResponse) {
         const format = options.structuredResponse.format;
-        // Default to 'json' for 'native', 'json', or undefined format.
         const parseAs = format === 'xml' ? 'xml' : 'json';
 
         try {
           const parsed = parseResponse(finalContent, parseAs, {
             schema: options.structuredResponse.schema.value,
           });
-          // JSON.parse can return non-object primitives. We should handle that.
           if (typeof parsed === 'object' && parsed !== null) {
             structured_content = parsed;
           } else {
@@ -745,15 +701,13 @@ export class ChatCompletionService {
 
     const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
 
-    // Streaming Logic
-    // We wrap the generator to intercept chunks for token counting
-    const originalGenerator = async function* streamData(): AsyncGenerator<StreamedChunk> {
+    // Internal Generator: Handles parsing the raw stream into chunks
+    const rawStreamGenerator = async function* (): AsyncGenerator<StreamedChunk> {
       let reasoning = '';
       let buffer = '';
       let isFirstChunk = true;
       let stopStream = false;
 
-      // Only enable parser if template is fully valid
       const shouldParseReasoning =
         options.reasoningTemplate && options.reasoningTemplate.prefix && options.reasoningTemplate.suffix;
       const reasoningParser = shouldParseReasoning ? new StreamReasoningParser(options.reasoningTemplate!) : null;
@@ -767,7 +721,7 @@ export class ChatCompletionService {
 
           buffer += value;
           const lines = buffer.split('\n');
-          buffer = lines.pop() || ''; // Keep the last, possibly incomplete, line
+          buffer = lines.pop() || '';
 
           for (const line of lines) {
             if (line.trim().startsWith('data: ')) {
@@ -785,13 +739,12 @@ export class ChatCompletionService {
 
                 const chunk = responseHandler.getStreamingReply(parsed, formatter);
 
-                // Accumulate native reasoning
                 if (chunk.reasoning) {
                   reasoning += chunk.reasoning;
                 }
 
                 let deltaToYield = chunk.delta || '';
-                let reasoningDelta = ''; // From parser
+                let reasoningDelta = '';
 
                 if (reasoningParser) {
                   const parsed = reasoningParser.process(deltaToYield);
@@ -825,7 +778,6 @@ export class ChatCompletionService {
           }
         }
 
-        // Flush reasoning parser if needed
         if (reasoningParser) {
           const flushed = reasoningParser.flush();
           if (flushed.delta || flushed.reasoning) {
@@ -844,21 +796,24 @@ export class ChatCompletionService {
       }
     };
 
-    // Return a wrapped generator that handles usage tracking upon completion
-    return async function* () {
+    return (async function* () {
       let fullContent = '';
       let structured_content: object | undefined;
       let parse_error: Error | undefined;
+
       try {
-        for await (const chunk of originalGenerator()) {
+        for await (const chunk of rawStreamGenerator()) {
           fullContent += chunk.delta;
           yield chunk;
         }
       } finally {
-        // This runs when the stream is exhausted or the consumer breaks the loop
+        // This block runs when:
+        // 1. Stream finishes successfully
+        // 2. Consumer breaks the loop
+        // 3. Error is thrown (including Abort)
+
         if (options.structuredResponse) {
           const format = options.structuredResponse.format;
-          // Default to 'json' for 'native', 'json', or undefined format.
           const parseAs = format === 'xml' ? 'xml' : 'json';
 
           try {
@@ -877,6 +832,6 @@ export class ChatCompletionService {
         }
         await finalizeUsage(fullContent, structured_content, parse_error);
       }
-    };
+    })();
   }
 }

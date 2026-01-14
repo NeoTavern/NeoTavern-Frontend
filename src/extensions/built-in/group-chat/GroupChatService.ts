@@ -216,9 +216,8 @@ export class GroupChatService {
       });
 
       let content = '';
-      if (typeof response === 'function') {
-        const gen = response();
-        for await (const chunk of gen) {
+      if (Symbol.asyncIterator in response) {
+        for await (const chunk of response) {
           content += chunk.delta;
         }
       } else {
@@ -416,9 +415,8 @@ export class GroupChatService {
       });
 
       let content = '';
-      if (typeof response === 'function') {
-        const gen = response();
-        for await (const chunk of gen) {
+      if (Symbol.asyncIterator in response) {
+        for await (const chunk of response) {
           content += chunk.delta;
         }
       } else {

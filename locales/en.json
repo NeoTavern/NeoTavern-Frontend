@@ -550,7 +550,8 @@
     "default": "Default",
     "welcome": "Welcome",
     "back": "Back",
-    "login": "Login"
+    "login": "Login",
+    "copy": "Copy"
   },
   "popup": {
     "cropAvatar": {
@@ -1268,7 +1269,9 @@
         "addArgument": "Add Argument",
         "templateMacro": "Template Macro",
         "selectTemplate": "Select a template to edit",
-        "resetToDefault": "Reset to default"
+        "resetToDefault": "Reset to default",
+        "sessionPreamble": "Session Preamble",
+        "sessionPreambleHint": "The system prompt used for the chat session context."
       },
       "popup": {
         "template": "Template",
@@ -1283,7 +1286,32 @@
         "output": "Output",
         "generate": "Generate",
         "abort": "Abort",
-        "apply": "Apply"
+        "apply": "Apply",
+        "generating": "Generating...",
+        "oneShot": "One-Shot",
+        "sessions": "Sessions",
+        "diff": "Diff",
+        "showDiff": "Show Diff",
+        "generalDiff": "Compare Original vs Latest",
+        "relatedCharacters": "Related Characters",
+        "contextCharacters": "Context Characters",
+        "contextCharactersDesc": "Select additional characters to include in the context.",
+        "worldInfoContext": "World Info Context",
+        "currentEntry": "Current Entry",
+        "contextLorebooks": "Context Lorebooks",
+        "contextLorebooksDesc": "Select additional lorebooks to include in the context.",
+        "allEntries": "All entries (select to restrict)",
+        "structuredResponseFormat": "Structured Response Format"
+      },
+      "session": {
+        "sessions": "Sessions",
+        "noSessions": "No active sessions. Create a new one to start.",
+        "sessionItem": "Session {date}",
+        "deleteFromHere": "Delete this and subsequent messages",
+        "typeMessage": "Type your message...",
+        "createFailed": "Failed to create session",
+        "selectSession": "Select or create a session to start.",
+        "newSession": "New Session"
       },
       "buttons": {
         "rewriteMessage": "Rewrite Message",

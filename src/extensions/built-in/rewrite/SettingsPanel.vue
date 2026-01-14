@@ -55,7 +55,8 @@ function createTemplate() {
     id: uuidv4(),
     name: 'New Template',
     prompt: 'Rewrite the text...',
-    template: DEFAULT_TEMPLATES[0].template,
+    template: 'You are a helpful assistant. {{input}}',
+    sessionPreamble: 'You are a helpful writing assistant.',
     args: [],
   };
   settings.value.templates.push(newTemplate);
@@ -144,7 +145,7 @@ function isDefaultTemplate(id: string) {
   return DEFAULT_TEMPLATES.some((t) => t.id === id);
 }
 
-async function resetDefaultField(id: string, field: 'prompt' | 'template') {
+async function resetDefaultField(id: string, field: 'prompt' | 'template' | 'sessionPreamble') {
   const def = DEFAULT_TEMPLATES.find((t) => t.id === id);
   const current = settings.value.templates.find((t) => t.id === id);
   if (def && current) {
@@ -341,6 +342,23 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
                   Standard macros (e.g. <code>{{ '{' + '{char}' + '}' }}</code
                   >, <code>{{ '{' + '{user}' + '}' }}</code
                   >)
+                </div>
+              </FormItem>
+
+              <FormItem
+                :label="t('extensionsBuiltin.rewrite.settings.sessionPreamble')"
+                :description="t('extensionsBuiltin.rewrite.settings.sessionPreambleHint')"
+              >
+                <div class="textarea-container">
+                  <Textarea v-model="activeTemplate.sessionPreamble" :rows="5" allow-maximize />
+                  <Button
+                    v-if="isDefaultTemplate(activeTemplate.id)"
+                    class="reset-macro-btn"
+                    icon="fa-rotate-left"
+                    :title="t('extensionsBuiltin.rewrite.settings.resetToDefault')"
+                    variant="ghost"
+                    @click="resetDefaultField(activeTemplate.id, 'sessionPreamble')"
+                  />
                 </div>
               </FormItem>
             </div>

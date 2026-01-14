@@ -351,7 +351,7 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
       payload: ChatCompletionPayload,
       formatter: ApiFormatter,
       signal?: AbortSignal,
-    ) => Promise<GenerationResponse | (() => AsyncGenerator<StreamedChunk>)>;
+    ) => Promise<GenerationResponse | AsyncGenerator<StreamedChunk>>;
     buildPayload: (messages: ApiChatMessage[], samplerOverrides?: Partial<SamplerSettings>) => ChatCompletionPayload;
 
     /**
@@ -591,7 +591,7 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
     generate: (
       messages: ApiChatMessage[],
       options?: LlmGenerationOptions,
-    ) => Promise<GenerationResponse | (() => AsyncGenerator<StreamedChunk>)>;
+    ) => Promise<GenerationResponse | AsyncGenerator<StreamedChunk>>;
   };
 
   i18n: {
