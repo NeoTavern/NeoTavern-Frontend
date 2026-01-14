@@ -88,12 +88,22 @@ Response:
 (Rewritten Text)
 \`\`\``;
 
+const INPUT_TEXT_BLOCK = `
+{{#if input}}
+[Input Text]
+\`\`\`
+{{input}}
+\`\`\`
+{{/if}}`;
+
 const fixGrammarPreamble = `You are an expert editor.
 
 {{#if contextMessages}}
 [Context Info]
 {{contextMessages}}
-{{/if}}`;
+{{/if}}
+
+${INPUT_TEXT_BLOCK}`;
 
 const characterPolisherPreamble = `You are an expert character creator for LLM roleplay.
 You are refining a specific field of a Character Card (V2 spec).
@@ -154,6 +164,8 @@ Description: {{persona}}
 {{/if}}
 {{/if}}
 
+${INPUT_TEXT_BLOCK}
+
 [Task]
 {{#if fieldName}}
 Field being edited: "{{fieldName}}"
@@ -200,7 +212,9 @@ Description: {{persona}}
 {{#if contextMessages}}
 [Chat Context]
 {{contextMessages}}
-{{/if}}`;
+{{/if}}
+
+${INPUT_TEXT_BLOCK}`;
 
 const genericPreamble = `You are a helpful writing assistant.
 
@@ -235,7 +249,9 @@ const genericPreamble = `You are a helpful writing assistant.
 {{#if contextMessages}}
 [Chat Context]
 {{contextMessages}}
-{{/if}}`;
+{{/if}}
+
+${INPUT_TEXT_BLOCK}`;
 
 const summarizePreamble = `You are a professional summarization assistant.
 

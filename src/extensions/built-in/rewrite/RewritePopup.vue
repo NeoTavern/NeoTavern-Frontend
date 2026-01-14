@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, isProxy, isReactive, isRef, markRaw, onMounted, ref, toRaw, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/common';
+import { ConnectionProfileSelector, SplitPane } from '../../../components/common';
 import { Button, Checkbox, CollapsibleSection, FormItem, Input, Select, Tabs, Textarea } from '../../../components/UI';
 import type { Character, ExtensionAPI, Persona, WorldInfoBook, WorldInfoHeader } from '../../../types';
 import RewriteView from './components/RewriteView.vue';
@@ -798,44 +798,57 @@ function handleGeneralDiff() {
 
       <!-- Session View -->
       <div v-show="activeTab === 'session'" class="view-container session-mode">
-        <div class="session-sidebar">
-          <SessionManager
-            :sessions="sessions"
-            :current-session-id="activeSession?.id"
-            @new-session="handleNewSession"
-            @load-session="handleLoadSession"
-            @delete-session="handleDeleteSession"
-          />
-        </div>
-        <div class="session-main">
-          <div v-if="activeSession" class="session-header-controls">
-            <Button
-              icon="fa-code-compare"
-              :title="t('extensionsBuiltin.rewrite.popup.generalDiff')"
-              :disabled="!latestSessionText"
-              @click="handleGeneralDiff"
-            >
-              {{ t('extensionsBuiltin.rewrite.popup.diff') }}
-            </Button>
-          </div>
+        <SplitPane :initial-width="250" :min-width="200" :max-width="400">
+          <template #side>
+            <div class="session-sidebar">
+              <SessionManager
+                :sessions="sessions"
+                :current-session-id="activeSession?.id"
+                @new-session="handleNewSession"
+                @load-session="handleLoadSession"
+                @delete-session="handleDeleteSession"
+              />
+            </div>
+          </template>
+          <template #main>
+            <div class="session-main">
+              <div v-if="activeSession" class="session-header-controls">
+                <Button
+                  icon="fa-code-compare"
+                  :title="t('extensionsBuiltin.rewrite.popup.generalDiff')"
+                  :disabled="!latestSessionText"
+                  @click="handleGeneralDiff"
+                >
+                  {{ t('extensionsBuiltin.rewrite.popup.diff') }}
+                </Button>
+              </div>
 
-          <SessionView
-            v-if="activeSession"
-            :messages="activeSession.messages"
-            :is-generating="isGenerating"
-            :current-text="originalText"
-            @send="handleSessionSend"
-            @delete-from="handleSessionDeleteFrom"
-            @apply-text="handleApply"
-            @show-diff="handleShowDiff"
-          />
-          <div v-else class="empty-session-view">
-            <p>{{ t('extensionsBuiltin.rewrite.session.selectSession') }}</p>
-            <Button icon="fa-plus" @click="handleNewSession">{{
-              t('extensionsBuiltin.rewrite.session.newSession')
-            }}</Button>
-          </div>
-        </div>
+              <SessionView
+                v-if="activeSession"
+                :messages="activeSession.messages"
+                :is-generating="isGenerating"
+                :current-text="originalText"
+                @send="handleSessionSend"
+                @delete-from="handleSessionDeleteFrom"
+                @apply-text="handleApply"
+                @show-diff="handleShowDiff"
+                @abort="handleAbort"
+              />
+              <div v-else class="empty-session-view">
+                <p>{{ t('extensionsBuiltin.rewrite.session.selectSession') }}</p>
+                <Button icon="fa-plus" @click="handleNewSession">{{
+                  t('extensionsBuiltin.rewrite.session.newSession')
+                }}</Button>
+              </div>
+
+              <!-- Close button for Session Tab -->
+              <div class="session-footer">
+                <div class="spacer"></div>
+                <Button variant="ghost" @click="handleCancel">{{ t('common.close') }}</Button>
+              </div>
+            </div>
+          </template>
+        </SplitPane>
       </div>
     </div>
   </div>
@@ -964,30 +977,43 @@ function handleGeneralDiff() {
   flex-direction: column;
   gap: 10px;
   min-height: 0;
+  overflow: hidden;
 
   &.session-mode {
     flex-direction: row;
+    border: 1px solid var(--theme-border-color);
+    border-radius: var(--base-border-radius);
+    background-color: var(--black-10a);
   }
 }
 
 .session-sidebar {
-  width: 250px;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  padding: 5px;
 }
 
 .session-main {
-  flex: 1;
+  height: 100%;
   display: flex;
   flex-direction: column;
   min-width: 0;
   gap: 10px;
+  padding: 10px;
 }
 
 .session-header-controls {
   display: flex;
   justify-content: flex-end;
-  padding: 0 5px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--theme-border-color);
+}
+
+.session-footer {
+  display: flex;
+  margin-top: 5px;
 }
 
 .empty-session-view {

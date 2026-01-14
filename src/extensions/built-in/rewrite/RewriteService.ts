@@ -84,6 +84,7 @@ export class RewriteService {
     }
 
     const macros = {
+      input: originalText,
       ...args,
       ...additionalMacros,
     };
@@ -108,16 +109,6 @@ export class RewriteService {
         },
       ],
     };
-
-    // If template uses input, add it as the first user message
-    if (!template.ignoreInput && originalText) {
-      session.messages.push({
-        id: this.api.uuid(),
-        role: 'user',
-        content: `Here is the text to rewrite:\n\n${originalText}`,
-        timestamp: Date.now(),
-      });
-    }
 
     await this.saveSession(session);
     return session;

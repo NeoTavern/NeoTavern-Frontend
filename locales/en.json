@@ -1311,7 +1311,8 @@
         "typeMessage": "Type your message...",
         "createFailed": "Failed to create session",
         "selectSession": "Select or create a session to start.",
-        "newSession": "New Session"
+        "newSession": "New Session",
+        "systemInstruction": "System Instruction"
       },
       "buttons": {
         "rewriteMessage": "Rewrite Message",

@@ -1315,6 +1315,7 @@ export interface MessageSchema {
         createFailed: string;
         selectSession: string;
         newSession: string;
+        systemInstruction: string;
       };
       buttons: {
         rewriteMessage: string;

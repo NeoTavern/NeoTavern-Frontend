@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { Button, Textarea } from '../../../../components/UI';
 import { useStrictI18n } from '../../../../composables/useStrictI18n';
 import type { RewriteLLMResponse, RewriteSessionMessage } from '../types';
@@ -15,6 +15,7 @@ const emit = defineEmits<{
   (e: 'delete-from', messageId: string): void;
   (e: 'apply-text', text: string): void;
   (e: 'show-diff', previous: string, current: string): void;
+  (e: 'abort'): void;
 }>();
 
 const { t } = useStrictI18n();
@@ -22,6 +23,27 @@ const { t } = useStrictI18n();
 const userInput = ref('');
 const chatContainer = ref<HTMLElement | null>(null);
 
+// System Message Collapsing Logic
+const isSystemCollapsed = ref(true);
+
+function toggleSystemCollapse() {
+  isSystemCollapsed.value = !isSystemCollapsed.value;
+}
+
+const systemMessageContent = computed(() => {
+  const sysMsg = props.messages.find((m) => m.role === 'system');
+  return (sysMsg?.content as string) || '';
+});
+
+const systemMessagePreview = computed(() => {
+  const content = systemMessageContent.value;
+  if (!content) return '';
+  const lines = content.split('\n');
+  // Return first few lines or truncated text
+  return lines.slice(0, 2).join('\n') + (lines.length > 2 || content.length > 100 ? '...' : '');
+});
+
+// Scroll Logic
 watch(
   () => props.messages,
   () => {
@@ -77,10 +99,18 @@ function showDiff(msg: RewriteSessionMessage) {
   <div class="session-view">
     <div ref="chatContainer" class="chat-container">
       <div v-for="msg in messages" :key="msg.id" class="message" :class="`role-${msg.role}`">
+        <!-- Collapsible System Message -->
         <div v-if="msg.role === 'system'" class="system-message">
-          <p>
-            <em>{{ msg.content as string }}</em>
-          </p>
+          <div class="system-header" @click="toggleSystemCollapse">
+            <span class="system-label">{{ t('extensionsBuiltin.rewrite.session.systemInstruction') }}</span>
+            <i class="fa-solid" :class="isSystemCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+          </div>
+          <div v-if="isSystemCollapsed" class="system-preview">
+            <em>{{ systemMessagePreview }}</em>
+          </div>
+          <div v-else class="system-content">
+            <pre>{{ msg.content as string }}</pre>
+          </div>
         </div>
 
         <div v-if="msg.role === 'user'" class="user-message">
@@ -127,10 +157,19 @@ function showDiff(msg: RewriteSessionMessage) {
           />
         </div>
       </div>
-      <div v-if="isGenerating" class="generating-indicator">
-        <i class="fa-solid fa-circle-notch fa-spin"></i> {{ t('extensionsBuiltin.rewrite.popup.generating') }}
-      </div>
     </div>
+
+    <!-- Generating State & Abort -->
+    <div v-if="isGenerating" class="generating-status">
+      <div class="indicator">
+        <i class="fa-solid fa-circle-notch fa-spin"></i>
+        <span>{{ t('extensionsBuiltin.rewrite.popup.generating') }}</span>
+      </div>
+      <Button variant="danger" icon="fa-stop" @click="emit('abort')">
+        {{ t('extensionsBuiltin.rewrite.popup.abort') }}
+      </Button>
+    </div>
+
     <div class="chat-input">
       <Textarea
         v-model="userInput"
@@ -152,7 +191,6 @@ function showDiff(msg: RewriteSessionMessage) {
   flex-direction: column;
   height: 100%;
   min-height: 400px;
-  max-height: 600px;
   overflow: hidden;
   border: 1px solid var(--theme-border-color);
   border-radius: var(--base-border-radius);
@@ -192,15 +230,45 @@ function showDiff(msg: RewriteSessionMessage) {
     align-self: center;
     background-color: var(--black-30a);
     font-size: 0.85em;
-    opacity: 0.8;
     width: 100%;
     max-width: 100%;
-    text-align: center;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
   }
 
   &:hover .message-actions {
     opacity: 1;
   }
+}
+
+.system-header {
+  padding: 8px 10px;
+  background-color: var(--white-10a);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.system-preview,
+.system-content {
+  padding: 10px;
+}
+
+.system-preview {
+  font-style: italic;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .message-actions {
@@ -251,10 +319,20 @@ pre {
   color: var(--color-accent-green);
 }
 
-.generating-indicator {
-  align-self: center;
-  padding: 10px;
-  opacity: 0.8;
+.generating-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background-color: var(--black-50a);
+  border-top: 1px solid var(--theme-border-color);
+
+  .indicator {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    opacity: 0.8;
+  }
 }
 
 .chat-input {
