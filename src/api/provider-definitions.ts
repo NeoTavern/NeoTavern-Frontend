@@ -561,6 +561,35 @@ export const PROVIDER_HANDLERS: Partial<Record<ApiProvider, ProviderResponseHand
       };
     },
   },
+  [api_providers.COHERE]: {
+    extractMessage: extractMessageGeneric,
+    extractToolCalls: (data) => {
+      if (data?.message?.tool_calls && Array.isArray(data.message.tool_calls)) {
+        return data.message.tool_calls;
+      }
+      return [];
+    },
+    getStreamingReply: (data) => {
+      // Cohere text delta is in a 'text-generation' event type
+      const deltaText = data.type === 'text-generation' ? (data.text ?? '') : '';
+
+      const toolCalls: ApiChatToolCall[] = [];
+      const cohereToolEvents = ['tool-call-start', 'tool-call-delta', 'tool-call-end'];
+
+      // Process Cohere's structured tool call stream events
+      if (cohereToolEvents.includes(data?.type) && typeof data?.delta?.message === 'object') {
+        const toolCallDelta = data.delta.message;
+        // Add the tool call's index for the accumulator to correctly merge deltas
+        toolCallDelta.index = data.index ?? 0;
+        toolCalls.push(toolCallDelta);
+      }
+
+      return {
+        delta: deltaText,
+        tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+      };
+    },
+  },
   [api_providers.OLLAMA]: {
     extractMessage: (data) => data?.response ?? data?.message?.content ?? '',
     extractToolCalls: extractToolsGeneric, // Ollama uses standard OpenAI format now
