@@ -184,7 +184,7 @@ async function testMessage() {
 
     const response = await ChatCompletionService.generate(payload, settingsStore.settings.api.formatter);
 
-    if (typeof response === 'function') {
+    if (Symbol.asyncIterator in response) {
       toast.error(t('apiConnections.testMessage.unexpectedStream'));
       return;
     }

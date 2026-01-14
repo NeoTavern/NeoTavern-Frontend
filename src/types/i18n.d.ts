@@ -554,6 +554,8 @@ export interface MessageSchema {
     welcome: string;
     back: string;
     login: string;
+    copy: string;
+    regenerate: string;
   };
   popup: {
     cropAvatar: {
@@ -1272,6 +1274,8 @@ export interface MessageSchema {
         templateMacro: string;
         selectTemplate: string;
         resetToDefault: string;
+        sessionPreamble: string;
+        sessionPreambleHint: string;
       };
       popup: {
         template: string;
@@ -1287,6 +1291,33 @@ export interface MessageSchema {
         generate: string;
         abort: string;
         apply: string;
+        generating: string;
+        oneShot: string;
+        sessions: string;
+        diff: string;
+        showDiff: string;
+        generalDiff: string;
+        relatedCharacters: string;
+        contextCharacters: string;
+        contextCharactersDesc: string;
+        worldInfoContext: string;
+        currentEntry: string;
+        contextLorebooks: string;
+        contextLorebooksDesc: string;
+        allEntries: string;
+        structuredResponseFormat: string;
+      };
+      session: {
+        sessions: string;
+        noSessions: string;
+        sessionItem: string;
+        deleteFromHere: string;
+        typeMessage: string;
+        createFailed: string;
+        selectSession: string;
+        newSession: string;
+        systemInstruction: string;
+        deleteConfirm: string;
       };
       buttons: {
         rewriteMessage: string;

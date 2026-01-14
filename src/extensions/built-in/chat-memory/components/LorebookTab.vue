@@ -233,9 +233,8 @@ async function handleLorebookSummarize() {
     });
 
     let fullContent = '';
-    if (typeof response === 'function') {
-      const generator = response();
-      for await (const chunk of generator) {
+    if (Symbol.asyncIterator in response) {
+      for await (const chunk of response) {
         if (!isGenerating.value) break;
         fullContent += chunk.delta;
         summaryResult.value = fullContent;

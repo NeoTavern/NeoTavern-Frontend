@@ -75,10 +75,8 @@ export class Translator {
 
       let translatedText = '';
 
-      if (typeof response === 'function') {
-        // Stream handling
-        const generator = response();
-        for await (const chunk of generator) {
+      if (Symbol.asyncIterator in response) {
+        for await (const chunk of response) {
           translatedText += chunk.delta;
         }
       } else {
@@ -153,9 +151,8 @@ export class Translator {
 
       let translatedText = '';
 
-      if (typeof response === 'function') {
-        const generator = response();
-        for await (const chunk of generator) {
+      if (Symbol.asyncIterator in response) {
+        for await (const chunk of response) {
           translatedText += chunk.delta;
         }
       } else {

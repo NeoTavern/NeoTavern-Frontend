@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import * as Diff from 'diff';
-import { computed, onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/common';
-import { Button, Checkbox, CollapsibleSection, FormItem, Input, Select, Textarea } from '../../../components/UI';
+import { computed, isProxy, isReactive, isRef, markRaw, onMounted, ref, toRaw, watch } from 'vue';
+import { ConnectionProfileSelector, SplitPane } from '../../../components/common';
+import { Button, Checkbox, CollapsibleSection, FormItem, Input, Select, Tabs, Textarea } from '../../../components/UI';
 import type { Character, ExtensionAPI, Persona, WorldInfoBook, WorldInfoHeader } from '../../../types';
+import RewriteView from './components/RewriteView.vue';
+import SessionManager from './components/SessionManager.vue';
+import SessionView from './components/SessionView.vue';
 import { RewriteService } from './RewriteService';
-import { DEFAULT_TEMPLATES, type RewriteSettings, type RewriteTemplateOverride } from './types';
+import {
+  DEFAULT_TEMPLATES,
+  type RewriteLLMResponse,
+  type RewriteSession,
+  type RewriteSettings,
+  type RewriteTemplateOverride,
+  type StructuredResponseFormat,
+} from './types';
 
 const props = defineProps<{
   api: ExtensionAPI<RewriteSettings>;
@@ -17,10 +26,10 @@ const props = defineProps<{
   closePopup?: () => void;
 }>();
 
-// TODO: i18n
-
 const t = props.api.i18n.t;
 const service = new RewriteService(props.api);
+
+// TODO: i18n
 
 // Settings State
 const settings = ref<RewriteSettings>(
@@ -32,33 +41,36 @@ const settings = ref<RewriteSettings>(
 );
 
 // UI State
+const activeTab = ref<string>('one-shot');
 const selectedTemplateId = ref<string>('');
 const selectedProfile = ref<string>('');
 const promptOverride = ref<string>('');
 const contextMessageCount = ref<number>(0);
 const escapeMacros = ref<boolean>(true);
 const argOverrides = ref<Record<string, boolean | number | string>>({});
+const structuredResponseFormat = ref<StructuredResponseFormat>('native');
 
 const selectedContextLorebooks = ref<string[]>([]);
 const selectedContextEntries = ref<Record<string, number[]>>({});
-
 const selectedContextCharacters = ref<string[]>([]);
+
+const isSidebarCollapsed = ref(false);
+const isCharacterContextOpen = ref(false);
+const isWorldInfoContextOpen = ref(false);
 
 // Data Cache
 const allBookHeaders = ref<WorldInfoHeader[]>([]);
 const bookCache = ref<Record<string, WorldInfoBook>>({});
 const allCharacters = ref<Character[]>([]);
 
-// Generation State
-const generatedText = ref<string>('');
+// Generation State (One-Shot)
+const oneShotGeneratedText = ref<string>('');
 const isGenerating = ref<boolean>(false);
 const abortController = ref<AbortController | null>(null);
 
-// Diff State
-const leftHtml = ref<string>('');
-const rightHtml = ref<string>('');
-const leftPaneRef = ref<HTMLElement | null>(null);
-const rightPaneRef = ref<HTMLElement | null>(null);
+// Session State
+const sessions = ref<RewriteSession[]>([]);
+const activeSession = ref<RewriteSession | null>(null);
 
 // Constants
 const IS_CHARACTER_FIELD = computed(() => props.identifier.startsWith('character.'));
@@ -72,7 +84,7 @@ onMounted(async () => {
   if (!settings.value.lastUsedTemplates) settings.value.lastUsedTemplates = {};
   if (!settings.value.templateOverrides) settings.value.templateOverrides = {};
 
-  // Auto-select template based on field type if no history
+  // Auto-select template
   const lastUsedTpl = settings.value.lastUsedTemplates[props.identifier];
   if (lastUsedTpl && settings.value.templates.find((t) => t.id === lastUsedTpl)) {
     selectedTemplateId.value = lastUsedTpl;
@@ -92,9 +104,8 @@ onMounted(async () => {
   }
 
   loadTemplateOverrides();
-  updateDiff();
 
-  // Load world info data if needed
+  // Load world info data
   allBookHeaders.value = props.api.worldInfo.getAllBookNames();
   allCharacters.value = props.api.character.getAll();
 
@@ -110,24 +121,48 @@ onMounted(async () => {
     };
   }
 
-  // Ensure selected books are loaded for entry options
+  // Ensure selected books are loaded
   for (const book of selectedContextLorebooks.value) {
     await ensureBookLoaded(book);
   }
+
+  // Load Sessions
+  await refreshSessions();
 });
 
 watch(selectedContextLorebooks, async (newBooks) => {
-  // Fetch newly selected books for entry options
   for (const book of newBooks) {
     await ensureBookLoaded(book);
   }
-  // Cleanup entries for deselected books
   for (const key of Object.keys(selectedContextEntries.value)) {
     if (!newBooks.includes(key)) {
       delete selectedContextEntries.value[key];
     }
   }
 });
+
+watch(
+  [
+    selectedProfile,
+    promptOverride,
+    contextMessageCount,
+    escapeMacros,
+    structuredResponseFormat,
+    isCharacterContextOpen,
+    isWorldInfoContextOpen,
+  ],
+  () => {
+    saveState();
+  },
+);
+
+watch(
+  [selectedContextLorebooks, selectedContextEntries, selectedContextCharacters, argOverrides],
+  () => {
+    saveState();
+  },
+  { deep: true },
+);
 
 async function ensureBookLoaded(bookName: string) {
   if (!bookCache.value[bookName]) {
@@ -171,12 +206,10 @@ const availableLorebooks = computed(() => {
 
 const availableCharacters = computed(() => {
   let excludeAvatar = '';
-  // If editing a character field, exclude that character to prevent duplication/confusion
   if (IS_CHARACTER_FIELD.value) {
     const editing = props.api.character.getEditing();
     if (editing) excludeAvatar = editing.avatar;
   }
-
   return allCharacters.value.filter((c) => c.avatar !== excludeAvatar).map((c) => ({ label: c.name, value: c.avatar }));
 });
 
@@ -196,29 +229,21 @@ function loadTemplateOverrides() {
   const overrides = settings.value.templateOverrides[tplId] || {};
   const tpl = settings.value.templates.find((t) => t.id === tplId);
 
-  if (overrides.lastUsedProfile) {
-    selectedProfile.value = overrides.lastUsedProfile;
-  } else {
-    selectedProfile.value = settings.value.defaultConnectionProfile || '';
-  }
-
+  selectedProfile.value = overrides.lastUsedProfile || settings.value.defaultConnectionProfile || '';
   promptOverride.value = overrides.prompt ?? tpl?.prompt ?? '';
   contextMessageCount.value = overrides.lastUsedXMessages ?? 0;
   escapeMacros.value = overrides.escapeInputMacros ?? true;
   selectedContextLorebooks.value = overrides.selectedContextLorebooks || [];
   selectedContextEntries.value = overrides.selectedContextEntries ? { ...overrides.selectedContextEntries } : {};
   selectedContextCharacters.value = overrides.selectedContextCharacters || [];
+  structuredResponseFormat.value = overrides.structuredResponseFormat || 'native';
+  isCharacterContextOpen.value = !(overrides.isCharacterContextCollapsed ?? true);
+  isWorldInfoContextOpen.value = !(overrides.isWorldInfoContextCollapsed ?? true);
 
-  // Load args
   const args: Record<string, boolean | number | string> = {};
   if (tpl?.args) {
     tpl.args.forEach((arg) => {
-      // Priority: Override > Default
-      if (overrides.args && overrides.args[arg.key] !== undefined) {
-        args[arg.key] = overrides.args[arg.key];
-      } else {
-        args[arg.key] = arg.defaultValue;
-      }
+      args[arg.key] = overrides.args?.[arg.key] ?? arg.defaultValue;
     });
   }
   argOverrides.value = args;
@@ -245,6 +270,9 @@ function saveState() {
     selectedContextLorebooks: selectedContextLorebooks.value,
     selectedContextEntries: { ...selectedContextEntries.value },
     selectedContextCharacters: selectedContextCharacters.value,
+    structuredResponseFormat: structuredResponseFormat.value,
+    isCharacterContextCollapsed: !isCharacterContextOpen.value,
+    isWorldInfoContextCollapsed: !isWorldInfoContextOpen.value,
   };
 
   settings.value.templateOverrides[tplId] = overrides;
@@ -257,78 +285,7 @@ watch(selectedTemplateId, () => {
   loadTemplateOverrides();
 });
 
-// --- Diff Logic ---
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function updateDiff() {
-  if (!generatedText.value) {
-    leftHtml.value = escapeHtml(props.originalText);
-    rightHtml.value = '';
-    return;
-  }
-
-  if (IGNORE_INPUT.value) {
-    rightHtml.value = escapeHtml(generatedText.value);
-    return;
-  }
-
-  const diff = Diff.diffWords(props.originalText, generatedText.value);
-
-  let lHtml = '';
-  let rHtml = '';
-
-  diff.forEach((part) => {
-    const escapedVal = escapeHtml(part.value);
-
-    if (part.removed) {
-      lHtml += `<span class="diff-del">${escapedVal}</span>`;
-    } else if (part.added) {
-      rHtml += `<span class="diff-ins">${escapedVal}</span>`;
-    } else {
-      lHtml += escapedVal;
-      rHtml += escapedVal;
-    }
-  });
-
-  leftHtml.value = lHtml;
-  rightHtml.value = rHtml;
-}
-
-// --- Scroll Sync ---
-let isSyncingLeft = false;
-let isSyncingRight = false;
-
-function onLeftScroll() {
-  if (!leftPaneRef.value || !rightPaneRef.value) return;
-  if (isSyncingLeft) {
-    isSyncingLeft = false;
-    return;
-  }
-  isSyncingRight = true;
-  rightPaneRef.value.scrollTop = leftPaneRef.value.scrollTop;
-  rightPaneRef.value.scrollLeft = leftPaneRef.value.scrollLeft;
-}
-
-function onRightScroll() {
-  if (!leftPaneRef.value || !rightPaneRef.value) return;
-  if (isSyncingRight) {
-    isSyncingRight = false;
-    return;
-  }
-  isSyncingLeft = true;
-  leftPaneRef.value.scrollTop = rightPaneRef.value.scrollTop;
-  leftPaneRef.value.scrollLeft = rightPaneRef.value.scrollLeft;
-}
-
-// --- Generation Logic ---
+// --- One-Shot Generation ---
 
 function getContextData() {
   let activeCharacter: Character | undefined;
@@ -340,31 +297,24 @@ function getContextData() {
     const actives = props.api.character.getActives();
     if (actives.length > 0) activeCharacter = actives[0];
   }
-
   return { activeCharacter, persona };
 }
 
 function getContextMessagesString(): string {
   if (contextMessageCount.value <= 0) return '';
-
   const history = props.api.chat.getHistory();
   if (history.length === 0) return '';
-
   const endIndex = props.referenceMessageIndex !== undefined ? props.referenceMessageIndex : history.length;
   const startIndex = Math.max(0, endIndex - contextMessageCount.value);
-
   const slice = history.slice(startIndex, endIndex);
-
   return slice.map((m) => `${m.name}: ${m.mes}`).join('\n');
 }
 
 function getAdditionalCharactersContext(): string {
   if (selectedContextCharacters.value.length === 0) return '';
-
   const chars = selectedContextCharacters.value
     .map((avatar) => props.api.character.get(avatar))
     .filter((c) => c !== null) as Character[];
-
   return chars
     .map((c) => {
       let text = `Name: ${c.name}`;
@@ -379,18 +329,12 @@ function getAdditionalCharactersContext(): string {
 
 async function getWorldInfoContext() {
   const macros: Record<string, unknown> = {};
-
-  // 1. Current Selected Book & Entry
   const currentFilename = props.api.worldInfo.getSelectedBookName();
   let currentBookUid: number | null = null;
   let currentBookName: string | null = null;
 
   if (currentFilename) {
-    // We try to get book info, might need to fetch if not in cache (though getSelectedBookName implies we know it)
-    // We don't necessarily need the whole book content just for the name, but for consistency:
-    macros.selectedBook = {
-      name: currentFilename,
-    };
+    macros.selectedBook = { name: currentFilename };
     currentBookName = currentFilename;
   }
 
@@ -406,29 +350,20 @@ async function getWorldInfoContext() {
     currentBookName = currentEntryCtx.bookName;
   }
 
-  // 2. Additional Selected Lorebooks
   if (selectedContextLorebooks.value.length > 0) {
     const otherBooksContent: string[] = [];
-
     for (const bookName of selectedContextLorebooks.value) {
-      // Ensure book is loaded (should be from mount/watch)
       await ensureBookLoaded(bookName);
       const book = bookCache.value[bookName];
-
       if (book) {
         const entryIds = selectedContextEntries.value[bookName] || [];
         let entriesToInclude = book.entries;
-
         if (entryIds.length > 0) {
-          // Include only specifically selected entries
           entriesToInclude = book.entries.filter((e) => entryIds.includes(e.uid));
         }
-
-        // If this is the book containing the currently edited entry, exclude that entry from "otherWorldInfo"
         if (currentBookName === bookName && currentBookUid !== null) {
           entriesToInclude = entriesToInclude.filter((e) => e.uid !== currentBookUid);
         }
-
         if (entriesToInclude.length > 0) {
           const entriesSummary = entriesToInclude
             .map((e) => `- [${e.uid}] Keys: ${e.key.join(', ')} | Comment: ${e.comment}\n  Content: ${e.content}`)
@@ -439,7 +374,6 @@ async function getWorldInfoContext() {
     }
     macros.otherWorldInfo = otherBooksContent.join('\n\n');
   }
-
   return macros;
 }
 
@@ -450,21 +384,15 @@ function handleAbort() {
   }
 }
 
-async function handleGenerate() {
+async function handleGenerateOneShot() {
   if (!selectedProfile.value) {
     props.api.ui.showToast(t('extensionsBuiltin.rewrite.errors.selectProfile'), 'error');
     return;
   }
-
   saveState();
-
   isGenerating.value = true;
   abortController.value = new AbortController();
-  generatedText.value = '';
-  if (!IGNORE_INPUT.value) {
-    leftHtml.value = escapeHtml(props.originalText);
-  }
-  rightHtml.value = '';
+  oneShotGeneratedText.value = '';
 
   try {
     const contextData = getContextData();
@@ -495,17 +423,14 @@ async function handleGenerate() {
       abortController.value?.signal,
     );
 
-    if (typeof response === 'function') {
-      const generator = response();
+    if (Symbol.asyncIterator in response) {
       let rawAcc = '';
-      for await (const chunk of generator) {
+      for await (const chunk of response) {
         rawAcc += chunk.delta;
-        generatedText.value = service.extractCodeBlock(rawAcc);
-        updateDiff();
+        oneShotGeneratedText.value = service.extractCodeBlock(rawAcc);
       }
     } else {
-      generatedText.value = service.extractCodeBlock(response.content);
-      updateDiff();
+      oneShotGeneratedText.value = service.extractCodeBlock(response.content);
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
@@ -521,10 +446,175 @@ async function handleGenerate() {
   }
 }
 
-function handleApply() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function deepToRaw<T extends Record<string, any>>(sourceObj: T): T {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const objectIterator = (input: any): any => {
+    if (Array.isArray(input)) {
+      return input.map((item) => objectIterator(item));
+    }
+    if (isRef(input) || isReactive(input) || isProxy(input)) {
+      return objectIterator(toRaw(input));
+    }
+    if (input && typeof input === 'object') {
+      return Object.keys(input).reduce((acc, key) => {
+        acc[key as keyof typeof acc] = objectIterator(input[key]);
+        return acc;
+      }, {} as T);
+    }
+    return input;
+  };
+
+  return objectIterator(sourceObj);
+}
+
+// --- Session Logic ---
+
+async function refreshSessions() {
+  sessions.value = await service.getSessions(props.identifier);
+}
+
+async function handleNewSession() {
   saveState();
-  props.onApply(generatedText.value);
+  try {
+    const contextData = getContextData();
+    const contextMessagesStr = getContextMessagesString();
+    const worldInfoMacros = await getWorldInfoContext();
+    const otherCharactersStr = getAdditionalCharactersContext();
+
+    const additionalMacros = {
+      contextMessages: contextMessagesStr,
+      fieldName: props.identifier,
+      otherCharacters: otherCharactersStr,
+      ...worldInfoMacros,
+    };
+
+    activeSession.value = await service.createSession(
+      selectedTemplateId.value,
+      props.identifier,
+      props.originalText,
+      contextData,
+      additionalMacros,
+      argOverrides.value,
+    );
+    await refreshSessions();
+  } catch (e) {
+    console.error(e);
+    props.api.ui.showToast(t('extensionsBuiltin.rewrite.session.createFailed'), 'error');
+  }
+}
+
+async function handleLoadSession(id: string) {
+  activeSession.value = await service.getSession(id);
+}
+
+async function handleDeleteSession(id: string) {
+  await service.deleteSession(id);
+  if (activeSession.value?.id === id) {
+    activeSession.value = null;
+  }
+  await refreshSessions();
+}
+
+async function handleSessionSend(text: string) {
+  if (!activeSession.value || !selectedProfile.value) return;
+
+  isGenerating.value = true;
+  abortController.value = new AbortController();
+
+  // Add User Message
+  activeSession.value.messages.push({
+    id: props.api.uuid(),
+    role: 'user',
+    content: text,
+    timestamp: Date.now(),
+  });
+  await service.saveSession(deepToRaw(activeSession.value));
+
+  await executeSessionGeneration();
+}
+
+async function executeSessionGeneration() {
+  if (!activeSession.value || !selectedProfile.value) return;
+
+  try {
+    const response = await service.generateSessionResponse(
+      activeSession.value.messages,
+      selectedProfile.value,
+      structuredResponseFormat.value,
+      abortController.value?.signal,
+    );
+
+    activeSession.value.messages.push({
+      id: props.api.uuid(),
+      role: 'assistant',
+      content: response,
+      timestamp: Date.now(),
+    });
+
+    await service.saveSession(deepToRaw(activeSession.value));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.error(error);
+    if (error?.name === 'AbortError') {
+      props.api.ui.showToast(t('extensionsBuiltin.rewrite.messages.generationAborted'), 'info');
+    } else {
+      props.api.ui.showToast(t('extensionsBuiltin.rewrite.messages.generationFailed') + ': ' + error.message, 'error');
+    }
+  } finally {
+    isGenerating.value = false;
+    abortController.value = null;
+  }
+}
+
+async function handleSessionDeleteFrom(msgId: string) {
+  if (!activeSession.value) return;
+  const index = activeSession.value.messages.findIndex((m) => m.id === msgId);
+  if (index !== -1) {
+    activeSession.value.messages = activeSession.value.messages.slice(0, index);
+    await service.saveSession(deepToRaw(activeSession.value));
+  }
+}
+
+async function handleEditMessage(msgId: string, newContent: string) {
+  if (!activeSession.value) return;
+  const msg = activeSession.value.messages.find((m) => m.id === msgId);
+  if (msg) {
+    msg.content = newContent;
+    await service.saveSession(deepToRaw(activeSession.value));
+  }
+}
+
+async function handleRegenerate() {
+  if (!activeSession.value) return;
+
+  const lastMsg = activeSession.value.messages[activeSession.value.messages.length - 1];
+  if (!lastMsg) return;
+
+  if (lastMsg.role === 'assistant') {
+    // Remove last assistant message
+    activeSession.value.messages.pop();
+    await service.saveSession(deepToRaw(activeSession.value));
+  }
+
+  // Generate
+  isGenerating.value = true;
+  abortController.value = new AbortController();
+  await executeSessionGeneration();
+}
+
+// --- Common ---
+
+function handleApply(text: string) {
+  saveState();
+  props.onApply(text);
   props.closePopup?.();
+}
+
+function handleApplyLatestSession() {
+  if (latestSessionText.value) {
+    handleApply(latestSessionText.value);
+  }
 }
 
 function handleCancel() {
@@ -533,16 +623,73 @@ function handleCancel() {
 }
 
 function handleCopyOutput() {
-  if (!generatedText.value) return;
-
-  navigator.clipboard.writeText(generatedText.value).then(
-    () => {
-      props.api.ui.showToast(t('extensionsBuiltin.rewrite.messages.copiedToClipboard'), 'success');
-    },
-    () => {
-      props.api.ui.showToast(t('extensionsBuiltin.rewrite.messages.copyFailed'), 'error');
-    },
+  if (!oneShotGeneratedText.value) return;
+  navigator.clipboard.writeText(oneShotGeneratedText.value).then(
+    () => props.api.ui.showToast(t('extensionsBuiltin.rewrite.messages.copiedToClipboard'), 'success'),
+    () => props.api.ui.showToast(t('extensionsBuiltin.rewrite.messages.copyFailed'), 'error'),
   );
+}
+
+// --- Diff Logic ---
+
+const latestSessionText = computed(() => {
+  if (!activeSession.value || activeSession.value.messages.length === 0) return '';
+  // Iterate backwards to find last assistant message with a response
+  const messages = activeSession.value.messages;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role === 'assistant') {
+      const content = m.content;
+      if (typeof content === 'string') return content;
+      if ((content as RewriteLLMResponse).response) {
+        return (content as RewriteLLMResponse).response as string;
+      }
+    }
+  }
+  return '';
+});
+
+function openDiffPopup(original: string, modified: string) {
+  props.api.ui
+    .showPopup({
+      title: t('extensionsBuiltin.rewrite.popup.diff'),
+      component: markRaw(RewriteView),
+      componentProps: {
+        originalText: original,
+        generatedText: modified,
+        isGenerating: false,
+        ignoreInput: false,
+      },
+      wide: true,
+      large: true,
+      customButtons: [
+        {
+          text: t('extensionsBuiltin.rewrite.popup.apply'),
+          result: 1, // Positive result
+          classes: ['btn-confirm'],
+        },
+        {
+          text: t('common.close'),
+          result: 0,
+          classes: ['btn-ghost'],
+        },
+      ],
+    })
+    .then(({ result }) => {
+      if (result === 1) {
+        handleApply(modified);
+      }
+    });
+}
+
+function handleShowDiff(previous: string, current: string) {
+  openDiffPopup(previous, current);
+}
+
+function handleGeneralDiff() {
+  if (!activeSession.value) return;
+  // Diff Original vs Latest
+  openDiffPopup(props.originalText, latestSessionText.value);
 }
 </script>
 
@@ -562,7 +709,7 @@ function handleCopyOutput() {
     </div>
 
     <CollapsibleSection :title="t('extensionsBuiltin.rewrite.popup.contextPrompt')" :is-open="true">
-      <!-- Dynamic Arguments Section -->
+      <!-- Dynamic Arguments -->
       <div v-if="currentTemplate?.args && currentTemplate.args.length > 0" class="dynamic-args-grid">
         <div v-for="arg in currentTemplate.args" :key="arg.key" class="dynamic-arg-item">
           <Checkbox v-if="arg.type === 'boolean'" v-model="argOverrides[arg.key] as boolean" :label="arg.label" />
@@ -576,7 +723,7 @@ function handleCopyOutput() {
       </div>
 
       <div class="context-controls">
-        <div v-if="!currentTemplate?.ignoreInput" class="escape-control">
+        <div v-if="!currentTemplate?.ignoreInput && activeTab === 'one-shot'" class="escape-control">
           <Checkbox
             v-model="escapeMacros"
             :label="t('extensionsBuiltin.rewrite.popup.escapeMacros')"
@@ -590,49 +737,49 @@ function handleCopyOutput() {
         </div>
       </div>
 
-      <!-- Character Context Section -->
+      <!-- Character Context -->
       <CollapsibleSection
         v-if="showCharacterContextSection"
+        v-model:is-open="isCharacterContextOpen"
         class="inner-collapsible"
-        title="Related Characters"
-        :is-open="false"
+        :title="t('extensionsBuiltin.rewrite.popup.relatedCharacters')"
       >
         <FormItem
-          label="Context Characters"
-          description="Select additional characters to include in the context."
+          :label="t('extensionsBuiltin.rewrite.popup.contextCharacters')"
+          :description="t('extensionsBuiltin.rewrite.popup.contextCharactersDesc')"
           class="character-select"
         >
           <Select
             v-model="selectedContextCharacters"
             :options="availableCharacters"
             multiple
-            placeholder="Select characters..."
+            :placeholder="t('common.select')"
           />
         </FormItem>
       </CollapsibleSection>
 
-      <!-- World Info Context Section -->
+      <!-- World Info Context -->
       <CollapsibleSection
         v-if="showWorldInfoContextSection"
+        v-model:is-open="isWorldInfoContextOpen"
         class="inner-collapsible"
-        title="World Info Context"
-        :is-open="false"
+        :title="t('extensionsBuiltin.rewrite.popup.worldInfoContext')"
       >
         <div v-if="selectedEntryContext && IS_WORLD_INFO_FIELD" class="current-context-info">
-          Current Entry: <strong>{{ selectedEntryContext.entry.comment }}</strong> (ID:
-          {{ selectedEntryContext.entry.uid }})
+          {{ t('extensionsBuiltin.rewrite.popup.currentEntry') }}:
+          <strong>{{ selectedEntryContext.entry.comment }}</strong> (ID: {{ selectedEntryContext.entry.uid }})
         </div>
 
         <FormItem
-          label="Context Lorebooks"
-          description="Select additional lorebooks to include in the context."
+          :label="t('extensionsBuiltin.rewrite.popup.contextLorebooks')"
+          :description="t('extensionsBuiltin.rewrite.popup.contextLorebooksDesc')"
           class="lorebook-select"
         >
           <Select
             v-model="selectedContextLorebooks"
             :options="availableLorebooks"
             multiple
-            placeholder="Select books..."
+            :placeholder="t('common.select')"
           />
         </FormItem>
 
@@ -644,14 +791,15 @@ function handleCopyOutput() {
                 v-model="selectedContextEntries[bookName]"
                 :options="getEntriesForBook(bookName)"
                 multiple
-                placeholder="All entries (select to restrict)"
+                :placeholder="t('extensionsBuiltin.rewrite.popup.allEntries')"
               />
             </div>
           </div>
         </div>
       </CollapsibleSection>
 
-      <FormItem :label="t('extensionsBuiltin.rewrite.popup.instruction')">
+      <!-- One-Shot Prompt Override -->
+      <FormItem v-if="activeTab === 'one-shot'" :label="t('extensionsBuiltin.rewrite.popup.instruction')">
         <div class="input-with-reset">
           <Textarea v-model="promptOverride" :rows="2" allow-maximize />
           <Button
@@ -659,76 +807,136 @@ function handleCopyOutput() {
             class="reset-btn"
             icon="fa-rotate-left"
             variant="ghost"
-            title="Reset to template default"
+            :title="t('extensionsBuiltin.rewrite.settings.resetToDefault')"
             @click="resetPrompt"
           />
         </div>
       </FormItem>
+
+      <!-- Session Mode Settings -->
+      <div v-if="activeTab === 'session'" class="session-settings">
+        <FormItem :label="t('extensionsBuiltin.rewrite.popup.structuredResponseFormat')">
+          <Select
+            v-model="structuredResponseFormat"
+            :options="[
+              { label: 'Native (Structured)', value: 'native' },
+              { label: 'JSON (Structured)', value: 'json' },
+              { label: 'XML (Structured)', value: 'xml' },
+              { label: 'Raw Text (Readonly/Chat)', value: 'text' },
+            ]"
+          />
+        </FormItem>
+      </div>
     </CollapsibleSection>
 
-    <!-- Split diff view for templates that use input -->
-    <div v-if="!IGNORE_INPUT" class="split-view">
-      <!-- Original / Left Pane -->
-      <div class="pane">
-        <div class="pane-header">{{ t('extensionsBuiltin.rewrite.popup.original') }}</div>
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <div ref="leftPaneRef" class="pane-content diff-content" @scroll="onLeftScroll" v-html="leftHtml"></div>
-      </div>
+    <!-- Tabs -->
+    <Tabs
+      v-model="activeTab"
+      :options="[
+        { label: t('extensionsBuiltin.rewrite.popup.oneShot'), value: 'one-shot', icon: 'fa-wand-magic-sparkles' },
+        { label: t('extensionsBuiltin.rewrite.popup.sessions'), value: 'session', icon: 'fa-comments' },
+      ]"
+    />
 
-      <!-- Generated / Right Pane -->
-      <div class="pane">
-        <div class="pane-header">
-          <span>
-            {{ t('extensionsBuiltin.rewrite.popup.new') }}
-            <span v-if="isGenerating" class="generating-indicator"
-              ><i class="fa-solid fa-circle-notch fa-spin"></i
-            ></span>
-          </span>
-          <button v-if="generatedText" class="copy-btn" title="Copy to clipboard" @click="handleCopyOutput">
-            <i class="fa-solid fa-copy"></i>
-          </button>
+    <div class="tab-content">
+      <!-- One-Shot View -->
+      <div v-show="activeTab === 'one-shot'" class="view-container">
+        <RewriteView
+          :original-text="originalText"
+          :generated-text="oneShotGeneratedText"
+          :is-generating="isGenerating"
+          :ignore-input="!!IGNORE_INPUT"
+          @copy-output="handleCopyOutput"
+        />
+
+        <div class="actions-row">
+          <Button v-if="!isGenerating" @click="handleGenerateOneShot">
+            {{ t('extensionsBuiltin.rewrite.popup.generate') }}
+          </Button>
+          <Button v-else variant="danger" @click="handleAbort">
+            {{ t('extensionsBuiltin.rewrite.popup.abort') }}
+          </Button>
+          <div class="spacer"></div>
+          <Button variant="ghost" @click="handleCancel">{{ t('common.cancel') }}</Button>
+          <Button
+            variant="confirm"
+            :disabled="!oneShotGeneratedText || isGenerating"
+            @click="handleApply(oneShotGeneratedText)"
+            >{{ t('extensionsBuiltin.rewrite.popup.apply') }}</Button
+          >
         </div>
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <div ref="rightPaneRef" class="pane-content diff-content" @scroll="onRightScroll" v-html="rightHtml"></div>
       </div>
-    </div>
 
-    <!-- Single output view for templates that ignore input -->
-    <div v-else class="single-view">
-      <div class="pane">
-        <div class="pane-header">
-          <span>
-            {{ t('extensionsBuiltin.rewrite.popup.output') }}
-            <span v-if="isGenerating" class="generating-indicator"
-              ><i class="fa-solid fa-circle-notch fa-spin"></i
-            ></span>
-          </span>
-          <button v-if="generatedText" class="copy-btn" title="Copy to clipboard" @click="handleCopyOutput">
-            <i class="fa-solid fa-copy"></i>
-          </button>
-        </div>
-        <!-- eslint-disable-next-line vue/no-v-html -->
-        <div ref="rightPaneRef" class="pane-content" v-html="rightHtml"></div>
+      <!-- Session View -->
+      <div v-show="activeTab === 'session'" class="view-container session-mode">
+        <SplitPane v-model:collapsed="isSidebarCollapsed" :initial-width="250" :min-width="200" :max-width="400">
+          <template #side>
+            <div class="session-sidebar">
+              <SessionManager
+                :sessions="sessions"
+                :current-session-id="activeSession?.id"
+                @new-session="handleNewSession"
+                @load-session="handleLoadSession"
+                @delete-session="handleDeleteSession"
+              />
+            </div>
+          </template>
+          <template #main>
+            <div class="session-main">
+              <div v-if="activeSession" class="session-header-controls">
+                <Button
+                  icon="fa-code-compare"
+                  :title="t('extensionsBuiltin.rewrite.popup.generalDiff')"
+                  :disabled="!latestSessionText"
+                  @click="handleGeneralDiff"
+                >
+                  {{ t('extensionsBuiltin.rewrite.popup.diff') }}
+                </Button>
+              </div>
+
+              <SessionView
+                v-if="activeSession"
+                :messages="activeSession.messages"
+                :is-generating="isGenerating"
+                :current-text="originalText"
+                :api="api"
+                @send="handleSessionSend"
+                @delete-from="handleSessionDeleteFrom"
+                @edit-message="handleEditMessage"
+                @apply-text="handleApply"
+                @show-diff="handleShowDiff"
+                @abort="handleAbort"
+                @regenerate="handleRegenerate"
+              />
+              <div v-else class="empty-session-view">
+                <p>{{ t('extensionsBuiltin.rewrite.session.selectSession') }}</p>
+                <Button icon="fa-plus" @click="handleNewSession">{{
+                  t('extensionsBuiltin.rewrite.session.newSession')
+                }}</Button>
+              </div>
+
+              <!-- Footer for Session Tab -->
+              <div class="session-footer">
+                <div class="spacer"></div>
+                <Button variant="ghost" @click="handleCancel">{{ t('common.close') }}</Button>
+                <Button
+                  v-if="activeSession"
+                  variant="confirm"
+                  :disabled="!latestSessionText || isGenerating"
+                  @click="handleApplyLatestSession"
+                >
+                  {{ t('extensionsBuiltin.rewrite.popup.apply') }}
+                </Button>
+              </div>
+            </div>
+          </template>
+        </SplitPane>
       </div>
-    </div>
-
-    <div class="actions-row">
-      <Button v-if="!isGenerating" @click="handleGenerate">
-        {{ t('extensionsBuiltin.rewrite.popup.generate') }}
-      </Button>
-      <Button v-else variant="danger" @click="handleAbort">
-        {{ t('extensionsBuiltin.rewrite.popup.abort') }}
-      </Button>
-      <div class="spacer"></div>
-      <Button variant="ghost" @click="handleCancel">{{ t('common.cancel') }}</Button>
-      <Button variant="confirm" :disabled="!generatedText || isGenerating" @click="handleApply">{{
-        t('extensionsBuiltin.rewrite.popup.apply')
-      }}</Button>
     </div>
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .rewrite-popup-content {
   display: flex;
   flex-direction: column;
@@ -832,80 +1040,75 @@ function handleCopyOutput() {
   flex: 1;
 }
 
-.split-view {
-  display: flex;
-  gap: 10px;
-  flex: 1;
-  min-height: 300px;
-  overflow: hidden;
+.session-settings {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--theme-border-color);
 }
 
-.single-view {
-  display: flex;
-  flex: 1;
-  min-height: 300px;
-  overflow: hidden;
-}
-
-.pane {
+.tab-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--theme-border-color);
-  border-radius: var(--base-border-radius);
-  background-color: var(--black-30a);
-  min-width: 0;
   min-height: 0;
-  max-height: 400px;
 }
 
-.pane-header {
-  padding: 5px 10px;
-  border-bottom: 1px solid var(--theme-border-color);
-  font-weight: bold;
-  background-color: var(--white-20a);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.copy-btn {
-  background: transparent;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-  opacity: 0.6;
-  padding: 4px 8px;
-  border-radius: 3px;
-  transition: opacity 0.2s;
-}
-
-.copy-btn:hover {
-  opacity: 1;
-  background-color: var(--black-20a);
-}
-
-.pane-content {
+.view-container {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+
+  &.session-mode {
+    flex-direction: row;
+    border: 1px solid var(--theme-border-color);
+    border-radius: var(--base-border-radius);
+    background-color: var(--black-10a);
+  }
+}
+
+.session-sidebar {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 5px;
+}
+
+.session-main {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 10px;
   padding: 10px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: var(--font-family-mono);
-  font-size: 0.9em;
-  line-height: 1.5;
 }
 
-:deep(.diff-del) {
-  background-color: var(--color-accent-crimson-70a);
-  text-decoration: line-through;
-  opacity: 0.8;
-  border-radius: 2px;
+.session-header-controls {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--theme-border-color);
 }
 
-:deep(.diff-ins) {
-  background-color: var(--color-accent-green-70a);
-  border-radius: 2px;
+.session-footer {
+  display: flex;
+  gap: 10px;
+  margin-top: 5px;
+}
+
+.empty-session-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  opacity: 0.6;
+  border: 1px dashed var(--theme-border-color);
+  border-radius: var(--base-border-radius);
 }
 
 .actions-row {
@@ -916,10 +1119,5 @@ function handleCopyOutput() {
 
 .spacer {
   flex: 1;
-}
-
-.generating-indicator {
-  color: var(--theme-text-color);
-  opacity: 0.7;
 }
 </style>

@@ -851,7 +851,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         payload,
         effectiveFormatter,
         generationOptions,
-      )) as unknown as () => AsyncGenerator<StreamedChunk>;
+      )) as AsyncGenerator<StreamedChunk>;
 
       let targetMessageIndex = -1;
       let messageCreated = false;
@@ -864,7 +864,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       }
 
       try {
-        for await (const chunk of streamGenerator()) {
+        for await (const chunk of streamGenerator) {
           const chunkController = new AbortController();
           await eventEmitter.emit('process:stream-chunk', chunk, {
             payload,

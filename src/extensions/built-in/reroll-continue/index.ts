@@ -185,9 +185,8 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
 
       let generated = chatInput;
 
-      if (typeof response === 'function') {
-        const generator = response();
-        for await (const chunk of generator) {
+      if (Symbol.asyncIterator in response) {
+        for await (const chunk of response) {
           generated += chunk.delta ?? '';
           if (chatInputElement) {
             chatInputElement.value = generated;

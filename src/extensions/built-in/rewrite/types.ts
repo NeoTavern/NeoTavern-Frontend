@@ -1,3 +1,28 @@
+import type { MessageRole } from '../../../types';
+
+export interface RewriteLLMResponse {
+  justification: string;
+  response?: string;
+}
+
+export interface RewriteSessionMessage {
+  id: string;
+  role: MessageRole;
+  content: string | RewriteLLMResponse;
+  timestamp: number;
+}
+
+export interface RewriteSession {
+  id: string;
+  templateId: string;
+  identifier: string;
+  createdAt: number;
+  updatedAt: number;
+  originalText: string;
+  messages: RewriteSessionMessage[];
+  systemPrompt: string;
+}
+
 export interface RewriteTemplateArg {
   key: string;
   label: string;
@@ -8,11 +33,14 @@ export interface RewriteTemplateArg {
 export interface RewriteTemplate {
   id: string;
   name: string;
-  prompt: string; // The instruction
-  template: string; // The macro template
+  prompt: string; // The user-facing instruction for one-shot mode
+  template: string; // The full macro template for one-shot mode
+  sessionPreamble: string; // The base system prompt for chat sessions
   args?: RewriteTemplateArg[];
   ignoreInput?: boolean; // If true, the template doesn't use {{input}} and UI should hide input-related controls
 }
+
+export type StructuredResponseFormat = 'native' | 'json' | 'xml' | 'text';
 
 export interface RewriteTemplateOverride {
   lastUsedProfile?: string;
@@ -23,6 +51,9 @@ export interface RewriteTemplateOverride {
   selectedContextLorebooks?: string[];
   selectedContextEntries?: Record<string, number[]>; // Map bookName -> list of entry UIDs
   selectedContextCharacters?: string[];
+  structuredResponseFormat?: StructuredResponseFormat;
+  isCharacterContextCollapsed?: boolean;
+  isWorldInfoContextCollapsed?: boolean;
 }
 
 export interface RewriteSettings {
@@ -36,18 +67,9 @@ export interface RewriteSettings {
   templateOverrides: Record<string, RewriteTemplateOverride>;
 }
 
-export const DEFAULT_TEMPLATES: RewriteTemplate[] = [
-  {
-    id: 'fix-grammar',
-    name: 'Fix Grammar',
-    prompt: 'Correct grammar, spelling, and punctuation while maintaining the original tone.',
-    template: `You are an expert editor.
+// --- Default Templates Definition ---
 
-{{#if contextMessages}}
-[Context Info]
-{{contextMessages}}
-{{/if}}
-
+const ONE_SHOT_SUFFIX = `
 [Instruction]
 {{prompt}}
 
@@ -57,42 +79,42 @@ export const DEFAULT_TEMPLATES: RewriteTemplate[] = [
 \`\`\`
 
 [Output Rules]
-1. Fix all grammar and spelling errors.
-2. Ensure the tone matches the provided context (if any).
+1. Follow the instruction provided.
+2. Ensure consistency with any provided context.
 3. Do not add conversational filler.
-4. Output **only** the corrected text inside a code block.
+4. Output **only** the rewritten text inside a code block.
 
 Response:
 \`\`\`
-(Corrected Text)
-\`\`\``,
-  },
-  {
-    id: 'character-polisher',
-    name: 'Character Card Polisher',
-    prompt: 'Refine the text to be more evocative, show-dont-tell, and consistent with the character definition.',
-    args: [
-      {
-        key: 'includePersona',
-        label: 'Include Active Persona',
-        type: 'boolean',
-        defaultValue: true,
-      },
-      {
-        key: 'includeSelectedBookContext',
-        label: 'Include Selected Lorebooks',
-        type: 'boolean',
-        defaultValue: true,
-      },
-      {
-        key: 'includeSelectedCharacters',
-        label: 'Include Selected Characters',
-        type: 'boolean',
-        defaultValue: false,
-      },
-    ],
-    template: `You are an expert character creator for LLM roleplay.
-You are refining a specific field of a Character Card (V2 spec).
+(Rewritten Text)
+\`\`\``;
+
+const INPUT_TEXT_BLOCK = `
+{{#if input}}
+[Input Text]
+\`\`\`
+{{input}}
+\`\`\`
+{{/if}}`;
+
+const fixGrammarPreamble = `You are an expert editor assisting a user. Your task is to correct grammar, spelling, and punctuation while maintaining the original tone and style.
+
+Your justification should be friendly and conversational. Be direct and focus on the corrections you've made. Vary your responses and do not start every message the same way. Do not repeat the user's request back to them.
+
+Initial text is provided in the context.
+
+{{#if contextMessages}}
+[Context Info]
+{{contextMessages}}
+{{/if}}
+
+${INPUT_TEXT_BLOCK}`;
+
+const characterPolisherPreamble = `You are an expert character writer assisting a user. Your task is to refine specific fields of a Character Card (V2 spec) to be more evocative, show-don't-tell, and consistent with the character definition.
+
+Your justification should be friendly and conversational. Be direct and focus on the enhancements you've made. Vary your responses and do not start every message the same way. Do not repeat the user's request back to them.
+
+Initial character state is provided in the context.
 
 [Context: What is a Character Card?]
 A Character Card defines a virtual persona. Key fields include:
@@ -150,33 +172,18 @@ Description: {{persona}}
 {{/if}}
 {{/if}}
 
+${INPUT_TEXT_BLOCK}
+
 [Task]
 {{#if fieldName}}
 Field being edited: "{{fieldName}}"
-{{/if}}
-Instruction: {{prompt}}
+{{/if}}`;
 
-[Input Text]
-\`\`\`
-{{input}}
-\`\`\`
+const worldInfoRefinerPreamble = `You are an expert world builder and database manager assisting a user. Your task is to refine a World Info entry for clarity, conciseness, and effective key utilization.
 
-[Output Rules]
-1. Enhance the writing style (show, don't tell).
-2. Ensure consistency with the known Character Data.
-3. Output **only** the new text inside a code block.
+Your justification should be friendly and conversational. Be direct and focus on the structural or content improvements you've made. Vary your responses and do not start every message the same way. Do not repeat the user's request back to them.
 
-Response:
-\`\`\`
-(New Text)
-\`\`\``,
-  },
-  {
-    id: 'world-info-refiner',
-    name: 'World Info Refiner',
-    prompt: 'Improve clarity, conciseness, and formatting of the World Info entry.',
-    template: `You are an expert database manager for LLM roleplay.
-You are refining a World Info entry.
+Initial entry state is provided in the context.
 
 {{#if selectedBook}}
 [Book Context]
@@ -218,76 +225,13 @@ Description: {{persona}}
 {{contextMessages}}
 {{/if}}
 
-[Instruction]
-{{prompt}}
+${INPUT_TEXT_BLOCK}`;
 
-[Input Text]
-\`\`\`
-{{input}}
-\`\`\`
+const genericPreamble = `You are a versatile writing assistant helping a user. Your task is to rewrite text based on specific instructions provided by the user.
 
-[Output Rules]
-1. Fix grammar and phrasing.
-2. Ensure the content matches the keys and comment.
-3. Keep the format (e.g. if it is a list or prose).
-4. Output **only** the new content inside a code block.
+Your justification should be friendly and conversational. Be direct and focus on how you've applied the instructions. Vary your responses and do not start every message the same way. Do not repeat the user's request back to them.
 
-Response:
-\`\`\`
-(New Content)
-\`\`\``,
-    args: [
-      {
-        key: 'includeSelectedBookContext',
-        label: 'Include Selected Lorebooks',
-        type: 'boolean',
-        defaultValue: true,
-      },
-      {
-        key: 'includeSelectedCharacters',
-        label: 'Include Selected Characters',
-        type: 'boolean',
-        defaultValue: true,
-      },
-      {
-        key: 'includePersona',
-        label: 'Include Active Persona',
-        type: 'boolean',
-        defaultValue: true,
-      },
-    ],
-  },
-  {
-    id: 'generic',
-    name: 'Generic Instruction',
-    prompt: 'Rewrite the text following these instructions: ...',
-    args: [
-      {
-        key: 'includeChar',
-        label: 'Include Active Character',
-        type: 'boolean',
-        defaultValue: true,
-      },
-      {
-        key: 'includePersona',
-        label: 'Include Active Persona',
-        type: 'boolean',
-        defaultValue: true,
-      },
-      {
-        key: 'includeSelectedBookContext',
-        label: 'Include Selected Lorebooks',
-        type: 'boolean',
-        defaultValue: true,
-      },
-      {
-        key: 'includeSelectedCharacters',
-        label: 'Include Selected Characters',
-        type: 'boolean',
-        defaultValue: true,
-      },
-    ],
-    template: `You are a helpful writing assistant.
+Initial text is provided in the context.
 
 {{#if includeChar}}
 [Character Context]
@@ -322,44 +266,13 @@ Response:
 {{contextMessages}}
 {{/if}}
 
-[Instruction]
-{{prompt}}
+${INPUT_TEXT_BLOCK}`;
 
-[Input Text]
-\`\`\`
-{{input}}
-\`\`\`
+const summarizePreamble = `You are a professional summarization assistant. Your task is to condense chat history or text into its key points while preserving essential context and nuances.
 
-[Output Rules]
-1. Follow the instruction provided above.
-2. Output **only** the rewritten text inside a code block.
-3. Do not add conversational filler.
+Your justification should be friendly and conversational. Be direct and explain what was focused on in the summary. Vary your responses and do not start every message the same way. Do not repeat the user's request back to them.
 
-Response:
-\`\`\`
-(Rewritten Text)
-\`\`\``,
-  },
-  {
-    id: 'summarize-chat-history',
-    name: 'Summarize Chat History',
-    prompt: 'Condense the text to its key points while preserving essential information.',
-    ignoreInput: true,
-    args: [
-      {
-        key: 'includeChar',
-        label: 'Include Active Character',
-        type: 'boolean',
-        defaultValue: true,
-      },
-      {
-        key: 'includePersona',
-        label: 'Include Active Persona',
-        type: 'boolean',
-        defaultValue: true,
-      },
-    ],
-    template: `You are a professional summarization assistant.
+Context to summarize is provided below.
 
 {{#if includeChar}}
 [Character Context]
@@ -378,8 +291,89 @@ Response:
 {{#if contextMessages}}
 [Context Info]
 {{contextMessages}}
-{{/if}}
+{{/if}}`;
 
+export const DEFAULT_TEMPLATES: RewriteTemplate[] = [
+  {
+    id: 'fix-grammar',
+    name: 'Fix Grammar',
+    prompt: 'Correct grammar, spelling, and punctuation while maintaining the original tone.',
+    sessionPreamble: fixGrammarPreamble,
+    template: `${fixGrammarPreamble}${ONE_SHOT_SUFFIX}`,
+  },
+  {
+    id: 'character-polisher',
+    name: 'Character Card Polisher',
+    prompt: 'Refine the text to be more evocative, show-dont-tell, and consistent with the character definition.',
+    sessionPreamble: characterPolisherPreamble,
+    template: `${characterPolisherPreamble}${ONE_SHOT_SUFFIX}`,
+    args: [
+      { key: 'includePersona', label: 'Include Active Persona', type: 'boolean', defaultValue: true },
+      {
+        key: 'includeSelectedBookContext',
+        label: 'Include Selected Lorebooks',
+        type: 'boolean',
+        defaultValue: true,
+      },
+      {
+        key: 'includeSelectedCharacters',
+        label: 'Include Selected Characters',
+        type: 'boolean',
+        defaultValue: false,
+      },
+    ],
+  },
+  {
+    id: 'world-info-refiner',
+    name: 'World Info Refiner',
+    prompt: 'Improve clarity, conciseness, and formatting of the World Info entry.',
+    sessionPreamble: worldInfoRefinerPreamble,
+    template: `${worldInfoRefinerPreamble}${ONE_SHOT_SUFFIX}`,
+    args: [
+      {
+        key: 'includeSelectedBookContext',
+        label: 'Include Selected Lorebooks',
+        type: 'boolean',
+        defaultValue: true,
+      },
+      {
+        key: 'includeSelectedCharacters',
+        label: 'Include Selected Characters',
+        type: 'boolean',
+        defaultValue: true,
+      },
+      { key: 'includePersona', label: 'Include Active Persona', type: 'boolean', defaultValue: true },
+    ],
+  },
+  {
+    id: 'generic',
+    name: 'Generic Instruction',
+    prompt: 'Rewrite the text following these instructions: ...',
+    sessionPreamble: genericPreamble,
+    template: `${genericPreamble}${ONE_SHOT_SUFFIX}`,
+    args: [
+      { key: 'includeChar', label: 'Include Active Character', type: 'boolean', defaultValue: true },
+      { key: 'includePersona', label: 'Include Active Persona', type: 'boolean', defaultValue: true },
+      {
+        key: 'includeSelectedBookContext',
+        label: 'Include Selected Lorebooks',
+        type: 'boolean',
+        defaultValue: true,
+      },
+      {
+        key: 'includeSelectedCharacters',
+        label: 'Include Selected Characters',
+        type: 'boolean',
+        defaultValue: true,
+      },
+    ],
+  },
+  {
+    id: 'summarize-chat-history',
+    name: 'Summarize Chat History',
+    prompt: 'Condense the chat history to its key points while preserving essential information.',
+    sessionPreamble: summarizePreamble,
+    template: `${summarizePreamble}
 [Instruction]
 {{prompt}}
 
@@ -394,5 +388,10 @@ Response:
 \`\`\`
 (Summarized Text)
 \`\`\``,
+    ignoreInput: true,
+    args: [
+      { key: 'includeChar', label: 'Include Active Character', type: 'boolean', defaultValue: true },
+      { key: 'includePersona', label: 'Include Active Persona', type: 'boolean', defaultValue: true },
+    ],
   },
 ];

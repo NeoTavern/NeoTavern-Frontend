@@ -100,9 +100,8 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       );
 
       let fullContent = '';
-      if (typeof response === 'function') {
-        const generator = response();
-        for await (const chunk of generator) {
+      if (Symbol.asyncIterator in response) {
+        for await (const chunk of response) {
           fullContent += chunk.delta;
         }
       } else {
