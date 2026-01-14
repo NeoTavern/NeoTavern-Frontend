@@ -555,6 +555,7 @@ export interface MessageSchema {
     back: string;
     login: string;
     copy: string;
+    regenerate: string;
   };
   popup: {
     cropAvatar: {
@@ -1316,6 +1317,7 @@ export interface MessageSchema {
         selectSession: string;
         newSession: string;
         systemInstruction: string;
+        deleteConfirm: string;
       };
       buttons: {
         rewriteMessage: string;

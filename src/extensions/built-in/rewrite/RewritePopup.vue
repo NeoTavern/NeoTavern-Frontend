@@ -498,6 +498,12 @@ async function handleSessionSend(text: string) {
   });
   await service.saveSession(deepToRaw(activeSession.value));
 
+  await executeSessionGeneration();
+}
+
+async function executeSessionGeneration() {
+  if (!activeSession.value || !selectedProfile.value) return;
+
   try {
     const response = await service.generateSessionResponse(
       activeSession.value.messages,
@@ -506,7 +512,7 @@ async function handleSessionSend(text: string) {
       abortController.value?.signal,
     );
 
-    const previousState = props.originalText; // Simplified diff reference
+    const previousState = props.originalText; // Simplified diff reference. In advanced usage, this could track history changes.
 
     activeSession.value.messages.push({
       id: props.api.uuid(),
@@ -540,12 +546,45 @@ async function handleSessionDeleteFrom(msgId: string) {
   }
 }
 
+async function handleEditMessage(msgId: string, newContent: string) {
+  if (!activeSession.value) return;
+  const msg = activeSession.value.messages.find((m) => m.id === msgId);
+  if (msg) {
+    msg.content = newContent;
+    await service.saveSession(deepToRaw(activeSession.value));
+  }
+}
+
+async function handleRegenerate() {
+  if (!activeSession.value) return;
+
+  const lastMsg = activeSession.value.messages[activeSession.value.messages.length - 1];
+  if (!lastMsg) return;
+
+  if (lastMsg.role === 'assistant') {
+    // Remove last assistant message
+    activeSession.value.messages.pop();
+    await service.saveSession(deepToRaw(activeSession.value));
+  }
+
+  // Generate
+  isGenerating.value = true;
+  abortController.value = new AbortController();
+  await executeSessionGeneration();
+}
+
 // --- Common ---
 
 function handleApply(text: string) {
   saveState();
   props.onApply(text);
   props.closePopup?.();
+}
+
+function handleApplyLatestSession() {
+  if (latestSessionText.value) {
+    handleApply(latestSessionText.value);
+  }
 }
 
 function handleCancel() {
@@ -565,15 +604,19 @@ function handleCopyOutput() {
 
 const latestSessionText = computed(() => {
   if (!activeSession.value || activeSession.value.messages.length === 0) return '';
-  const lastMsg = activeSession.value.messages
-    .slice()
-    .reverse()
-    .find((m) => m.role === 'assistant');
-  if (!lastMsg) return '';
-
-  const content = lastMsg.content;
-  if (typeof content === 'string') return content;
-  return (content as RewriteLLMResponse).response;
+  // Iterate backwards to find last assistant message with a response
+  const messages = activeSession.value.messages;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role === 'assistant') {
+      const content = m.content;
+      if (typeof content === 'string') return content;
+      if ((content as RewriteLLMResponse).response) {
+        return (content as RewriteLLMResponse).response as string;
+      }
+    }
+  }
+  return '';
 });
 
 function openDiffPopup(original: string, modified: string) {
@@ -586,9 +629,6 @@ function openDiffPopup(original: string, modified: string) {
         generatedText: modified,
         isGenerating: false,
         ignoreInput: false,
-        // Pass copy logic if needed, but the view handles event emit which we can't catch easily unless we wrap or use componentProps callbacks?
-        // Since RewriteView emits 'copy-output', and showPopup doesn't automatically wire emits, we lose that unless we wrap.
-        // But for basic diff viewing, it's fine.
       },
       wide: true,
       large: true,
@@ -828,11 +868,14 @@ function handleGeneralDiff() {
                 :messages="activeSession.messages"
                 :is-generating="isGenerating"
                 :current-text="originalText"
+                :api="api"
                 @send="handleSessionSend"
                 @delete-from="handleSessionDeleteFrom"
+                @edit-message="handleEditMessage"
                 @apply-text="handleApply"
                 @show-diff="handleShowDiff"
                 @abort="handleAbort"
+                @regenerate="handleRegenerate"
               />
               <div v-else class="empty-session-view">
                 <p>{{ t('extensionsBuiltin.rewrite.session.selectSession') }}</p>
@@ -841,10 +884,18 @@ function handleGeneralDiff() {
                 }}</Button>
               </div>
 
-              <!-- Close button for Session Tab -->
+              <!-- Footer for Session Tab -->
               <div class="session-footer">
                 <div class="spacer"></div>
                 <Button variant="ghost" @click="handleCancel">{{ t('common.close') }}</Button>
+                <Button
+                  v-if="activeSession"
+                  variant="confirm"
+                  :disabled="!latestSessionText || isGenerating"
+                  @click="handleApplyLatestSession"
+                >
+                  {{ t('extensionsBuiltin.rewrite.popup.apply') }}
+                </Button>
               </div>
             </div>
           </template>
@@ -1013,6 +1064,7 @@ function handleGeneralDiff() {
 
 .session-footer {
   display: flex;
+  gap: 10px;
   margin-top: 5px;
 }
 

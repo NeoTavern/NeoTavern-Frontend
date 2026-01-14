@@ -2,9 +2,11 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { Button, Textarea } from '../../../../components/UI';
 import { useStrictI18n } from '../../../../composables/useStrictI18n';
-import type { RewriteLLMResponse, RewriteSessionMessage } from '../types';
+import { POPUP_RESULT, POPUP_TYPE, type ExtensionAPI } from '../../../../types';
+import type { RewriteLLMResponse, RewriteSessionMessage, RewriteSettings } from '../types';
 
 const props = defineProps<{
+  api: ExtensionAPI<RewriteSettings>;
   messages: RewriteSessionMessage[];
   isGenerating: boolean;
   currentText: string;
@@ -13,15 +15,20 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'send', text: string): void;
   (e: 'delete-from', messageId: string): void;
-  (e: 'apply-text', text: string): void;
+  (e: 'edit-message', messageId: string, newContent: string): void;
   (e: 'show-diff', previous: string, current: string): void;
   (e: 'abort'): void;
+  (e: 'regenerate'): void;
 }>();
 
 const { t } = useStrictI18n();
 
 const userInput = ref('');
 const chatContainer = ref<HTMLElement | null>(null);
+
+// Editing State
+const editingMessageId = ref<string | null>(null);
+const editContent = ref<string>('');
 
 // System Message Collapsing Logic
 const isSystemCollapsed = ref(true);
@@ -82,7 +89,7 @@ function getJustification(msg: RewriteSessionMessage): string {
   return content.justification;
 }
 
-function getResponseText(msg: RewriteSessionMessage): string {
+function getResponseText(msg: RewriteSessionMessage): string | undefined {
   const content = getMessageContent(msg);
   if (typeof content === 'string') return content;
   return content.response;
@@ -91,7 +98,40 @@ function getResponseText(msg: RewriteSessionMessage): string {
 function showDiff(msg: RewriteSessionMessage) {
   if (msg.role !== 'assistant' || !msg.previousTextState) return;
   const current = getResponseText(msg);
+  if (!current) return;
   emit('show-diff', msg.previousTextState, current);
+}
+
+// Edit Logic
+function startEdit(msg: RewriteSessionMessage) {
+  if (msg.role === 'assistant') return; // Editing assistant messages not supported in this view logic currently
+  editingMessageId.value = msg.id;
+  editContent.value = msg.content as string;
+}
+
+function cancelEdit() {
+  editingMessageId.value = null;
+  editContent.value = '';
+}
+
+function saveEdit(msgId: string) {
+  if (editContent.value.trim()) {
+    emit('edit-message', msgId, editContent.value);
+  }
+  cancelEdit();
+}
+
+// Delete Logic
+async function handleDelete(msgId: string) {
+  const { result } = await props.api.ui.showPopup({
+    type: POPUP_TYPE.CONFIRM,
+    title: t('common.delete'),
+    content: t('extensionsBuiltin.rewrite.session.deleteConfirm'),
+  });
+
+  if (result === POPUP_RESULT.AFFIRMATIVE) {
+    emit('delete-from', msgId);
+  }
 }
 </script>
 
@@ -99,62 +139,91 @@ function showDiff(msg: RewriteSessionMessage) {
   <div class="session-view">
     <div ref="chatContainer" class="chat-container">
       <div v-for="msg in messages" :key="msg.id" class="message" :class="`role-${msg.role}`">
-        <!-- Collapsible System Message -->
+        <!-- System Message -->
         <div v-if="msg.role === 'system'" class="system-message">
           <div class="system-header" @click="toggleSystemCollapse">
             <span class="system-label">{{ t('extensionsBuiltin.rewrite.session.systemInstruction') }}</span>
-            <i class="fa-solid" :class="isSystemCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+            <div class="header-right">
+              <Button
+                v-if="!editingMessageId"
+                icon="fa-pen"
+                variant="ghost"
+                class="edit-btn-header"
+                @click.stop="startEdit(msg)"
+              />
+              <i class="fa-solid" :class="isSystemCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
+            </div>
           </div>
-          <div v-if="isSystemCollapsed" class="system-preview">
-            <em>{{ systemMessagePreview }}</em>
+
+          <!-- Edit Mode for System -->
+          <div v-if="editingMessageId === msg.id" class="edit-box">
+            <Textarea v-model="editContent" :rows="10" />
+            <div class="edit-actions">
+              <Button variant="ghost" @click="cancelEdit">{{ t('common.cancel') }}</Button>
+              <Button variant="confirm" @click="saveEdit(msg.id)">{{ t('common.save') }}</Button>
+            </div>
           </div>
-          <div v-else class="system-content">
-            <pre>{{ msg.content as string }}</pre>
-          </div>
+
+          <!-- Display Mode for System -->
+          <template v-else>
+            <div v-if="isSystemCollapsed" class="system-preview">
+              <em>{{ systemMessagePreview }}</em>
+            </div>
+            <div v-else class="system-content">
+              <pre>{{ msg.content as string }}</pre>
+            </div>
+          </template>
         </div>
 
+        <!-- User Message -->
         <div v-if="msg.role === 'user'" class="user-message">
-          <pre>{{ msg.content as string }}</pre>
+          <div v-if="editingMessageId === msg.id" class="edit-box user-edit">
+            <Textarea v-model="editContent" :rows="3" />
+            <div class="edit-actions">
+              <Button variant="ghost" @click="cancelEdit">{{ t('common.cancel') }}</Button>
+              <Button variant="confirm" @click="saveEdit(msg.id)">{{ t('common.save') }}</Button>
+            </div>
+          </div>
+          <div v-else class="message-content-wrapper">
+            <pre>{{ msg.content as string }}</pre>
+            <div class="message-hover-actions">
+              <Button icon="fa-pen" variant="ghost" class="action-btn" @click="startEdit(msg)" />
+              <Button icon="fa-trash" variant="ghost" class="action-btn delete-btn" @click="handleDelete(msg.id)" />
+            </div>
+          </div>
         </div>
 
+        <!-- Assistant Message -->
         <div v-if="msg.role === 'assistant'" class="assistant-message">
           <!-- Justification / Reasoning Display -->
           <div v-if="getJustification(msg)" class="justification-content">
             {{ getJustification(msg) }}
           </div>
-          <!-- Fallback if no justification (legacy or plain text response) -->
-          <div v-else class="raw-response">
+          <!-- Response Display -->
+          <div v-if="getResponseText(msg)" class="raw-response">
             <pre>{{ getResponseText(msg) }}</pre>
           </div>
 
           <!-- Message Controls -->
           <div class="assistant-controls">
             <Button
-              v-if="msg.previousTextState"
+              v-if="msg.previousTextState && getResponseText(msg)"
               icon="fa-code-compare"
               variant="ghost"
               :title="t('extensionsBuiltin.rewrite.popup.showDiff')"
               class="control-btn"
               @click="showDiff(msg)"
             />
+            <div class="spacer"></div>
+            <!-- Delete for assistant (deletes from here down) -->
             <Button
-              icon="fa-check"
+              icon="fa-trash"
               variant="ghost"
-              :title="t('extensionsBuiltin.rewrite.popup.apply')"
-              class="control-btn apply-btn"
-              @click="emit('apply-text', getResponseText(msg))"
+              class="control-btn delete-btn"
+              :title="t('extensionsBuiltin.rewrite.session.deleteFromHere')"
+              @click="handleDelete(msg.id)"
             />
           </div>
-        </div>
-
-        <div v-if="msg.role !== 'system'" class="message-actions">
-          <Button
-            icon="fa-trash"
-            variant="ghost"
-            class="delete-btn"
-            :title="t('extensionsBuiltin.rewrite.session.deleteFromHere')"
-            @click="emit('delete-from', msg.id)"
-          />
         </div>
       </div>
     </div>
@@ -170,15 +239,28 @@ function showDiff(msg: RewriteSessionMessage) {
       </Button>
     </div>
 
-    <div class="chat-input">
-      <Textarea
-        v-model="userInput"
-        :placeholder="t('extensionsBuiltin.rewrite.session.typeMessage')"
-        :rows="2"
-        :disabled="isGenerating"
-        @keydown.enter.exact.prevent="handleSend"
-      />
-      <Button icon="fa-paper-plane" :disabled="isGenerating || !userInput.trim()" @click="handleSend" />
+    <div class="chat-input-area">
+      <div class="chat-input-toolbar">
+        <Button
+          v-if="!isGenerating && messages.length > 1"
+          icon="fa-rotate"
+          variant="ghost"
+          :title="t('common.regenerate')"
+          @click="emit('regenerate')"
+        >
+          {{ t('common.regenerate') }}
+        </Button>
+      </div>
+      <div class="chat-input">
+        <Textarea
+          v-model="userInput"
+          :placeholder="t('extensionsBuiltin.rewrite.session.typeMessage')"
+          :rows="2"
+          :disabled="isGenerating"
+          @keydown.enter.exact.prevent="handleSend"
+        />
+        <Button icon="fa-paper-plane" :disabled="isGenerating || !userInput.trim()" @click="handleSend" />
+      </div>
     </div>
   </div>
 </template>
@@ -216,6 +298,7 @@ function showDiff(msg: RewriteSessionMessage) {
   &.role-user {
     align-self: flex-end;
     background-color: var(--theme-user-message-tint);
+    flex-direction: column;
   }
 
   &.role-assistant {
@@ -236,12 +319,9 @@ function showDiff(msg: RewriteSessionMessage) {
     padding: 0;
     overflow: hidden;
   }
-
-  &:hover .message-actions {
-    opacity: 1;
-  }
 }
 
+/* System Message Styles */
 .system-header {
   padding: 8px 10px;
   background-color: var(--white-10a);
@@ -258,6 +338,18 @@ function showDiff(msg: RewriteSessionMessage) {
   }
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-btn-header {
+  padding: 2px 6px;
+  height: auto;
+  font-size: 0.9em;
+}
+
 .system-preview,
 .system-content {
   padding: 10px;
@@ -271,13 +363,59 @@ function showDiff(msg: RewriteSessionMessage) {
   text-overflow: ellipsis;
 }
 
-.message-actions {
+/* Edit Box */
+.edit-box {
+  padding: 10px;
+  background-color: var(--black-30a);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  &.user-edit {
+    background-color: transparent;
+    padding: 0;
+  }
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+/* User Message Hover Actions */
+.message-content-wrapper {
+  position: relative;
+  padding-right: 20px;
+}
+
+.message-hover-actions {
   position: absolute;
-  top: 5px;
-  right: -35px;
+  top: -20px;
+  right: 0;
+  display: flex;
+  gap: 2px;
   opacity: 0;
   transition: opacity 0.2s;
-  .delete-btn {
+  background-color: var(--theme-background-tint);
+  border-radius: var(--base-border-radius);
+  padding: 2px;
+  box-shadow: 0 2px 4px var(--theme-shadow-color);
+}
+
+.message:hover .message-hover-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  padding: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.delete-btn {
     color: var(--color-warning);
   }
 }
@@ -289,17 +427,19 @@ pre {
   font-family: var(--font-family-main);
 }
 
+/* Assistant Styles */
 .justification-content {
   white-space: pre-wrap;
   word-break: break-word;
   margin-bottom: 8px;
   font-size: 0.95em;
+  opacity: 0.9;
 }
 
 .assistant-controls {
   display: flex;
   gap: 5px;
-  justify-content: flex-end;
+  align-items: center;
   border-top: 1px solid var(--theme-border-color);
   padding-top: 5px;
   margin-top: 5px;
@@ -313,10 +453,14 @@ pre {
   &:hover {
     opacity: 1;
   }
+
+  &.delete-btn {
+    color: var(--color-warning);
+  }
 }
 
-.apply-btn {
-  color: var(--color-accent-green);
+.spacer {
+  flex: 1;
 }
 
 .generating-status {
@@ -335,11 +479,23 @@ pre {
   }
 }
 
+/* Input Area */
+.chat-input-area {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--theme-border-color);
+  background-color: var(--black-50a);
+}
+
+.chat-input-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 10px 0;
+}
+
 .chat-input {
   display: flex;
   gap: 5px;
   padding: 10px;
-  border-top: 1px solid var(--theme-border-color);
-  background-color: var(--black-50a);
 }
 </style>

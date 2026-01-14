@@ -2,7 +2,7 @@ import type { MessageRole } from '../../../types';
 
 export interface RewriteLLMResponse {
   justification: string;
-  response: string;
+  response?: string;
 }
 
 export interface RewriteSessionMessage {

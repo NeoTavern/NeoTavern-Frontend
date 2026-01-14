@@ -173,7 +173,6 @@ export class RewriteService {
       let content = m.content;
       if (typeof content !== 'string') {
         // If it's a previous LLM response object, serialize it back to string for history
-        // Or if the backend supports it, we might format it. For now, let's assume JSON string.
         content = JSON.stringify(content);
       }
       return {
@@ -198,7 +197,7 @@ export class RewriteService {
             description: 'The full, rewritten text.',
           },
         },
-        required: ['justification', 'response'],
+        required: ['justification'],
         additionalProperties: false,
       },
     };
