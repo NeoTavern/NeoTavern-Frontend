@@ -58,6 +58,7 @@
     "bowser": "^2.12.1",
     "codemirror": "^6.0.2",
     "dompurify": "^3.3.0",
+    "fast-xml-parser": "^5.3.3",
     "handlebars": "^4.7.8",
     "highlight.js": "^11.11.1",
     "localforage": "^1.10.0",

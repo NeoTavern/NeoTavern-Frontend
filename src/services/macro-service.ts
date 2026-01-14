@@ -3,7 +3,7 @@ import type { Character, Persona } from '../types';
 
 export interface MacroContextData {
   characters: Character[];
-  persona: Persona;
+  persona?: Persona;
   activeCharacter?: Character;
   additionalMacros?: Record<string, unknown>;
 }
@@ -40,8 +40,8 @@ export class MacroService {
     const primaryChar = data.activeCharacter || data.characters[0];
 
     const baseContext = {
-      user: data.persona.name,
-      persona: data.persona.description,
+      user: data.persona?.name,
+      persona: data.persona?.description,
 
       char: primaryChar?.name || 'Character',
       description: primaryChar?.description || '',

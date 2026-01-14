@@ -18,6 +18,7 @@ import type { ApiFormatter, ReasoningTemplate, SamplerSettings, Settings, Settin
 import { getRequestHeaders } from '../utils/client';
 import { eventEmitter } from '../utils/extensions';
 import { convertMessagesToInstructString } from '../utils/instruct';
+import { buildStructuredResponseSystemPrompt, parseResponse } from '../utils/structured-response';
 import {
   extractMessageGeneric,
   getProviderHandler,
@@ -229,8 +230,17 @@ function setDeep(obj: any, path: string, value: any) {
 }
 
 export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOptions): ChatCompletionPayload {
-  const { samplerSettings, messages, model, provider, formatter, instructTemplate, playerName, activeCharacter } =
-    options;
+  const {
+    samplerSettings,
+    messages,
+    model,
+    provider,
+    formatter,
+    instructTemplate,
+    playerName,
+    activeCharacter,
+    structuredResponse,
+  } = options;
 
   const payload: ChatCompletionPayload = {
     model,
@@ -238,11 +248,29 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
     include_reasoning: !!samplerSettings.show_thoughts,
   };
 
+  const finalMessages = [...messages];
+
+  // Handle Structured Response
+  if (structuredResponse) {
+    const { format = 'native' } = structuredResponse;
+    if (format === 'native' && formatter === 'chat') {
+      payload.json_schema = structuredResponse.schema;
+    } else {
+      // @ts-expect-error yeah yeah
+      const systemPrompt = buildStructuredResponseSystemPrompt(structuredResponse);
+      finalMessages.unshift({
+        role: 'system',
+        content: systemPrompt,
+        name: 'System',
+      });
+    }
+  }
+
   // Handle Formatter (Chat vs Text)
   if (formatter === 'text' && instructTemplate && activeCharacter) {
     // Text Completion Mode
     const prompt = convertMessagesToInstructString(
-      messages,
+      finalMessages,
       instructTemplate,
       playerName || 'User',
       activeCharacter.name,
@@ -270,7 +298,7 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
     }
   } else {
     // Default Chat Mode
-    payload.messages = messages;
+    payload.messages = finalMessages;
     payload.stop = samplerSettings.stop;
   }
 
@@ -581,7 +609,7 @@ export class ChatCompletionService {
     const responseHandler = getProviderHandler(providerKey);
 
     // --- Usage Tracking Helper ---
-    const finalizeUsage = async (finalContent: string) => {
+    const finalizeUsage = async (finalContent: string, structured_content?: object, parse_error?: Error) => {
       const duration = Date.now() - startTime;
       let outputTokens = 0;
 
@@ -606,7 +634,7 @@ export class ChatCompletionService {
       }
 
       if (options.onCompletion) {
-        options.onCompletion({ outputTokens, duration });
+        options.onCompletion({ outputTokens, duration, structured_content, parse_error });
       }
 
       return outputTokens;
@@ -665,13 +693,39 @@ export class ChatCompletionService {
         }
       }
 
-      const tokenCount = await finalizeUsage(finalContent);
+      let structured_content: object | undefined;
+      let parse_error: Error | undefined;
+
+      // Parse structured response if requested
+      if (options.structuredResponse) {
+        const format = options.structuredResponse.format;
+        // Default to 'json' for 'native', 'json', or undefined format.
+        const parseAs = format === 'xml' ? 'xml' : 'json';
+
+        try {
+          const parsed = parseResponse(finalContent, parseAs, {
+            schema: options.structuredResponse.schema.value,
+          });
+          // JSON.parse can return non-object primitives. We should handle that.
+          if (typeof parsed === 'object' && parsed !== null) {
+            structured_content = parsed;
+          } else {
+            structured_content = { response: parsed };
+          }
+        } catch (e) {
+          parse_error = e as Error;
+          console.error(`Failed to parse structured response as ${parseAs}:`, e);
+        }
+      }
+
+      const tokenCount = await finalizeUsage(finalContent, structured_content, parse_error);
 
       return {
         content: finalContent,
         reasoning: reasoning?.trim(),
         token_count: tokenCount,
         images,
+        structured_content,
       };
     }
 
@@ -793,6 +847,8 @@ export class ChatCompletionService {
     // Return a wrapped generator that handles usage tracking upon completion
     return async function* () {
       let fullContent = '';
+      let structured_content: object | undefined;
+      let parse_error: Error | undefined;
       try {
         for await (const chunk of originalGenerator()) {
           fullContent += chunk.delta;
@@ -800,7 +856,26 @@ export class ChatCompletionService {
         }
       } finally {
         // This runs when the stream is exhausted or the consumer breaks the loop
-        await finalizeUsage(fullContent);
+        if (options.structuredResponse) {
+          const format = options.structuredResponse.format;
+          // Default to 'json' for 'native', 'json', or undefined format.
+          const parseAs = format === 'xml' ? 'xml' : 'json';
+
+          try {
+            const parsed = parseResponse(fullContent, parseAs, {
+              schema: options.structuredResponse.schema.value,
+            });
+            if (typeof parsed === 'object' && parsed !== null) {
+              structured_content = parsed;
+            } else {
+              structured_content = { response: parsed };
+            }
+          } catch (e) {
+            parse_error = e as Error;
+            console.error(`Failed to parse structured response from stream as ${parseAs}:`, e);
+          }
+        }
+        await finalizeUsage(fullContent, structured_content, parse_error);
       }
     };
   }

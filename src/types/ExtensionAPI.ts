@@ -7,7 +7,13 @@ import type { Character } from './character';
 import type { ChatInfo, ChatMessage, ChatMetadata, FullChat } from './chat';
 import type { DrawerType } from './common';
 import type { ExtensionEventMap } from './events';
-import type { ApiChatMessage, ChatCompletionPayload, GenerationResponse, StreamedChunk } from './generation';
+import type {
+  ApiChatMessage,
+  ChatCompletionPayload,
+  GenerationResponse,
+  StreamedChunk,
+  StructuredResponseOptions,
+} from './generation';
 import type { Persona, PersonaDescription } from './persona';
 import type { PopupShowOptions } from './popup';
 import type { ApiFormatter, CodeMirrorTarget, SamplerSettings, Settings, SettingsPath } from './settings';
@@ -33,6 +39,16 @@ export interface LlmGenerationOptions {
    * Defaults to 'unknown' if not provided.
    */
   source?: string;
+  /**
+   * Configuration for structured response generation.
+   */
+  structuredResponse?: StructuredResponseOptions;
+  onCompletion?: (data: {
+    outputTokens: number;
+    duration: number;
+    structured_content?: object;
+    parse_error?: Error;
+  }) => void;
 }
 
 export interface TextareaToolDefinition {

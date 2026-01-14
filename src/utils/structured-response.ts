@@ -1,0 +1,260 @@
+import { XMLParser, XMLValidator } from 'fast-xml-parser';
+import { macroService } from '../services/macro-service';
+import type { StructuredResponsePrompted } from '../types';
+
+export const DEFAULT_JSON_PROMPT = `You are a highly specialized AI assistant. Your SOLE purpose is to generate a single, valid JSON object that strictly adheres to the provided JSON schema.
+
+**CRITICAL INSTRUCTIONS:**
+1.  You MUST wrap the entire JSON object in a markdown code block (\`\`\`json\\n...\\n\`\`\`).
+2.  Your response MUST NOT contain any explanatory text, comments, or any other content outside of this single code block.
+3.  The JSON object inside the code block MUST be valid and conform to the schema.
+{{#if schema}}
+
+**JSON SCHEMA TO FOLLOW:**
+\`\`\`json
+{{schema}}
+\`\`\`{{/if}}{{#if example_response}}
+
+**EXAMPLE OF A PERFECT RESPONSE:**
+\`\`\`json
+{{example_response}}
+\`\`\`{{/if}}`;
+
+export const DEFAULT_XML_PROMPT = `You are a highly specialized AI assistant. Your SOLE purpose is to generate a single, valid XML structure that strictly adheres to the provided example.
+
+**CRITICAL INSTRUCTIONS:**
+1.  You MUST wrap the entire XML object in a markdown code block (\`\`\`xml\\n...\\n\`\`\`).
+2.  Your response MUST NOT contain any explanatory text, comments, or any other content outside of this single code block.
+3.  The XML object inside the code block MUST be valid.
+{{#if schema}}
+
+**JSON SCHEMA TO FOLLOW (for structure reference):**
+\`\`\`json
+{{schema}}
+\`\`\`{{/if}}{{#if example_response}}
+
+**EXAMPLE OF A PERFECT RESPONSE (your output should be in a similar structure):**
+\`\`\`xml
+<root>
+{{example_response}}
+</root>
+\`\`\`{{/if}}`;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function escapeXml(text: any): string {
+  const s = String(text);
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function jsonToXmlFragment(value: any, indent = 0): string {
+  const indentation = '  '.repeat(indent);
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (item !== null && typeof item === 'object') {
+          return `${indentation}<item>\n${jsonToXmlFragment(item, indent + 1)}${indentation}</item>\n`;
+        }
+        return `${indentation}<item>${escapeXml(item)}</item>\n`;
+      })
+      .join('');
+  }
+
+  if (value !== null && typeof value === 'object') {
+    let xml = '';
+    for (const key of Object.keys(value)) {
+      const v = value[key];
+      if (v !== null && typeof v === 'object') {
+        xml += `${indentation}<${key}>\n${jsonToXmlFragment(v, indent + 1)}${indentation}</${key}>\n`;
+      } else {
+        xml += `${indentation}<${key}>${escapeXml(v)}</${key}>\n`;
+      }
+    }
+    return xml;
+  }
+
+  return `${indentation}<value>${escapeXml(value)}</value>\n`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function generateExample(schema: any): any {
+  if (!schema || typeof schema !== 'object') return null;
+
+  const fromExamples = Array.isArray(schema.examples) ? schema.examples[0] : undefined;
+  const preferred = [schema.example, fromExamples, schema.default].find((v) => v !== undefined);
+  if (preferred !== undefined) return preferred;
+
+  if (schema.const !== undefined) return schema.const;
+  if (Array.isArray(schema.enum) && schema.enum.length) return schema.enum[0];
+
+  const firstAlt = (schema.anyOf || schema.oneOf || [])[0];
+  if (firstAlt) return generateExample(firstAlt);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const t = Array.isArray(schema.type) ? (schema.type.find((x: any) => x !== 'null') ?? schema.type[0]) : schema.type;
+
+  switch (t) {
+    case 'object': {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const obj: Record<string, any> = {};
+      const props = schema.properties || {};
+      for (const key of Object.keys(props)) {
+        obj[key] = generateExample(props[key]);
+      }
+      if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+        obj.additionalProperty = generateExample(schema.additionalProperties);
+      }
+      return obj;
+    }
+    case 'array':
+      return [generateExample(schema.items ?? {})];
+    case 'string':
+      switch (schema.format) {
+        case 'date-time':
+          return new Date(0).toISOString();
+        case 'date':
+          return '1970-01-01';
+        case 'time':
+          return '00:00:00';
+        case 'email':
+          return 'user@example.com';
+        case 'uri':
+        case 'url':
+          return 'https://example.com';
+        case 'uuid':
+          return '00000000-0000-0000-0000-000000000000';
+        default:
+          return schema.title || schema.description || 'string';
+      }
+    case 'integer':
+    case 'number':
+      return 0;
+    case 'boolean':
+      return false;
+    case 'null':
+      return null;
+    default:
+      if (schema.properties || schema.additionalProperties) return generateExample({ ...schema, type: 'object' });
+      if (schema.items) return generateExample({ ...schema, type: 'array' });
+      return null;
+  }
+}
+
+export function buildStructuredResponseSystemPrompt(srOptions: StructuredResponsePrompted): string {
+  const format = srOptions.format;
+  const promptTemplate =
+    format === 'json' ? srOptions.jsonPrompt || DEFAULT_JSON_PROMPT : srOptions.xmlPrompt || DEFAULT_XML_PROMPT;
+
+  let exampleResponse = '';
+  if (srOptions.exampleResponse !== false) {
+    const exampleData =
+      srOptions.exampleResponse === true || srOptions.exampleResponse === undefined
+        ? generateExample(srOptions.schema.value)
+        : srOptions.exampleResponse;
+
+    if (format === 'xml') {
+      exampleResponse = jsonToXmlFragment(exampleData).trim();
+    } else {
+      exampleResponse = JSON.stringify(exampleData, null, 2);
+    }
+  }
+
+  return macroService.process(promptTemplate, {
+    characters: [],
+    additionalMacros: {
+      schema: JSON.stringify(srOptions.schema.value, null, 2),
+      example_response: exampleResponse,
+    },
+  });
+}
+
+const xmlParser = new XMLParser({
+  ignoreAttributes: true,
+  textNodeName: '#text',
+  trimValues: true,
+  allowBooleanAttributes: true,
+});
+
+export interface ParseOptions {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  schema?: any;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function ensureArray(data: any, schema: any) {
+  if (!schema || !data || !schema.properties) {
+    return;
+  }
+
+  for (const key in schema.properties) {
+    if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+
+    const propSchema = schema.properties[key];
+    let propData = data[key];
+
+    if (propSchema.type === 'array' && !Array.isArray(propData)) {
+      propData = [propData];
+      data[key] = propData;
+    }
+
+    if (propSchema.type === 'object' && typeof propData === 'object' && propData !== null) {
+      ensureArray(propData, propSchema);
+    } else if (propSchema.type === 'array' && propSchema.items?.type === 'object' && Array.isArray(propData)) {
+      propData.forEach((item) => ensureArray(item, propSchema.items));
+    }
+
+    if (propSchema.type === 'string' && typeof propData !== 'string') {
+      data[key] = String(propData);
+    } else if (propSchema.type === 'array' && propSchema.items?.type === 'string' && Array.isArray(propData)) {
+      data[key] = propData.map(String);
+    }
+  }
+}
+
+export function parseResponse(content: string, format: 'xml' | 'json', options: ParseOptions = {}): object | string {
+  const codeBlockRegex = /```(?:\w+\n|\n)?([\s\S]*?)```/;
+  const codeBlockMatch = content.match(codeBlockRegex);
+  const cleanedContent = codeBlockMatch ? codeBlockMatch[1].trim() : content.trim();
+
+  try {
+    switch (format) {
+      case 'xml': {
+        const validationResult = XMLValidator.validate(cleanedContent);
+        if (validationResult !== true) {
+          throw new Error(`Model response is not valid XML: ${validationResult.err.msg}`);
+        }
+        let parsedXml = xmlParser.parse(cleanedContent);
+        if (parsedXml.root) {
+          parsedXml = parsedXml.root;
+        }
+        if (options.schema) {
+          ensureArray(parsedXml, options.schema);
+        }
+        return parsedXml;
+      }
+
+      case 'json':
+        return JSON.parse(cleanedContent);
+    }
+  } catch (error: unknown) {
+    console.error(`Error parsing response in format '${format}':`, error);
+    console.error('Raw content received:', content);
+
+    if (format === 'xml') {
+      if (error instanceof Error && error.message.startsWith('Model response is not valid XML:')) {
+        throw error;
+      }
+      throw new Error(`Model response is not valid XML: ${(error as Error).message}`);
+    }
+    if (format === 'json') {
+      throw new Error('Model response is not valid JSON.');
+    }
+    throw new Error(`Failed to parse response as ${format}: ${(error as Error).message}`);
+  }
+}

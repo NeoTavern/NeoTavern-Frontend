@@ -30,6 +30,34 @@ export interface ApiChatMessage {
   name: string;
 }
 
+export interface StructuredResponseSchema {
+  name: string;
+  strict: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  value: any; // This is the JSON Schema object
+}
+
+// A base for structured response options
+interface StructuredResponseBase {
+  schema: StructuredResponseSchema;
+}
+
+// Options for when the provider natively supports JSON schema
+interface StructuredResponseNative extends StructuredResponseBase {
+  format?: 'native';
+}
+
+// Options for forcing JSON or XML output via prompting
+export interface StructuredResponsePrompted extends StructuredResponseBase {
+  format: 'json' | 'xml';
+  jsonPrompt?: string; // Template for JSON prompt. Defaults to a system-wide one.
+  xmlPrompt?: string; // Template for XML prompt. Defaults to a system-wide one.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exampleResponse?: any | boolean; // Example to include in prompt. `true` means auto-generate from schema. Defaults to `true`.
+}
+
+export type StructuredResponseOptions = StructuredResponseNative | StructuredResponsePrompted;
+
 export type ChatCompletionPayload = Partial<{
   stream: boolean;
   // For chat
@@ -57,6 +85,7 @@ export type ChatCompletionPayload = Partial<{
   reasoning_effort?: ReasoningEffort | string;
   reverse_proxy?: string;
   proxy_password?: string;
+  json_schema?: StructuredResponseSchema;
 
   // KoboldCpp Specific
   rep_pen?: number;
@@ -131,6 +160,7 @@ export interface GenerationResponse {
   reasoning?: string;
   token_count?: number;
   images?: string[];
+  structured_content?: object;
 }
 
 export interface StreamedChunk {
@@ -150,8 +180,8 @@ export type BuildChatCompletionPayloadOptions = {
   modelList?: ApiModel[];
   formatter?: ApiFormatter;
   instructTemplate?: InstructTemplate;
-  reasoningTemplate?: ReasoningTemplate;
   activeCharacter?: Character;
+  structuredResponse?: StructuredResponseOptions;
 };
 
 export type GenerationContext = {
@@ -261,9 +291,19 @@ export interface GenerationOptions {
    * Callback executed when generation finishes (successfully or aborted).
    * Provides stats about the generation.
    */
-  onCompletion?: (data: { outputTokens: number; duration: number }) => void;
+  onCompletion?: (data: {
+    outputTokens: number;
+    duration: number;
+    structured_content?: object;
+    parse_error?: Error;
+  }) => void;
   /**
    * Reasoning template to use for parsing reasoning from the response.
    */
   reasoningTemplate?: ReasoningTemplate;
+  /**
+   * Configuration for structured response generation.
+   * If provided, the generation will be guided to produce a structured output (e.g., JSON, XML).
+   */
+  structuredResponse?: StructuredResponseOptions;
 }

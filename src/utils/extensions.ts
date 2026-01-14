@@ -684,6 +684,7 @@ const baseExtensionAPI: ExtensionAPI = {
         modelList: apiStore.modelList,
         formatter: effectiveFormatter,
         instructTemplate: effectiveInstructTemplate,
+        structuredResponse: options.structuredResponse,
       });
 
       // Prepare usage tracking
@@ -714,6 +715,8 @@ const baseExtensionAPI: ExtensionAPI = {
           inputTokens: inputTokens,
         },
         reasoningTemplate: reasoningTemplate,
+        structuredResponse: options.structuredResponse,
+        onCompletion: options.onCompletion,
       });
     },
   },
