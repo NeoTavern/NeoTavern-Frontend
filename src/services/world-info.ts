@@ -65,7 +65,7 @@ export function createDefaultEntry(uid: number): WorldInfoEntry {
     matchWholeWords: null,
     useGroupScoring: null,
     automationId: '',
-    role: 0,
+    role: WorldInfoRole.SYSTEM,
     sticky: null,
     cooldown: null,
     delay: null,
