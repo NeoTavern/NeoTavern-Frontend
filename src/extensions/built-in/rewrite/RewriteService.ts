@@ -182,6 +182,29 @@ export class RewriteService {
       };
     });
 
+    // If format is 'text', we skip structured response and return raw text as justification
+    if (format === 'text') {
+      const response = await this.api.llm.generate(apiMessages, {
+        connectionProfileName: profileName,
+        signal,
+      });
+
+      let content = '';
+      if (Symbol.asyncIterator in response) {
+        for await (const chunk of response) {
+          content += chunk.delta;
+        }
+      } else {
+        content = response.content;
+      }
+
+      return {
+        justification: content,
+        response: undefined,
+      };
+    }
+
+    // Otherwise, use structured response
     const schema = {
       name: 'rewrite_response',
       strict: true,

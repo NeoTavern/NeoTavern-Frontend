@@ -40,7 +40,7 @@ export interface RewriteTemplate {
   ignoreInput?: boolean; // If true, the template doesn't use {{input}} and UI should hide input-related controls
 }
 
-export type StructuredResponseFormat = 'native' | 'json' | 'xml';
+export type StructuredResponseFormat = 'native' | 'json' | 'xml' | 'text';
 
 export interface RewriteTemplateOverride {
   lastUsedProfile?: string;

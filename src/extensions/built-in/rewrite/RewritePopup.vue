@@ -29,6 +29,8 @@ const props = defineProps<{
 const t = props.api.i18n.t;
 const service = new RewriteService(props.api);
 
+// TODO: i18n
+
 // Settings State
 const settings = ref<RewriteSettings>(
   props.api.settings.get() || {
@@ -139,8 +141,28 @@ watch(selectedContextLorebooks, async (newBooks) => {
   }
 });
 
-watch(isCharacterContextOpen, () => saveState());
-watch(isWorldInfoContextOpen, () => saveState());
+watch(
+  [
+    selectedProfile,
+    promptOverride,
+    contextMessageCount,
+    escapeMacros,
+    structuredResponseFormat,
+    isCharacterContextOpen,
+    isWorldInfoContextOpen,
+  ],
+  () => {
+    saveState();
+  },
+);
+
+watch(
+  [selectedContextLorebooks, selectedContextEntries, selectedContextCharacters, argOverrides],
+  () => {
+    saveState();
+  },
+  { deep: true },
+);
 
 async function ensureBookLoaded(bookName: string) {
   if (!bookCache.value[bookName]) {
@@ -797,9 +819,10 @@ function handleGeneralDiff() {
           <Select
             v-model="structuredResponseFormat"
             :options="[
-              { label: 'Native', value: 'native' },
-              { label: 'JSON', value: 'json' },
-              { label: 'XML', value: 'xml' },
+              { label: 'Native (Structured)', value: 'native' },
+              { label: 'JSON (Structured)', value: 'json' },
+              { label: 'XML (Structured)', value: 'xml' },
+              { label: 'Raw Text (Readonly/Chat)', value: 'text' },
             ]"
           />
         </FormItem>
