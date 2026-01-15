@@ -14,27 +14,27 @@ Why another frontend for [SillyTavern?](https://github.com/SillyTavern/SillyTave
 
 **Features compared to the SillyTavern:**
 
-- New UI. See [screenshots](https://imgur.com/a/puRlyQO)
+- New UI. See [screenshots.](https://imgur.com/a/puRlyQO) Screenshots are not covering the whole UI, but you can see the general layout and design.
 - There is no Chat/Text Completion separation.
 - There is a single prompt manager.
 - All chats are group chats. Add/remove a member anytime.
 - Assigning multiple lorebooks per persona/chat.
 - Assigning a connection profile per chat.
-- Tools: The ability to enable/disable tools. 2 built-in tools: Web search and URL inspector.
+- Tools: The ability to [enable/disable tools](https://imgur.com/F4rczat). 2 built-in tools: Web search and URL inspector.
 - Media attachments: If the message has a markdown image link(`![alt](url)`), AI will see the image.
 
 **Built-in extensions compared to SillyTavern:**
 
 - Standard Tools: Web Search and URL Inspector.
-- Chat Memory: 2 modes. 1) The simpler version of [MemoryBooks](https://github.com/aikohanasaki/SillyTavern-MemoryBooks). Select the range of messages -> summarize it with AI -> auto hide messages -> create a lorebook entry 2) [qvikn's memory](https://github.com/qvink/SillyTavern-MessageSummarize). Select the range of messages -> summarize each of them with AI -> summarized messages are shown in the chat and they are used as context.
+- Chat Memory: It has 2 features. 1) The simpler version of [MemoryBooks](https://github.com/aikohanasaki/SillyTavern-MemoryBooks). [Select the range of messages](https://imgur.com/DHXx2rd) -> summarize it with AI -> auto hide messages -> create a lorebook entry 2) The simpler version of [qvikn's memory](https://github.com/qvink/SillyTavern-MessageSummarize). [Select the range of messages](https://imgur.com/W4vXbyh) -> summarize each of them with AI -> summarized messages are [shown in the chat](https://imgur.com/AWf2BGJ) and they are used as context.
 - Chat Translation: Translate messages in the chat with AI.
-- Magic Rewrite: Rewrite most inputs with AI.
-- Usage Tracker: Show token/usage statistics. (Price/cache tokens are not calculated yet.)
+- Magic Rewrite: [Rewrite](https://imgur.com/TFDWOv5) most inputs with AI. Such as fixing grammer, changing tone, rewriting a chat message, character field, persona description, lorebook entry, etc. [Screenshot 1](https://imgur.com/otYwcgg) [Screenshot 2](https://imgur.com/rZg0ZSN). Think like the merge of [CREC](https://github.com/bmen25124/SillyTavern-Character-Creator), [WREC](https://github.com/bmen25124/SillyTavern-WorldInfo-Recommender), and [WeatherPack](https://github.com/bmen25124/SillyTavern-WeatherPack)
+- Usage Tracker: Show token/usage [statistics](https://imgur.com/9dSKaxg). (Price and cached tokens are not calculated yet.)
 
 **What things did not implement:**
 
 - STScript, QRs, slash commands, detailed macro system.
-- More built-in extensions.
+- More built-in extensions. E.g. NeoTavern don't have a TTS or image generation extension yet.
 - NovelAI/Horde/KoboldClassic. If they have OpenAI compatible API, we can add later. If not, we are not planning to add them.
 
 **Thing that not implemented fully:**
