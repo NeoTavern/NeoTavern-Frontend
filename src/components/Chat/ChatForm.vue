@@ -115,6 +115,18 @@ function toggleSelectionMode() {
   isOptionsMenuVisible.value = false;
 }
 
+function openToolsMenu() {
+  isToolsMenuVisible.value = true;
+  isOptionsMenuVisible.value = false;
+}
+
+function handleAttachMedia() {
+  if (!isMediaAttachDisabled.value) {
+    triggerFileUpload();
+    isOptionsMenuVisible.value = false;
+  }
+}
+
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter' && !event.shiftKey && settingsStore.shouldSendOnEnter) {
     event.preventDefault();
@@ -319,24 +331,9 @@ defineExpose({
         tabindex="0"
         :disabled="isMediaAttachDisabled"
         :title="mediaAttachTitle"
-        @click="
-          if (!isMediaAttachDisabled) {
-            triggerFileUpload();
-            isOptionsMenuVisible = false;
-          }
-        "
-        @keydown.enter.prevent="
-          if (!isMediaAttachDisabled) {
-            triggerFileUpload();
-            isOptionsMenuVisible = false;
-          }
-        "
-        @keydown.space.prevent="
-          if (!isMediaAttachDisabled) {
-            triggerFileUpload();
-            isOptionsMenuVisible = false;
-          }
-        "
+        @click="handleAttachMedia"
+        @keydown.enter.prevent="handleAttachMedia"
+        @keydown.space.prevent="handleAttachMedia"
       >
         <i class="fa-solid fa-paperclip"></i>
         <span>{{ t('chat.media.attach') }}</span>
@@ -345,18 +342,9 @@ defineExpose({
         class="options-menu-item"
         role="menuitem"
         tabindex="0"
-        @click="
-          isToolsMenuVisible = true;
-          isOptionsMenuVisible = false;
-        "
-        @keydown.enter.prevent="
-          isToolsMenuVisible = true;
-          isOptionsMenuVisible = false;
-        "
-        @keydown.space.prevent="
-          isToolsMenuVisible = true;
-          isOptionsMenuVisible = false;
-        "
+        @click.stop="openToolsMenu"
+        @keydown.enter.prevent="openToolsMenu"
+        @keydown.space.prevent="openToolsMenu"
       >
         <i class="fa-solid fa-screwdriver-wrench"></i>
         <span>{{ t('chat.tools.title') }}</span>
