@@ -1385,7 +1385,7 @@
       "failed": "Summarization failed",
       "summarizeButton": "Summarize Message",
       "tabs": {
-        "lorebook": "Lorebook Summaries",
+        "lorebook": "Lorebook",
         "messages": "Message Summaries"
       },
       "labels": {
