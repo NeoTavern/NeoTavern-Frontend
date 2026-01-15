@@ -333,7 +333,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       }
 
       const extra = context.originalMessage.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
-      if (apiMessages.length === 1 && extra?.summary && extra.summary.trim().length > 0) {
+      if (apiMessages.length >= 1 && extra?.summary && extra.summary.trim().length > 0) {
         apiMessages[0].content = extra.summary;
       }
     }),
