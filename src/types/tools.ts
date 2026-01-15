@@ -9,7 +9,6 @@ export interface ToolDefinition {
   action: (args: any) => Promise<any> | any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   formatMessage?: (args: any) => Promise<string> | string;
-  disabled?: boolean;
   stealth?: boolean;
 }
 

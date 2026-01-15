@@ -2,15 +2,16 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { ToolDefinition } from '../types/tools';
 import { eventEmitter } from '../utils/extensions';
+import { useSettingsStore } from './settings.store';
 
 export const useToolStore = defineStore('tool', () => {
   const tools = ref<Map<string, ToolDefinition>>(new Map());
-  const disabledTools = ref<Set<string>>(new Set());
+  const settingsStore = useSettingsStore();
 
   const toolList = computed(() => Array.from(tools.value.values()));
 
   const enabledTools = computed(() => {
-    return toolList.value.filter((tool) => !tool.disabled && !disabledTools.value.has(tool.name));
+    return toolList.value.filter((tool) => !settingsStore.settings.disabledTools.includes(tool.name));
   });
 
   async function registerTool(tool: ToolDefinition) {
@@ -23,7 +24,6 @@ export const useToolStore = defineStore('tool', () => {
 
   async function unregisterTool(name: string) {
     if (tools.value.delete(name)) {
-      disabledTools.value.delete(name);
       await eventEmitter.emit('tool:unregistered', name);
     }
   }
@@ -33,25 +33,30 @@ export const useToolStore = defineStore('tool', () => {
   }
 
   function isToolDisabled(name: string): boolean {
-    return disabledTools.value.has(name);
+    return settingsStore.settings.disabledTools.includes(name);
   }
 
   function toggleTool(name: string, enable?: boolean) {
     if (!tools.value.has(name)) return;
 
-    const shouldEnable = enable !== undefined ? enable : isToolDisabled(name);
+    const currentlyDisabled = isToolDisabled(name);
+    const shouldEnable = enable !== undefined ? enable : currentlyDisabled;
+
+    // Create a new array to trigger reactivity in settings
+    const newDisabledList = new Set(settingsStore.settings.disabledTools);
 
     if (shouldEnable) {
-      disabledTools.value.delete(name);
+      newDisabledList.delete(name);
     } else {
-      disabledTools.value.add(name);
+      newDisabledList.add(name);
     }
+
+    settingsStore.settings.disabledTools = Array.from(newDisabledList);
   }
 
   return {
     tools,
     toolList,
-    disabledTools,
     enabledTools,
     registerTool,
     unregisterTool,

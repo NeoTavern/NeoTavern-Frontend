@@ -30,11 +30,8 @@ export class ToolService {
     const toolStore = useToolStore();
     const result: ApiToolDefinition[] = [];
 
-    for (const tool of toolStore.toolList) {
-      // Default to enabled if undefined
-      if (tool.disabled !== true) {
-        result.push(this.toApiTool(tool));
-      }
+    for (const tool of toolStore.enabledTools) {
+      result.push(this.toApiTool(tool));
     }
 
     return result;

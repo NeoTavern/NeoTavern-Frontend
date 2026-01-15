@@ -284,9 +284,7 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
 
     // 2. Additional Tools
     if (toolConfig?.additionalTools && toolConfig.additionalTools.length > 0) {
-      const additionalApiTools = toolConfig.additionalTools
-        .filter((t) => t.disabled !== true)
-        .map((t) => ToolService.toApiTool(t));
+      const additionalApiTools = toolConfig.additionalTools.map((t) => ToolService.toApiTool(t));
       finalTools.push(...additionalApiTools);
     }
 

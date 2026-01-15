@@ -10,7 +10,7 @@ const { t } = useStrictI18n();
 const { visibleMessages, hasMoreMessages, loadMoreMessages, messagesContainer } = useChatView();
 
 // Dummy log to avoid unused variable warning
-console.debug(messagesContainer)
+console.debug(messagesContainer);
 </script>
 
 <template>

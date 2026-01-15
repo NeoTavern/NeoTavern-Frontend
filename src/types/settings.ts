@@ -416,6 +416,7 @@ export interface Settings {
     splitPaneDefaultsMigrated: boolean;
   };
   disabledExtensions: string[];
+  disabledTools: string[];
   extensionSettings: Record<string, Record<string, never>>;
 }
 

@@ -62,6 +62,7 @@ export function createDefaultSettings(): Settings {
       confirmMessageDelete: true,
     },
     disabledExtensions: [],
+    disabledTools: [],
     extensionSettings: {},
     persona: {
       activePersonaId: null,
@@ -431,6 +432,7 @@ export function migrateLegacyUserSettings(
         ...p,
       })) || [],
     disabledExtensions: [],
+    disabledTools: [],
     extensionSettings: {},
   };
   return migrated;

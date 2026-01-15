@@ -47,7 +47,7 @@ const {
 } = useChatMedia();
 
 // Dummy log to avoid unused variable warning
-console.debug(fileInput)
+console.debug(fileInput);
 
 // --- Options Menu ---
 const isOptionsMenuVisible = ref(false);
