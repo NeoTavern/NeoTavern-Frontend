@@ -1,6 +1,8 @@
 import { defaultSamplerSettings } from '../constants';
 import type {
+  ApiAssistantMessage,
   ApiChatMessage,
+  ApiToolMessage,
   Character,
   ChatMessage,
   ChatMetadata,
@@ -123,7 +125,11 @@ export class PromptBuilder {
       console.warn('No enabled prompts found in sampler settings.');
       return [];
     }
-    const historyPlaceholder = { role: 'system', content: '[[CHAT_HISTORY_PLACEHOLDER]]', name: 'system' } as const;
+    const historyPlaceholder = {
+      role: 'system' as const,
+      content: '[[CHAT_HISTORY_PLACEHOLDER]]',
+      name: 'system',
+    };
 
     const isGroupContext = (this.chatMetadata.members?.length ?? 0) > 1;
 
@@ -217,7 +223,7 @@ export class PromptBuilder {
     }
 
     for (const prompt of fixedPrompts) {
-      if (prompt.content !== historyPlaceholder.content) {
+      if (prompt.content && prompt.content !== historyPlaceholder.content) {
         currentTokenCount += await countTokens(prompt.content, this.tokenizer);
       }
     }
@@ -244,11 +250,14 @@ export class PromptBuilder {
     const depthEntriesMap = new Map<number, ApiChatMessage[]>();
     if (this.processedWorldInfo.depthEntries.length > 0) {
       for (const entryItem of this.processedWorldInfo.depthEntries) {
-        const msgs: ApiChatMessage[] = entryItem.entries.map((content) => ({
-          role: entryItem.role,
-          content,
-          name: entryItem.role,
-        }));
+        const msgs: ApiChatMessage[] = entryItem.entries.map(
+          (content) =>
+            ({
+              role: entryItem.role,
+              content,
+              name: entryItem.role,
+            }) as ApiChatMessage,
+        );
         const list = depthEntriesMap.get(entryItem.depth) || [];
         depthEntriesMap.set(entryItem.depth, [...list, ...msgs]);
       }
@@ -274,13 +283,66 @@ export class PromptBuilder {
         persona: this.persona,
       });
 
-      const apiMsg: ApiChatMessage = {
-        role: msg.is_user ? 'user' : 'assistant',
-        content: processedContent,
-        name: msg.name,
-      };
+      const toolInvocations = msg.extra?.tool_invocations;
 
-      await eventEmitter.emit('prompt:history-message-processing', apiMsg, {
+      const apiMessagesToInsert: ApiChatMessage[] = [];
+
+      if (msg.is_user) {
+        apiMessagesToInsert.push({
+          role: 'user',
+          content: processedContent,
+          name: msg.name,
+        });
+      } else {
+        // This is an assistant message. It might have text, tool calls, or both.
+        const tool_calls = toolInvocations
+          ? toolInvocations.map((inv) => ({
+              id: inv.id,
+              type: 'function' as const,
+              function: {
+                name: inv.name,
+                arguments: inv.parameters,
+              },
+              signature: inv.signature, // TODO: We should get via condition. It is gemini 3.0+ specific.
+            }))
+          : undefined;
+
+        let assistantMsg: ApiAssistantMessage;
+        if (tool_calls) {
+          assistantMsg = {
+            role: 'assistant',
+            name: msg.name,
+            content: processedContent || null,
+            tool_calls,
+          };
+          if (!assistantMsg.content) {
+            assistantMsg.content = null;
+          }
+        } else {
+          assistantMsg = {
+            role: 'assistant',
+            name: msg.name,
+            content: processedContent,
+          };
+        }
+
+        // Only add assistant message if it has content or tool calls
+        if (assistantMsg.content || (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0)) {
+          apiMessagesToInsert.push(assistantMsg);
+        }
+
+        if (toolInvocations) {
+          const toolMessages: ApiToolMessage[] = toolInvocations.map((inv) => ({
+            role: 'tool',
+            tool_call_id: inv.id,
+            content: inv.result,
+            name: inv.name,
+          }));
+          apiMessagesToInsert.push(...toolMessages);
+        }
+      }
+
+      await eventEmitter.emit('prompt:history-message-processing', apiMessagesToInsert, {
         originalMessage: msg,
         isGroupContext,
         characters: this.characters,
@@ -289,12 +351,9 @@ export class PromptBuilder {
         chatLength: this.chatHistory.length,
       });
 
-      const msgTokenCount = await countTokens(apiMsg.content, this.tokenizer);
-
-      if (historyTokenCount + msgTokenCount <= historyBudget) {
-        historyTokenCount += msgTokenCount;
-        historyMessages.unshift(apiMsg);
-      } else {
+      // Insert the generated messages, checking budget for each one
+      const success = await insertMessages(apiMessagesToInsert);
+      if (!success) {
         break;
       }
 

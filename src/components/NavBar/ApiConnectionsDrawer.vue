@@ -173,6 +173,7 @@ async function testMessage() {
         stream: false,
       },
       providerSpecific: settingsStore.settings.api.providerSpecific,
+      customPromptPostProcessing: CustomPromptPostProcessing.NONE,
       proxy: settingsStore.settings.api.proxy,
       formatter: settingsStore.settings.api.formatter,
       instructTemplate: apiStore.instructTemplates.find(

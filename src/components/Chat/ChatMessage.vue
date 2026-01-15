@@ -55,6 +55,7 @@ const editTextarea = ref<InstanceType<typeof Textarea>>();
 const isEditing = computed(() => chatStore.activeMessageEditState?.index === props.index);
 const hasReasoning = computed(() => props.message.extra?.reasoning && props.message.extra.reasoning.trim().length > 0);
 const hasItemizedPrompt = computed(() => !!promptStore.getItemizedPrompt(props.index, props.message.swipe_id ?? 0));
+const isSmallSys = computed(() => !!props.message.extra?.isSmallSys);
 
 const isSelectionMode = computed(() => chatSelectionStore.isSelectionMode);
 const isSelected = computed(() => chatSelectionStore.selectedMessageIndices.has(props.index));
@@ -109,13 +110,6 @@ function handleAvatarClick() {
     charName: charNameForAvatar.value || 'Avatar',
   });
 }
-
-const displayName = computed(() => {
-  if (props.message.is_user) {
-    return uiStore.activePlayerName;
-  }
-  return props.message.name;
-});
 
 const formattedTimestamp = computed(() => {
   return formatTimeStamp(props.message.send_date);
@@ -438,9 +432,10 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
       'is-selection-mode': isSelectionMode,
       'animations-disabled': animationsDisabled,
       'is-system-message': message.is_system,
+      'is-small-sys': isSmallSys,
     }"
     :data-message-index="index"
-    :aria-label="`${displayName} - ${formattedTimestamp}`"
+    :aria-label="`${props.message.name} - ${formattedTimestamp}`"
     @click="handleSelectionClick"
   >
     <!-- Selection Overlay -->
@@ -455,12 +450,12 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
         class="message-avatar"
         role="button"
         tabindex="0"
-        :aria-label="displayName!"
+        :aria-label="props.message.name"
         @click.stop="handleAvatarClick"
         @keydown.enter.stop.prevent="handleAvatarClick"
         @keydown.space.stop.prevent="handleAvatarClick"
       >
-        <SmartAvatar :urls="[avatarUrls.thumbnail]" :alt="`${displayName} Avatar`" />
+        <SmartAvatar :urls="[avatarUrls.thumbnail]" :alt="`${props.message.name} Avatar`" />
       </div>
       <div class="message-id">#{{ index }}</div>
       <div v-if="message.extra?.reasoning_duration" class="message-timer">
@@ -472,14 +467,14 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
     <div class="message-main">
       <div class="message-header">
         <div class="message-name-block">
-          <span class="message-name">{{ displayName }}</span>
+          <span class="message-name">{{ props.message.name }}</span>
           <small class="message-timestamp">{{ formattedTimestamp }}</small>
         </div>
 
         <!-- Buttons for Normal Mode -->
         <div v-show="!isEditing && !isSelectionMode" class="message-buttons">
           <Button
-            v-if="hasItemizedPrompt"
+            v-if="hasItemizedPrompt && !isSmallSys"
             variant="ghost"
             icon="fa-square-poll-horizontal"
             :title="t('chat.buttons.itemization')"
@@ -487,12 +482,13 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
           />
           <Button variant="ghost" icon="fa-copy" :title="t('chat.buttons.copyMessage')" @click="copyMessage" />
           <Button
+            v-if="!isSmallSys"
             variant="ghost"
             :icon="message.is_system ? 'fa-eye' : 'fa-eye-slash'"
             :title="message.is_system ? t('chat.buttons.showInPrompt') : t('chat.buttons.hideFromPrompt')"
             @click="toggleHidden"
           />
-          <Button variant="ghost" icon="fa-pencil" title="Edit" @click="startEditing" />
+          <Button v-if="!isSmallSys" variant="ghost" icon="fa-pencil" title="Edit" @click="startEditing" />
           <Button
             icon="fa-trash-can"
             variant="danger"

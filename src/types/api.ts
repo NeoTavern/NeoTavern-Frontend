@@ -30,7 +30,7 @@ export const api_providers = {
 } as const;
 
 export type ApiProvider = (typeof api_providers)[keyof typeof api_providers];
-export type ModelCapability = 'vision' | 'video' | 'audio';
+export type ModelCapability = 'vision' | 'video' | 'audio' | 'tools';
 
 export type ModelCapabilities = Record<ModelCapability, boolean>;
 
@@ -59,6 +59,12 @@ export interface AiConfigCondition {
   provider?: ApiProvider | ApiProvider[];
   formatter?: ApiFormatter | ApiFormatter[];
   capability?: ModelCapability | ModelCapability[];
+  setting?: {
+    path: SettingsPath;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    value: any;
+    operator?: 'eq' | 'neq' | 'contains' | 'not_contains';
+  };
 }
 
 /**

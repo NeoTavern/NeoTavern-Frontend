@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
-import type { KnownPromptIdentifiers, Prompt } from '../../types';
+import type { KnownPromptIdentifiers, MessageRole, Prompt, StrictOmitString } from '../../types';
 import { DraggableList, EmptyState } from '../common';
 import { Button, FormItem, Input, Select, Textarea } from '../UI';
 
@@ -61,7 +61,7 @@ function updatePromptField(index: number, field: keyof Prompt, value: never) {
   (prompts.value[index] as never)[field] = value;
 }
 
-function getBadgeClass(role?: string) {
+function getBadgeClass(role?: StrictOmitString<MessageRole, 'tool'>) {
   switch (role) {
     case 'system':
       return 'prompt-item-badge--system';

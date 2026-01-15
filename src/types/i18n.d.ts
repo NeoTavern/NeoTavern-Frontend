@@ -481,6 +481,15 @@ export interface MessageSchema {
         google: string;
       };
     };
+    tools: {
+      enable: {
+        label: string;
+        description: string;
+      };
+      warning: {
+        postProcessing: string;
+      };
+    };
   };
   userSettings: {
     searchPlaceholder: string;
@@ -595,6 +604,9 @@ export interface MessageSchema {
       noSpeaker: string;
       postProcessError: string;
       emptyResponseError: string;
+      usingTools: string;
+      toolError: string;
+      maxRecursionError: string;
     };
     buttons: {
       confirmEdit: string;
@@ -675,6 +687,15 @@ export interface MessageSchema {
       dropFiles: string;
       uploadError: string;
       attach: string;
+    };
+    tools: {
+      title: string;
+      noTools: string;
+      disabled: {
+        setting: string;
+        postProcessing: string;
+        model: string;
+      };
     };
   };
   character: {
@@ -1461,6 +1482,17 @@ export interface MessageSchema {
         summarized: string;
         summarizedSingle: string;
       };
+    };
+    standardTools: {
+      network: string;
+      corsProxy: string;
+      corsProxyHint: string;
+      webSearch: string;
+      maxResults: string;
+      maxResultsHint: string;
+      urlInspector: string;
+      maxContentLength: string;
+      maxContentLengthHint: string;
     };
   };
   login: {

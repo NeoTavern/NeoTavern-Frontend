@@ -50,7 +50,7 @@ const isVisible = computed(() => {
   // OR Logic: If ANY condition object in the list matches, return true.
   return conditionsList.some((cond) => {
     // AND Logic within object
-    const { provider, formatter, capability } = cond;
+    const { provider, formatter, capability, setting } = cond;
 
     if (provider) {
       const providers = Array.isArray(provider) ? provider : [provider];
@@ -68,6 +68,44 @@ const isVisible = computed(() => {
       const capabilities = Array.isArray(capability) ? capability : [capability];
       const hasAllRequired = capabilities.every((c: ModelCapability) => props.capabilities[c]);
       if (!hasAllRequired) return false;
+    }
+
+    if (setting) {
+      const { path, value, operator } = setting;
+      const actualValue = settingsStore.getSetting(path);
+
+      if (operator === 'eq') {
+        if (actualValue !== value) return false;
+      } else if (operator === 'neq') {
+        if (actualValue === value) return false;
+      } else if (operator === 'contains') {
+        if (Array.isArray(value)) {
+          // Check if actualValue is one of the allowed values
+          if (!value.includes(actualValue)) return false;
+        } else if (Array.isArray(actualValue)) {
+          // Check if actualValue array contains the required value
+          // @ts-expect-error -- Ignore --
+          if (!actualValue.includes(value)) return false;
+        } else {
+          // String inclusion fallback
+          if (!String(actualValue).includes(String(value))) return false;
+        }
+      } else if (operator === 'not_contains') {
+        if (Array.isArray(value)) {
+          // Check if actualValue is NOT one of the excluded values
+          if (value.includes(actualValue)) return false;
+        } else if (Array.isArray(actualValue)) {
+          // Check if actualValue array does NOT contain the value
+          // @ts-expect-error -- Ignore --
+          if (actualValue.includes(value)) return false;
+        } else {
+          // String inclusion fallback
+          if (String(actualValue).includes(String(value))) return false;
+        }
+      } else {
+        // Default to equality if no operator specified (backward compatibility if strictly typed)
+        if (actualValue !== value) return false;
+      }
     }
 
     return true;

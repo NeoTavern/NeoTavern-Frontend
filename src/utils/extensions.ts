@@ -47,6 +47,7 @@ import { WorldInfoProcessor, createDefaultEntry } from '../services/world-info';
 import { useCharacterUiStore } from '../stores/character-ui.store';
 import { useComponentRegistryStore } from '../stores/component-registry.store';
 import { useLayoutStore } from '../stores/layout.store';
+import { useToolStore } from '../stores/tool.store';
 import { useWorldInfoUiStore } from '../stores/world-info-ui.store';
 import type { LlmGenerationOptions, TextareaToolDefinition } from '../types/ExtensionAPI';
 import type { CodeMirrorTarget } from '../types/settings';
@@ -341,6 +342,7 @@ const baseExtensionAPI: ExtensionAPI = {
         model: apiStore.activeModel,
         provider: settingsStore.settings.api.provider,
         providerSpecific: settingsStore.settings.api.providerSpecific,
+        customPromptPostProcessing: settingsStore.settings.api.customPromptPostProcessing,
         playerName: uiStore.activePlayerName || 'User',
         modelList: apiStore.modelList,
       });
@@ -547,6 +549,29 @@ const baseExtensionAPI: ExtensionAPI = {
       });
     },
   },
+  tools: {
+    register: async (tool) => {
+      await useToolStore().registerTool(tool);
+    },
+    unregister: async (name) => {
+      await useToolStore().unregisterTool(name);
+    },
+    get: (name) => {
+      return deepClone(useToolStore().getTool(name));
+    },
+    getAll: () => {
+      return deepClone(useToolStore().toolList);
+    },
+    getEnabled: () => {
+      return deepClone(useToolStore().enabledTools);
+    },
+    isDisabled: (name) => {
+      return useToolStore().isToolDisabled(name);
+    },
+    toggle: (name, enable) => {
+      useToolStore().toggleTool(name, enable);
+    },
+  },
   ui: {
     showToast: (message, type = 'info') => toast[type](message),
     openDrawer: (panelName) => {
@@ -683,6 +708,7 @@ const baseExtensionAPI: ExtensionAPI = {
         providerSpecific,
         modelList: apiStore.modelList,
         formatter: effectiveFormatter,
+        customPromptPostProcessing: customPromptPostProcessing ?? CustomPromptPostProcessing.NONE,
         instructTemplate: effectiveInstructTemplate,
         structuredResponse: options.structuredResponse,
       });

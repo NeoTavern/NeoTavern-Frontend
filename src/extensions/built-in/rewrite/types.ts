@@ -1,4 +1,4 @@
-import type { MessageRole } from '../../../types';
+import type { MessageRole, StrictOmitString } from '../../../types';
 
 export interface RewriteLLMResponse {
   justification: string;
@@ -7,7 +7,7 @@ export interface RewriteLLMResponse {
 
 export interface RewriteSessionMessage {
   id: string;
-  role: MessageRole;
+  role: StrictOmitString<MessageRole, 'tool'>;
   content: string | RewriteLLMResponse;
   timestamp: number;
 }

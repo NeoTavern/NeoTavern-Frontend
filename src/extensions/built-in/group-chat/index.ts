@@ -276,21 +276,24 @@ export function activate(api: ExtensionAPI) {
   unbinds.push(
     api.events.on(
       'prompt:history-message-processing',
-      (apiMsg, context) => {
+      (apiMsgs, context) => {
         if (!context.isGroupContext) return;
 
-        if (typeof apiMsg.content === 'string') {
-          const namePrefix = `${context.originalMessage.name}:`;
-          if (!apiMsg.content.startsWith(namePrefix)) {
-            apiMsg.content = `${namePrefix} ${apiMsg.content}`;
-          }
-        } else if (Array.isArray(apiMsg.content)) {
-          for (let i = 0; i < apiMsg.content.length; i++) {
-            const part = apiMsg.content[i];
-            if (part.type === 'text' && part.text) {
-              const namePrefix = `${context.originalMessage.name}:`;
-              if (!part.text.startsWith(namePrefix)) {
-                part.text = `${namePrefix} ${part.text}`;
+        for (const apiMsg of apiMsgs) {
+          if (apiMsg.role === 'tool') continue;
+          if (typeof apiMsg.content === 'string') {
+            const namePrefix = `${context.originalMessage.name}:`;
+            if (!apiMsg.content.startsWith(namePrefix)) {
+              apiMsg.content = `${namePrefix} ${apiMsg.content}`;
+            }
+          } else if (Array.isArray(apiMsg.content)) {
+            for (let i = 0; i < apiMsg.content.length; i++) {
+              const part = apiMsg.content[i];
+              if (part.type === 'text' && part.text) {
+                const namePrefix = `${context.originalMessage.name}:`;
+                if (!part.text.startsWith(namePrefix)) {
+                  part.text = `${namePrefix} ${part.text}`;
+                }
               }
             }
           }

@@ -1,0 +1,28 @@
+.selection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: var(--theme-background-tint);
+  border-top: 1px solid var(--theme-border-color);
+  color: var(--theme-text-color);
+  animation: slideUp 0.2s ease-out;
+
+  .selection-info {
+    font-weight: bold;
+    font-size: 1.1em;
+  }
+
+  .selection-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+  }
+}
+
+.separator-vertical {
+  width: 1px;
+  background-color: var(--theme-border-color);
+  height: 24px;
+  margin: 0 var(--spacing-xs);
+}

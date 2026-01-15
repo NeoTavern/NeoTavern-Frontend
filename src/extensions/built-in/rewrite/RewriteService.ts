@@ -172,7 +172,7 @@ export class RewriteService {
     const apiMessages: ApiChatMessage[] = messages.map((m) => {
       let content = m.content;
       if (typeof content !== 'string') {
-        // If it's a previous LLM response object, serialize it back to string for history
+        // TODO: Handle other content types properly (e.g., images, files)
         content = JSON.stringify(content);
       }
       return {

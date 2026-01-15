@@ -1,4 +1,9 @@
-import type { GenerationMode, OpenrouterMiddleoutType, ReasoningEffort } from '../constants';
+import type {
+  CustomPromptPostProcessing,
+  GenerationMode,
+  OpenrouterMiddleoutType,
+  ReasoningEffort,
+} from '../constants';
 import type { ApiModel, ApiProvider } from './api';
 import type { Character } from './character';
 import type { ChatMessage, ChatMetadata } from './chat';
@@ -7,6 +12,7 @@ import type { InstructTemplate } from './instruct';
 import type { Persona } from './persona';
 import type { ApiFormatter, Proxy, ReasoningTemplate, SamplerSettings, Settings } from './settings';
 import type { Tokenizer } from './tokenizer';
+import type { ToolDefinition, ToolInvocation } from './tools';
 import type { WorldInfoBook, WorldInfoEntry, WorldInfoSettings } from './world-info';
 
 export { type MessageRole, type ReasoningEffort };
@@ -24,11 +30,67 @@ export interface ApiChatContentPart {
   audio_url?: { url: string };
 }
 
-export interface ApiChatMessage {
-  role: MessageRole;
-  content: string | ApiChatContentPart[];
+export interface ApiChatToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;
+  };
+  signature?: string;
+}
+
+/**
+ * Represents a piece of a tool call as it is being streamed.
+ * Fields are optional and are merged to form a complete ApiChatToolCall.
+ */
+export type ApiChatToolCallDelta = {
+  index: number; // The index of the tool call in the list
+  id?: string;
+  type?: 'function';
+  function?: {
+    name?: string;
+    arguments?: string;
+  };
+  signature?: string;
+};
+
+// Base interface for all message types
+interface ApiMessageBase {
   name: string;
 }
+
+// Specific message types for the discriminated union
+export interface ApiSystemMessage extends ApiMessageBase {
+  role: 'system';
+  content: string;
+}
+
+export interface ApiUserMessage extends ApiMessageBase {
+  role: 'user';
+  content: string | ApiChatContentPart[];
+}
+
+export type ApiAssistantMessage = ApiMessageBase & {
+  role: 'assistant';
+} & (
+    | {
+        content: string | ApiChatContentPart[];
+        tool_calls?: ApiChatToolCall[];
+      }
+    | {
+        content: null;
+        tool_calls: ApiChatToolCall[];
+      }
+  );
+
+export interface ApiToolMessage extends ApiMessageBase {
+  role: 'tool';
+  content: string;
+  tool_call_id: string;
+}
+
+export type ApiChatMessage = ApiSystemMessage | ApiUserMessage | ApiAssistantMessage | ApiToolMessage;
 
 export interface StructuredResponseSchema {
   name: string;
@@ -58,6 +120,36 @@ export interface StructuredResponsePrompted extends StructuredResponseBase {
 
 export type StructuredResponseOptions = StructuredResponseNative | StructuredResponsePrompted;
 
+export interface ApiToolDefinition {
+  type: 'function';
+  function: {
+    name: string;
+    description?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    parameters?: any;
+  };
+}
+
+export interface ToolGenerationConfig {
+  /**
+   * Whether to include tools registered in the global ToolStore.
+   * Defaults to true.
+   */
+  includeRegisteredTools?: boolean;
+  /**
+   * Additional tool definitions to include for this specific generation.
+   */
+  additionalTools?: ToolDefinition[];
+  /**
+   * Names of tools to exclude from the generation.
+   */
+  excludeTools?: string[];
+  /**
+   * Tool choice preference.
+   */
+  toolChoice?: 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
+}
+
 export type ChatCompletionPayload = Partial<{
   stream: boolean;
   // For chat
@@ -86,6 +178,10 @@ export type ChatCompletionPayload = Partial<{
   reverse_proxy?: string;
   proxy_password?: string;
   json_schema?: StructuredResponseSchema;
+
+  // Tools
+  tools?: ApiToolDefinition[];
+  tool_choice?: 'auto' | 'none' | 'required' | { type: 'function'; function: { name: string } };
 
   // KoboldCpp Specific
   rep_pen?: number;
@@ -161,12 +257,14 @@ export interface GenerationResponse {
   token_count?: number;
   images?: string[];
   structured_content?: object;
+  tool_calls?: ApiChatToolCall[];
 }
 
 export interface StreamedChunk {
   delta: string;
   reasoning?: string; // Full reasoning
   images?: string[];
+  tool_calls?: ApiChatToolCall[];
 }
 
 export type BuildChatCompletionPayloadOptions = {
@@ -175,6 +273,7 @@ export type BuildChatCompletionPayloadOptions = {
   model: string;
   provider: ApiProvider;
   providerSpecific: Settings['api']['providerSpecific'];
+  customPromptPostProcessing: CustomPromptPostProcessing;
   proxy?: Omit<Proxy, 'id' | 'name'>;
   playerName?: string;
   modelList?: ApiModel[];
@@ -182,6 +281,7 @@ export type BuildChatCompletionPayloadOptions = {
   instructTemplate?: InstructTemplate;
   activeCharacter?: Character;
   structuredResponse?: StructuredResponseOptions;
+  toolConfig?: ToolGenerationConfig;
 };
 
 export type GenerationContext = {
@@ -255,6 +355,7 @@ export interface ItemizedPrompt {
   timestamp: number;
 
   worldInfoEntries: Record<string, WorldInfoEntry[]>;
+  toolInvocations?: ToolInvocation[];
 }
 
 export interface GenerationTrackingOptions {

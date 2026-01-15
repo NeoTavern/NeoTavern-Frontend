@@ -4,7 +4,7 @@ import { computed, ref, shallowRef } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
-import type { MessageRole } from '../../types';
+import type { MessageRole, StrictOmitString } from '../../types';
 import type { KnownPromptIdentifiers, Prompt } from '../../types/settings';
 import { DraggableList, EmptyState } from '../common';
 import { Button, FormItem, Input, Select, Textarea } from '../UI';
@@ -100,12 +100,16 @@ function toggleEnabled(index: number) {
   presetPrompts.value[index].enabled = !presetPrompts.value[index].enabled;
 }
 
-function updatePromptField(index: number, field: keyof Prompt, value: string | number | MessageRole) {
+function updatePromptField(
+  index: number,
+  field: keyof Prompt,
+  value: string | number | StrictOmitString<MessageRole, 'tool'>,
+) {
   // @ts-expect-error Dynamic assignment
   presetPrompts.value[index][field] = value;
 }
 
-function getBadgeClass(role?: string) {
+function getBadgeClass(role?: StrictOmitString<MessageRole, 'tool'>) {
   switch (role) {
     case 'system':
       return 'prompt-item-badge--system';
@@ -198,7 +202,9 @@ function getBadgeClass(role?: string) {
                 <Select
                   :model-value="prompt.role || 'system'"
                   :options="roleOptions"
-                  @update:model-value="(v) => updatePromptField(index, 'role', v as MessageRole)"
+                  @update:model-value="
+                    (v) => updatePromptField(index, 'role', v as StrictOmitString<MessageRole, 'tool'>)
+                  "
                 />
               </FormItem>
 

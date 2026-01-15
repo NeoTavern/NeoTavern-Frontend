@@ -45,8 +45,8 @@ export const useSettingsStore = defineStore('settings', () => {
     const oldValue = cloneDeep(get(settings.value, id));
     set(settings.value, id, value);
 
-    nextTick(() => {
-      eventEmitter.emit('setting:changed', id, value, oldValue);
+    nextTick(async () => {
+      await eventEmitter.emit('setting:changed', id, value, oldValue);
     });
   }
 

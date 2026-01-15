@@ -1,4 +1,4 @@
-import type { MessageRole } from './common';
+import type { MessageRole, StrictOmitString } from './common';
 
 export interface CharacterBookEntry {
   id?: number;
@@ -51,7 +51,7 @@ export interface Character {
     depth_prompt?: {
       prompt: string;
       depth: number;
-      role: MessageRole;
+      role: StrictOmitString<MessageRole, 'tool'>;
     };
     character_book?: CharacterBook;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

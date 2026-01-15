@@ -63,10 +63,13 @@ const toggleLabel = computed(() => t(props.collapsed ? 'common.expandSidebar' : 
 <template>
   <div
     class="split-pane"
-    :class="{
-      'is-collapsed': collapsed,
-      'animations-disabled': animationsDisabled,
-    }"
+    :class="[
+      {
+        'is-collapsed': collapsed,
+        'animations-disabled': animationsDisabled,
+      },
+      `split-pane--${side ?? 'left'}`,
+    ]"
   >
     <div ref="paneRef" class="split-pane-panel split-pane-panel--side">
       <slot name="side" />

@@ -135,9 +135,9 @@ async function deleteSelected() {
       }
       selectedChats.value.clear();
       isSelectionMode.value = false;
-      nextTick().then(() => {
+      nextTick().then(async () => {
         for (const id of idsToDelete) {
-          eventEmitter.emit('chat:deleted', id);
+          await eventEmitter.emit('chat:deleted', id);
         }
       });
     } catch (error) {

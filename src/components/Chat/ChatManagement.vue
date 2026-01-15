@@ -125,8 +125,8 @@ async function deleteChat(chatFile: string) {
         }
       }
       chatStore.chatInfos = chatStore.chatInfos.filter((chat) => chat.file_id !== chatFile);
-      nextTick().then(() => {
-        eventEmitter.emit('chat:deleted', chatFile);
+      nextTick().then(async () => {
+        await eventEmitter.emit('chat:deleted', chatFile);
       });
     } catch {
       toast.error(t('chatManagement.errors.delete'));

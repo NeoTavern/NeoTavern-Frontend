@@ -320,7 +320,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
 
   // Prompt Injection: Replace content with summary
   unbinds.push(
-    api.events.on('prompt:history-message-processing', (apiMessage, context) => {
+    api.events.on('prompt:history-message-processing', (apiMessages, context) => {
       const settings = api.settings.get();
       if (!settings?.enableMessageSummarization) return;
 
@@ -333,8 +333,8 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       }
 
       const extra = context.originalMessage.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
-      if (extra?.summary && extra.summary.trim().length > 0) {
-        apiMessage.content = extra.summary;
+      if (apiMessages.length >= 1 && extra?.summary && extra.summary.trim().length > 0) {
+        apiMessages[0].content = extra.summary;
       }
     }),
   );

@@ -477,6 +477,15 @@
       "limits": {
         "google": "For Google models: Videos must be less than 20 MB and under 1 minute long. Audio must be less than 20 MB."
       }
+    },
+    "tools": {
+      "enable": {
+        "label": "Enable Tools",
+        "description": "Allow the model to use registered tools/functions."
+      },
+      "warning": {
+        "postProcessing": "Tool calling is disabled because the selected Custom Prompt Post-Processing mode does not support it."
+      }
     }
   },
   "userSettings": {
@@ -591,7 +600,10 @@
       "noPersonaError": "No persona selected. Please check your persona settings.",
       "noSpeaker": "No valid speaker found for generation.",
       "postProcessError": "Post-processing failed. Check console for details.",
-      "emptyResponseError": "The AI returned an empty response."
+      "emptyResponseError": "The AI returned an empty response.",
+      "usingTools": "Using tools...",
+      "toolError": "Tool execution failed. Check console for details.",
+      "maxRecursionError": "Maximum recursion steps reached."
     },
     "buttons": {
       "confirmEdit": "Confirm edit",
@@ -672,6 +684,15 @@
       "dropFiles": "Drop files here to upload",
       "uploadError": "Failed to upload media.",
       "attach": "Upload Media"
+    },
+    "tools": {
+      "title": "Tools",
+      "noTools": "No tools available",
+      "disabled": {
+        "setting": "Tools are disabled in sampler settings.",
+        "postProcessing": "Tools are incompatible with the current Prompt Post-Processing setting.",
+        "model": "The active model does not support tool calling."
+      }
     }
   },
   "character": {
@@ -1458,6 +1479,17 @@
         "summarized": "Summarized: {start} - {end}",
         "summarizedSingle": "Summarized: {index}"
       }
+    },
+    "standardTools": {
+      "network": "Network",
+      "corsProxy": "CORS Proxy",
+      "corsProxyHint": "Required to bypass browser security when fetching external websites.",
+      "webSearch": "Web Search (DuckDuckGo)",
+      "maxResults": "Max Results",
+      "maxResultsHint": "Maximum number of search results to return.",
+      "urlInspector": "URL Inspector",
+      "maxContentLength": "Max Content Length",
+      "maxContentLengthHint": "Character limit for the extracted content to prevent context overflow."
     }
   },
   "login": {

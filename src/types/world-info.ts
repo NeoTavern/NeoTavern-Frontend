@@ -1,7 +1,7 @@
 import type { WorldInfoLogic, WorldInfoPosition, WorldInfoRole } from '../constants';
 import type { Character } from './character';
 import type { ChatMessage } from './chat';
-import type { MessageRole } from './common';
+import type { MessageRole, StrictOmitString } from './common';
 import type { Persona } from './persona';
 import type { Tokenizer } from './tokenizer';
 
@@ -102,7 +102,7 @@ export interface ProcessedWorldInfo {
   anAfter: string[];
   emBefore: string[];
   emAfter: string[];
-  depthEntries: { depth: number; role: MessageRole; entries: string[] }[];
+  depthEntries: { depth: number; role: StrictOmitString<MessageRole, 'tool'>; entries: string[] }[];
   outletEntries: Record<string, string[]>;
   triggeredEntries: Record<string, WorldInfoEntry[]>;
 }

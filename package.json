@@ -55,6 +55,7 @@
     "@floating-ui/vue": "^1.1.9",
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@intlify/unplugin-vue-i18n": "^11.0.1",
+    "ajv": "^8.17.1",
     "bowser": "^2.12.1",
     "codemirror": "^6.0.2",
     "dompurify": "^3.3.0",

@@ -1,10 +1,14 @@
 import { aiConfigDefinition } from '../ai-config-definition';
 import { CustomPromptPostProcessing } from '../constants';
+import { ToolService } from '../services/tool.service';
 import { useApiStore } from '../stores/api.store';
 import { useSettingsStore } from '../stores/settings.store';
 import type {
   ApiChatMessage,
+  ApiChatToolCall,
+  ApiChatToolCallDelta,
   ApiProvider,
+  ApiToolDefinition,
   ChatCompletionPayload,
   ConnectionProfile,
   GenerationOptions,
@@ -37,7 +41,7 @@ export interface ResolvedConnectionProfileSettings {
   instructTemplate?: InstructTemplate;
   reasoningTemplate?: ReasoningTemplate;
   providerSpecific: Settings['api']['providerSpecific'];
-  customPromptPostProcessing?: CustomPromptPostProcessing;
+  customPromptPostProcessing: CustomPromptPostProcessing;
 }
 
 /**
@@ -122,7 +126,7 @@ export async function resolveConnectionProfileSettings(options: {
     instructTemplate: effectiveTemplate,
     reasoningTemplate: effectiveReasoningTemplate,
     providerSpecific: effectiveProviderSpecific,
-    customPromptPostProcessing: profileSettings?.customPromptPostProcessing,
+    customPromptPostProcessing: profileSettings?.customPromptPostProcessing ?? CustomPromptPostProcessing.NONE,
   };
 }
 
@@ -240,6 +244,8 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
     playerName,
     activeCharacter,
     structuredResponse,
+    customPromptPostProcessing,
+    toolConfig,
   } = options;
 
   const payload: ChatCompletionPayload = {
@@ -263,6 +269,34 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
         content: systemPrompt,
         name: 'System',
       });
+    }
+  }
+
+  // Handle Tools
+  if (ToolService.isToolCallingSupported(provider, model, customPromptPostProcessing)) {
+    const finalTools: ApiToolDefinition[] = [];
+
+    // 1. Registered Tools (Default: true)
+    if (toolConfig?.includeRegisteredTools !== false) {
+      const registeredTools = ToolService.getTools();
+      finalTools.push(...registeredTools);
+    }
+
+    // 2. Additional Tools
+    if (toolConfig?.additionalTools && toolConfig.additionalTools.length > 0) {
+      const additionalApiTools = toolConfig.additionalTools.map((t) => ToolService.toApiTool(t));
+      finalTools.push(...additionalApiTools);
+    }
+
+    // 3. Exclude Tools
+    let effectiveTools = finalTools;
+    if (toolConfig?.excludeTools && toolConfig.excludeTools.length > 0) {
+      effectiveTools = finalTools.filter((t) => !toolConfig.excludeTools!.includes(t.function.name));
+    }
+
+    if (effectiveTools.length > 0) {
+      payload.tools = effectiveTools;
+      payload.tool_choice = toolConfig?.toolChoice || 'auto';
     }
   }
 
@@ -396,9 +430,6 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
     }
   }
 
-  // 4. ToolManager integration (placeholder)
-  // if (!canMultiSwipe && ToolManager.canPerformToolCalls(type)) { ... }
-
   return payload;
 }
 
@@ -510,6 +541,82 @@ class StreamReasoningParser {
     }
     this.buffer = '';
     return result;
+  }
+}
+
+/**
+ * Accumulates tool call deltas from a stream into a complete list of tool calls.
+ * Uses a recursive merge strategy to handle nested objects and string concatenation.
+ */
+class ToolCallAccumulator {
+  private tools: ApiChatToolCall[] = [];
+
+  /**
+   * Deeply merges a delta object into a target object.
+   * @param target The object to merge into.
+   * @param delta The partial object to merge.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private mergeDelta(target: any, delta: any) {
+    for (const key in delta) {
+      if (!Object.prototype.hasOwnProperty.call(delta, key)) continue;
+
+      const deltaValue = delta[key];
+      const targetValue = target[key];
+
+      if (deltaValue === null || deltaValue === undefined) {
+        if (!targetValue) {
+          target[key] = deltaValue;
+        }
+        continue;
+      }
+
+      if (typeof deltaValue === 'string') {
+        target[key] = (typeof targetValue === 'string' ? targetValue : '') + deltaValue;
+      } else if (typeof deltaValue === 'object' && !Array.isArray(deltaValue)) {
+        if (typeof targetValue !== 'object' || targetValue === null || Array.isArray(targetValue)) {
+          target[key] = {};
+        }
+        this.mergeDelta(target[key], deltaValue);
+      } else {
+        target[key] = deltaValue;
+      }
+    }
+  }
+
+  /**
+   * Processes an array of tool call deltas from the API.
+   * @param deltas An array of partial tool call updates.
+   */
+  public add(deltas: ApiChatToolCallDelta[]) {
+    if (!Array.isArray(deltas)) return;
+
+    for (const delta of deltas) {
+      const index = delta.index;
+      if (typeof index !== 'number') continue;
+
+      // Ensure the array is large enough
+      while (this.tools.length <= index) {
+        this.tools.push({
+          id: '',
+          // @ts-expect-error yeah yeah
+          type: '',
+          function: { name: '', arguments: '' },
+        });
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { index: _, ...deltaData } = delta;
+      this.mergeDelta(this.tools[index], deltaData);
+    }
+  }
+
+  /**
+   * Returns the current state of accumulated tool calls.
+   * @returns A fresh array of the complete tool calls.
+   */
+  public getCalls(): ApiChatToolCall[] {
+    return JSON.parse(JSON.stringify(this.tools));
   }
 }
 
@@ -641,6 +748,7 @@ export class ChatCompletionService {
       }
 
       let reasoning = responseHandler.extractReasoning ? responseHandler.extractReasoning(responseData) : undefined;
+      const toolCalls = responseHandler.extractToolCalls ? responseHandler.extractToolCalls(responseData) : undefined;
       let finalContent = messageContent.trim();
       const images = responseHandler.extractImages ? responseHandler.extractImages(responseData) : undefined;
 
@@ -682,6 +790,7 @@ export class ChatCompletionService {
         token_count: tokenCount,
         images,
         structured_content,
+        tool_calls: toolCalls,
       };
     }
 
@@ -711,6 +820,7 @@ export class ChatCompletionService {
       const shouldParseReasoning =
         options.reasoningTemplate && options.reasoningTemplate.prefix && options.reasoningTemplate.suffix;
       const reasoningParser = shouldParseReasoning ? new StreamReasoningParser(options.reasoningTemplate!) : null;
+      const toolAccumulator = new ToolCallAccumulator();
 
       try {
         while (true) {
@@ -743,6 +853,10 @@ export class ChatCompletionService {
                   reasoning += chunk.reasoning;
                 }
 
+                if (chunk.tool_call_deltas) {
+                  toolAccumulator.add(chunk.tool_call_deltas);
+                }
+
                 let deltaToYield = chunk.delta || '';
                 let reasoningDelta = '';
 
@@ -758,14 +872,20 @@ export class ChatCompletionService {
                 const hasContentChange = deltaToYield.length > 0;
                 const hasReasoningChange = (chunk.reasoning && chunk.reasoning.length > 0) || reasoningDelta.length > 0;
                 const hasImages = chunk.images && chunk.images.length > 0;
+                const hasToolCalls = chunk.tool_call_deltas && chunk.tool_call_deltas.length > 0;
 
-                if (hasContentChange || hasReasoningChange || hasImages) {
+                if (hasContentChange || hasReasoningChange || hasImages || hasToolCalls) {
                   if (isFirstChunk && deltaToYield) {
                     deltaToYield = deltaToYield.trimStart();
                     isFirstChunk = false;
                   }
 
-                  yield { delta: deltaToYield, reasoning: reasoning, images: chunk.images };
+                  yield {
+                    delta: deltaToYield,
+                    reasoning: reasoning,
+                    images: chunk.images,
+                    tool_calls: toolAccumulator.getCalls(), // Send cumulative state
+                  };
                 }
               } catch (e) {
                 console.error('Error parsing stream chunk:', data, e);

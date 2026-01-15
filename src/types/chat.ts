@@ -1,4 +1,5 @@
 import type { Ref } from 'vue';
+import type { ToolInvocation } from './tools';
 
 export interface ChatMediaItem {
   source: 'upload' | 'url' | 'inline';
@@ -74,6 +75,8 @@ export interface ChatMessage {
     token_count?: number;
     media?: ChatMediaItem[];
     ignored_media?: string[];
+    tool_invocations?: ToolInvocation[];
+    isSmallSys?: boolean;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } & Record<string, any>;
 }

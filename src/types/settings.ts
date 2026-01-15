@@ -9,7 +9,7 @@ import {
   type TokenizerType,
 } from '../constants';
 import type { ApiProvider, ConnectionProfile } from './api';
-import type { BackgroundFitting, MessageRole } from './common';
+import type { BackgroundFitting, MessageRole, StrictOmitString } from './common';
 import type { I18nKey } from './i18n';
 import type { Persona, PersonaConnection } from './persona';
 import type { Path } from './utils';
@@ -24,7 +24,7 @@ export type StopOnNameHijack = 'none' | 'single' | 'group' | 'all';
 export interface LegacyPrompt {
   name: string;
   system_prompt: boolean;
-  role?: MessageRole;
+  role?: StrictOmitString<MessageRole, 'tool'>;
   content?: string;
   identifier: string;
   marker?: boolean;
@@ -50,7 +50,7 @@ export type KnownPromptIdentifiers =
 export interface Prompt {
   identifier: string & KnownPromptIdentifiers; // i know
   name: string;
-  role?: MessageRole;
+  role?: StrictOmitString<MessageRole, 'tool'>;
   content: string;
   marker: boolean;
   enabled: boolean;
@@ -353,6 +353,7 @@ export interface Settings {
     customPromptPostProcessing: CustomPromptPostProcessing;
 
     sendMedia: boolean;
+    toolsEnabled: boolean;
     imageQuality: 'auto' | 'low' | 'high';
 
     providerSpecific: {
@@ -415,6 +416,7 @@ export interface Settings {
     splitPaneDefaultsMigrated: boolean;
   };
   disabledExtensions: string[];
+  disabledTools: string[];
   extensionSettings: Record<string, Record<string, never>>;
 }
 
