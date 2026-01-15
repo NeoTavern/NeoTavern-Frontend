@@ -8,18 +8,31 @@ export async function fetchHtml(url: string, proxy?: string): Promise<string> {
     targetUrl = `${proxy}${url}`;
   }
 
-  const response = await fetch(targetUrl, {
-    method: 'GET',
-    headers: {
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    },
-  });
+  try {
+    const response = await fetch(targetUrl, {
+      method: 'GET',
+      headers: {
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.text();
+  } catch (error) {
+    const err = error as Error;
+    // Check for common CORS/Network failure indications
+    // If no proxy is configured, hint the user about it.
+    if (!proxy && (err.name === 'TypeError' || err.message.includes('Failed to fetch'))) {
+      throw new Error(
+        `Failed to fetch content. This is likely a CORS (Cross-Origin Resource Sharing) issue. ` +
+          `Please configure a CORS Proxy in 'Extensions > Standard Tools' settings. Original Error: ${err.message}`,
+      );
+    }
+    throw err;
   }
-
-  return response.text();
 }
 
 /**
@@ -38,21 +51,29 @@ export function htmlToMarkdown(element: Node): string {
   const el = element as HTMLElement;
   const tagName = el.tagName.toLowerCase();
 
-  // Handle specific tags
-  let content = '';
-
   // Skip hidden elements
   if (el.style.display === 'none' || el.style.visibility === 'hidden') {
     return '';
   }
 
+  // Handle specific elements that require custom traversal
+  if (tagName === 'table') {
+    return tableToMarkdown(el as HTMLTableElement);
+  }
+
+  // Generic traversal for other elements
+  let content = '';
   for (const child of Array.from(el.childNodes)) {
     content += htmlToMarkdown(child);
   }
 
   content = content.trim();
 
-  if (!content) return '';
+  // If content is empty, some tags usually don't need to be rendered,
+  // except maybe self-closing ones like hr or br (though br is handled below).
+  if (!content && tagName !== 'hr' && tagName !== 'br' && tagName !== 'td' && tagName !== 'th') {
+    return '';
+  }
 
   switch (tagName) {
     case 'h1':
@@ -84,7 +105,9 @@ export function htmlToMarkdown(element: Node): string {
       return `*${content}*`;
     case 'a': {
       const href = el.getAttribute('href');
-      return href ? `[${content}](${href})` : content;
+      // Avoid empty links or javascript: links
+      if (!href || href.startsWith('javascript:')) return content;
+      return `[${content}](${href})`;
     }
     case 'code':
       return `\`${content}\``;
@@ -92,14 +115,69 @@ export function htmlToMarkdown(element: Node): string {
       return `\n\`\`\`\n${content}\n\`\`\`\n`;
     case 'blockquote':
       return `\n> ${content}\n`;
+    case 'dl':
+      return `\n${content}\n`;
+    case 'dt':
+      return `\n**${content}**\n`;
+    case 'dd':
+      return `: ${content}\n`;
     case 'div':
     case 'section':
     case 'article':
     case 'main':
+    case 'header':
+    case 'footer':
       return `\n${content}\n`;
     default:
       return `${content} `;
   }
+}
+
+/**
+ * Converts an HTML Table to Markdown Table.
+ */
+function tableToMarkdown(table: HTMLTableElement): string {
+  // Collect all rows from thead, tbody, tfoot, or direct children
+  const rows = Array.from(table.querySelectorAll('tr'));
+  if (rows.length === 0) return '';
+
+  // Extract cell data
+  const data: string[][] = rows.map((row) => {
+    const cells = Array.from(row.querySelectorAll('th, td'));
+    return cells.map((cell) => {
+      // Process cell content, remove newlines to fit in table cell
+      return htmlToMarkdown(cell).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').trim();
+    });
+  });
+
+  // Determine number of columns
+  const columnCount = data.reduce((max, row) => Math.max(max, row.length), 0);
+  if (columnCount === 0) return '';
+
+  // Pad rows with empty strings if necessary
+  const paddedData = data.map((row) => {
+    while (row.length < columnCount) {
+      row.push('');
+    }
+    return row;
+  });
+
+  let markdown = '\n';
+
+  // Use the first row as the header
+  const header = paddedData[0];
+  markdown += `| ${header.join(' | ')} |\n`;
+
+  // Create separator row
+  const separator = Array(columnCount).fill('---');
+  markdown += `| ${separator.join(' | ')} |\n`;
+
+  // Add the rest of the rows
+  for (let i = 1; i < paddedData.length; i++) {
+    markdown += `| ${paddedData[i].join(' | ')} |\n`;
+  }
+
+  return markdown + '\n';
 }
 
 /**
