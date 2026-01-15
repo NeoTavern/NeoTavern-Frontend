@@ -1,3 +1,4 @@
+import Ajv from 'ajv';
 import { isCapabilitySupported } from '../api/provider-definitions';
 import { CustomPromptPostProcessing } from '../constants';
 import { useApiStore } from '../stores/api.store';
@@ -7,6 +8,13 @@ import { type ApiProvider } from '../types/api';
 import type { ApiChatToolCall, ApiToolDefinition } from '../types/generation';
 import type { ToolDefinition, ToolInvocation } from '../types/tools';
 import { eventEmitter } from '../utils/extensions';
+import { parseResponse } from '../utils/structured-response';
+
+const ajv = new Ajv({
+  coerceTypes: true,
+  allErrors: true,
+  strict: false,
+});
 
 export class ToolService {
   /**
@@ -39,22 +47,30 @@ export class ToolService {
 
   /**
    * Safe parameter parsing helper.
-   * Handles string JSON, empty strings, and pre-parsed objects.
+   * Handles string JSON, empty strings, pre-parsed objects, and code-block-wrapped content.
+   * Validates against schema if provided. Throws on validation or parsing errors.
    */
-  static parseParameters(parameters: string | object | unknown): Record<string, unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static parseParameters(parameters: string | object | unknown, schema?: any): Record<string, unknown> {
     if (parameters === '' || parameters === null || parameters === undefined) {
       return {};
     }
-    if (typeof parameters === 'string') {
-      try {
-        return JSON.parse(parameters);
-      } catch (e) {
-        console.warn('[ToolService] Failed to parse tool parameters:', parameters, e);
-        return {};
-      }
-    }
     if (typeof parameters === 'object') {
-      return parameters as Record<string, unknown>;
+      const obj = parameters as Record<string, unknown>;
+      if (schema) {
+        const validate = ajv.compile(schema);
+        const valid = validate(obj);
+        if (!valid) {
+          const errors = validate.errors?.map((e) => `${e.instancePath} ${e.message}`).join('; ');
+          throw new Error(`Schema validation failed: ${errors}`);
+        }
+      }
+      return obj;
+    }
+    if (typeof parameters === 'string') {
+      // Use parseResponse to handle code blocks and plain JSON robustly, with optional schema validation
+      const parsed = parseResponse(parameters, 'json', { schema });
+      return parsed as Record<string, unknown>;
     }
     return {};
   }
@@ -71,7 +87,7 @@ export class ToolService {
     }
 
     try {
-      const parsedArgs = this.parseParameters(args);
+      const parsedArgs = this.parseParameters(args, tool.parameters);
       const result = await tool.action(parsedArgs);
 
       if (typeof result === 'string') return result;
@@ -95,7 +111,7 @@ export class ToolService {
     if (!tool) return `Invoking tool: ${name}`;
 
     try {
-      const parsedArgs = this.parseParameters(args);
+      const parsedArgs = this.parseParameters(args, tool.parameters);
       if (tool.formatMessage) {
         return await tool.formatMessage(parsedArgs);
       }
