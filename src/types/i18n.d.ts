@@ -1483,6 +1483,17 @@ export interface MessageSchema {
         summarizedSingle: string;
       };
     };
+    standardTools: {
+      network: string;
+      corsProxy: string;
+      corsProxyHint: string;
+      webSearch: string;
+      maxResults: string;
+      maxResultsHint: string;
+      urlInspector: string;
+      maxContentLength: string;
+      maxContentLengthHint: string;
+    };
   };
   login: {
     authenticating: string;

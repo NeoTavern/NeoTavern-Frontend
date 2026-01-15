@@ -1479,6 +1479,17 @@
         "summarized": "Summarized: {start} - {end}",
         "summarizedSingle": "Summarized: {index}"
       }
+    },
+    "standardTools": {
+      "network": "Network",
+      "corsProxy": "CORS Proxy",
+      "corsProxyHint": "Required to bypass browser security when fetching external websites.",
+      "webSearch": "Web Search (DuckDuckGo)",
+      "maxResults": "Max Results",
+      "maxResultsHint": "Maximum number of search results to return.",
+      "urlInspector": "URL Inspector",
+      "maxContentLength": "Max Content Length",
+      "maxContentLengthHint": "Character limit for the extracted content to prevent context overflow."
     }
   },
   "login": {
