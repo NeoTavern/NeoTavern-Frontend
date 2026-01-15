@@ -679,6 +679,10 @@ export interface MessageSchema {
       uploadError: string;
       attach: string;
     };
+    tools: {
+      title: string;
+      noTools: string;
+    };
   };
   character: {
     import: {

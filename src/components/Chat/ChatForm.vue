@@ -10,7 +10,8 @@ import { useChatUiStore } from '../../stores/chat-ui.store';
 import { useChatStore } from '../../stores/chat.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
-import { Button, Textarea } from '../UI';
+import { useToolStore } from '../../stores/tool.store';
+import { Button, Checkbox, Textarea } from '../UI';
 
 const props = defineProps<{
   userInput: string;
@@ -25,6 +26,7 @@ const chatUiStore = useChatUiStore();
 const settingsStore = useSettingsStore();
 const chatSelectionStore = useChatSelectionStore();
 const promptStore = usePromptStore();
+const toolStore = useToolStore();
 const { isDeviceMobile } = useMobile();
 const { t } = useStrictI18n();
 
@@ -45,6 +47,7 @@ const {
   removeAttachedMedia,
 } = useChatMedia();
 
+// --- Options Menu ---
 const isOptionsMenuVisible = ref(false);
 const optionsButtonRef = ref<HTMLElement | null>(null);
 const optionsMenuRef = ref<HTMLElement | null>(null);
@@ -52,6 +55,17 @@ const optionsMenuRef = ref<HTMLElement | null>(null);
 const { floatingStyles: optionsMenuStyles } = useFloating(optionsButtonRef, optionsMenuRef, {
   placement: 'top-start',
   open: isOptionsMenuVisible,
+  whileElementsMounted: autoUpdate,
+  middleware: [offset(8), flip(), shift({ padding: 10 })],
+});
+
+// --- Tools Menu ---
+const isToolsMenuVisible = ref(false);
+const toolsMenuRef = ref<HTMLElement | null>(null);
+
+const { floatingStyles: toolsMenuStyles } = useFloating(optionsButtonRef, toolsMenuRef, {
+  placement: 'top-start',
+  open: isToolsMenuVisible,
   whileElementsMounted: autoUpdate,
   middleware: [offset(8), flip(), shift({ padding: 10 })],
 });
@@ -111,11 +125,20 @@ function handleKeydown(event: KeyboardEvent) {
 function handleClickOutside(event: MouseEvent) {
   const target = event.target as Node;
 
-  const isOutsideMenu = optionsMenuRef.value && !optionsMenuRef.value.contains(target);
-  const isOutsideButton = optionsButtonRef.value && !optionsButtonRef.value.contains(target);
+  // Options Menu
+  const isOutsideOptionsMenu = optionsMenuRef.value && !optionsMenuRef.value.contains(target);
+  const isOutsideOptionsButton = optionsButtonRef.value && !optionsButtonRef.value.contains(target);
 
-  if (isOutsideMenu && isOutsideButton) {
+  if (isOutsideOptionsMenu && isOutsideOptionsButton) {
     isOptionsMenuVisible.value = false;
+  }
+
+  // Tools Menu
+  const isOutsideToolsMenu = toolsMenuRef.value && !toolsMenuRef.value.contains(target);
+  const isOutsideToolsButton = optionsButtonRef.value && !optionsButtonRef.value.contains(target);
+
+  if (isOutsideToolsMenu && isOutsideToolsButton) {
+    isToolsMenuVisible.value = false;
   }
 }
 
@@ -193,27 +216,23 @@ defineExpose({
     </div>
 
     <div class="chat-form-inner">
-      <div ref="optionsButtonRef" class="chat-form-actions-left">
-        <Button
-          id="chat-options-button"
-          class="chat-form-button"
-          variant="ghost"
-          icon="fa-bars"
-          :title="t('chat.options')"
-          aria-haspopup="menu"
-          :aria-expanded="isOptionsMenuVisible"
-          @click.stop="isOptionsMenuVisible = !isOptionsMenuVisible"
-        />
-        <Button
-          class="chat-form-button"
-          variant="ghost"
-          icon="fa-paperclip"
-          :title="mediaAttachTitle"
-          :disabled="isMediaAttachDisabled"
-          @click="triggerFileUpload"
-        />
+      <div class="chat-form-actions-left">
+        <!-- Options Menu Button -->
+        <div ref="optionsButtonRef" class="chat-form-action-wrapper">
+          <Button
+            id="chat-options-button"
+            class="chat-form-button"
+            variant="ghost"
+            icon="fa-bars"
+            :title="t('chat.options')"
+            aria-haspopup="menu"
+            :aria-expanded="isOptionsMenuVisible"
+            @click.stop="isOptionsMenuVisible = !isOptionsMenuVisible"
+          />
+        </div>
         <input ref="fileInput" type="file" hidden multiple :accept="acceptedFileTypes" @change="handleFileSelect" />
       </div>
+
       <Textarea
         id="chat-input"
         ref="chatInput"
@@ -227,6 +246,7 @@ defineExpose({
         @keydown="handleKeydown"
         @paste="handlePaste"
       />
+
       <div class="chat-form-actions-right">
         <Button
           v-show="chatStore.isGenerating"
@@ -249,6 +269,7 @@ defineExpose({
       </div>
     </div>
 
+    <!-- Options Menu Popover -->
     <div
       v-show="isOptionsMenuVisible"
       ref="optionsMenuRef"
@@ -291,6 +312,79 @@ defineExpose({
         <i class="fa-solid fa-check-double"></i>
         <span>{{ t('chat.optionsMenu.selectMessages') }}</span>
       </a>
+      <hr role="separator" />
+      <a
+        class="options-menu-item"
+        role="menuitem"
+        tabindex="0"
+        :disabled="isMediaAttachDisabled"
+        :title="mediaAttachTitle"
+        @click="
+          if (!isMediaAttachDisabled) {
+            triggerFileUpload();
+            isOptionsMenuVisible = false;
+          }
+        "
+        @keydown.enter.prevent="
+          if (!isMediaAttachDisabled) {
+            triggerFileUpload();
+            isOptionsMenuVisible = false;
+          }
+        "
+        @keydown.space.prevent="
+          if (!isMediaAttachDisabled) {
+            triggerFileUpload();
+            isOptionsMenuVisible = false;
+          }
+        "
+      >
+        <i class="fa-solid fa-paperclip"></i>
+        <span>{{ t('chat.media.attach') }}</span>
+      </a>
+      <a
+        class="options-menu-item"
+        role="menuitem"
+        tabindex="0"
+        @click="
+          isToolsMenuVisible = true;
+          isOptionsMenuVisible = false;
+        "
+        @keydown.enter.prevent="
+          isToolsMenuVisible = true;
+          isOptionsMenuVisible = false;
+        "
+        @keydown.space.prevent="
+          isToolsMenuVisible = true;
+          isOptionsMenuVisible = false;
+        "
+      >
+        <i class="fa-solid fa-screwdriver-wrench"></i>
+        <span>{{ t('chat.tools.title') }}</span>
+      </a>
+    </div>
+
+    <!-- Tools Menu Popover -->
+    <div
+      v-show="isToolsMenuVisible"
+      ref="toolsMenuRef"
+      class="tools-menu"
+      :style="toolsMenuStyles"
+      role="dialog"
+      :aria-label="t('chat.tools.title')"
+    >
+      <div v-if="toolStore.toolList.length === 0" class="empty-state">
+        {{ t('chat.tools.noTools') }}
+      </div>
+      <div v-else class="tools-list">
+        <div v-for="tool in toolStore.toolList" :key="tool.name" class="tool-item">
+          <Checkbox
+            :model-value="!toolStore.isToolDisabled(tool.name)"
+            :label="tool.displayName || tool.name"
+            :title="tool.description"
+            @update:model-value="toolStore.toggleTool(tool.name)"
+          />
+        </div>
+      </div>
     </div>
   </div>
 </template>

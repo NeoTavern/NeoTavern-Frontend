@@ -675,6 +675,10 @@
       "dropFiles": "Drop files here to upload",
       "uploadError": "Failed to upload media.",
       "attach": "Upload Media"
+    },
+    "tools": {
+      "title": "Tools",
+      "noTools": "No tools available"
     }
   },
   "character": {
