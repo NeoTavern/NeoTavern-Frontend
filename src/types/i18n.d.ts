@@ -481,6 +481,15 @@ export interface MessageSchema {
         google: string;
       };
     };
+    tools: {
+      enable: {
+        label: string;
+        description: string;
+      };
+      warning: {
+        postProcessing: string;
+      };
+    };
   };
   userSettings: {
     searchPlaceholder: string;

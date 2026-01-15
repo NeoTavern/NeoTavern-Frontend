@@ -353,6 +353,7 @@ export interface Settings {
     customPromptPostProcessing: CustomPromptPostProcessing;
 
     sendMedia: boolean;
+    toolsEnabled: boolean;
     imageQuality: 'auto' | 'low' | 'high';
 
     providerSpecific: {

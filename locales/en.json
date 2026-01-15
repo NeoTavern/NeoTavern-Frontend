@@ -477,6 +477,15 @@
       "limits": {
         "google": "For Google models: Videos must be less than 20 MB and under 1 minute long. Audio must be less than 20 MB."
       }
+    },
+    "tools": {
+      "enable": {
+        "label": "Enable Tools",
+        "description": "Allow the model to use registered tools/functions."
+      },
+      "warning": {
+        "postProcessing": "Tool calling is disabled because the selected Custom Prompt Post-Processing mode does not support it."
+      }
     }
   },
   "userSettings": {

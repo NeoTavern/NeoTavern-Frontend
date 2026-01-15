@@ -1,3 +1,4 @@
+import { CustomPromptPostProcessing } from './constants';
 import type { AiConfigSection } from './types';
 
 export const aiConfigDefinition: AiConfigSection[] = [
@@ -163,6 +164,38 @@ export const aiConfigDefinition: AiConfigSection[] = [
         description: 'aiConfig.reasoningEffort.descriptionGoogle',
         conditions: {
           provider: ['makersuite', 'vertexai'],
+        },
+      },
+    ],
+  },
+  {
+    id: 'tools-settings',
+    conditions: {
+      capability: 'tools',
+    },
+    items: [
+      { widget: 'hr' },
+      {
+        id: 'api.toolsEnabled',
+        widget: 'checkbox',
+        label: 'aiConfig.tools.enable.label',
+        description: 'aiConfig.tools.enable.description',
+      },
+      {
+        widget: 'info-display',
+        description: 'aiConfig.tools.warning.postProcessing',
+        cssClass: 'neutral_warning',
+        conditions: {
+          setting: {
+            path: 'api.customPromptPostProcessing',
+            value: [
+              CustomPromptPostProcessing.NONE,
+              CustomPromptPostProcessing.MERGE_TOOLS,
+              CustomPromptPostProcessing.SEMI_TOOLS,
+              CustomPromptPostProcessing.STRICT_TOOLS,
+            ],
+            operator: 'not_contains',
+          },
         },
       },
     ],

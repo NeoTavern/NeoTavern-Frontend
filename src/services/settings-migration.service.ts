@@ -48,6 +48,7 @@ export function createDefaultSettings(): Settings {
       customPromptPostProcessing: CustomPromptPostProcessing.NONE,
       imageQuality: 'auto',
       sendMedia: true,
+      toolsEnabled: true,
       instructTemplateName: '',
     },
     character: {
@@ -401,6 +402,7 @@ export function migrateLegacyUserSettings(
       customPromptPostProcessing: oai.custom_prompt_post_processing ?? CustomPromptPostProcessing.NONE,
       imageQuality: 'auto', // TODO: Get from legacy
       sendMedia: true, // TODO: Get from legacy
+      toolsEnabled: true, // Default to enabled
     },
     account: defaultAccountSettings,
     worldInfo: {

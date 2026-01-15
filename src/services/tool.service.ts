@@ -1,6 +1,7 @@
 import { isCapabilitySupported } from '../api/provider-definitions';
 import { CustomPromptPostProcessing } from '../constants';
 import { useApiStore } from '../stores/api.store';
+import { useSettingsStore } from '../stores/settings.store';
 import { useToolStore } from '../stores/tool.store';
 import { type ApiProvider } from '../types/api';
 import type { ApiChatToolCall, ApiToolDefinition } from '../types/generation';
@@ -181,9 +182,12 @@ export class ToolService {
     customPromptPostProcessing: CustomPromptPostProcessing,
   ): boolean {
     const apiStore = useApiStore();
+    const settingsStore = useSettingsStore();
 
-    // 1. Check if globally enabled in settings (if we add a toggle later)
-    // For now assume if tools are registered, we want them.
+    // 1. Check if globally enabled in settings
+    if (!settingsStore.settings.api.toolsEnabled) {
+      return false;
+    }
 
     // 2. Check Custom Prompt Post Processing compatibility
     const allowed = [

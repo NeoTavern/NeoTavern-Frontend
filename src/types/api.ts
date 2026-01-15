@@ -59,6 +59,12 @@ export interface AiConfigCondition {
   provider?: ApiProvider | ApiProvider[];
   formatter?: ApiFormatter | ApiFormatter[];
   capability?: ModelCapability | ModelCapability[];
+  setting?: {
+    path: SettingsPath;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    value: any;
+    operator?: 'eq' | 'neq' | 'contains' | 'not_contains';
+  };
 }
 
 /**

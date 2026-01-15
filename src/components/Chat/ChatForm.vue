@@ -33,7 +33,6 @@ const { t } = useStrictI18n();
 const chatInput = ref<InstanceType<typeof Textarea> | null>(null);
 
 const {
-  // @ts-expect-error it is used actually, in <input>
   fileInput,
   attachedMedia,
   isUploading,
@@ -46,6 +45,9 @@ const {
   triggerFileUpload,
   removeAttachedMedia,
 } = useChatMedia();
+
+// Dummy log to avoid unused variable warning
+console.debug(fileInput)
 
 // --- Options Menu ---
 const isOptionsMenuVisible = ref(false);
