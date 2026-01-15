@@ -41,6 +41,7 @@ import { trimInstructResponse } from '../utils/instruct';
 import { compressImage, getImageTokenCost, getMediaDurationFromDataURL, isDataURL } from '../utils/media';
 import { useStrictI18n } from './useStrictI18n';
 import { toast } from './useToast';
+import { escapeRegExp } from 'lodash-es';
 
 export interface ChatStateRef {
   messages: ChatMessage[];
@@ -757,6 +758,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     if (requestPayloadController.signal.aborted) return null;
 
     // --- Generation Execution ---
+    const namePrefixRegex = new RegExp(`^\\s*${escapeRegExp(activeCharacter.name)}\\s*:\\s*`, 'i');
 
     const handleGenerationResult = async (
       content: string,
@@ -772,7 +774,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       }
 
       // Apply trimming logic
-      let finalContent = content;
+      let finalContent = content.replace(namePrefixRegex, '');
 
       if (shouldCheckHijack) {
         const lines = finalContent.split('\n');
@@ -1092,16 +1094,19 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         if (finalMessage) {
           generatedMessage = finalMessage;
 
+          // Trim character name prefix
+          let trimmed = finalMessage.mes.replace(namePrefixRegex, '');
+
           if (context.settings.formatter === 'text' && context.settings.instructTemplate) {
-            const trimmed = trimInstructResponse(finalMessage.mes, context.settings.instructTemplate);
-            finalMessage.mes = trimmed;
-            if (
-              finalMessage.swipes &&
-              finalMessage.swipe_id !== undefined &&
-              finalMessage.swipes[finalMessage.swipe_id] !== undefined
-            ) {
-              finalMessage.swipes[finalMessage.swipe_id] = trimmed;
-            }
+            trimmed = trimInstructResponse(trimmed, context.settings.instructTemplate);
+          }
+          finalMessage.mes = trimmed;
+          if (
+            finalMessage.swipes &&
+            finalMessage.swipe_id !== undefined &&
+            finalMessage.swipes[finalMessage.swipe_id] !== undefined
+          ) {
+            finalMessage.swipes[finalMessage.swipe_id] = trimmed;
           }
 
           finalMessage.gen_finished = new Date().toISOString();
