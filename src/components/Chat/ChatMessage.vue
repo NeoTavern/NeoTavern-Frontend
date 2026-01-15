@@ -110,13 +110,6 @@ function handleAvatarClick() {
   });
 }
 
-const displayName = computed(() => {
-  if (props.message.is_user) {
-    return uiStore.activePlayerName;
-  }
-  return props.message.name;
-});
-
 const formattedTimestamp = computed(() => {
   return formatTimeStamp(props.message.send_date);
 });
@@ -440,7 +433,7 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
       'is-system-message': message.is_system,
     }"
     :data-message-index="index"
-    :aria-label="`${displayName} - ${formattedTimestamp}`"
+    :aria-label="`${props.message.name} - ${formattedTimestamp}`"
     @click="handleSelectionClick"
   >
     <!-- Selection Overlay -->
@@ -455,12 +448,12 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
         class="message-avatar"
         role="button"
         tabindex="0"
-        :aria-label="displayName!"
+        :aria-label="props.message.name"
         @click.stop="handleAvatarClick"
         @keydown.enter.stop.prevent="handleAvatarClick"
         @keydown.space.stop.prevent="handleAvatarClick"
       >
-        <SmartAvatar :urls="[avatarUrls.thumbnail]" :alt="`${displayName} Avatar`" />
+        <SmartAvatar :urls="[avatarUrls.thumbnail]" :alt="`${props.message.name} Avatar`" />
       </div>
       <div class="message-id">#{{ index }}</div>
       <div v-if="message.extra?.reasoning_duration" class="message-timer">
@@ -472,7 +465,7 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
     <div class="message-main">
       <div class="message-header">
         <div class="message-name-block">
-          <span class="message-name">{{ displayName }}</span>
+          <span class="message-name">{{ props.message.name }}</span>
           <small class="message-timestamp">{{ formattedTimestamp }}</small>
         </div>
 
