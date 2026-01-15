@@ -9,7 +9,6 @@ export function useChatView() {
   const settingsStore = useSettingsStore();
 
   const messagesContainer = ref<HTMLElement | null>(null);
-  const shouldScrollInstant = ref(false);
 
   // --- Virtualization ---
   const visibleMessages = computed(() => {
@@ -80,12 +79,6 @@ export function useChatView() {
   watch(
     visibleMessages,
     (newVal, oldVal) => {
-      if (shouldScrollInstant.value) {
-        scrollToBottom('auto');
-        shouldScrollInstant.value = false;
-        return;
-      }
-
       const oldEnd = oldVal[oldVal.length - 1]?.index ?? -1;
       const newEnd = newVal[newVal.length - 1]?.index ?? -1;
 
@@ -105,9 +98,10 @@ export function useChatView() {
     () => chatStore.activeChatFile,
     (newFile) => {
       if (newFile) {
-        shouldScrollInstant.value = true;
+        scrollToBottom('auto');
       }
     },
+    { flush: 'post' },
   );
 
   return {

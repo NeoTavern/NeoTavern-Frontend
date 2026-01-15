@@ -27,11 +27,14 @@ const { t } = useStrictI18n();
 const userInput = ref('');
 const isDragging = ref(false);
 const dragEnterCounter = ref(0);
+const chatFormRef = ref<InstanceType<typeof ChatForm> | null>(null);
 
 // --- Drag and Drop Logic ---
-function handleDragEnter() {
-  dragEnterCounter.value++;
-  isDragging.value = true;
+function handleDragEnter(event: DragEvent) {
+  if (event.dataTransfer?.types.includes('Files')) {
+    dragEnterCounter.value++;
+    isDragging.value = true;
+  }
 }
 
 function handleDragLeave() {
@@ -43,17 +46,20 @@ function handleDragLeave() {
 
 function handleDragOver(event: DragEvent) {
   // This is necessary to allow dropping
-  event.preventDefault();
+  if (event.dataTransfer?.types.includes('Files')) {
+    event.preventDefault();
+  }
 }
 
 async function handleDrop(event: DragEvent) {
+  event.preventDefault();
   dragEnterCounter.value = 0;
   isDragging.value = false;
-  // File processing logic now resides in useChatMedia,
-  // but we can't call it here directly. This is a limitation
-  // we accept for now. A more advanced solution might use provide/inject
-  // or a dedicated service if this becomes a bigger issue.
-  // For now, this event is mainly for the visual dropzone.
+
+  const files = event.dataTransfer?.files;
+  if (files && files.length > 0) {
+    chatFormRef.value?.processFiles(files);
+  }
 }
 
 // --- Character Book Import ---
@@ -95,9 +101,9 @@ watch(
   <div
     class="chat-interface"
     @dragenter.prevent="handleDragEnter"
-    @dragover.prevent="handleDragOver"
+    @dragover="handleDragOver"
     @dragleave.prevent="handleDragLeave"
-    @drop.prevent="handleDrop"
+    @drop="handleDrop"
   >
     <div v-show="chatStore.isChatLoading" class="chat-loading-overlay" role="alert" aria-busy="true">
       <div class="loading-spinner">
@@ -119,6 +125,7 @@ watch(
       <ChatSelectionToolbar v-if="chatSelectionStore.isSelectionMode" />
       <ChatForm
         v-else-if="isViewportMobile ? !layoutStore.isLeftSidebarOpen && !layoutStore.isRightSidebarOpen : true"
+        ref="chatFormRef"
         v-model:user-input="userInput"
       />
     </div>

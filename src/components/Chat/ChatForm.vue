@@ -31,12 +31,16 @@ const { t } = useStrictI18n();
 const chatInput = ref<InstanceType<typeof Textarea> | null>(null);
 
 const {
+  // @ts-expect-error it is used actually, in <input>
+  fileInput,
   attachedMedia,
   isUploading,
   acceptedFileTypes,
   isMediaAttachDisabled,
   mediaAttachTitle,
+  processFiles,
   handleFileSelect,
+  handlePaste,
   triggerFileUpload,
   removeAttachedMedia,
 } = useChatMedia();
@@ -173,6 +177,7 @@ watch(
 // Expose focus method for parent
 defineExpose({
   focus: () => chatInput.value?.focus(),
+  processFiles,
 });
 </script>
 
@@ -220,6 +225,7 @@ defineExpose({
         identifier="chat.input"
         @update:model-value="emit('update:userInput', $event)"
         @keydown="handleKeydown"
+        @paste="handlePaste"
       />
       <div class="chat-form-actions-right">
         <Button
