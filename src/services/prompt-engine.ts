@@ -303,7 +303,7 @@ export class PromptBuilder {
                 name: inv.name,
                 arguments: inv.parameters,
               },
-              signature: inv.signature,
+              signature: inv.signature, // TODO: We should get via condition. It is gemini 3.0+ specific.
             }))
           : undefined;
 
