@@ -945,52 +945,62 @@
 
   /* Split Pane Mobile Transformation */
   .split-pane {
+    position: relative;
+
     &-panel--side {
+      /* Overlay behavior */
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
       width: 100% !important;
       border-right: none;
 
-      /* Mobile transition override */
-      transition: none !important;
+      z-index: var(--z-sidebar);
+      background-color: var(--theme-background-tint);
 
-      /* Logic: If collapsed (true) -> Show Main, Hide Side.
-         If NOT collapsed (false) -> Show Side, Hide Main.
-         
-         Existing Desktop Logic: collapsed -> Side width 0.
-         We re-use "collapsed" state to mean "List View Hidden".
-      */
+      /* Use transform for animation instead of display/width */
+      transition: transform var(--animation-duration-md) cubic-bezier(0.25, 1, 0.5, 1);
+      transform: translateX(0);
+      display: flex;
     }
 
-    /* When collapsed, we want to see MAIN, hide SIDE */
+    /* Collapsed state: Slide out */
     &.is-collapsed .split-pane-panel--side {
-      display: none;
-      width: 0 !important;
+      transform: translateX(-100%);
+      display: flex;
+    }
+
+    /* Support for right-side split pane sliding the other way */
+    &.split-pane--right.is-collapsed .split-pane-panel--side {
+      transform: translateX(100%);
+    }
+
+    /* Main panel always visible (underneath) */
+    &-main {
+      display: flex !important;
+      width: 100%;
+      height: 100%;
+      flex: 1 0 auto;
     }
 
     &.is-collapsed .split-pane-main {
       display: flex;
     }
 
-    /* When NOT collapsed, we want to see SIDE, hide MAIN */
-    &:not(.is-collapsed) .split-pane-panel--side {
-      display: flex;
-    }
-
     &:not(.is-collapsed) .split-pane-main {
-      display: none;
+      display: flex;
     }
 
     /* Divider and Toggle Button Styling */
     &-divider {
-      /* Remove the resizing cursor/area */
       width: 0;
       margin: 0;
-      /* Position the toggle button floating */
       position: absolute;
-      bottom: calc(var(--nav-bar-height) + 20px);
-      right: 20px;
-      z-index: 100;
+      bottom: calc(var(--nav-bar-height) + 20px + env(safe-area-inset-bottom, 0px));
+      right: calc(20px + env(safe-area-inset-right, 0px));
+      z-index: var(--z-dropdown);
       pointer-events: none;
-      /* Let clicks pass through area */
       cursor: default;
     }
 
@@ -1006,10 +1016,11 @@
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
       backdrop-filter: blur(10px);
 
-      /* Reset transform centering */
       top: auto;
       left: auto;
       transform: none;
+
+      right: 0;
 
       display: flex;
       align-items: center;
