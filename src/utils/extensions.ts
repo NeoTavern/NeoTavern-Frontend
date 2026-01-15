@@ -47,6 +47,7 @@ import { WorldInfoProcessor, createDefaultEntry } from '../services/world-info';
 import { useCharacterUiStore } from '../stores/character-ui.store';
 import { useComponentRegistryStore } from '../stores/component-registry.store';
 import { useLayoutStore } from '../stores/layout.store';
+import { useToolStore } from '../stores/tool.store';
 import { useWorldInfoUiStore } from '../stores/world-info-ui.store';
 import type { LlmGenerationOptions, TextareaToolDefinition } from '../types/ExtensionAPI';
 import type { CodeMirrorTarget } from '../types/settings';
@@ -546,6 +547,29 @@ const baseExtensionAPI: ExtensionAPI = {
         activeCharacter,
         additionalMacros,
       });
+    },
+  },
+  tools: {
+    register: async (tool) => {
+      await useToolStore().registerTool(tool);
+    },
+    unregister: async (name) => {
+      await useToolStore().unregisterTool(name);
+    },
+    get: (name) => {
+      return deepClone(useToolStore().getTool(name));
+    },
+    getAll: () => {
+      return deepClone(useToolStore().toolList);
+    },
+    getEnabled: () => {
+      return deepClone(useToolStore().enabledTools);
+    },
+    isDisabled: (name) => {
+      return useToolStore().isToolDisabled(name);
+    },
+    toggle: (name, enable) => {
+      useToolStore().toggleTool(name, enable);
     },
   },
   ui: {

@@ -17,6 +17,7 @@ import type {
 import type { Persona, PersonaDescription } from './persona';
 import type { PopupShowOptions } from './popup';
 import type { ApiFormatter, CodeMirrorTarget, SamplerSettings, Settings, SettingsPath } from './settings';
+import type { ToolDefinition } from './tools';
 import type { Path, ValueForPath } from './utils';
 import type { WorldInfoBook, WorldInfoEntry, WorldInfoHeader, WorldInfoSettings } from './world-info';
 
@@ -462,6 +463,46 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
       context?: { activeCharacter?: Character; characters?: Character[]; persona?: Persona },
       additionalMacros?: Record<string, unknown>,
     ) => string;
+  };
+  tools: {
+    /**
+     * Registers a new tool.
+     * @param tool The tool definition to register.
+     */
+    register: (tool: ToolDefinition) => Promise<void>;
+    /**
+     * Unregisters a tool by name.
+     * @param name The name of the tool to unregister.
+     */
+    unregister: (name: string) => Promise<void>;
+    /**
+     * Gets a tool by name.
+     * @param name The name of the tool.
+     * @returns The tool definition or undefined if not found.
+     */
+    get: (name: string) => ToolDefinition | undefined;
+    /**
+     * Gets all registered tools.
+     * @returns Array of all tool definitions.
+     */
+    getAll: () => ToolDefinition[];
+    /**
+     * Gets all enabled tools.
+     * @returns Array of enabled tool definitions.
+     */
+    getEnabled: () => ToolDefinition[];
+    /**
+     * Checks if a tool is disabled.
+     * @param name The name of the tool.
+     * @returns True if the tool is disabled.
+     */
+    isDisabled: (name: string) => boolean;
+    /**
+     * Toggles the enabled state of a tool.
+     * @param name The name of the tool.
+     * @param enable Optional: set to true to enable, false to disable, undefined to toggle.
+     */
+    toggle: (name: string, enable?: boolean) => void;
   };
   ui: {
     showToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
