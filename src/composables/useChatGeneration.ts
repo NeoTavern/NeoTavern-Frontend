@@ -1,3 +1,4 @@
+import { escapeRegExp } from 'lodash-es';
 import { computed, nextTick, ref, type Ref } from 'vue';
 import {
   buildChatCompletionPayload,
@@ -41,7 +42,6 @@ import { trimInstructResponse } from '../utils/instruct';
 import { compressImage, getImageTokenCost, getMediaDurationFromDataURL, isDataURL } from '../utils/media';
 import { useStrictI18n } from './useStrictI18n';
 import { toast } from './useToast';
-import { escapeRegExp } from 'lodash-es';
 
 export interface ChatStateRef {
   messages: ChatMessage[];
