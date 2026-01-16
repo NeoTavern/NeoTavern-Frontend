@@ -241,16 +241,9 @@ async function start() {
 
     const routes = [
       '/api',
-      '/files',
       '/characters',
       '/backgrounds',
       '/user',
-      '/scripts',
-      '/css',
-      '/img',
-      '/sounds',
-      '/favicon.ico',
-      '/plugins',
       '/login-check',
       '/csrf-token',
       '/thumbnail',
