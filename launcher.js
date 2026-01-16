@@ -42,7 +42,12 @@ function loadConfig() {
     config = { ...DEFAULT_CONFIG };
   } else {
     try {
-      config = { ...DEFAULT_CONFIG, ...JSON.parse(fs.readFileSync(PATHS.CONFIG, 'utf8')) };
+      const loaded = JSON.parse(fs.readFileSync(PATHS.CONFIG, 'utf8'));
+      config = { ...DEFAULT_CONFIG, ...loaded };
+
+      if (Object.keys(DEFAULT_CONFIG).some((key) => !Object.prototype.hasOwnProperty.call(loaded, key))) {
+        fs.writeFileSync(PATHS.CONFIG, JSON.stringify(config, null, 2));
+      }
     } catch {
       config = { ...DEFAULT_CONFIG };
     }
