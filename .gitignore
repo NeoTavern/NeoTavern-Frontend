@@ -17,3 +17,6 @@ yarn.lock
 
 repomix-output.xml
 repomix.config.json
+
+launcher-config.json
+backend

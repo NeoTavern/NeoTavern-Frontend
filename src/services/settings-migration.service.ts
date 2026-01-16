@@ -75,9 +75,9 @@ export function createDefaultSettings(): Settings {
     ui: {
       background: {
         fitting: 'cover',
-        name: '',
+        name: 'landscape autumn great tree.jpg',
         thumbnailColumns: 2,
-        url: '',
+        url: 'url("/backgrounds/landscape%20autumn%20great%20tree.jpg")',
       },
       avatars: {
         neverResize: false,
@@ -246,10 +246,10 @@ export function migrateLegacyUserSettings(
   const migrated: Settings = {
     ui: {
       background: {
-        fitting: 'cover',
-        name: '',
-        thumbnailColumns: 2,
-        url: '',
+        fitting: legacy.background?.fitting || 'cover',
+        name: legacy.background?.name || 'landscape autumn great tree.jpg',
+        thumbnailColumns: legacy.background?.thumbnailColumns || 2,
+        url: legacy.background?.url || 'url("/backgrounds/landscape%20autumn%20great%20tree.jpg")',
       },
       avatars: {
         neverResize: p.never_resize_avatars,
@@ -257,7 +257,7 @@ export function migrateLegacyUserSettings(
       chat: {
         reasoningCollapsed: false,
         forbidExternalMedia: p.forbid_external_media ?? true,
-        messagesToLoad: 100,
+        messagesToLoad: p.chat_truncation,
       },
       editor: {
         codeMirrorExpanded: false,
@@ -401,9 +401,9 @@ export function migrateLegacyUserSettings(
       selectedConnectionProfile: legacy.extension_settings?.connectionManager?.selected,
       tokenizer: TokenizerType.AUTO,
       customPromptPostProcessing: oai.custom_prompt_post_processing ?? CustomPromptPostProcessing.NONE,
-      imageQuality: 'auto', // TODO: Get from legacy
-      sendMedia: true, // TODO: Get from legacy
-      toolsEnabled: true, // Default to enabled
+      imageQuality: oai.inline_image_quality ?? 'auto',
+      sendMedia: true,
+      toolsEnabled: true,
     },
     account: defaultAccountSettings,
     worldInfo: {

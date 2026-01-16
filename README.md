@@ -52,30 +52,27 @@ Why another frontend for [SillyTavern?](https://github.com/SillyTavern/SillyTave
 
 ## Prerequisites
 
-- **Node.js:** Version 20 or higher is required.
-- **SillyTavern:** You must have a running instance of the [SillyTavern](https://github.com/SillyTavern/SillyTavern). Make sure the branch is set to `staging`.
-- **NeoTavern-Server-Plugin:** You must install the [NeoTavern-Server-Plugin](https://github.com/NeoTavern/NeoTavern-Server-Plugin).
+- **Node.js:** Version 20 or higher.
+- **Git:** Required to download the repository and managing the internal backend.
 
 ## Installation and Usage
 
+NeoTavern acts as an "All-In-One" launcher. It will automatically download SillyTavern (as a submodule), install the necessary plugins, and run both the backend and frontend.
+
 ### Windows
 
-Make sure [SillyTavern(staging branch)](https://github.com/SillyTavern/SillyTavern) is running in the background and [NeoTavern-Server-Plugin](https://github.com/NeoTavern/NeoTavern-Server-Plugin) installed.
-
-1. Clone the repository or download the source code.
+1. Clone the repository:
    ```bash
    git clone https://github.com/NeoTavern/NeoTavern-Frontend.git
    ```
 2. Navigate to the folder.
 3. Double-click `start.bat`.
 
-The script will automatically install dependencies, build the project, and launch the server at `http://localhost:4173`.
+The script will setup the environment and launch the app at `http://localhost:8000`.
 
 ### Linux / macOS
 
-Make sure [SillyTavern(staging branch)](https://github.com/SillyTavern/SillyTavern) is running in the background and [NeoTavern-Server-Plugin](https://github.com/NeoTavern/NeoTavern-Server-Plugin) installed.
-
-1. Clone the repository.
+1. Clone the repository:
    ```bash
    git clone https://github.com/NeoTavern/NeoTavern-Frontend.git
    cd NeoTavern-Frontend
@@ -88,59 +85,14 @@ Make sure [SillyTavern(staging branch)](https://github.com/SillyTavern/SillyTave
 
 ### Android (Termux)
 
-This guide contains from scratch installation of SillyTavern, NeoTavern-Server-Plugin, and NeoTavern-Frontend, unlike others. Because mobile users are something special.
+NeoTavern runs in a single session. You do **not** need to run SillyTavern separately.
 
-#### 1. Prepare Termux
-
-1. Install Termux from [GitHub releases](https://github.com/termux/termux-app/releases) or **F-Droid**. (The Google Play Store version is outdated.)
-2. Open Termux and install the required packages:
+1. Install dependencies:
    ```bash
    pkg update && pkg upgrade
    pkg install git nodejs
    ```
-
-#### 2. Install SillyTavern
-
-1. Clone the main repository:
-   ```bash
-   cd ~
-   git clone --branch staging https://github.com/SillyTavern/SillyTavern
-   cd SillyTavern
-   ```
-2. Run the server once to generate the configuration files:
-   ```bash
-   chmod +x start.sh
-   ./start.sh
-   ```
-3. Once you see `SillyTavern is listening on port 8000`, press **CTRL + C** to stop the server.
-
-#### 3. Install NeoTavern-Server-Plugin
-
-1. Enter the plugins folder and clone the NeoTavern-Server-Plugin:
-   ```bash
-   cd plugins
-   git clone https://github.com/NeoTavern/NeoTavern-Server-Plugin
-   ```
-2. Go back to the main folder:
-   ```bash
-   cd ..
-   ```
-3. Enable plugins in the configuration file automatically:
-   ```bash
-   sed -i 's/enableServerPlugins: false/enableServerPlugins: true/' config.yaml
-   ```
-4. Start the Backend again:
-   ```bash
-   ./start.sh
-   ```
-
-#### 4. Install & Run the Frontend
-
-**Do not close the Backend.** You need to open a second terminal session.
-
-1. Swipe from the **left edge** of the screen to open the Termux drawer.
-2. Tap **"New Session"**.
-3. In this new session, clone and run the NeoTavern Frontend:
+2. Clone and run:
    ```bash
    cd ~
    git clone https://github.com/NeoTavern/NeoTavern-Frontend.git
@@ -148,6 +100,7 @@ This guide contains from scratch installation of SillyTavern, NeoTavern-Server-P
    chmod +x start.sh
    ./start.sh
    ```
+3. Open your browser to `http://localhost:8000`.
 
 ## Updating
 
@@ -166,7 +119,7 @@ NeoTavern supports **Progressive Web App (PWA)** functionality. This allows you 
 
 **On Android:**
 
-1. Start the app and open Chrome to `http://localhost:4173`.
+1. Start the app and open Chrome to `http://localhost:8000`.
 2. Tap the **Three Dots Menu** (top right).
 3. Tap **"Add to Home screen"** or **"Install App"**.
 4. The NeoTavern icon will appear in your app drawer. You can now launch it directly without opening Chrome first.
@@ -180,32 +133,28 @@ NeoTavern supports **Progressive Web App (PWA)** functionality. This allows you 
 
 > Can I use my existing ST backend?
 
-Yes. NeoTavern-Frontend is not overriding the existing `settings.json`. However; using the same characters, instruct templates, backgrounds, and WI folders. If you are worried about your data, feel free to use a fresh ST backend.
+Yes.
+
+1. Run NeoTavern once to generate `launcher-config.json`.
+2. Edit the file: set `"useInternalBackend": false` and `"externalBackendUrl": "http://127.0.0.1:8000"`.
+3. **Important:** You must install the [NeoTavern-Server-Plugin](https://github.com/NeoTavern/NeoTavern-Server-Plugin) manually in your existing backend.
+
+> Where is my data saved?
+
+If using the default internal backend, your data is in `backend/data/`. You can copy your existing characters/lorebooks there.
 
 > How can I reset my NeoTavern data?
 
-Remove these folders/files in your SillyTavern `data` directory and refresh the page:
+Remove these folders/files in your `backend/data/default-user/` directory and refresh the page:
 
 - `NeoSettings.json`
 - `NeoSamplers`
 - `NeoThemes`
 
-## Development
-
-If you wish to modify the code or run in development mode:
-
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-2. Run the development server:
-   ```bash
-   npm run dev
-   ```
-   This will start the server at `http://localhost:3000` with hot-module reloading enabled.
-
 ## Configuration
 
-By default, the application expects the SillyTavern to be running on **port 8000**.
+On the first run, `launcher-config.json` is generated in the root directory. You can use this file to configure:
 
-If your backend is running on a different port, open `vite.config.ts` and update the `target` URLs in the `proxyRules` object. You must restart the application for these changes to take effect.
+- **Port**: Change the port NeoTavern runs on.
+- **Host**: Change to `0.0.0.0` to allow access from other devices (LAN).
+- **Backend Mode**: Switch between Internal (managed) or External SillyTavern instances.

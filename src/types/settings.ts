@@ -220,6 +220,7 @@ export interface LegacyOaiSettings {
   openrouter_use_fallback?: boolean;
   openrouter_providers?: string[];
   custom_prompt_post_processing?: CustomPromptPostProcessing;
+  inline_image_quality?: 'auto' | 'low' | 'high';
 }
 
 export interface LegacyOaiPresetSettings {
@@ -437,6 +438,7 @@ export interface LegacySettings {
     personas: Record<string, string>;
     default_persona: string | null;
     user_avatar?: string;
+    chat_truncation: number;
     persona_descriptions: Record<
       string,
       {
