@@ -193,7 +193,6 @@ const cmMinHeight = computed(() => {
 /* TODO: Make sure this is sync with _ui-components.scss */
 .textarea-header-tools {
   display: flex;
-  gap: 5px;
   margin-left: auto;
 }
 
