@@ -11,6 +11,7 @@ import type {
   ApiChatMessage,
   ChatCompletionPayload,
   GenerationResponse,
+  MediaHydrationContext,
   StreamedChunk,
   StructuredResponseOptions,
 } from './generation';
@@ -360,7 +361,11 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
      * world info, character definitions, persona, and history processing.
      * This replicates the internal prompt building logic used during generation.
      */
-    buildPrompt: (options?: { generationId?: string; characterAvatar?: string }) => Promise<ApiChatMessage[]>;
+    buildPrompt: (options?: {
+      generationId?: string;
+      characterAvatar?: string;
+      mediaContext?: MediaHydrationContext;
+    }) => Promise<ApiChatMessage[]>;
 
     /**
      * Creates a new chat file with the provided content.

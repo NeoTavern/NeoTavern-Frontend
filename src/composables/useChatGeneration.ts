@@ -19,7 +19,6 @@ import { useSettingsStore } from '../stores/settings.store';
 import { useUiStore } from '../stores/ui.store';
 import { useWorldInfoStore } from '../stores/world-info.store';
 import {
-  type ApiChatContentPart,
   type ApiChatToolCall,
   type Character,
   type ChatMediaItem,
@@ -39,7 +38,6 @@ import { extractMediaFromMarkdown } from '../utils/chat';
 import { getMessageTimeStamp, uuidv4 } from '../utils/commons';
 import { countTokens, eventEmitter } from '../utils/extensions';
 import { trimInstructResponse } from '../utils/instruct';
-import { compressImage, getImageTokenCost, getMediaDurationFromDataURL, isDataURL } from '../utils/media';
 import { useStrictI18n } from './useStrictI18n';
 import { toast } from './useToast';
 
@@ -498,6 +496,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     await eventEmitter.emit('process:generation-context', context);
     if (context.controller.signal.aborted) return null;
 
+    const modelCapabilities = getModelCapabilities(effectiveProvider, effectiveModel, apiStore.modelList);
     const promptBuilder = new PromptBuilder({
       generationId,
       characters: context.characters,
@@ -512,100 +511,21 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         )
       ).filter((book): book is WorldInfoBook => book !== undefined),
       worldInfo: settingsStore.settings.worldInfo,
+      mediaContext: {
+        apiSettings: {
+          sendMedia: settings.api.sendMedia,
+          imageQuality: settings.api.imageQuality,
+          forbidExternalMedia: settings.ui.chat.forbidExternalMedia,
+        },
+        modelCapabilities: modelCapabilities,
+        formatter: effectiveFormatter,
+      },
     });
 
     if (deps.activeChat.value !== chatContext) throw new Error('Context switched');
 
     const messages = await promptBuilder.build();
     if (messages.length === 0) throw new Error(t('chat.generate.noPrompts'));
-
-    // --- Media Hydration Logic ---
-    let promptIdx = messages.length - 1;
-    let historyIdx = context.history.length - 1;
-
-    let mediaTokenCost = 0;
-    const mediaSendingEnabled = settings.api.sendMedia;
-    const modelCapabilities = getModelCapabilities(effectiveProvider, effectiveModel, apiStore.modelList);
-
-    // Only attach media if formatter is not 'text' and media sending is enabled
-    if (context.settings.formatter !== 'text' && mediaSendingEnabled) {
-      while (promptIdx >= 0 && historyIdx >= 0) {
-        const pMsg = messages[promptIdx];
-        const hMsg = context.history[historyIdx];
-
-        // Map Prompt message to History message by role
-        const pRole = pMsg.role;
-        const hRole = hMsg.is_user ? 'user' : 'assistant';
-
-        // Very basic matching. Since PromptBuilder preserves order of history, this usually works.
-        if (pRole === hRole) {
-          if (hMsg.extra?.media && hMsg.extra.media.length > 0) {
-            const contentParts: ApiChatContentPart[] = [];
-            // Add existing text content
-            if (typeof pMsg.content === 'string' && pMsg.content) {
-              contentParts.push({ type: 'text', text: pMsg.content });
-            } else if (Array.isArray(pMsg.content)) {
-              contentParts.push(...pMsg.content);
-            }
-
-            const ignoredMedia = hMsg.extra.ignored_media ?? [];
-            for (const mediaItem of hMsg.extra.media) {
-              // Skip ignored media items
-              if (
-                ignoredMedia.includes(mediaItem.url) ||
-                (mediaItem.source === 'inline' && settingsStore.settings.ui.chat.forbidExternalMedia)
-              ) {
-                continue;
-              }
-
-              try {
-                let dataUrl = mediaItem.url;
-                if (mediaItem.type === 'image' && modelCapabilities.vision) {
-                  const compressed = await compressImage(dataUrl);
-                  contentParts.push({
-                    type: 'image_url',
-                    image_url: {
-                      url: compressed,
-                      detail: settings.api.imageQuality,
-                    },
-                  });
-                  mediaTokenCost += await getImageTokenCost(compressed, settings.api.imageQuality);
-                } else if (
-                  (mediaItem.type === 'video' && modelCapabilities.video) ||
-                  (mediaItem.type === 'audio' && modelCapabilities.audio)
-                ) {
-                  if (!isDataURL(dataUrl)) {
-                    const response = await fetch(dataUrl);
-                    if (response.ok) {
-                      const blob = await response.blob();
-                      dataUrl = await new Promise<string>((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onload = () => resolve(reader.result as string);
-                        reader.onerror = reject;
-                        reader.readAsDataURL(blob);
-                      });
-                    }
-                  }
-
-                  if (mediaItem.type === 'video') {
-                    contentParts.push({ type: 'video_url', video_url: { url: dataUrl } });
-                    mediaTokenCost += 263 * Math.ceil(await getMediaDurationFromDataURL(dataUrl, 'video'));
-                  } else {
-                    contentParts.push({ type: 'audio_url', audio_url: { url: dataUrl } });
-                    mediaTokenCost += 32 * Math.ceil(await getMediaDurationFromDataURL(dataUrl, 'audio'));
-                  }
-                }
-              } catch (e) {
-                console.error('Failed to process media item:', e);
-              }
-            }
-            pMsg.content = contentParts;
-          }
-          historyIdx--;
-        }
-        promptIdx--;
-      }
-    }
 
     // Handle (Continue) injection
     const lastPromptMsg = messages[messages.length - 1];
@@ -638,7 +558,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       (counts) => counts.reduce((a, b) => a + b, 0),
     );
 
-    const promptTotal = promptTotalText + mediaTokenCost;
+    const promptTotal = promptTotalText + promptBuilder.mediaTokenCost;
 
     const processedWorldInfo = promptBuilder.processedWorldInfo;
     let wiTokens = 0;
@@ -685,7 +605,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       else breakdown.chatHistory += count;
     }
     // TODO: Add media field
-    breakdown.chatHistory += mediaTokenCost;
+    breakdown.chatHistory += promptBuilder.mediaTokenCost;
 
     let swipeId = 0;
     if (mode === GenerationMode.ADD_SWIPE) {

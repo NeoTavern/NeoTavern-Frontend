@@ -9,6 +9,7 @@ import type {
   ExtensionAPI,
   ExtensionEventMap,
   ExtensionMetadata,
+  MediaHydrationContext,
   MountableComponent,
   SettingsPath,
   Tokenizer,
@@ -81,6 +82,8 @@ export async function countTokens(
 
 // --- Event Emitter ---
 
+import { defaultsDeep } from 'lodash-es';
+import { getModelCapabilities } from '../api/provider-definitions';
 import { eventEmitter } from './event-emitter';
 export { eventEmitter };
 
@@ -339,6 +342,19 @@ const baseExtensionAPI: ExtensionAPI = {
         )
       ).filter((book): book is WorldInfoBook => book !== undefined);
 
+      const mediaContext: MediaHydrationContext = defaultsDeep({}, options?.mediaContext, {
+        apiSettings: {
+          forbidExternalMedia: settingsStore.settings.ui.chat.forbidExternalMedia,
+          imageQuality: settingsStore.settings.api.imageQuality,
+          sendMedia: settingsStore.settings.api.sendMedia,
+        },
+        formatter: settingsStore.settings.api.formatter,
+        modelCapabilities: getModelCapabilities(
+          settingsStore.settings.api.provider,
+          apiStore.activeModel,
+          apiStore.modelList,
+        ),
+      } satisfies MediaHydrationContext);
       const builder = new PromptBuilder({
         generationId: options?.generationId ?? uuidv4(),
         characters: contextCharacters,
@@ -349,6 +365,7 @@ const baseExtensionAPI: ExtensionAPI = {
         tokenizer,
         books,
         worldInfo: settingsStore.settings.worldInfo,
+        mediaContext,
       });
 
       return await builder.build();
