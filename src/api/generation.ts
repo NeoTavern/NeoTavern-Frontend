@@ -273,30 +273,30 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
   }
 
   // Handle Tools
-  if (ToolService.isToolCallingSupported(provider, model, customPromptPostProcessing)) {
+  if (toolConfig && ToolService.isToolCallingSupported(provider, model, customPromptPostProcessing)) {
     const finalTools: ApiToolDefinition[] = [];
 
     // 1. Registered Tools (Default: true)
-    if (toolConfig?.includeRegisteredTools !== false) {
+    if (toolConfig.includeRegisteredTools !== false) {
       const registeredTools = ToolService.getTools();
       finalTools.push(...registeredTools);
     }
 
     // 2. Additional Tools
-    if (toolConfig?.additionalTools && toolConfig.additionalTools.length > 0) {
+    if (toolConfig.additionalTools && toolConfig.additionalTools.length > 0) {
       const additionalApiTools = toolConfig.additionalTools.map((t) => ToolService.toApiTool(t));
       finalTools.push(...additionalApiTools);
     }
 
     // 3. Exclude Tools
     let effectiveTools = finalTools;
-    if (toolConfig?.excludeTools && toolConfig.excludeTools.length > 0) {
+    if (toolConfig.excludeTools && toolConfig.excludeTools.length > 0) {
       effectiveTools = finalTools.filter((t) => !toolConfig.excludeTools!.includes(t.function.name));
     }
 
     if (effectiveTools.length > 0) {
       payload.tools = effectiveTools;
-      payload.tool_choice = toolConfig?.toolChoice || 'auto';
+      payload.tool_choice = toolConfig.toolChoice || 'auto';
     }
   }
 
