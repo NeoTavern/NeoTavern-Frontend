@@ -56,6 +56,7 @@
     "@floating-ui/vue": "^1.1.9",
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@intlify/unplugin-vue-i18n": "^11.0.1",
+    "@tiptap/extension-image": "^3.15.3",
     "@tiptap/pm": "^3.15.3",
     "@tiptap/starter-kit": "^3.15.3",
     "@tiptap/vue-3": "^3.15.3",

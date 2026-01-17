@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Image from '@tiptap/extension-image';
 import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -25,13 +26,33 @@ const activeNote = computed(() => notes.value.find((note) => note.id === activeN
 // --- Tiptap Editor ---
 const editor = useEditor({
   content: '',
-  extensions: [StarterKit],
+  extensions: [StarterKit, Image],
   editorProps: {
     attributes: {
       class: 'ProseMirror',
     },
   },
 });
+
+const addImage = () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = () => {
+    const file = input.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const src = e.target?.result as string;
+        if (src) {
+          editor.value?.chain().focus().setImage({ src }).run();
+        }
+      };
+      reader.readAsDataURL(file); // Reads the file as a Base64 string
+    }
+  };
+  input.click();
+};
 
 // --- Data Persistence ---
 const saveNotes = () => {
@@ -158,13 +179,15 @@ onBeforeUnmount(() => {
 // --- Toolbar Definition ---
 type ToolbarItem =
   | { type: 'divider' }
-  | { type?: undefined; action: () => boolean | undefined; icon: string; name: string; level?: number };
+  | { type?: undefined; action: () => void; icon: string; name: string; level?: number };
 
 const toolbarActions: ToolbarItem[] = [
   { action: () => editor.value?.chain().focus().toggleBold().run(), icon: 'fa-bold', name: 'bold' },
   { action: () => editor.value?.chain().focus().toggleItalic().run(), icon: 'fa-italic', name: 'italic' },
   { action: () => editor.value?.chain().focus().toggleStrike().run(), icon: 'fa-strikethrough', name: 'strike' },
   { action: () => editor.value?.chain().focus().toggleCode().run(), icon: 'fa-code', name: 'code' },
+  { type: 'divider' },
+  { action: addImage, icon: 'fa-image', name: 'image' },
   { type: 'divider' },
   {
     action: () => editor.value?.chain().focus().toggleHeading({ level: 1 }).run(),
