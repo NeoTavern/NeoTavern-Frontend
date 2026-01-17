@@ -1509,6 +1509,15 @@ export interface MessageSchema {
       maxContentLength: string;
       maxContentLengthHint: string;
     };
+    liveCommentary: {
+      enable: string;
+      connectionProfile: string;
+      connectionProfileHint: string;
+      debounceMs: string;
+      displayDurationMs: string;
+      promptTemplate: string;
+      promptHint: string;
+    };
   };
   login: {
     authenticating: string;

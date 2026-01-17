@@ -1505,6 +1505,15 @@
       "urlInspector": "URL Inspector",
       "maxContentLength": "Max Content Length",
       "maxContentLengthHint": "Character limit for the extracted content to prevent context overflow."
+    },
+    "liveCommentary": {
+      "enable": "Enable Live Commentary",
+      "connectionProfile": "Connection Profile",
+      "connectionProfileHint": "The LLM profile used to generate character thoughts.",
+      "debounceMs": "Typing Debounce (ms)",
+      "displayDurationMs": "Display Duration (ms)",
+      "promptTemplate": "Prompt Template",
+      "promptHint": "The prompt template for generating thoughts. Uses Handlebars syntax with variables."
     }
   },
   "login": {
