@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { DEFAULT_CHARACTER } from '../constants';
 import { type Character } from '../types';
+import { filterAndSortCharacters } from '../utils/character';
 import { useCharacterStore } from './character.store';
 import { useSettingsStore } from './settings.store';
 import { useTagStore } from './tag.store';
@@ -37,51 +38,13 @@ export const useCharacterUiStore = defineStore('character-ui', () => {
   });
 
   const displayableCharacters = computed<Character[]>(() => {
-    // 1. Filter
-    let characters = characterStore.characters;
-
-    if (searchTerm.value) {
-      const lowerCaseSearch = searchTerm.value.toLowerCase();
-      characters = characters.filter((char) => char.name.toLowerCase().includes(lowerCaseSearch));
-    }
-
-    if (filterTags.value.length > 0) {
-      characters = characters.filter((char) => {
-        const allTags = new Set([...(char.tags ?? []), ...tagStore.getCustomTagsForCharacter(char.avatar)]);
-        return filterTags.value.every((t) => allTags.has(t));
-      });
-    }
-
-    // 2. Sort
-    const [sortKey, sortDir] = sortOrder.value.split(':');
-
-    return [...characters].sort((a, b) => {
-      let result = 0;
-      switch (sortKey) {
-        case 'fav':
-          result = (b.fav ? 1 : 0) - (a.fav ? 1 : 0);
-          break;
-        case 'name':
-          result = a.name.localeCompare(b.name);
-          break;
-        case 'create_date': {
-          const dateA = a.create_date ? new Date(a.create_date).getTime() : 0;
-          const dateB = b.create_date ? new Date(b.create_date).getTime() : 0;
-          result = dateA - dateB;
-          break;
-        }
-        case 'random':
-          return Math.random() - 0.5;
-      }
-
-      // Respect favs in non-fav sort modes
-      if (sortKey !== 'fav') {
-        const favSort = (b.fav ? 1 : 0) - (a.fav ? 1 : 0);
-        if (favSort !== 0) return favSort;
-      }
-
-      return sortDir === 'asc' ? result : -result;
-    });
+    return filterAndSortCharacters(
+      characterStore.characters,
+      searchTerm.value,
+      filterTags.value,
+      sortOrder.value,
+      tagStore.getCustomTagsForCharacter,
+    );
   });
 
   const paginatedCharacters = computed<Character[]>(() => {

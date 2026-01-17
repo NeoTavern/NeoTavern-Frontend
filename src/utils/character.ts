@@ -103,25 +103,26 @@ export function filterAndSortCharacters(
   searchTerm: string,
   filterTags: string[],
   sortOrder: string,
+  getCustomTags: (avatar: string) => string[],
 ): Character[] {
+  // 1. Filter
   const lowerSearchTerm = searchTerm.toLowerCase();
-  const searchFilter = (char: Character) => {
-    if (lowerSearchTerm.length === 0) return true;
-    return (
+  const filteredCharacters = characters.filter((char) => {
+    const searchFilter =
+      lowerSearchTerm.length === 0 ||
       char.name.toLowerCase().includes(lowerSearchTerm) ||
       char.description?.toLowerCase().includes(lowerSearchTerm) ||
-      char.tags?.join(',').toLowerCase().includes(lowerSearchTerm)
-    );
-  };
+      char.tags?.join(',').toLowerCase().includes(lowerSearchTerm);
 
-  const tagFilter = (char: Character) => {
+    if (!searchFilter) return false;
+
     if (filterTags.length === 0) return true;
-    // OR Logic: Character must have at least one of the selected tags (Union)
-    return char.tags?.some((tag) => filterTags.includes(tag));
-  };
+    const allTags = new Set([...(char.tags ?? []), ...getCustomTags(char.avatar)]);
+    // AND Logic: Character must have all of the selected tags
+    return filterTags.every((tag) => allTags.has(tag));
+  });
 
-  const filteredCharacters = characters.filter((char) => searchFilter(char) && tagFilter(char));
-
+  // 2. Sort
   const [sortKey, sortDir] = sortOrder.split(':') as ['name' | 'create_date' | 'fav' | 'random', 'asc' | 'desc'];
 
   if (sortKey === 'random') {
@@ -129,24 +130,40 @@ export function filterAndSortCharacters(
   }
 
   return [...filteredCharacters].sort((a, b) => {
-    const dir = sortDir === 'asc' ? 1 : -1;
+    // For non-fav sort modes, always prioritize favorited characters
+    if (sortKey !== 'fav') {
+      const favSort = (b.fav ? 1 : 0) - (a.fav ? 1 : 0);
+      if (favSort !== 0) return favSort;
+    }
+
+    let result = 0;
     switch (sortKey) {
       case 'name':
-        return a.name.localeCompare(b.name) * dir;
+        result = a.name.localeCompare(b.name);
+        break;
       case 'create_date': {
         const dateA = a.create_date ? new Date(a.create_date).getTime() : 0;
         const dateB = b.create_date ? new Date(b.create_date).getTime() : 0;
-        return (dateA - dateB) * dir;
+        result = dateA - dateB;
+        break;
       }
-      case 'fav': {
-        const favA = a.fav ? 1 : 0;
-        const favB = b.fav ? 1 : 0;
-        if (favA !== favB) return favB - favA;
-        return a.name.localeCompare(b.name);
-      }
+      case 'fav':
+        result = (b.fav ? 1 : 0) - (a.fav ? 1 : 0);
+        // Add a name-based tie-breaker for fav sort
+        if (result === 0) {
+          result = a.name.localeCompare(b.name);
+        }
+        break;
       default:
-        return 0;
+        break;
     }
+
+    // For fav sort, direction is always descending (favs first). The result already reflects this.
+    if (sortKey === 'fav') {
+      return result;
+    }
+
+    return sortDir === 'asc' ? result : -result;
   });
 }
 
