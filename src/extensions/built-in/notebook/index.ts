@@ -29,6 +29,7 @@ export function activate(api: ExtensionAPI<NotebookSettings>) {
     },
   });
 
-  // No cleanup needed for registerSidebar, so we return an empty function.
-  return () => {};
+  return () => {
+    api.ui.unregisterNavBarItem('core.notebook');
+  };
 }
