@@ -758,6 +758,17 @@ export interface MessageSchema {
       placeholderText: string;
       placeholderButton: string;
     };
+    tags: {
+      manage: string;
+      managerTitle: string;
+      existing: string;
+      noTags: string;
+      editTitle: string;
+      addTitle: string;
+      background: string;
+      foreground: string;
+      add: string;
+    };
   };
   characterEditor: {
     avatar: string;

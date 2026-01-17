@@ -55,6 +55,7 @@ export function createDefaultSettings(): Settings {
       spoilerFreeMode: false,
       worldImportDialog: true,
       tagImportSetting: TagImportSetting.ASK,
+      customTags: [{ name: 'NT Default', backgroundColor: 'rgba(108, 32, 32, 1)' }],
     },
     chat: {
       sendOnEnter: SendOnEnterOptions.AUTO,
@@ -276,6 +277,7 @@ export function migrateLegacyUserSettings(
       spoilerFreeMode: p.spoiler_free_mode,
       worldImportDialog: p.world_import_dialog,
       tagImportSetting: p.tag_import_setting,
+      customTags: [{ name: 'NT Default', backgroundColor: 'rgba(108, 32, 32, 1)' }], // TODO: Merge from legacy
     },
     persona: {
       showNotifications: p.persona_show_notifications,

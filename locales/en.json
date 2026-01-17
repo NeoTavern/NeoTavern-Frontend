@@ -754,6 +754,17 @@
       "placeholderTitle": "Select a Character",
       "placeholderText": "Select a character from the list to view or edit their details.",
       "placeholderButton": "Create New Character"
+    },
+    "tags": {
+      "manage": "Manage Tags",
+      "managerTitle": "Custom Tag Manager",
+      "existing": "Existing Tags",
+      "noTags": "No custom tags defined.",
+      "editTitle": "Edit Tag",
+      "addTitle": "Add New Tag",
+      "background": "Background",
+      "foreground": "Text",
+      "add": "Add Tag"
     }
   },
   "characterEditor": {

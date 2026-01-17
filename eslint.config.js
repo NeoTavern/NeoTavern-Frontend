@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 
 export default [
   {
-    ignores: ['dist/**', 'coverage/**', '*.log', 'repomix-output.xml', 'src/types/i18n.d.ts'],
+    ignores: ['dist/**', 'coverage/**', '*.log', 'repomix-output.xml', 'src/types/i18n.d.ts', 'backend', 'launcher.js'],
   },
   {
     languageOptions: {
@@ -18,7 +18,7 @@ export default [
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   {
-    files: ['*.vue', '**/*.vue'],
+    files: ['src/**/*.vue', 'src/**/*.ts', 'src/**/*.js'],
     languageOptions: {
       parserOptions: {
         parser: tseslint.parser,

@@ -5,12 +5,14 @@ import { toast } from '../../composables/useToast';
 import { useCharacterUiStore } from '../../stores/character-ui.store';
 import { useCharacterStore } from '../../stores/character.store';
 import { useLayoutStore } from '../../stores/layout.store';
+import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { Character } from '../../types';
 import { getThumbnailUrl } from '../../utils/character';
 import { EmptyState, Pagination, PanelLayout } from '../common';
 import { Button, FileInput, ListItem, Search, Select } from '../UI';
 import CharacterEditForm from './CharacterEditForm.vue';
+import CustomTagManagerPopup from './CustomTagManagerPopup.vue';
 
 const { t } = useStrictI18n();
 
@@ -23,6 +25,7 @@ const characterStore = useCharacterStore();
 const characterUiStore = useCharacterUiStore();
 const settingsStore = useSettingsStore();
 const layoutStore = useLayoutStore();
+const popupStore = usePopupStore();
 
 const isSearchActive = ref(false);
 const highlightedItemRef = ref<HTMLElement | null>(null);
@@ -83,6 +86,14 @@ async function handleFileImport(files: File[]) {
     const lastAvatar = importedAvatars[importedAvatars.length - 1];
     characterUiStore.highlightCharacter(lastAvatar);
   }
+}
+
+function openTagManager() {
+  popupStore.show({
+    title: t('characterPanel.tags.managerTitle'),
+    component: CustomTagManagerPopup,
+    wide: true,
+  });
 }
 
 const sortOptions = [
@@ -147,6 +158,13 @@ onMounted(async () => {
           />
 
           <div id="extension-buttons-container"></div>
+
+          <Button
+            variant="ghost"
+            icon="fa-solid fa-tags"
+            :title="t('characterPanel.tags.manage')"
+            @click="openTagManager"
+          />
 
           <Button
             variant="ghost"
@@ -219,19 +237,41 @@ onMounted(async () => {
             </template>
 
             <template #default>
-              <div style="display: flex; align-items: center; gap: 4px">
-                <span class="font-bold">{{ character.name }}</span>
-                <i
-                  v-if="character.fav"
-                  class="fa-solid fa-star"
-                  style="color: var(--color-golden); font-size: 0.8em"
-                  :aria-label="t('characterPanel.isFavorite')"
-                ></i>
-              </div>
-              <div
-                style="font-size: 0.8em; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"
-              >
-                {{ character.description || '&nbsp;' }}
+              <div>
+                <div style="display: flex; align-items: center; gap: 4px">
+                  <span class="font-bold">{{ character.name }}</span>
+                  <i
+                    v-if="character.fav"
+                    class="fa-solid fa-star"
+                    style="color: var(--color-golden); font-size: 0.8em"
+                    :aria-label="t('characterPanel.isFavorite')"
+                  ></i>
+                </div>
+                <div
+                  style="
+                    font-size: 0.8em;
+                    opacity: 0.7;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    max-width: 95%;
+                  "
+                >
+                  {{ character.description || '&nbsp;' }}
+                </div>
+                <div v-if="character.tags?.length" class="character-tags">
+                  <span
+                    v-for="tag in character.tags"
+                    :key="tag"
+                    class="character-tag"
+                    :style="{
+                      backgroundColor: characterUiStore.tagStore.getTagProperties(tag)?.backgroundColor,
+                      color: characterUiStore.tagStore.getTagProperties(tag)?.foregroundColor,
+                    }"
+                  >
+                    {{ tag }}
+                  </span>
+                </div>
               </div>
             </template>
           </ListItem>

@@ -29,6 +29,26 @@
     padding: var(--spacing-xs);
     @include flex-container(column);
     gap: var(--spacing-xs);
+
+    .character-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-xs);
+      font-size: 0.75em;
+      margin-top: var(--spacing-xs);
+
+      .character-tag {
+        padding: 2px 6px;
+        border-radius: var(--base-border-radius);
+        font-weight: 600;
+        background-color: var(--grey-5050a);
+        color: var(--theme-text-color);
+        max-width: 100px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
   }
 
   &-pagination {

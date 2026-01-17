@@ -5,10 +5,12 @@ import { type Character } from '../types';
 import { filterAndSortCharacters } from '../utils/character';
 import { useCharacterStore } from './character.store';
 import { useSettingsStore } from './settings.store';
+import { useTagStore } from './tag.store';
 
 export const useCharacterUiStore = defineStore('character-ui', () => {
   const characterStore = useCharacterStore();
   const settingsStore = useSettingsStore();
+  const tagStore = useTagStore();
 
   const currentPage = ref(1);
   const itemsPerPage = ref(25);
@@ -114,6 +116,7 @@ export const useCharacterUiStore = defineStore('character-ui', () => {
     displayableCharacters,
     paginatedCharacters,
     editFormCharacter,
+    tagStore,
     startCreating,
     cancelCreating,
     selectCharacterByAvatar,
