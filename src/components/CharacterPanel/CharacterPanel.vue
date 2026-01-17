@@ -196,6 +196,7 @@ onMounted(async () => {
                   v-model="characterUiStore.filterTags"
                   :options="tagOptions"
                   :title="t('characterPanel.filterTags')"
+                  :label="t('characterPanel.filterTags')"
                   :placeholder="t('characterPanel.filterTags')"
                   multiple
                   searchable

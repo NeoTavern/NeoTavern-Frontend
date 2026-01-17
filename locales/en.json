@@ -740,10 +740,10 @@
     "createNew": "Create New Character",
     "importFile": "Import Character from File",
     "searchToggle": "Toggle search bar",
-    "searchPlaceholder": "Search...",
+    "searchPlaceholder": "Search",
     "filterTags": "Filter Tags",
     "sorting": {
-      "title": "Characters sorting order",
+      "title": "Order",
       "nameAsc": "A-Z",
       "nameDesc": "Z-A",
       "newest": "Newest",
