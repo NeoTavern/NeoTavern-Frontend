@@ -5,10 +5,12 @@ import { type Character } from '../types';
 import { filterAndSortCharacters } from '../utils/character';
 import { useCharacterStore } from './character.store';
 import { useSettingsStore } from './settings.store';
+import { useTagStore } from './tag.store';
 
 export const useCharacterUiStore = defineStore('character-ui', () => {
   const characterStore = useCharacterStore();
   const settingsStore = useSettingsStore();
+  const tagStore = useTagStore();
 
   const currentPage = ref(1);
   const itemsPerPage = ref(25);
@@ -26,14 +28,23 @@ export const useCharacterUiStore = defineStore('character-ui', () => {
 
   const availableTags = computed<string[]>(() => {
     const tags = new Set<string>();
-    characterStore.characters.forEach((char) => {
-      char.tags?.forEach((tag) => tags.add(tag));
-    });
+    if (!settingsStore.settings.character.hideEmbeddedTagsInSuggestions) {
+      characterStore.characters.forEach((char) => {
+        char.tags?.forEach((tag) => tags.add(tag));
+      });
+    }
+    tagStore.customTags.forEach((tag) => tags.add(tag.name));
     return Array.from(tags).sort((a, b) => a.localeCompare(b));
   });
 
   const displayableCharacters = computed<Character[]>(() => {
-    return filterAndSortCharacters(characterStore.characters, searchTerm.value, filterTags.value, sortOrder.value);
+    return filterAndSortCharacters(
+      characterStore.characters,
+      searchTerm.value,
+      filterTags.value,
+      sortOrder.value,
+      tagStore.getCustomTagsForCharacter,
+    );
   });
 
   const paginatedCharacters = computed<Character[]>(() => {
@@ -114,6 +125,7 @@ export const useCharacterUiStore = defineStore('character-ui', () => {
     displayableCharacters,
     paginatedCharacters,
     editFormCharacter,
+    tagStore,
     startCreating,
     cancelCreating,
     selectCharacterByAvatar,

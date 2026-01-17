@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { uuidv4 } from '../../utils/commons';
 import Button from './Button.vue';
@@ -8,23 +8,59 @@ interface Props {
   modelValue: string[];
   placeholder?: string;
   label?: string;
+  suggestions?: string[];
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  suggestions: () => [],
+});
+
 const emit = defineEmits(['update:modelValue']);
 
+// --- State ---
 const inputValue = ref('');
+const isFocused = ref(false);
+const activeIndex = ref(-1);
+const liveMessage = ref('');
+
+// --- IDs for a11y ---
 const uniqueId = `tag-input-${uuidv4()}`;
 const inputId = `${uniqueId}-input`;
 const listId = `${uniqueId}-list`;
 const descId = `${uniqueId}-desc`;
+const suggestionsId = `${uniqueId}-suggestions`;
 
 const { t } = useStrictI18n();
 
-const liveMessage = ref('');
+// --- Computed Properties ---
+const filteredSuggestions = computed(() => {
+  const lowerCaseInput = inputValue.value.toLowerCase();
+  if (!lowerCaseInput) return [];
 
-function addTag() {
-  const val = inputValue.value.trim();
+  return props.suggestions.filter(
+    (suggestion) => !props.modelValue.includes(suggestion) && suggestion.toLowerCase().includes(lowerCaseInput),
+  );
+});
+
+const showSuggestions = computed(() => isFocused.value && filteredSuggestions.value.length > 0);
+
+const activeDescendant = computed(() => {
+  return activeIndex.value >= 0 && activeIndex.value < filteredSuggestions.value.length
+    ? `${suggestionsId}-item-${activeIndex.value}`
+    : undefined;
+});
+
+// --- Watchers ---
+watch(inputValue, () => {
+  // Reset active index when input changes
+  if (activeIndex.value !== -1) {
+    activeIndex.value = -1;
+  }
+});
+
+// --- Methods ---
+function addTag(tagValue?: string) {
+  const val = (tagValue ?? inputValue.value).trim();
   if (!val) return;
 
   // Split by comma if user pasted text
@@ -41,6 +77,7 @@ function addTag() {
     liveMessage.value = t('a11y.tagInput.added', { count: distinct.length, tags: distinct.join(', ') });
   }
   inputValue.value = '';
+  activeIndex.value = -1;
 }
 
 function removeTag(index: number) {
@@ -52,12 +89,44 @@ function removeTag(index: number) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
+  if (showSuggestions.value) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIndex.value = (activeIndex.value + 1) % filteredSuggestions.value.length;
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIndex.value = (activeIndex.value - 1 + filteredSuggestions.value.length) % filteredSuggestions.value.length;
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      isFocused.value = false;
+      activeIndex.value = -1;
+    }
+  }
+
   if (e.key === 'Enter' || e.key === ',') {
     e.preventDefault();
-    addTag();
+    const selectedSuggestion = filteredSuggestions.value[activeIndex.value];
+    addTag(selectedSuggestion);
   } else if (e.key === 'Backspace' && inputValue.value === '' && props.modelValue.length > 0) {
     removeTag(props.modelValue.length - 1);
   }
+}
+
+function handleFocus() {
+  isFocused.value = true;
+}
+
+function handleBlur() {
+  // Use a timeout to allow click events on suggestions to fire before blur closes it
+  setTimeout(() => {
+    isFocused.value = false;
+    addTag();
+  }, 200);
+}
+
+function selectSuggestion(suggestion: string) {
+  addTag(suggestion);
+  isFocused.value = false;
 }
 </script>
 
@@ -78,21 +147,54 @@ function handleKeydown(e: KeyboardEvent) {
         class="text-pole"
         :placeholder="placeholder"
         :aria-describedby="descId"
-        :aria-controls="listId"
+        :aria-controls="showSuggestions ? suggestionsId : listId"
+        :aria-expanded="showSuggestions"
+        :aria-activedescendant="activeDescendant"
+        role="combobox"
+        aria-haspopup="listbox"
         @keydown="handleKeydown"
-        @blur="addTag"
+        @focus="handleFocus"
+        @blur="handleBlur"
       />
       <Button
         icon="fa-plus"
         :title="t('a11y.tagInput.addTag')"
         :aria-label="t('a11y.tagInput.addTag')"
-        @click="addTag"
+        @click="addTag()"
       />
     </div>
 
-    <ul :id="listId" class="tags-list" role="list" :aria-label="t('a11y.tagInput.tagsList')">
+    <ul
+      v-if="showSuggestions"
+      :id="suggestionsId"
+      class="tag-input-suggestions"
+      role="listbox"
+      :aria-label="t('a11y.tagInput.suggestionsList')"
+    >
+      <li
+        v-for="(suggestion, idx) in filteredSuggestions"
+        :id="`${suggestionsId}-item-${idx}`"
+        :key="suggestion"
+        class="tag-input-suggestions-item"
+        :class="{ 'is-active': idx === activeIndex }"
+        role="option"
+        :aria-selected="idx === activeIndex"
+        @mousedown.prevent
+        @click="selectSuggestion(suggestion)"
+      >
+        {{ suggestion }}
+      </li>
+    </ul>
+
+    <ul
+      v-if="modelValue.length > 0"
+      :id="listId"
+      class="tags-list"
+      role="list"
+      :aria-label="t('a11y.tagInput.tagsList')"
+    >
       <li v-for="(tag, idx) in modelValue" :key="idx" class="tag">
-        {{ tag }}
+        <span>{{ tag }}</span>
         <button
           class="tag-close-btn"
           :aria-label="t('a11y.tagInput.removeTag', { tag })"
@@ -106,48 +208,3 @@ function handleKeydown(e: KeyboardEvent) {
     </ul>
   </div>
 </template>
-
-<style scoped lang="scss">
-.tag-close-btn {
-  background: none;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-  padding: 0 4px;
-  margin-left: 4px;
-  opacity: 0.7;
-  font-size: 0.9em;
-
-  &:hover,
-  &:focus {
-    opacity: 1;
-    color: var(--color-accent-red);
-  }
-
-  &:focus {
-    outline: 1px dotted currentColor;
-  }
-}
-
-.tags-list {
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border-width: 0;
-}
-</style>

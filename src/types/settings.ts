@@ -297,6 +297,12 @@ export type CodeMirrorTarget =
   | 'chat.edit_message'
   | 'theme.custom_css';
 
+export interface CustomTag {
+  name: string;
+  backgroundColor: string | null;
+  foregroundColor: string | null;
+}
+
 export interface Settings {
   ui: {
     background: {
@@ -323,6 +329,7 @@ export interface Settings {
   };
   chat: {
     sendOnEnter: SendOnEnterOptions;
+    regenerateOnEdit: boolean;
     confirmMessageDelete: boolean;
     stopOnNameHijack: StopOnNameHijack;
   };
@@ -330,6 +337,10 @@ export interface Settings {
     spoilerFreeMode: boolean;
     worldImportDialog: boolean;
     tagImportSetting: TagImportSetting;
+    customTags: CustomTag[];
+    customTagAssignments: Record<string, string[]>;
+    hideEmbeddedTagsInPanel: boolean;
+    hideEmbeddedTagsInSuggestions: boolean;
   };
   persona: {
     showNotifications: boolean;
@@ -467,6 +478,8 @@ export interface LegacySettings {
   user_avatar?: string;
   main_api?: string;
   proxies?: Omit<Proxy, 'id'>[];
+  tags: { id: number; name: string; color?: string; color2?: string }[];
+  tag_map: Record<string, Array<number>>;
   extension_settings?: {
     connectionManager?: {
       profiles?: Record<

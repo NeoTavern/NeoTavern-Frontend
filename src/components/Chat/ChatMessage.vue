@@ -258,7 +258,13 @@ function saveEdit() {
   const reasoningToSave = isEditingReasoning.value ? editedReasoning.value : undefined;
   chatStore.saveMessageEdit(editedContent.value, reasoningToSave);
 
-  if (props.message.is_system || chatStore.isGenerating || !props.message.is_user) {
+  if (
+    !settingsStore.settings.chat.regenerateOnEdit ||
+    props.index === 0 ||
+    props.message.is_system ||
+    chatStore.isGenerating ||
+    !props.message.is_user
+  ) {
     return;
   }
 

@@ -5,12 +5,14 @@ import { toast } from '../../composables/useToast';
 import { useCharacterUiStore } from '../../stores/character-ui.store';
 import { useCharacterStore } from '../../stores/character.store';
 import { useLayoutStore } from '../../stores/layout.store';
+import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { Character } from '../../types';
 import { getThumbnailUrl } from '../../utils/character';
 import { EmptyState, Pagination, PanelLayout } from '../common';
 import { Button, FileInput, ListItem, Search, Select } from '../UI';
 import CharacterEditForm from './CharacterEditForm.vue';
+import CustomTagManagerPopup from './CustomTagManagerPopup.vue';
 
 const { t } = useStrictI18n();
 
@@ -23,6 +25,7 @@ const characterStore = useCharacterStore();
 const characterUiStore = useCharacterUiStore();
 const settingsStore = useSettingsStore();
 const layoutStore = useLayoutStore();
+const popupStore = usePopupStore();
 
 const isSearchActive = ref(false);
 const highlightedItemRef = ref<HTMLElement | null>(null);
@@ -85,6 +88,25 @@ async function handleFileImport(files: File[]) {
   }
 }
 
+function openTagManager() {
+  popupStore.show({
+    title: t('characterPanel.tags.managerTitle'),
+    component: CustomTagManagerPopup,
+    wide: true,
+  });
+}
+
+function getDisplayedCharacterTags(character: Character): string[] {
+  const customTags = characterUiStore.tagStore.getCustomTagsForCharacter(character.avatar);
+
+  if (settingsStore.settings.character.hideEmbeddedTagsInPanel) {
+    return customTags;
+  }
+
+  const allTags = new Set([...(character.tags ?? []), ...customTags]);
+  return [...allTags];
+}
+
 const sortOptions = [
   { value: 'name:asc', label: t('characterPanel.sorting.nameAsc') },
   { value: 'name:desc', label: t('characterPanel.sorting.nameDesc') },
@@ -117,6 +139,7 @@ onMounted(async () => {
       }
     }
   }
+  characterUiStore.tagStore.initialize();
 });
 </script>
 
@@ -150,6 +173,13 @@ onMounted(async () => {
 
           <Button
             variant="ghost"
+            icon="fa-solid fa-tags"
+            :title="t('characterPanel.tags.manage')"
+            @click="openTagManager"
+          />
+
+          <Button
+            variant="ghost"
             icon="fa-search"
             :title="t('characterPanel.searchToggle')"
             :active="isSearchActive"
@@ -166,6 +196,7 @@ onMounted(async () => {
                   v-model="characterUiStore.filterTags"
                   :options="tagOptions"
                   :title="t('characterPanel.filterTags')"
+                  :label="t('characterPanel.filterTags')"
                   :placeholder="t('characterPanel.filterTags')"
                   multiple
                   searchable
@@ -219,19 +250,41 @@ onMounted(async () => {
             </template>
 
             <template #default>
-              <div style="display: flex; align-items: center; gap: 4px">
-                <span class="font-bold">{{ character.name }}</span>
-                <i
-                  v-if="character.fav"
-                  class="fa-solid fa-star"
-                  style="color: var(--color-golden); font-size: 0.8em"
-                  :aria-label="t('characterPanel.isFavorite')"
-                ></i>
-              </div>
-              <div
-                style="font-size: 0.8em; opacity: 0.7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"
-              >
-                {{ character.description || '&nbsp;' }}
+              <div>
+                <div style="display: flex; align-items: center; gap: 4px">
+                  <span class="font-bold">{{ character.name }}</span>
+                  <i
+                    v-if="character.fav"
+                    class="fa-solid fa-star"
+                    style="color: var(--color-golden); font-size: 0.8em"
+                    :aria-label="t('characterPanel.isFavorite')"
+                  ></i>
+                </div>
+                <div
+                  style="
+                    font-size: 0.8em;
+                    opacity: 0.7;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    max-width: 95%;
+                  "
+                >
+                  {{ character.description || '&nbsp;' }}
+                </div>
+                <div v-if="getDisplayedCharacterTags(character).length" class="character-tags">
+                  <span
+                    v-for="tag in getDisplayedCharacterTags(character)"
+                    :key="tag"
+                    class="ui-tag"
+                    :style="{
+                      backgroundColor: characterUiStore.tagStore.getTagProperties(tag)?.backgroundColor ?? undefined,
+                      color: characterUiStore.tagStore.getTagProperties(tag)?.foregroundColor ?? undefined,
+                    }"
+                  >
+                    {{ tag }}
+                  </span>
+                </div>
               </div>
             </template>
           </ListItem>

@@ -315,7 +315,22 @@ export type PromptBuilderOptions = {
   samplerSettings: SamplerSettings;
   persona: Persona;
   tokenizer: Tokenizer;
+  mediaContext: MediaHydrationContext;
 };
+
+export interface MediaHydrationContext {
+  apiSettings: {
+    sendMedia: boolean;
+    imageQuality: 'low' | 'high' | 'auto';
+    forbidExternalMedia: boolean;
+  };
+  modelCapabilities: {
+    vision: boolean;
+    video: boolean;
+    audio: boolean;
+  };
+  formatter: string;
+}
 
 export interface PromptTokenBreakdown {
   // System / Character / Persona

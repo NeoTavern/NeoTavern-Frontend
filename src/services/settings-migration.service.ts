@@ -55,11 +55,16 @@ export function createDefaultSettings(): Settings {
       spoilerFreeMode: false,
       worldImportDialog: true,
       tagImportSetting: TagImportSetting.ASK,
+      customTags: [{ name: 'NT Default', backgroundColor: 'rgba(108, 32, 32, 1)', foregroundColor: null }],
+      customTagAssignments: {},
+      hideEmbeddedTagsInPanel: true,
+      hideEmbeddedTagsInSuggestions: true,
     },
     chat: {
       sendOnEnter: SendOnEnterOptions.AUTO,
       stopOnNameHijack: 'all',
       confirmMessageDelete: true,
+      regenerateOnEdit: true,
     },
     disabledExtensions: [],
     disabledTools: [],
@@ -271,11 +276,27 @@ export function migrateLegacyUserSettings(
       sendOnEnter: p.send_on_enter,
       confirmMessageDelete: p.confirm_message_delete,
       stopOnNameHijack: 'all',
+      regenerateOnEdit: true,
     },
     character: {
       spoilerFreeMode: p.spoiler_free_mode,
       worldImportDialog: p.world_import_dialog,
       tagImportSetting: p.tag_import_setting,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      customTags: Object.entries(legacy.tags || {}).map(([_, tag]) => ({
+        name: tag.name,
+        backgroundColor: tag.color || null,
+        foregroundColor: tag.color2 || null,
+      })),
+      customTagAssignments: Object.entries(legacy.tag_map || {}).reduce(
+        (acc, [tagName, charIds]) => {
+          acc[tagName] = charIds.map((id) => id.toString());
+          return acc;
+        },
+        {} as Record<string, string[]>,
+      ),
+      hideEmbeddedTagsInPanel: true,
+      hideEmbeddedTagsInSuggestions: true,
     },
     persona: {
       showNotifications: p.persona_show_notifications,

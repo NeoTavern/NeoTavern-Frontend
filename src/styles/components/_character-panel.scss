@@ -29,6 +29,13 @@
     padding: var(--spacing-xs);
     @include flex-container(column);
     gap: var(--spacing-xs);
+
+    .character-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-xs);
+      margin-top: var(--spacing-xs);
+    }
   }
 
   &-pagination {

@@ -42,7 +42,11 @@ const isCreating = computed(() => characterUiStore.isCreating);
 const isPeeking = ref<boolean | null>(null);
 const isSpoilerModeActive = computed(() => settingsStore.settings.character.spoilerFreeMode);
 const areDetailsHidden = computed(() =>
-  !isCreating.value && isPeeking.value === null ? isSpoilerModeActive.value : !isPeeking.value,
+  isCreating.value
+    ? false
+    : !isCreating.value && isPeeking.value === null
+      ? isSpoilerModeActive.value
+      : !isPeeking.value,
 );
 
 const isExportMenuVisible = ref(false);
@@ -485,6 +489,42 @@ const embeddedLorebookName = computed({
     }
   },
 });
+
+const allCharacterTags = computed<string[]>({
+  get() {
+    if (!localCharacter.value) return [];
+    const customTags = characterUiStore.tagStore.getCustomTagsForCharacter(localCharacter.value.avatar);
+    if (settingsStore.settings.character.hideEmbeddedTagsInPanel) {
+      return customTags;
+    }
+    const embeddedTags = localCharacter.value.tags ?? [];
+    return [...new Set([...embeddedTags, ...customTags])];
+  },
+  set(newTags: string[]) {
+    if (!localCharacter.value) return;
+
+    const customTags: string[] = [];
+    const embeddedTags: string[] = [];
+
+    // Separate tags from the input into custom and embedded types
+    newTags.forEach((tag) => {
+      if (characterUiStore.tagStore.getTagProperties(tag)) {
+        customTags.push(tag);
+      } else {
+        embeddedTags.push(tag);
+      }
+    });
+
+    // Always update custom tags, as they are managed separately
+    characterUiStore.tagStore.setCustomTagsForCharacter(localCharacter.value.avatar, customTags);
+
+    // Only update embedded tags if they were visible in the form.
+    // This prevents wiping them out when they are hidden.
+    if (!settingsStore.settings.character.hideEmbeddedTagsInPanel) {
+      localCharacter.value.tags = embeddedTags;
+    }
+  },
+});
 </script>
 
 <template>
@@ -638,9 +678,10 @@ const embeddedLorebookName = computed({
 
       <div class="character-edit-form-tags-block">
         <TagInput
-          v-model="localCharacter.tags!"
+          v-model="allCharacterTags!"
           :placeholder="t('characterEditor.searchTags')"
           :label="t('characterEditor.tags')"
+          :suggestions="characterUiStore.availableTags"
         />
       </div>
 

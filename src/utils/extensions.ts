@@ -1,6 +1,6 @@
 import * as Vue from 'vue';
 import { createVNode, render, type App } from 'vue';
-import { CustomPromptPostProcessing, EventPriority, GenerationMode, default_avatar } from '../constants';
+import { CustomPromptPostProcessing, GenerationMode, default_avatar } from '../constants';
 import type {
   ApiChatContentPart,
   ApiChatMessage,
@@ -9,12 +9,13 @@ import type {
   ExtensionAPI,
   ExtensionEventMap,
   ExtensionMetadata,
+  MediaHydrationContext,
   MountableComponent,
   SettingsPath,
   Tokenizer,
   WorldInfoBook,
 } from '../types';
-import { sanitizeSelector } from './client';
+import { isDeviceMobile, isViewportMobile, sanitizeSelector } from './client';
 import { formatFileSize, getMessageTimeStamp, uuidv4 } from './commons';
 
 // Internal Store Imports
@@ -81,53 +82,10 @@ export async function countTokens(
 
 // --- Event Emitter ---
 
-type EventName = keyof ExtensionEventMap;
-type Listener<E extends EventName> = (...args: ExtensionEventMap[E]) => Promise<void> | void;
-
-interface ListenerObject<E extends EventName> {
-  listener: Listener<E>;
-  priority: number;
-}
-
-class EventEmitter {
-  private events: { [E in EventName]?: ListenerObject<E>[] } = {};
-
-  on<E extends EventName>(
-    eventName: E,
-    listener: Listener<E>,
-    priority: number | EventPriority = EventPriority.MEDIUM,
-  ): () => void {
-    if (!this.events[eventName]) {
-      this.events[eventName] = [];
-    }
-    const listenerObject = { listener, priority };
-    this.events[eventName]!.push(listenerObject);
-    this.events[eventName]!.sort((a, b) => b.priority - a.priority);
-    return () => this.off(eventName, listener);
-  }
-
-  off<E extends EventName>(eventName: E, listener: Listener<E>): void {
-    if (!this.events[eventName]) return;
-    const index = this.events[eventName]!.findIndex((l) => l.listener === listener);
-    if (index > -1) {
-      this.events[eventName]!.splice(index, 1);
-    }
-  }
-
-  async emit<E extends EventName>(eventName: E, ...args: ExtensionEventMap[E]): Promise<void> {
-    const listeners = this.events[eventName];
-    if (!listeners) return;
-    for (const listenerObject of [...listeners]) {
-      try {
-        await listenerObject.listener(...args);
-      } catch (error) {
-        console.error(`Error in event listener for event "${eventName}":`, error);
-      }
-    }
-  }
-}
-
-export const eventEmitter = new EventEmitter();
+import { defaultsDeep } from 'lodash-es';
+import { getModelCapabilities } from '../api/provider-definitions';
+import { eventEmitter } from './event-emitter';
+export { eventEmitter };
 
 // --- Loader Utils ---
 
@@ -367,7 +325,11 @@ const baseExtensionAPI: ExtensionAPI = {
       if (!activeCharacter) throw new Error('No active character.');
 
       const contextCharacters = [activeCharacter];
-      await eventEmitter.emit('generation:resolve-context', { characters: contextCharacters });
+      await eventEmitter.emit(
+        'generation:resolve-context',
+        { characters: contextCharacters },
+        { generationId: options?.generationId },
+      );
 
       const tokenizer = new ApiTokenizer({
         tokenizerType: settingsStore.settings.api.tokenizer,
@@ -380,6 +342,19 @@ const baseExtensionAPI: ExtensionAPI = {
         )
       ).filter((book): book is WorldInfoBook => book !== undefined);
 
+      const mediaContext: MediaHydrationContext = defaultsDeep({}, options?.mediaContext, {
+        apiSettings: {
+          forbidExternalMedia: settingsStore.settings.ui.chat.forbidExternalMedia,
+          imageQuality: settingsStore.settings.api.imageQuality,
+          sendMedia: settingsStore.settings.api.sendMedia,
+        },
+        formatter: settingsStore.settings.api.formatter,
+        modelCapabilities: getModelCapabilities(
+          settingsStore.settings.api.provider,
+          apiStore.activeModel,
+          apiStore.modelList,
+        ),
+      } satisfies MediaHydrationContext);
       const builder = new PromptBuilder({
         generationId: options?.generationId ?? uuidv4(),
         characters: contextCharacters,
@@ -390,6 +365,7 @@ const baseExtensionAPI: ExtensionAPI = {
         tokenizer,
         books,
         worldInfo: settingsStore.settings.worldInfo,
+        mediaContext,
       });
 
       return await builder.build();
@@ -573,6 +549,14 @@ const baseExtensionAPI: ExtensionAPI = {
     },
   },
   ui: {
+    isDeviceMobile: () => isDeviceMobile(),
+    isMobile: () => {
+      const settingsStore = useSettingsStore();
+      if (settingsStore.settings.ui.forceMobileMode) {
+        return true;
+      }
+      return isViewportMobile();
+    },
     showToast: (message, type = 'info') => toast[type](message),
     openDrawer: (panelName) => {
       useLayoutStore().activeDrawer = panelName;

@@ -1,11 +1,13 @@
 import { defaultSamplerSettings } from '../constants';
 import type {
   ApiAssistantMessage,
+  ApiChatContentPart,
   ApiChatMessage,
   ApiToolMessage,
   Character,
   ChatMessage,
   ChatMetadata,
+  MediaHydrationContext,
   Persona,
   ProcessedWorldInfo,
   PromptBuilderOptions,
@@ -15,6 +17,7 @@ import type {
   WorldInfoSettings,
 } from '../types';
 import { countTokens, eventEmitter } from '../utils/extensions';
+import { compressImage, getImageTokenCost, getMediaDurationFromDataURL, isDataURL } from '../utils/media';
 import { macroService } from './macro-service';
 import { WorldInfoProcessor } from './world-info';
 
@@ -31,6 +34,8 @@ export class PromptBuilder {
   public worldInfo: WorldInfoSettings;
   public books: WorldInfoBook[];
   public generationId: string;
+  public mediaTokenCost = 0;
+  public mediaContext: MediaHydrationContext;
 
   constructor({
     characters,
@@ -42,6 +47,7 @@ export class PromptBuilder {
     worldInfo,
     books,
     generationId,
+    mediaContext,
   }: PromptBuilderOptions) {
     this.characters = characters;
     this.character = characters[0];
@@ -53,6 +59,7 @@ export class PromptBuilder {
     this.worldInfo = worldInfo;
     this.books = books;
     this.generationId = generationId;
+    this.mediaContext = mediaContext;
 
     this.maxContext = this.samplerSettings.max_context ?? defaultSamplerSettings.max_context;
   }
@@ -87,6 +94,78 @@ export class PromptBuilder {
     });
   }
 
+  private async _buildMessageContent(
+    msg: ChatMessage,
+  ): Promise<{ content: string | ApiChatContentPart[]; mediaTokens: number }> {
+    const processedContent = macroService.process(msg.mes, {
+      characters: this.characters,
+      persona: this.persona,
+    });
+    let mediaTokens = 0;
+
+    const mediaEnabled =
+      this.mediaContext && this.mediaContext.formatter !== 'text' && this.mediaContext.apiSettings.sendMedia;
+    if (!mediaEnabled || !msg.extra?.media || msg.extra.media.length === 0) {
+      return { content: processedContent, mediaTokens: 0 };
+    }
+
+    const { modelCapabilities, apiSettings } = this.mediaContext;
+
+    const contentParts: ApiChatContentPart[] = [];
+    if (processedContent) {
+      contentParts.push({ type: 'text', text: processedContent });
+    }
+
+    const ignoredMedia = msg.extra.ignored_media ?? [];
+    for (const mediaItem of msg.extra.media) {
+      if (ignoredMedia.includes(mediaItem.url) || (mediaItem.source === 'inline' && apiSettings.forbidExternalMedia)) {
+        continue;
+      }
+
+      try {
+        let dataUrl = mediaItem.url;
+        if (mediaItem.type === 'image' && modelCapabilities.vision) {
+          const compressed = await compressImage(dataUrl);
+          contentParts.push({
+            type: 'image_url',
+            image_url: {
+              url: compressed,
+              detail: apiSettings.imageQuality,
+            },
+          });
+          mediaTokens += await getImageTokenCost(compressed, apiSettings.imageQuality);
+        } else if (
+          (mediaItem.type === 'video' && modelCapabilities.video) ||
+          (mediaItem.type === 'audio' && modelCapabilities.audio)
+        ) {
+          if (!isDataURL(dataUrl)) {
+            const response = await fetch(dataUrl);
+            if (response.ok) {
+              const blob = await response.blob();
+              dataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+            }
+          }
+
+          if (mediaItem.type === 'video') {
+            contentParts.push({ type: 'video_url', video_url: { url: dataUrl } });
+            mediaTokens += 263 * Math.ceil(await getMediaDurationFromDataURL(dataUrl, 'video'));
+          } else {
+            contentParts.push({ type: 'audio_url', audio_url: { url: dataUrl } });
+            mediaTokens += 32 * Math.ceil(await getMediaDurationFromDataURL(dataUrl, 'audio'));
+          }
+        }
+      } catch (e) {
+        console.error('Failed to process media item:', e);
+      }
+    }
+    return { content: contentParts.length > 1 ? contentParts : processedContent, mediaTokens };
+  }
+
   public async build(): Promise<ApiChatMessage[]> {
     const options: PromptBuilderOptions = {
       books: this.books,
@@ -98,6 +177,7 @@ export class PromptBuilder {
       tokenizer: this.tokenizer,
       worldInfo: this.worldInfo,
       generationId: this.generationId,
+      mediaContext: this.mediaContext,
     };
     await eventEmitter.emit('prompt:building-started', options);
     const finalMessages: ApiChatMessage[] = [];
@@ -233,13 +313,14 @@ export class PromptBuilder {
     const historyMessages: ApiChatMessage[] = [];
     let historyTokenCount = 0;
 
-    const insertMessages = async (msgs: ApiChatMessage[]): Promise<boolean> => {
-      for (let i = msgs.length - 1; i >= 0; i--) {
-        const msg = msgs[i];
-        const tokenCount = await countTokens(msg.content, this.tokenizer);
-        if (historyTokenCount + tokenCount <= historyBudget) {
-          historyTokenCount += tokenCount;
-          historyMessages.unshift(msg);
+    const insertMessages = async (
+      msgsWithTokens: { apiMessage: ApiChatMessage; tokens: number }[],
+    ): Promise<boolean> => {
+      for (let i = msgsWithTokens.length - 1; i >= 0; i--) {
+        const { apiMessage, tokens } = msgsWithTokens[i];
+        if (historyTokenCount + tokens <= historyBudget) {
+          historyTokenCount += tokens;
+          historyMessages.unshift(apiMessage);
         } else {
           return false;
         }
@@ -247,17 +328,21 @@ export class PromptBuilder {
       return true;
     };
 
-    const depthEntriesMap = new Map<number, ApiChatMessage[]>();
+    const depthEntriesMap = new Map<number, { apiMessage: ApiChatMessage; tokens: number }[]>();
     if (this.processedWorldInfo.depthEntries.length > 0) {
       for (const entryItem of this.processedWorldInfo.depthEntries) {
-        const msgs: ApiChatMessage[] = entryItem.entries.map(
-          (content) =>
-            ({
+        const msgs = await Promise.all(
+          entryItem.entries.map(async (content) => {
+            const apiMessage = {
               role: entryItem.role,
               content,
               name: entryItem.role,
-            }) as ApiChatMessage,
+            } as ApiChatMessage;
+            const tokens = await countTokens(content, this.tokenizer);
+            return { apiMessage, tokens };
+          }),
         );
+
         const list = depthEntriesMap.get(entryItem.depth) || [];
         depthEntriesMap.set(entryItem.depth, [...list, ...msgs]);
       }
@@ -278,21 +363,21 @@ export class PromptBuilder {
         continue;
       }
 
-      const processedContent = macroService.process(msg.mes, {
-        characters: this.characters,
-        persona: this.persona,
-      });
+      const { content: processedContent, mediaTokens } = await this._buildMessageContent(msg);
+      if (mediaTokens > 0) this.mediaTokenCost += mediaTokens;
 
       const toolInvocations = msg.extra?.tool_invocations;
 
-      const apiMessagesToInsert: ApiChatMessage[] = [];
+      const messagesToInsert: { apiMessage: ApiChatMessage; tokens: number }[] = [];
 
       if (msg.is_user) {
-        apiMessagesToInsert.push({
+        const apiMessage: ApiChatMessage = {
           role: 'user',
           content: processedContent,
           name: msg.name,
-        });
+        };
+        const textTokens = await countTokens(processedContent, this.tokenizer);
+        messagesToInsert.push({ apiMessage, tokens: textTokens + mediaTokens });
       } else {
         // This is an assistant message. It might have text, tool calls, or both.
         const tool_calls = toolInvocations
@@ -308,11 +393,13 @@ export class PromptBuilder {
           : undefined;
 
         let assistantMsg: ApiAssistantMessage;
+        const textContent = typeof processedContent === 'string' ? processedContent : null;
+
         if (tool_calls) {
           assistantMsg = {
             role: 'assistant',
             name: msg.name,
-            content: processedContent || null,
+            content: textContent,
             tool_calls,
           };
           if (!assistantMsg.content) {
@@ -328,31 +415,39 @@ export class PromptBuilder {
 
         // Only add assistant message if it has content or tool calls
         if (assistantMsg.content || (assistantMsg.tool_calls && assistantMsg.tool_calls.length > 0)) {
-          apiMessagesToInsert.push(assistantMsg);
+          const textTokens = await countTokens(assistantMsg.content, this.tokenizer);
+          messagesToInsert.push({ apiMessage: assistantMsg, tokens: textTokens + mediaTokens });
         }
 
         if (toolInvocations) {
-          const toolMessages: ApiToolMessage[] = toolInvocations.map((inv) => ({
-            role: 'tool',
-            tool_call_id: inv.id,
-            content: inv.result,
-            name: inv.name,
-          }));
-          apiMessagesToInsert.push(...toolMessages);
+          for (const inv of toolInvocations) {
+            const toolMessage: ApiToolMessage = {
+              role: 'tool',
+              tool_call_id: inv.id,
+              content: inv.result,
+              name: inv.name,
+            };
+            const toolTokens = await countTokens(toolMessage.content, this.tokenizer);
+            messagesToInsert.push({ apiMessage: toolMessage, tokens: toolTokens });
+          }
         }
       }
 
-      await eventEmitter.emit('prompt:history-message-processing', apiMessagesToInsert, {
-        originalMessage: msg,
-        isGroupContext,
-        characters: this.characters,
-        persona: this.persona,
-        index: i,
-        chatLength: this.chatHistory.length,
-      });
+      await eventEmitter.emit(
+        'prompt:history-message-processing',
+        messagesToInsert.map((m) => m.apiMessage),
+        {
+          originalMessage: msg,
+          isGroupContext,
+          characters: this.characters,
+          persona: this.persona,
+          index: i,
+          chatLength: this.chatHistory.length,
+        },
+      );
 
       // Insert the generated messages, checking budget for each one
-      const success = await insertMessages(apiMessagesToInsert);
+      const success = await insertMessages(messagesToInsert);
       if (!success) {
         break;
       }

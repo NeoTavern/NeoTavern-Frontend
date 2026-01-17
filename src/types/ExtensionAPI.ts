@@ -11,6 +11,7 @@ import type {
   ApiChatMessage,
   ChatCompletionPayload,
   GenerationResponse,
+  MediaHydrationContext,
   StreamedChunk,
   StructuredResponseOptions,
 } from './generation';
@@ -107,6 +108,8 @@ export interface MountableComponentPropsMap {
     disabled?: boolean;
     loading?: boolean;
     title?: string;
+    active?: boolean;
+    role?: string;
     onClick?: (event: MouseEvent) => void;
   };
   [MountableComponent.ImageCropper]: {
@@ -156,6 +159,8 @@ export interface MountableComponentPropsMap {
     popupId: string;
     value: string;
     label?: string;
+    language?: 'markdown' | 'css';
+    codeMirror?: boolean;
     'onUpdate:value'?: (value: string) => void;
   };
   [MountableComponent.Checkbox]: {
@@ -163,6 +168,7 @@ export interface MountableComponentPropsMap {
     label: string;
     description?: string;
     disabled?: boolean;
+    id?: string;
     'onUpdate:modelValue'?: (value: boolean) => void;
   };
   [MountableComponent.FileInput]: {
@@ -178,6 +184,7 @@ export interface MountableComponentPropsMap {
     description?: string;
     error?: string;
     horizontal?: boolean;
+    for?: string;
   };
   [MountableComponent.Icon]: {
     icon: string;
@@ -193,6 +200,8 @@ export interface MountableComponentPropsMap {
     min?: number;
     max?: number;
     step?: number;
+    id?: string;
+    tools?: TextareaToolDefinition[];
     'onUpdate:modelValue'?: (value: string | number) => void;
     onChange?: (event: Event) => void;
   };
@@ -203,18 +212,25 @@ export interface MountableComponentPropsMap {
   [MountableComponent.Search]: {
     modelValue: string;
     placeholder?: string;
+    label?: string;
     'onUpdate:modelValue'?: (value: string) => void;
   };
   [MountableComponent.Select]: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     modelValue: any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    options: { label: string; value: any; disabled?: boolean }[];
+    options: (// eslint-disable-next-line @typescript-eslint/no-explicit-any
+    | { label: string; value: any; disabled?: boolean }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      | { label: string; options: { label: string; value: any; disabled?: boolean }[] }
+    )[];
     label?: string;
     disabled?: boolean;
     title?: string;
     multiple?: boolean;
     placeholder?: string;
+    searchable?: boolean;
+    groupSelect?: boolean;
+    id?: string;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     'onUpdate:modelValue'?: (value: any) => void;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -232,12 +248,21 @@ export interface MountableComponentPropsMap {
     rows?: number;
     disabled?: boolean;
     resizable?: boolean;
+    allowMaximize?: boolean;
+    codeMirror?: boolean;
+    language?: 'markdown' | 'css';
+    identifier?: string;
+    id?: string;
+    tools?: TextareaToolDefinition[];
     'onUpdate:modelValue'?: (value: string) => void;
     onMaximize?: () => void;
   };
   [MountableComponent.Toggle]: {
     modelValue: boolean;
     disabled?: boolean;
+    title?: string;
+    label?: string;
+    id?: string;
     'onUpdate:modelValue'?: (value: boolean) => void;
   };
   [MountableComponent.CollapsibleSection]: {
@@ -253,11 +278,15 @@ export interface MountableComponentPropsMap {
     step?: number;
     label?: string;
     disabled?: boolean;
+    title?: string;
+    id?: string;
     'onUpdate:modelValue'?: (value: number) => void;
   };
   [MountableComponent.TagInput]: {
     modelValue: string[];
     placeholder?: string;
+    label?: string;
+    suggestions?: string[];
     'onUpdate:modelValue'?: (value: string[]) => void;
   };
   [MountableComponent.Pagination]: {
@@ -360,7 +389,11 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
      * world info, character definitions, persona, and history processing.
      * This replicates the internal prompt building logic used during generation.
      */
-    buildPrompt: (options?: { generationId?: string; characterAvatar?: string }) => Promise<ApiChatMessage[]>;
+    buildPrompt: (options?: {
+      generationId?: string;
+      characterAvatar?: string;
+      mediaContext?: MediaHydrationContext;
+    }) => Promise<ApiChatMessage[]>;
 
     /**
      * Creates a new chat file with the provided content.
@@ -505,6 +538,15 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
     toggle: (name: string, enable?: boolean) => void;
   };
   ui: {
+    /**
+     * Checks if the device is a mobile device (phone/tablet) based on user agent.
+     */
+    isDeviceMobile: () => boolean;
+    /**
+     * Checks if the UI is in mobile mode (narrow viewport).
+     * This respects the 'Force Mobile Mode' setting.
+     */
+    isMobile: () => boolean;
     showToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
     openDrawer: (panelName: DrawerType) => void;
     closePanel: () => void;

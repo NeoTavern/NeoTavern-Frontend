@@ -21,6 +21,7 @@ import { usePersonaStore } from './stores/persona.store';
 import { usePopupStore } from './stores/popup.store';
 import { useSecretStore } from './stores/secret.store';
 import { useSettingsStore } from './stores/settings.store';
+import { useTagStore } from './stores/tag.store';
 import { useThemeStore } from './stores/theme.store';
 import { useWorldInfoStore } from './stores/world-info.store';
 
@@ -37,6 +38,7 @@ const secretStore = useSecretStore();
 const chatStore = useChatStore();
 const themeStore = useThemeStore();
 const authStore = useAuthStore();
+const tagStore = useTagStore();
 const { t } = useStrictI18n();
 const { registerCoreComponents } = useAppRegistration();
 const { toasts } = useToastState();
@@ -132,6 +134,7 @@ async function initializeAppData() {
       backgroundStore.initialize(),
       worldInfoStore.initialize(),
       personaStore.initialize(),
+      tagStore.initialize(),
       themeStore.fetchThemes(),
     ]);
     themeStore.loadCurrentDOMStyles();

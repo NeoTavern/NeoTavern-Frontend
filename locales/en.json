@@ -523,6 +523,7 @@
     "delete": "Delete",
     "of": "of",
     "search": "Search",
+    "clear": "Clear",
     "resetToDefaults": "Reset to Defaults",
     "confirmDelete": "Confirm Deletion",
     "by": "by",
@@ -739,10 +740,10 @@
     "createNew": "Create New Character",
     "importFile": "Import Character from File",
     "searchToggle": "Toggle search bar",
-    "searchPlaceholder": "Search...",
+    "searchPlaceholder": "Search",
     "filterTags": "Filter Tags",
     "sorting": {
-      "title": "Characters sorting order",
+      "title": "Order",
       "nameAsc": "A-Z",
       "nameDesc": "Z-A",
       "newest": "Newest",
@@ -754,6 +755,18 @@
       "placeholderTitle": "Select a Character",
       "placeholderText": "Select a character from the list to view or edit their details.",
       "placeholderButton": "Create New Character"
+    },
+    "tags": {
+      "manage": "Manage Tags",
+      "managerTitle": "Custom Tag Manager",
+      "existing": "Existing Tags",
+      "noTags": "No custom tags defined.",
+      "editTitle": "Edit Tag",
+      "addTitle": "Add New Tag",
+      "background": "Background",
+      "foreground": "Text",
+      "add": "Add Tag",
+      "removeColor": "Remove Color"
     }
   },
   "characterEditor": {
@@ -1152,6 +1165,16 @@
         }
       }
     },
+    "character": {
+      "hideEmbeddedTagsInPanel": {
+        "label": "Hide embedded tags",
+        "description": "If enabled, tags saved directly inside character cards (embedded) will not be displayed in the character browser or editor. Only custom tags will be visible."
+      },
+      "hideEmbeddedTagsInSuggestions": {
+        "label": "Hide embedded tags in suggestions",
+        "description": "If enabled, tags from character cards will not appear in the auto-complete suggestions for tag fields."
+      }
+    },
     "ui": {
       "disableAnimations": {
         "label": "Disable all animations",
@@ -1218,6 +1241,10 @@
           "group": "Group Chat Only",
           "all": "All Chats"
         }
+      },
+      "regenerateOnEdit": {
+        "label": "Auto-regenerate on Edit",
+        "description": "Automatically regenerate the AI's response when a user message is edited. This does not apply to the first message of the chat."
       }
     }
   },
@@ -1494,6 +1521,15 @@
       "urlInspector": "URL Inspector",
       "maxContentLength": "Max Content Length",
       "maxContentLengthHint": "Character limit for the extracted content to prevent context overflow."
+    },
+    "liveCommentary": {
+      "enable": "Enable Live Commentary",
+      "connectionProfile": "Connection Profile",
+      "connectionProfileHint": "The LLM profile used to generate character thoughts.",
+      "debounceMs": "Typing Debounce (ms)",
+      "displayDurationMs": "Display Duration (ms)",
+      "promptTemplate": "Prompt Template",
+      "promptHint": "The prompt template for generating thoughts. Uses Handlebars syntax with variables."
     }
   },
   "login": {
@@ -1527,7 +1563,8 @@
       "removeTag": "Remove tag: {tag}",
       "addTag": "Add Tag",
       "added": "{count} tag(s) added: {tags}",
-      "removed": "Removed tag: {tag}"
+      "removed": "Removed tag: {tag}",
+      "suggestionsList": "Suggestions"
     },
     "imageCropper": {
       "cropBoxLabel": "Crop selection box. Drag to move or resize.",

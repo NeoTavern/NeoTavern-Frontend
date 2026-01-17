@@ -653,7 +653,11 @@
   }
 }
 
-// Tag Input Controls
+// --- Tag Input ---
+.tag-input-container {
+  position: relative;
+}
+
 .tag-input-controls {
   display: flex;
   gap: var(--spacing-xs);
@@ -664,11 +668,55 @@
   }
 }
 
+.tag-input-suggestions {
+  position: absolute;
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: var(--theme-background-tint);
+  border: 1px solid var(--theme-border-color);
+  border-radius: var(--base-border-radius);
+  z-index: var(--z-dropdown);
+  box-shadow: 0 4px 6px var(--theme-shadow-color);
+  list-style: none;
+  padding: var(--spacing-xs) 0;
+  margin: 0;
+  margin-top: var(--spacing-xs);
+
+  // Scrollbar adjustments for the dropdown
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--grey-5050a);
+    border-radius: 3px;
+  }
+
+  &-item {
+    padding: var(--spacing-xs) var(--spacing-md);
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+
+    &:hover:not(.is-active) {
+      background-color: var(--white-20a);
+    }
+
+    &.is-active {
+      background-color: var(--color-accent-cobalt-30a);
+      color: var(--white-100);
+    }
+  }
+}
+
 .tags-list {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
   margin-top: var(--spacing-xs);
+  padding: 0;
+  margin-block: 0;
+  list-style: none;
 }
 
 .tag {
@@ -681,16 +729,42 @@
   align-items: center;
   gap: var(--spacing-xs);
 
-  .tag-close {
+  .tag-close-btn {
+    background: none;
+    border: none;
+    color: inherit;
     cursor: pointer;
     opacity: 0.7;
     font-size: 0.9em;
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
 
-    &:hover {
+    &:hover,
+    &:focus {
       opacity: 1;
       color: var(--color-accent-red);
     }
+
+    @include focus-visible();
   }
+}
+
+// --- UI Tag ---
+.ui-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: var(--base-border-radius);
+  font-weight: 600;
+  font-size: 0.8em;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  text-align: center;
+  background-color: var(--grey-5050a);
+  color: var(--theme-text-color);
 }
 
 // Sidebar/Main Page Header

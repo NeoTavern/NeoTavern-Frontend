@@ -526,6 +526,7 @@ export interface MessageSchema {
     delete: string;
     of: string;
     search: string;
+    clear: string;
     resetToDefaults: string;
     confirmDelete: string;
     by: string;
@@ -757,6 +758,18 @@ export interface MessageSchema {
       placeholderTitle: string;
       placeholderText: string;
       placeholderButton: string;
+    };
+    tags: {
+      manage: string;
+      managerTitle: string;
+      existing: string;
+      noTags: string;
+      editTitle: string;
+      addTitle: string;
+      background: string;
+      foreground: string;
+      add: string;
+      removeColor: string;
     };
   };
   characterEditor: {
@@ -1155,6 +1168,16 @@ export interface MessageSchema {
         };
       };
     };
+    character: {
+      hideEmbeddedTagsInPanel: {
+        label: string;
+        description: string;
+      };
+      hideEmbeddedTagsInSuggestions: {
+        label: string;
+        description: string;
+      };
+    };
     ui: {
       disableAnimations: {
         label: string;
@@ -1221,6 +1244,10 @@ export interface MessageSchema {
           group: string;
           all: string;
         };
+      };
+      regenerateOnEdit: {
+        label: string;
+        description: string;
       };
     };
   };
@@ -1498,6 +1525,15 @@ export interface MessageSchema {
       maxContentLength: string;
       maxContentLengthHint: string;
     };
+    liveCommentary: {
+      enable: string;
+      connectionProfile: string;
+      connectionProfileHint: string;
+      debounceMs: string;
+      displayDurationMs: string;
+      promptTemplate: string;
+      promptHint: string;
+    };
   };
   login: {
     authenticating: string;
@@ -1531,6 +1567,7 @@ export interface MessageSchema {
       addTag: string;
       added: string;
       removed: string;
+      suggestionsList: string;
     };
     imageCropper: {
       cropBoxLabel: string;

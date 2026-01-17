@@ -53,6 +53,12 @@ export interface ExtensionEventMap {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   'setting:changed': [path: SettingsPath, value: any, oldValue: any];
 
+  // Layout Events
+  'layout:left-sidebar-changed': [isOpen: boolean, view: string | null];
+  'layout:right-sidebar-changed': [isOpen: boolean, view: string | null];
+  'layout:drawer-changed': [drawerId: string | null];
+  'layout:main-layout-changed': [layoutId: string];
+
   // Message Events
   'chat:before-message-create': [message: ChatMessage, controller: AbortController];
   'message:created': [message: ChatMessage];
@@ -123,7 +129,7 @@ export interface ExtensionEventMap {
    * Fired when determining which characters should be included in the context/prompt.
    * Extensions can modify the `characters` array in the payload.
    */
-  'generation:resolve-context': [payload: { characters: Character[] }];
+  'generation:resolve-context': [payload: { characters: Character[] }, context: { generationId?: string }];
 
   /**
    * Fired when a generation is requested, but the speaker is not forced.
