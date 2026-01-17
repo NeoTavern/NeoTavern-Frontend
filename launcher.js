@@ -34,30 +34,56 @@ const DEFAULT_CONFIG = {
   externalBackendUrl: 'http://127.0.0.1:8000',
   autoUpdateBackend: true,
   exposeInternalBackend: false,
+  basicAuth: {
+    enabled: false,
+    username: 'user',
+    password: 'password',
+  },
 };
 
 function loadConfig() {
   let config;
   if (!fs.existsSync(PATHS.CONFIG)) {
     fs.writeFileSync(PATHS.CONFIG, JSON.stringify(DEFAULT_CONFIG, null, 2));
-    config = { ...DEFAULT_CONFIG };
+    config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
   } else {
     try {
       const loaded = JSON.parse(fs.readFileSync(PATHS.CONFIG, 'utf8'));
-      config = { ...DEFAULT_CONFIG, ...loaded };
+      config = {
+        ...DEFAULT_CONFIG,
+        ...loaded,
+        basicAuth: { ...DEFAULT_CONFIG.basicAuth, ...(loaded.basicAuth || {}) },
+      };
 
       let needsSave = false;
-      for (const key of Object.keys(DEFAULT_CONFIG)) {
-        if (!Object.prototype.hasOwnProperty.call(loaded, key)) {
-          config[key] = DEFAULT_CONFIG[key];
-          needsSave = true;
+      const checkNeedsSave = (defaultObj, loadedObj) => {
+        for (const key of Object.keys(defaultObj)) {
+          if (!Object.prototype.hasOwnProperty.call(loadedObj, key)) {
+            return true;
+          }
+          const defaultValue = defaultObj[key];
+          const loadedValue = loadedObj[key];
+          if (typeof defaultValue === 'object' && defaultValue !== null && !Array.isArray(defaultValue)) {
+            if (typeof loadedValue !== 'object' || loadedValue === null || Array.isArray(loadedValue)) {
+              return true;
+            }
+            if (checkNeedsSave(defaultValue, loadedValue)) {
+              return true;
+            }
+          }
         }
+        return false;
+      };
+
+      if (checkNeedsSave(DEFAULT_CONFIG, loaded)) {
+        needsSave = true;
       }
+
       if (needsSave) {
         fs.writeFileSync(PATHS.CONFIG, JSON.stringify(config, null, 2));
       }
     } catch {
-      config = { ...DEFAULT_CONFIG };
+      config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
     }
   }
 
@@ -72,6 +98,10 @@ function loadConfig() {
     config.autoUpdateBackend = process.env.NEO_AUTO_UPDATE_BACKEND.toLowerCase() === 'true';
   if (process.env.NEO_EXPOSE_INTERNAL_BACKEND)
     config.exposeInternalBackend = process.env.NEO_EXPOSE_INTERNAL_BACKEND.toLowerCase() === 'true';
+  if (process.env.NEO_BASIC_AUTH_ENABLED)
+    config.basicAuth.enabled = process.env.NEO_BASIC_AUTH_ENABLED.toLowerCase() === 'true';
+  if (process.env.NEO_BASIC_AUTH_USERNAME) config.basicAuth.username = process.env.NEO_BASIC_AUTH_USERNAME;
+  if (process.env.NEO_BASIC_AUTH_PASSWORD) config.basicAuth.password = process.env.NEO_BASIC_AUTH_PASSWORD;
 
   return config;
 }
@@ -211,6 +241,36 @@ async function setupInternalBackend() {
     }
   }
 
+  // Enforce Basic Auth
+  if (config.basicAuth.enabled) {
+    if (stConf.basicAuthMode !== true) {
+      stConf.basicAuthMode = true;
+      modified = true;
+    }
+    if (stConf.listen !== true) {
+      stConf.listen = true;
+      modified = true;
+    }
+    if (!stConf.basicAuthUser) stConf.basicAuthUser = {};
+    if (stConf.basicAuthUser.username !== config.basicAuth.username) {
+      stConf.basicAuthUser.username = config.basicAuth.username;
+      modified = true;
+    }
+    if (stConf.basicAuthUser.password !== config.basicAuth.password) {
+      stConf.basicAuthUser.password = config.basicAuth.password;
+      modified = true;
+    }
+  } else {
+    if (stConf.basicAuthMode !== false) {
+      stConf.basicAuthMode = false;
+      modified = true;
+    }
+    if (config.exposeInternalBackend === false && stConf.listen !== false) {
+      stConf.listen = false;
+      modified = true;
+    }
+  }
+
   if (modified) {
     log('Updating Backend config.yaml...', 'CONFIG');
     fs.writeFileSync(PATHS.ST_CONFIG, yaml.dump(stConf));
@@ -280,6 +340,27 @@ async function start() {
     const proxyTarget = config.useInternalBackend
       ? `http://127.0.0.1:${config.internalBackendPort}`
       : config.externalBackendUrl;
+
+    if (config.basicAuth.enabled) {
+      app.use((req, res, next) => {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+          res.setHeader('WWW-Authenticate', 'Basic realm="Restricted Area"');
+          return res.status(401).send('Authentication required.');
+        }
+
+        const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
+        const user = auth[0];
+        const pass = auth[1];
+
+        if (user === config.basicAuth.username && pass === config.basicAuth.password) {
+          return next();
+        } else {
+          res.setHeader('WWW-Authenticate', 'Basic realm="Restricted Area"');
+          return res.status(401).send('Authentication required.');
+        }
+      });
+    }
 
     const routes = [
       '/api',
