@@ -422,8 +422,8 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     const tokenizer = new ApiTokenizer({ tokenizerType: settings.api.tokenizer, model: effectiveModel });
 
     // Event-driven Context Resolution
-    const contextCharactersWrapper = { characters: [JSON.parse(JSON.stringify(activeCharacter))] };
-    await eventEmitter.emit('generation:resolve-context', contextCharactersWrapper);
+    const contextCharactersWrapper = { characters: [JSON.parse(JSON.stringify(activeCharacter))] as Character[] };
+    await eventEmitter.emit('generation:resolve-context', contextCharactersWrapper, { generationId });
     const charactersForContext = contextCharactersWrapper.characters;
 
     const clonedSampler = {

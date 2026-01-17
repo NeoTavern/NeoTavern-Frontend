@@ -505,6 +505,15 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
     toggle: (name: string, enable?: boolean) => void;
   };
   ui: {
+    /**
+     * Checks if the device is a mobile device (phone/tablet) based on user agent.
+     */
+    isDeviceMobile: () => boolean;
+    /**
+     * Checks if the UI is in mobile mode (narrow viewport).
+     * This respects the 'Force Mobile Mode' setting.
+     */
+    isMobile: () => boolean;
     showToast: (message: string, type?: 'success' | 'info' | 'warning' | 'error') => void;
     openDrawer: (panelName: DrawerType) => void;
     closePanel: () => void;

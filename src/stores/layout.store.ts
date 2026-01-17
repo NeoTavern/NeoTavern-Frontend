@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useMobile } from '../composables/useMobile';
+import { eventEmitter } from '../utils/event-emitter';
 import { useComponentRegistryStore } from './component-registry.store';
 
 type RightSidebarState = {
@@ -139,6 +140,15 @@ export const useLayoutStore = defineStore('layout', () => {
       activeDrawer.value = activeDrawer.value === itemId ? null : itemId;
     }
   }
+
+  watch(activeDrawer, (drawerId) => eventEmitter.emit('layout:drawer-changed', drawerId));
+  watch(activeMainLayout, (layoutId) => eventEmitter.emit('layout:main-layout-changed', layoutId));
+  watch([isLeftSidebarOpen, leftSidebarView], ([isOpen, view]) =>
+    eventEmitter.emit('layout:left-sidebar-changed', isOpen, view),
+  );
+  watch([isRightSidebarOpen, rightSidebarView], ([isOpen, view]) =>
+    eventEmitter.emit('layout:right-sidebar-changed', isOpen, view),
+  );
 
   return {
     activeDrawer,
