@@ -341,7 +341,6 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
       samplerKey === 'providers' ||
       samplerKey === 'max_context_unlocked' ||
       samplerKey === 'reasoning_effort' ||
-      samplerKey === 'stop' || // Handled above
       samplerKey === 'disabled_fields'
     ) {
       continue;

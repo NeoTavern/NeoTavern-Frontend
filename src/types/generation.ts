@@ -169,7 +169,9 @@ export type ChatCompletionPayload = Partial<{
   top_a?: number;
   min_p?: number;
   stop?: string[];
-  // TODO: logit_bias?: Record<string, number>;
+  logit_bias?: Record<string, number>;
+  logprobs?: boolean;
+  top_logprobs?: number;
   n?: number;
   include_reasoning?: boolean;
   seed?: number;

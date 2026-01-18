@@ -1028,6 +1028,7 @@ export const PARAMETER_DEFINITIONS: Partial<Record<keyof SamplerSettings, ParamC
       [api_providers.COHERE]: {},
       [api_providers.PERPLEXITY]: {},
       [api_providers.ELECTRONHUB]: {},
+      [api_providers.NANOGPT]: {},
       [api_providers.KOBOLDCPP]: {},
       [api_providers.OLLAMA]: {},
     },
@@ -1049,6 +1050,7 @@ export const PARAMETER_DEFINITIONS: Partial<Record<keyof SamplerSettings, ParamC
     providers: {
       [api_providers.OPENROUTER]: {},
       [api_providers.KOBOLDCPP]: {},
+      [api_providers.NANOGPT]: {},
     },
   },
 
@@ -1057,6 +1059,7 @@ export const PARAMETER_DEFINITIONS: Partial<Record<keyof SamplerSettings, ParamC
       [api_providers.OPENROUTER]: {},
       [api_providers.KOBOLDCPP]: {},
       [api_providers.OLLAMA]: {},
+      [api_providers.NANOGPT]: {},
     },
     formatterRules: [
       {
@@ -1075,6 +1078,7 @@ export const PARAMETER_DEFINITIONS: Partial<Record<keyof SamplerSettings, ParamC
   repetition_penalty: {
     providers: {
       [api_providers.OPENROUTER]: {},
+      [api_providers.NANOGPT]: {},
       [api_providers.KOBOLDCPP]: { remoteKey: 'rep_pen' },
       [api_providers.OLLAMA]: {},
     },
@@ -1136,6 +1140,52 @@ export const PARAMETER_DEFINITIONS: Partial<Record<keyof SamplerSettings, ParamC
   n: {
     providers: allowExcept([api_providers.GROQ, api_providers.XAI, api_providers.OLLAMA]),
     modelRules: [{ pattern: /^(o1|o3|o4)/, rule: null }],
+  },
+
+  logprobs: {
+    providers: {
+      [api_providers.OPENAI]: {},
+      [api_providers.AZURE_OPENAI]: {},
+      [api_providers.CUSTOM]: {},
+      [api_providers.DEEPSEEK]: {},
+      [api_providers.XAI]: {},
+      [api_providers.AIMLAPI]: {},
+    },
+    modelRules: [
+      { pattern: /^(o1|o3|o4)/, rule: null },
+      { pattern: /(?=.*gpt)(?=.*vision)/, rule: null },
+      { pattern: /^gpt-5/, rule: null },
+    ],
+  },
+
+  top_logprobs: {
+    providers: {
+      [api_providers.OPENAI]: {},
+      [api_providers.AZURE_OPENAI]: {},
+      [api_providers.CUSTOM]: {},
+      [api_providers.DEEPSEEK]: {},
+      [api_providers.XAI]: {},
+      [api_providers.AIMLAPI]: {},
+    },
+    modelRules: [
+      { pattern: /^(o1|o3|o4)/, rule: null },
+      { pattern: /^gpt-5/, rule: null },
+    ],
+  },
+
+  logit_bias: {
+    providers: {
+      [api_providers.OPENAI]: {},
+      [api_providers.AZURE_OPENAI]: {},
+      [api_providers.OPENROUTER]: {},
+      [api_providers.ELECTRONHUB]: {},
+      [api_providers.CUSTOM]: {},
+    },
+    modelRules: [
+      { pattern: /^(o1|o3|o4)/, rule: null },
+      { pattern: /(?=.*gpt)(?=.*vision)/, rule: null },
+      { pattern: /gpt-5(\.1)?/, rule: null },
+    ],
   },
 };
 

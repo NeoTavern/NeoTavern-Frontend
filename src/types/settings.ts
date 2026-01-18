@@ -146,6 +146,9 @@ export interface SamplerSettings {
   show_thoughts: boolean;
   reasoning_effort: ReasoningEffort;
   disabled_fields?: string[];
+  logprobs?: boolean;
+  top_logprobs?: number;
+  logit_bias?: Record<string, number>;
 }
 
 export interface ReasoningTemplate {
