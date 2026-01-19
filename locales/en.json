@@ -1557,7 +1557,8 @@
         "presetCreated": "Preset created.",
         "presetRenamed": "Preset renamed.",
         "cannotDeleteLastPreset": "You cannot delete the last preset.",
-        "presetDeleted": "Preset deleted."
+        "presetDeleted": "Preset deleted.",
+        "noConnectionProfile": "No connection profile selected."
       },
       "chatForm": {
         "manageSchemas": "Manage Tracker Schemas"

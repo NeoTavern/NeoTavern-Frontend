@@ -52,6 +52,10 @@ class TrackerManager {
     const chat = this.api.chat.getHistory();
     const message = chat[index];
     if (!message) return;
+    if (!settings.connectionProfile) {
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.tracker.toasts.noConnectionProfile'), 'error');
+      return;
+    }
 
     let chatSchemaNames = this.api.chat.metadata.get()?.extra?.['core.tracker']?.schemaNames ?? [];
     if (chatSchemaNames.length === 0) {

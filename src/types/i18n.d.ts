@@ -1561,6 +1561,7 @@ export interface MessageSchema {
         presetRenamed: string;
         cannotDeleteLastPreset: string;
         presetDeleted: string;
+        noConnectionProfile: string;
       };
       chatForm: {
         manageSchemas: string;
