@@ -69,6 +69,7 @@ function toggleCollapse(schemaName: string) {
   flex-direction: column;
   gap: var(--spacing-xs);
   margin-top: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
 }
 
 .tracker-display {
@@ -119,6 +120,38 @@ function toggleCollapse(schemaName: string) {
 
   strong {
     color: var(--theme-emphasis-color);
+  }
+}
+
+.tracker-details {
+  margin-top: var(--spacing-sm);
+
+  summary {
+    cursor: pointer;
+    margin-bottom: var(--spacing-xs);
+    color: var(--theme-emphasis-color);
+
+    &:hover {
+      color: var(--theme-text-color);
+    }
+  }
+}
+
+.tracker-details-content {
+  margin-bottom: var(--spacing-sm);
+  padding-left: var(--spacing-sm);
+  border-left: 2px solid var(--theme-border-color);
+}
+
+.tracker-character-entry {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--theme-border-color);
+
+  .tracker-character-name {
+    font-weight: bold;
+    margin-bottom: var(--spacing-xs);
+    color: var(--theme-text-color);
   }
 }
 

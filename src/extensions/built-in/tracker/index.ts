@@ -113,11 +113,7 @@ class TrackerManager {
             async onCompletion({ structured_content, parse_error }) {
               let trackerHtml = '';
               if (!parse_error && structured_content) {
-                trackerHtml = thus.api.macro.process(
-                  preset.template,
-                  undefined,
-                  structured_content as Record<string, unknown>,
-                );
+                trackerHtml = thus.api.macro.process(preset.template, undefined, { data: structured_content });
               }
 
               await thus.updateTrackerData(index, schemaName, {
@@ -338,10 +334,10 @@ class TrackerManager {
 
     // Inject Display
     if (!this.mountedDisplays.has(index)) {
-      const target = messageEl.querySelector('.message-main');
+      const target = messageEl.querySelector('.message-header');
       if (target) {
         const mountPoint = document.createElement('div');
-        target.insertAdjacentElement('afterbegin', mountPoint);
+        target.after(mountPoint);
         const displayInstance = this.api.ui.mount(mountPoint, TrackerDisplay, {
           api: this.api,
           message,
