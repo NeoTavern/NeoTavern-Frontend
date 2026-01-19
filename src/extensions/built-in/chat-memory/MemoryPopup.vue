@@ -5,10 +5,10 @@ import { FormItem, Tabs } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
 import LorebookTab from './components/LorebookTab.vue';
 import MessageSummariesTab from './components/MessageSummariesTab.vue';
-import { type ChatMemoryMetadata, EXTENSION_KEY, type ExtensionSettings } from './types';
+import { type ChatMemoryMetadata, type ExtensionSettings, type MemoryMessageExtra } from './types';
 
 const props = defineProps<{
-  api: ExtensionAPI<ExtensionSettings>;
+  api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata, MemoryMessageExtra>;
 }>();
 
 const t = props.api.i18n.t;
@@ -47,8 +47,8 @@ function loadState() {
 
   // Metadata
   const currentMetadata = props.api.chat.metadata.get();
-  const memoryExtra = (currentMetadata?.extra?.[EXTENSION_KEY] as ChatMemoryMetadata) || {};
-  if (memoryExtra.activeTab) {
+  const memoryExtra = currentMetadata?.extra?.['core.chat-memory'];
+  if (memoryExtra?.activeTab) {
     activeTab.value = memoryExtra.activeTab;
   }
 }
@@ -62,14 +62,13 @@ function saveTabState() {
   const currentMetadata = props.api.chat.metadata.get();
   if (!currentMetadata) return;
 
-  const memoryExtra = (currentMetadata.extra?.[EXTENSION_KEY] as ChatMemoryMetadata) || { memories: [] };
-  const updatedExtra: ChatMemoryMetadata = {
-    ...memoryExtra,
-    activeTab: activeTab.value,
-  };
-
   props.api.chat.metadata.update({
-    extra: { ...currentMetadata.extra, [EXTENSION_KEY]: updatedExtra },
+    extra: {
+      'core.chat-memory': {
+        memories: currentMetadata.extra?.['core.chat-memory']?.memories || [],
+        activeTab: activeTab.value,
+      },
+    },
   });
 }
 </script>

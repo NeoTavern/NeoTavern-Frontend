@@ -105,7 +105,7 @@ export class PromptBuilder {
 
     const mediaEnabled =
       this.mediaContext && this.mediaContext.formatter !== 'text' && this.mediaContext.apiSettings.sendMedia;
-    if (!mediaEnabled || !msg.extra?.media || msg.extra.media.length === 0) {
+    if (!mediaEnabled || !msg.extra.media || msg.extra.media.length === 0) {
       return { content: processedContent, mediaTokens: 0 };
     }
 
@@ -366,7 +366,7 @@ export class PromptBuilder {
       const { content: processedContent, mediaTokens } = await this._buildMessageContent(msg);
       if (mediaTokens > 0) this.mediaTokenCost += mediaTokens;
 
-      const toolInvocations = msg.extra?.tool_invocations;
+      const toolInvocations = msg.extra.tool_invocations;
 
       const messagesToInsert: { apiMessage: ApiChatMessage; tokens: number }[] = [];
 

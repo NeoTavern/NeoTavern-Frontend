@@ -6,17 +6,21 @@ export interface ChatMemoryRecord {
 }
 
 export interface ChatMemoryMetadata {
-  memories: ChatMemoryRecord[];
-  targetLorebook?: string;
-  lorebookRange?: [number, number];
-  summaryRange?: [number, number];
-  activeTab?: string;
+  'core.chat-memory'?: {
+    memories: ChatMemoryRecord[];
+    targetLorebook?: string;
+    lorebookRange?: [number, number];
+    summaryRange?: [number, number];
+    activeTab?: string;
+  };
 }
 
 export interface MemoryMessageExtra {
-  summarized?: boolean; // Used by Lorebook summary to mark hidden messages
-  original_is_system?: boolean;
-  summary?: string; // Per-message summary
+  'core.chat-memory'?: {
+    summarized?: boolean; // Used by Lorebook summary to mark hidden messages
+    original_is_system?: boolean;
+    summary?: string; // Per-message summary
+  };
 }
 
 export interface ExtensionSettings {

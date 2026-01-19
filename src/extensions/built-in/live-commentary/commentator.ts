@@ -249,7 +249,7 @@ export class Commentator {
       const messages: ApiChatMessage[] = [{ role: 'system', content: prompt, name: 'System' }];
 
       const response = await this.api.llm.generate(messages, {
-        connectionProfileName: settings.connectionProfile,
+        connectionProfile: settings.connectionProfile,
         signal: controller.signal,
       });
 

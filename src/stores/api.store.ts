@@ -54,7 +54,7 @@ export const useApiStore = defineStore('api', () => {
     set: (value) => (settingsStore.settings.api.connectionProfiles = value),
   });
 
-  const selectedConnectionProfileName = computed({
+  const selectedConnectionProfile = computed({
     get: () => settingsStore.settings.api.selectedConnectionProfile,
     set: (value) => (settingsStore.settings.api.selectedConnectionProfile = value),
   });
@@ -147,10 +147,10 @@ export const useApiStore = defineStore('api', () => {
     );
   }
 
-  async function selectConnectionProfile(profileName: string) {
-    settingsStore.settings.api.selectedConnectionProfile = profileName;
+  async function selectConnectionProfile(id: string) {
+    settingsStore.settings.api.selectedConnectionProfile = id;
 
-    const profile = connectionProfiles.value.find((p) => p.name === profileName);
+    const profile = connectionProfiles.value.find((p) => p.id === id);
     if (!profile) return;
 
     if (profile.provider && profile.provider !== settingsStore.settings.api.provider) {
@@ -465,11 +465,11 @@ export const useApiStore = defineStore('api', () => {
       id: uuidv4(),
     };
     connectionProfiles.value = [...connectionProfiles.value, newProfile];
-    selectConnectionProfile(newProfile.name);
+    selectConnectionProfile(newProfile.id);
   }
 
   async function updateConnectionProfile() {
-    const name = selectedConnectionProfileName.value;
+    const name = selectedConnectionProfile.value;
     if (!name) {
       toast.error(t('apiConnections.profileManagement.errors.noSelection'));
       return;
@@ -545,12 +545,13 @@ export const useApiStore = defineStore('api', () => {
   }
 
   async function renameConnectionProfile() {
-    const oldName = selectedConnectionProfileName.value;
-    if (!oldName) {
-      toast.warning(t('apiConnections.profileManagement.errors.renameNone'));
+    const profile = connectionProfiles.value.find((p) => p.id === selectedConnectionProfile.value);
+    if (!profile) {
+      toast.error(t('apiConnections.profileManagement.errors.notFound'));
       return;
     }
 
+    const oldName = profile.name;
     const { result, value: newName } = await popupStore.show<string>({
       title: t('apiConnections.profileManagement.renamePopupTitle'),
       type: POPUP_TYPE.INPUT,
@@ -558,31 +559,29 @@ export const useApiStore = defineStore('api', () => {
     });
 
     if (result === POPUP_RESULT.AFFIRMATIVE && newName && newName.trim() && newName !== oldName) {
-      const profile = connectionProfiles.value.find((p) => p.name === oldName);
       if (profile) {
         profile.name = newName;
         connectionProfiles.value = [...connectionProfiles.value];
-        selectConnectionProfile(newName);
       }
     }
   }
 
   async function deleteConnectionProfile() {
-    const name = selectedConnectionProfileName.value;
-    if (!name) {
-      toast.warning(t('apiConnections.profileManagement.errors.deleteNone'));
+    const profile = connectionProfiles.value.find((p) => p.id === selectedConnectionProfile.value);
+    if (!profile) {
+      toast.error(t('apiConnections.profileManagement.errors.notFound'));
       return;
     }
 
     const { result } = await popupStore.show({
       title: t('common.confirmDelete'),
-      content: t('apiConnections.profileManagement.deletePopupContent', { name }),
+      content: t('apiConnections.profileManagement.deletePopupContent', { name: profile.name }),
       type: POPUP_TYPE.CONFIRM,
     });
 
     if (result === POPUP_RESULT.AFFIRMATIVE) {
-      connectionProfiles.value = connectionProfiles.value.filter((p) => p.name !== name);
-      selectedConnectionProfileName.value = undefined;
+      connectionProfiles.value = connectionProfiles.value.filter((p) => p.id !== selectedConnectionProfile.value);
+      selectedConnectionProfile.value = undefined;
     }
   }
 
@@ -591,16 +590,14 @@ export const useApiStore = defineStore('api', () => {
   }
 
   function exportConnectionProfile() {
-    const name = selectedConnectionProfileName.value;
-    if (!name) {
+    const profile = connectionProfiles.value.find((p) => p.id === selectedConnectionProfile.value);
+    if (!profile) {
       toast.error(t('apiConnections.profileManagement.errors.noSelection'));
       return;
     }
-    const profile = connectionProfiles.value.find((p) => p.name === name);
-    if (profile) {
-      const content = JSON.stringify([profile], null, 2);
-      downloadFile(content, `${name}-profile.json`, 'application/json');
-    }
+
+    const content = JSON.stringify([profile], null, 2);
+    downloadFile(content, `${profile.name}-profile.json`, 'application/json');
   }
 
   function updatePromptContent(identifier: string, content: string) {
@@ -753,7 +750,7 @@ export const useApiStore = defineStore('api', () => {
     updatePromptContent,
     resetPrompts,
     connectionProfiles,
-    selectedConnectionProfileName,
+    selectedConnectionProfile,
     createConnectionProfile,
     updateConnectionProfile,
     renameConnectionProfile,

@@ -15,10 +15,10 @@ import { DraggableList, EmptyState } from '../../../components/common';
 import type { Character, ExtensionAPI } from '../../../types';
 import { getThumbnailUrl } from '../../../utils/character';
 import type { GroupChatService } from './GroupChatService';
-import { GroupGenerationHandlingMode, GroupReplyStrategy } from './types';
+import { GroupGenerationHandlingMode, GroupReplyStrategy, type GroupExtensionSettings } from './types';
 
 const props = defineProps<{
-  api: ExtensionAPI;
+  api: ExtensionAPI<GroupExtensionSettings>;
   service: GroupChatService;
 }>();
 

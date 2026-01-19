@@ -12,7 +12,7 @@ import {
 import type { GroupExtensionSettings } from './types';
 
 const props = defineProps<{
-  api: ExtensionAPI;
+  api: ExtensionAPI<GroupExtensionSettings>;
 }>();
 
 const t = props.api.i18n.t;

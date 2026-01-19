@@ -23,7 +23,7 @@ export const usePopupStore = defineStore('popup', () => {
       content: '',
       type: POPUP_TYPE.TEXT,
       inputValue: '',
-      selectValue: '',
+      selectValue: options.selectMultiple ? [] : '',
       ...options,
     };
 

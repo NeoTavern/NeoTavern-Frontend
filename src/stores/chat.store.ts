@@ -18,7 +18,7 @@ import {
 } from '../types';
 import { getCharacterDifferences } from '../utils/character';
 import { extractMediaFromMarkdown, getFirstMessage } from '../utils/chat';
-import { downloadFile, formatFileSize, getMessageTimeStamp, uuidv4 } from '../utils/commons';
+import { downloadFile, formatFileSize, getMessageTimeStamp, mergeWithUndefined, uuidv4 } from '../utils/commons';
 import { eventEmitter } from '../utils/extensions';
 import { useCharacterStore } from './character.store';
 import { useChatSelectionStore } from './chat-selection.store';
@@ -435,7 +435,7 @@ export const useChatStore = defineStore('chat', () => {
         delete message.extra.reasoning_display_text;
       }
 
-      const existingNonInlineMedia = message.extra?.media?.filter((item) => item.source !== 'inline') ?? [];
+      const existingNonInlineMedia = message.extra.media?.filter((item) => item.source !== 'inline') ?? [];
       const newInlineMedia = extractMediaFromMarkdown(newContent);
       const allMedia = [...existingNonInlineMedia, ...newInlineMedia];
 
@@ -476,7 +476,7 @@ export const useChatStore = defineStore('chat', () => {
   async function updateMessageObject(index: number, updates: Partial<ChatMessage>): Promise<void> {
     if (!activeChat.value || index < 0 || index >= activeChat.value.messages.length) return;
     const message = activeChat.value.messages[index];
-    Object.assign(message, updates);
+    mergeWithUndefined(message, updates);
 
     if (updates.mes !== undefined) {
       if (message.swipes && typeof message.swipe_id === 'number' && message.swipes[message.swipe_id] !== undefined) {

@@ -30,7 +30,7 @@ export interface ChatInputDetail {
 }
 
 export interface LlmGenerationOptions {
-  connectionProfileName?: string;
+  connectionProfile?: string;
   formatter?: ApiFormatter;
   samplerOverrides?: Partial<SamplerSettings>;
   instructTemplateName?: string;
@@ -338,8 +338,27 @@ export interface ExtensionMetadata {
   containerId: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface ExtensionAPI<TSettings = Record<string, any>> {
+export type TypedChatMetadata<T = Record<string, unknown>> = Omit<ChatMetadata, 'extra'> & {
+  /**
+   * Extension specific data storage.
+   * Merges the standard loosely-typed extra with the strictly-typed generic T.
+   */
+  extra?: ChatMetadata['extra'] & Record<string, unknown> & T;
+};
+
+export type TypedChatMessage<T = Record<string, unknown>> = Omit<ChatMessage, 'extra'> & {
+  /**
+   * Extension specific message data.
+   * Intersects the standard fields (reasoning, tokens, etc) with the strictly-typed generic T.
+   */
+  extra: ChatMessage['extra'] & T;
+};
+
+export interface ExtensionAPI<
+  TSettings = Record<string, unknown>,
+  TChatExtra = Record<string, unknown>,
+  TMessageExtra = Record<string, unknown>,
+> {
   /**
    * Metadata about the current extension instance.
    */
@@ -356,17 +375,20 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
       messageText: string,
       options?: { triggerGeneration?: boolean; generationId?: string },
     ) => Promise<void>;
-    getHistory: () => ChatMessage[];
+    getHistory: () => TypedChatMessage<TMessageExtra>[];
     /**
      * Retrieves the current active chat filename (without extension).
      * Returns null if no chat is loaded.
      */
     getChatInfo: () => ChatInfo | null;
     getAllChatInfos: () => Array<ChatInfo>;
-    getLastMessage: () => ChatMessage | null;
-    insertMessage: (message: Omit<ChatMessage, 'send_date'> & { send_date?: string }, index?: number) => void;
+    getLastMessage: () => TypedChatMessage<TMessageExtra> | null;
+    insertMessage: (
+      message: Omit<TypedChatMessage<TMessageExtra>, 'send_date'> & { send_date?: string },
+      index?: number,
+    ) => void;
     updateMessage: (index: number, newContent: string, newReasoning?: string) => Promise<void>;
-    updateMessageObject: (index: number, updates: Partial<ChatMessage>) => Promise<void>;
+    updateMessageObject: (index: number, updates: Partial<TypedChatMessage<TMessageExtra>>) => Promise<void>;
     deleteMessage: (index: number) => Promise<void>;
     regenerateResponse: (options?: { generationId?: string; forceSpeakerAvatar?: string }) => Promise<void>;
     continueResponse: (options?: { generationId?: string }) => Promise<void>;
@@ -413,9 +435,9 @@ export interface ExtensionAPI<TSettings = Record<string, any>> {
     load: (filename: string) => Promise<void>;
 
     metadata: {
-      get: () => ChatMetadata | null;
-      set: (metadata: ChatMetadata) => void;
-      update: (updates: Partial<ChatMetadata>) => void;
+      get: () => TypedChatMetadata<TChatExtra> | null;
+      set: (metadata: TypedChatMetadata<TChatExtra>) => void;
+      update: (updates: Partial<TypedChatMetadata<TChatExtra>>) => void;
     };
 
     PromptBuilder: typeof PromptBuilder;

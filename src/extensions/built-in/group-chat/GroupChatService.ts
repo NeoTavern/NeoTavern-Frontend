@@ -1,6 +1,11 @@
 import { ref } from 'vue';
 import type { ApiChatMessage, Character, ChatMessage, ExtensionAPI } from '../../../types';
-import { GroupGenerationHandlingMode, GroupReplyStrategy, type GroupChatConfig } from './types';
+import {
+  GroupGenerationHandlingMode,
+  GroupReplyStrategy,
+  type GroupChatConfig,
+  type GroupExtensionSettings,
+} from './types';
 import { determineNextSpeaker } from './utils';
 
 export const DEFAULT_DECISION_TEMPLATE = `You are an AI assistant orchestrating a roleplay group chat.
@@ -36,7 +41,7 @@ export const DEFAULT_SUMMARY_INJECTION_TEMPLATE = `{{description}}
 {{summaries}}`;
 
 export class GroupChatService {
-  private api: ExtensionAPI;
+  private api: ExtensionAPI<GroupExtensionSettings>;
 
   public generationQueue = ref<string[]>([]);
   public generatingAvatar = ref<string | null>(null);
@@ -49,7 +54,7 @@ export class GroupChatService {
   // We mirror the current config to a reactive object for the UI
   public groupConfig = ref<GroupChatConfig | null>(null);
 
-  constructor(api: ExtensionAPI) {
+  constructor(api: ExtensionAPI<GroupExtensionSettings>) {
     this.api = api;
     this.t = this.api.i18n.t;
   }
@@ -212,7 +217,7 @@ export class GroupChatService {
     this.isGeneratingSummary.value = true;
     try {
       const response = await this.api.llm.generate(messages, {
-        connectionProfileName: connectionProfile,
+        connectionProfile,
       });
 
       let content = '';
@@ -410,7 +415,7 @@ export class GroupChatService {
 
     try {
       const response = await this.api.llm.generate(messages, {
-        connectionProfileName: connectionProfile,
+        connectionProfile,
         signal,
       });
 

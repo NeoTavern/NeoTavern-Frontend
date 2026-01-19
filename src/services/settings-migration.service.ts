@@ -1,4 +1,4 @@
-import { defaultsDeep, set } from 'lodash-es';
+import { set } from 'lodash-es';
 import { saveSamplerPreset, type Preset } from '../api/presets';
 import { type ParsedUserSettingsResponse } from '../api/settings';
 import {
@@ -25,7 +25,7 @@ import {
   type SamplerSettings,
   type Settings,
 } from '../types';
-import { uuidv4 } from '../utils/commons';
+import { mergeWithUndefinedMulti, uuidv4 } from '../utils/commons';
 
 export function createDefaultSettings(): Settings {
   const defaultSettings: Settings = {
@@ -464,7 +464,7 @@ export function mergeWithDefaults(
   legacySettings?: LegacySettings,
 ): { settings: Settings; legacy: LegacySettings } {
   const defaults = createDefaultSettings();
-  const mergedSettings = defaultsDeep({}, settings, defaults);
+  const mergedSettings = mergeWithUndefinedMulti({}, defaults, settings);
   const legacy = legacySettings || ({} as LegacySettings);
 
   return { settings: mergedSettings, legacy };

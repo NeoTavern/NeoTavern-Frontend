@@ -939,8 +939,6 @@
       "deletePopupContent": "Are you sure you want to delete the profile \"<b>{name}</b>\"?",
       "errors": {
         "noSelection": "No profile selected.",
-        "deleteNone": "Cannot delete the base profile.",
-        "renameNone": "Cannot rename the base profile.",
         "nameExists": "A profile with this name already exists.",
         "notFound": "Profile couldn't be found."
       }
@@ -1533,6 +1531,37 @@
       "displayDurationMs": "Display Duration (ms)",
       "promptTemplate": "Prompt Template",
       "promptHint": "The prompt template for generating thoughts. Uses Handlebars syntax with variables."
+    },
+    "tracker": {
+      "status": {
+        "pending": "Tracker is generating...",
+        "success": "Tracker data extracted successfully. Click to run again.",
+        "error": "Tracker failed",
+        "idle": "Run Tracker"
+      },
+      "display": {
+        "title": "Tracker Data"
+      },
+      "popups": {
+        "createPresetTitle": "Create New Schema Preset",
+        "newPresetName": "New Preset",
+        "renamePresetTitle": "Rename Preset",
+        "deletePresetTitle": "Delete Preset",
+        "deletePresetContent": "Are you sure you want to delete the preset '{name}'? This cannot be undone.",
+        "selectSchemaTitle": "Manage Chat Schemas",
+        "selectSchemaContent": "Select the schemas you want to use for tracking in this chat."
+      },
+      "toasts": {
+        "alreadyInProgress": "Tracker generation is already in progress for this message.",
+        "presetExistsError": "A preset with that name already exists.",
+        "presetCreated": "Preset created.",
+        "presetRenamed": "Preset renamed.",
+        "cannotDeleteLastPreset": "You cannot delete the last preset.",
+        "presetDeleted": "Preset deleted."
+      },
+      "chatForm": {
+        "manageSchemas": "Manage Tracker Schemas"
+      }
     }
   },
   "login": {

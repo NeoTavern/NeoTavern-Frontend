@@ -6,7 +6,6 @@ import { POPUP_RESULT, POPUP_TYPE } from '../../../../types';
 import type { TextareaToolDefinition } from '../../../../types/ExtensionAPI';
 import {
   DEFAULT_MESSAGE_SUMMARY_PROMPT,
-  EXTENSION_KEY,
   type ChatMemoryMetadata,
   type ExtensionSettings,
   type MemoryMessageExtra,
@@ -14,7 +13,7 @@ import {
 import TimelineVisualizer, { type TimelineSegment } from './TimelineVisualizer.vue';
 
 const props = defineProps<{
-  api: ExtensionAPI<ExtensionSettings>;
+  api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata, MemoryMessageExtra>;
   connectionProfile?: string;
 }>();
 
@@ -48,7 +47,7 @@ const messageStats = computed(() => {
   history.forEach((msg) => {
     if (msg.is_system) return;
     total++;
-    const extra = msg.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
+    const extra = msg.extra['core.chat-memory'];
     if (extra?.summary) summarized++;
   });
   return { total, summarized };
@@ -61,7 +60,7 @@ const timelineSegments = computed<TimelineSegment[]>(() => {
   // Map summarized messages
   history.forEach((msg, idx) => {
     if (msg.is_system) return;
-    const extra = msg.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
+    const extra = msg.extra['core.chat-memory'];
     if (extra?.summary) {
       const lastSeg = segments[segments.length - 1];
       if (lastSeg && lastSeg.type === 'summarized' && lastSeg.end === idx - 1) {
@@ -119,7 +118,7 @@ const countUnsummarizedInRange = computed(() => {
   for (let i = startIndex.value; i <= endIndex.value; i++) {
     const msg = history[i];
     if (msg.is_system) continue;
-    const extra = msg.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
+    const extra = msg.extra['core.chat-memory'];
     if (!extra?.summary) {
       count++;
     }
@@ -133,7 +132,7 @@ const countSummarizedInRange = computed(() => {
   const history = chatHistory.value;
   for (let i = startIndex.value; i <= endIndex.value; i++) {
     const msg = history[i];
-    const extra = msg.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
+    const extra = msg.extra['core.chat-memory'];
     if (extra?.summary) {
       count++;
     }
@@ -165,7 +164,7 @@ function loadSettings() {
 
   // Load Chat Metadata for Range
   const currentMetadata = props.api.chat.metadata.get();
-  const memoryExtra = (currentMetadata?.extra?.[EXTENSION_KEY] as ChatMemoryMetadata) || { memories: [] };
+  const memoryExtra = currentMetadata?.extra?.['core.chat-memory'] || { memories: [] };
 
   if (memoryExtra.summaryRange && Array.isArray(memoryExtra.summaryRange) && memoryExtra.summaryRange.length === 2) {
     startIndex.value = memoryExtra.summaryRange[0];
@@ -190,15 +189,15 @@ async function saveSettings() {
   // Save Metadata (Range)
   const currentMetadata = props.api.chat.metadata.get();
   if (!currentMetadata) return;
-  const memoryExtra = (currentMetadata.extra?.[EXTENSION_KEY] as ChatMemoryMetadata) || { memories: [] };
-
-  const updatedExtra: ChatMemoryMetadata = {
-    ...memoryExtra,
-    summaryRange: [startIndex.value, endIndex.value],
-  };
+  const memoryExtra = currentMetadata.extra?.['core.chat-memory'] || { memories: [] };
 
   props.api.chat.metadata.update({
-    extra: { ...currentMetadata.extra, [EXTENSION_KEY]: updatedExtra },
+    extra: {
+      'core.chat-memory': {
+        memories: memoryExtra.memories,
+        summaryRange: [startIndex.value, endIndex.value],
+      },
+    },
   });
 }
 
@@ -226,7 +225,7 @@ async function summarizeRange(mode: 'missing-only' | 'force-all') {
     const msg = history[i];
     if (msg.is_system) continue;
 
-    const extra = msg.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
+    const extra = msg.extra['core.chat-memory'];
     const hasSummary = !!extra?.summary;
 
     if (mode === 'force-all' || !hasSummary) {
@@ -264,7 +263,7 @@ async function summarizeRange(mode: 'missing-only' | 'force-all') {
       const prompt = props.api.macro.process(messageSummaryPrompt.value, undefined, { text: msg.mes });
 
       const response = await props.api.llm.generate([{ role: 'system', content: prompt, name: 'System' }], {
-        connectionProfileName: props.connectionProfile,
+        connectionProfile: props.connectionProfile,
       });
 
       let fullContent = '';
@@ -280,11 +279,11 @@ async function summarizeRange(mode: 'missing-only' | 'force-all') {
       const match = fullContent.match(codeBlockRegex);
       const text = match && match[1] ? match[1].trim() : fullContent.trim();
 
-      const currentExtra = (msg.extra?.[EXTENSION_KEY] as MemoryMessageExtra) || {};
       await props.api.chat.updateMessageObject(idx, {
         extra: {
-          ...msg.extra,
-          [EXTENSION_KEY]: { ...currentExtra, summary: text },
+          'core.chat-memory': {
+            summary: text,
+          },
         },
       });
 
@@ -328,12 +327,13 @@ async function clearRange() {
 
   for (let i = startIndex.value; i <= endIndex.value; i++) {
     const msg = history[i];
-    const extra = msg.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
+    const extra = msg.extra['core.chat-memory'];
     if (extra?.summary) {
       await props.api.chat.updateMessageObject(i, {
         extra: {
-          ...msg.extra,
-          [EXTENSION_KEY]: { ...extra, summary: undefined },
+          'core.chat-memory': {
+            summary: undefined,
+          },
         },
       });
       deletedCount++;
@@ -358,12 +358,13 @@ async function handleDeleteAll() {
 
   for (let i = 0; i < history.length; i++) {
     const msg = history[i];
-    const extra = msg.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
+    const extra = msg.extra?.['core.chat-memory'];
     if (extra?.summary) {
       await props.api.chat.updateMessageObject(i, {
         extra: {
-          ...msg.extra,
-          [EXTENSION_KEY]: { ...extra, summary: undefined },
+          'core.chat-memory': {
+            summary: undefined,
+          },
         },
       });
       count++;

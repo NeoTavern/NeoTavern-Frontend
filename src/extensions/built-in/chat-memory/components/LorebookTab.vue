@@ -2,13 +2,12 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Button, FormItem, Input, Select, Textarea, Toggle } from '../../../../components/UI';
 import { WorldInfoPosition } from '../../../../constants';
-import type { ApiChatMessage, ChatMessage, ExtensionAPI } from '../../../../types';
+import type { ApiChatMessage, ExtensionAPI } from '../../../../types';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../../types';
 import type { TextareaToolDefinition } from '../../../../types/ExtensionAPI';
 import type { WorldInfoEntry } from '../../../../types/world-info';
 import {
   DEFAULT_PROMPT,
-  EXTENSION_KEY,
   type ChatMemoryMetadata,
   type ChatMemoryRecord,
   type ExtensionSettings,
@@ -17,7 +16,7 @@ import {
 import TimelineVisualizer, { type TimelineSegment } from './TimelineVisualizer.vue';
 
 const props = defineProps<{
-  api: ExtensionAPI<ExtensionSettings>;
+  api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata, MemoryMessageExtra>;
   connectionProfile?: string;
 }>();
 
@@ -67,8 +66,7 @@ const isValidRange = computed(() => hasMessages.value && !startIndexError.value 
 const existingMemories = computed(() => {
   const currentMetadata = props.api.chat.metadata.get();
   if (!currentMetadata) return [];
-  const memoryExtra = (currentMetadata.extra?.[EXTENSION_KEY] as ChatMemoryMetadata) || { memories: [] };
-  return memoryExtra.memories || [];
+  return currentMetadata.extra?.['core.chat-memory']?.memories || [];
 });
 
 const hasMemories = computed(() => existingMemories.value.length > 0);
@@ -142,7 +140,7 @@ function loadState() {
 
   // Load Chat Metadata (Persisted State)
   const currentMetadata = props.api.chat.metadata.get();
-  const memoryExtra = (currentMetadata?.extra?.[EXTENSION_KEY] as ChatMemoryMetadata) || { memories: [] };
+  const memoryExtra = currentMetadata?.extra?.['core.chat-memory'] ?? { memories: [] };
 
   // 1. Lorebook Selection
   if (memoryExtra.targetLorebook && availableLorebooks.value.some((b) => b.value === memoryExtra.targetLorebook)) {
@@ -185,16 +183,15 @@ function saveState() {
   // Save Chat Metadata
   const currentMetadata = props.api.chat.metadata.get();
   if (!currentMetadata) return;
-  const memoryExtra = (currentMetadata.extra?.[EXTENSION_KEY] as ChatMemoryMetadata) || { memories: [] };
-
-  const updatedExtra: ChatMemoryMetadata = {
-    ...memoryExtra,
-    targetLorebook: selectedLorebook.value,
-    lorebookRange: [startIndex.value, endIndex.value],
-  };
 
   props.api.chat.metadata.update({
-    extra: { ...currentMetadata.extra, [EXTENSION_KEY]: updatedExtra },
+    extra: {
+      'core.chat-memory': {
+        memories: currentMetadata.extra?.['core.chat-memory']?.memories || [],
+        targetLorebook: selectedLorebook.value,
+        lorebookRange: [startIndex.value, endIndex.value],
+      },
+    },
   });
 }
 
@@ -228,7 +225,7 @@ async function handleLorebookSummarize() {
     const messages: Array<ApiChatMessage> = [{ role: 'system', content: compiledPrompt, name: 'System' }];
 
     const response = await props.api.llm.generate(messages, {
-      connectionProfileName: props.connectionProfile,
+      connectionProfile: props.connectionProfile,
       signal: abortController.value.signal,
     });
 
@@ -295,36 +292,34 @@ async function createEntry() {
     // Update Metadata with new memory and current state
     const currentMetadata = props.api.chat.metadata.get();
     if (currentMetadata) {
-      const memoryExtra = (currentMetadata.extra?.[EXTENSION_KEY] as ChatMemoryMetadata) || { memories: [] };
+      const memoryExtra = currentMetadata.extra?.['core.chat-memory'] || { memories: [] };
       const memoryRecord: ChatMemoryRecord = {
         bookName: selectedLorebook.value,
         entryUid: newEntry.uid,
         range: [startIndex.value, endIndex.value],
         timestamp: Date.now(),
       };
-      const updatedExtra: ChatMemoryMetadata = {
-        ...memoryExtra,
-        memories: [...memoryExtra.memories, memoryRecord],
-        targetLorebook: selectedLorebook.value,
-        lorebookRange: [startIndex.value, endIndex.value],
-      };
-      props.api.chat.metadata.update({ extra: { ...currentMetadata.extra, [EXTENSION_KEY]: updatedExtra } });
+      props.api.chat.metadata.update({
+        extra: {
+          'core.chat-memory': {
+            memories: [...memoryExtra.memories, memoryRecord],
+            targetLorebook: selectedLorebook.value,
+            lorebookRange: [startIndex.value, endIndex.value],
+          },
+        },
+      });
     }
 
     for (let i = startIndex.value; i <= endIndex.value; i++) {
       const msg = chatHistory.value[i];
-      const extraUpdate: MemoryMessageExtra = {
-        summarized: true,
-        original_is_system: msg.is_system,
-        summary: (msg.extra?.[EXTENSION_KEY] as MemoryMessageExtra)?.summary,
-      };
-      const updates: Partial<ChatMessage> = {
-        extra: { ...msg.extra, [EXTENSION_KEY]: extraUpdate },
-      };
-      if (autoHideMessages.value) {
-        updates.is_system = true;
-      }
-      await props.api.chat.updateMessageObject(i, updates);
+      await props.api.chat.updateMessageObject(i, {
+        extra: {
+          'core.chat-memory': {
+            summarized: true,
+            original_is_system: msg.is_system,
+          },
+        },
+      });
     }
     props.api.ui.showToast(t('extensionsBuiltin.chatMemory.success.memoryCreated'), 'success');
   } catch (error) {
@@ -356,7 +351,7 @@ async function handleLorebookReset() {
   let entriesRemoved = 0;
 
   try {
-    const memoryExtra = currentMetadata.extra?.[EXTENSION_KEY] as ChatMemoryMetadata | undefined;
+    const memoryExtra = currentMetadata.extra?.['core.chat-memory'];
     if (memoryExtra && Array.isArray(memoryExtra.memories)) {
       for (const record of memoryExtra.memories) {
         try {
@@ -366,26 +361,26 @@ async function handleLorebookReset() {
           console.warn('Failed to cleanup memory entry', record, err);
         }
       }
-      const updatedExtra = { ...currentMetadata.extra };
-      // Preserve settings like targetLorebook, but clear memories
-      const newMemoryMeta: ChatMemoryMetadata = {
-        ...memoryExtra,
-        memories: [],
-      };
-      updatedExtra[EXTENSION_KEY] = newMemoryMeta;
-      props.api.chat.metadata.update({ extra: updatedExtra });
+      props.api.chat.metadata.update({
+        extra: {
+          'core.chat-memory': {
+            memories: [],
+          },
+        },
+      });
     }
 
     const history = chatHistory.value;
     for (let i = 0; i < history.length; i++) {
       const msg = history[i];
-      const memExtra = msg.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
+      const memExtra = msg.extra['core.chat-memory'];
       if (memExtra && memExtra.summarized) {
         await props.api.chat.updateMessageObject(i, {
           is_system: memExtra.original_is_system ?? false,
           extra: {
-            ...msg.extra,
-            [EXTENSION_KEY]: { ...memExtra, summarized: false },
+            'core.chat-memory': {
+              summarized: false,
+            },
           },
         });
         restoredCount++;

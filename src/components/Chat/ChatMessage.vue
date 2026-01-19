@@ -55,9 +55,9 @@ const editTextarea = ref<InstanceType<typeof Textarea>>();
 const isContentCollapsed = ref(false);
 
 const isEditing = computed(() => chatStore.activeMessageEditState?.index === props.index);
-const hasReasoning = computed(() => props.message.extra?.reasoning && props.message.extra.reasoning.trim().length > 0);
+const hasReasoning = computed(() => props.message.extra.reasoning && props.message.extra.reasoning.trim().length > 0);
 const hasItemizedPrompt = computed(() => !!promptStore.getItemizedPrompt(props.index, props.message.swipe_id ?? 0));
-const isSmallSys = computed(() => !!props.message.extra?.isSmallSys);
+const isSmallSys = computed(() => !!props.message.extra.isSmallSys);
 
 onMounted(() => {
   isReasoningCollapsed.value = settingsStore.settings.ui?.chat?.reasoningCollapsed ?? false;
@@ -78,8 +78,8 @@ function handleSelectionClick() {
 watch(isEditing, async (editing) => {
   if (editing) {
     editedContent.value = props.message.mes;
-    editedReasoning.value = props.message.extra?.reasoning ?? '';
-    isEditingReasoning.value = !!props.message.extra?.reasoning;
+    editedReasoning.value = props.message.extra.reasoning ?? '';
+    isEditingReasoning.value = !!props.message.extra.reasoning;
     await nextTick();
     editTextarea.value?.focus();
   } else {
@@ -131,7 +131,7 @@ const formattedReasoning = computed(() => {
 });
 
 const attachmentMediaItems = computed(() => {
-  if (!props.message.extra?.media) return [];
+  if (!props.message.extra.media) return [];
   return (
     props.message.extra.media
       // Filter for non-inline media to show in the grid
@@ -161,7 +161,7 @@ function handleAttachmentClick(mediaItem: (typeof attachmentMediaItems.value)[0]
 
   if (mediaItem.type === 'image') {
     const tools = computed<ZoomedAvatarTool[]>(() => {
-      const currentIgnored = props.message.extra?.ignored_media ?? [];
+      const currentIgnored = props.message.extra.ignored_media ?? [];
       const isIgnored = currentIgnored.includes(mediaItem.src);
       return [
         {
@@ -185,7 +185,7 @@ function handleAttachmentClick(mediaItem: (typeof attachmentMediaItems.value)[0]
 }
 
 function toggleIgnoredMedia(url: string) {
-  const currentIgnored = props.message.extra?.ignored_media ?? [];
+  const currentIgnored = props.message.extra.ignored_media ?? [];
   const isIgnored = currentIgnored.includes(url);
 
   let newIgnored: string[];
@@ -217,7 +217,7 @@ function handleContentClick(event: MouseEvent) {
     const alt = imgElement.alt || 'Inline Image';
 
     const tools = computed<ZoomedAvatarTool[]>(() => {
-      const currentIgnored = props.message.extra?.ignored_media ?? [];
+      const currentIgnored = props.message.extra.ignored_media ?? [];
       const isIgnored = currentIgnored.includes(src);
 
       return [
@@ -469,10 +469,10 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
         <SmartAvatar :urls="[avatarUrls.thumbnail]" :alt="`${props.message.name} Avatar`" />
       </div>
       <div class="message-id">#{{ index }}</div>
-      <div v-if="message.extra?.reasoning_duration" class="message-timer">
+      <div v-if="message.extra.reasoning_duration" class="message-timer">
         {{ message.extra.reasoning_duration.toFixed(1) }}s
       </div>
-      <div v-if="message.extra?.token_count" class="message-token-count">{{ message.extra.token_count }}t</div>
+      <div v-if="message.extra.token_count" class="message-token-count">{{ message.extra.token_count }}t</div>
     </div>
 
     <div class="message-main">

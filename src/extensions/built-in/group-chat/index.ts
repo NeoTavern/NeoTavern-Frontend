@@ -5,11 +5,11 @@ import { DEFAULT_SUMMARY_INJECTION_TEMPLATE, GroupChatService } from './GroupCha
 import GroupSettingsTab from './GroupSettingsTab.vue';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
-import { GroupGenerationHandlingMode, GroupReplyStrategy } from './types';
+import { GroupGenerationHandlingMode, GroupReplyStrategy, type GroupExtensionSettings } from './types';
 
 export { manifest };
 
-export function activate(api: ExtensionAPI) {
+export function activate(api: ExtensionAPI<GroupExtensionSettings>) {
   const service = new GroupChatService(api);
   const unbinds: Array<() => void> = [];
 

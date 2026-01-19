@@ -16,8 +16,9 @@ const props = defineProps({
   content: { type: String, default: '' },
   type: { type: Number as PropType<POPUP_TYPE>, default: POPUP_TYPE.TEXT },
   inputValue: { type: String, default: '' },
-  selectValue: { type: String, default: '' },
+  selectValue: { type: [String, Array] as PropType<string | string[]>, default: '' },
   selectOptions: { type: Array as PropType<{ label: string; value: string }[]>, default: () => [] },
+  selectMultiple: { type: Boolean, default: false },
 
   okButton: { type: [String, Boolean] as PropType<I18nKey | boolean>, default: undefined },
   cancelButton: { type: [String, Boolean] as PropType<I18nKey | boolean>, default: undefined },
@@ -210,6 +211,7 @@ function handleResult(result: number) {
                 :searchable="selectOptions.length > 10"
                 class="popup-input-wrapper"
                 :options="selectOptions"
+                :multiple="selectMultiple"
               />
 
               <div v-if="type === POPUP_TYPE.CROP" class="crop-container">

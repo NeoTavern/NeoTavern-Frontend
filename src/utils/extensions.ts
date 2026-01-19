@@ -83,8 +83,8 @@ export async function countTokens(
 
 // --- Event Emitter ---
 
-import { defaultsDeep } from 'lodash-es';
 import { getModelCapabilities } from '../api/provider-definitions';
+import { mergeWithUndefinedMulti } from './commons';
 import { eventEmitter } from './event-emitter';
 export { eventEmitter };
 
@@ -356,19 +356,23 @@ const baseExtensionAPI: ExtensionAPI = {
         ).filter((book): book is WorldInfoBook => book !== undefined);
       }
 
-      const mediaContext: MediaHydrationContext = defaultsDeep({}, options?.mediaContext, {
-        apiSettings: {
-          forbidExternalMedia: settingsStore.settings.ui.chat.forbidExternalMedia,
-          imageQuality: settingsStore.settings.api.imageQuality,
-          sendMedia: settingsStore.settings.api.sendMedia,
-        },
-        formatter: settingsStore.settings.api.formatter,
-        modelCapabilities: getModelCapabilities(
-          settingsStore.settings.api.provider,
-          apiStore.activeModel,
-          apiStore.modelList,
-        ),
-      } satisfies MediaHydrationContext);
+      const mediaContext: MediaHydrationContext = mergeWithUndefinedMulti(
+        {},
+        {
+          apiSettings: {
+            forbidExternalMedia: settingsStore.settings.ui.chat.forbidExternalMedia,
+            imageQuality: settingsStore.settings.api.imageQuality,
+            sendMedia: settingsStore.settings.api.sendMedia,
+          },
+          formatter: settingsStore.settings.api.formatter,
+          modelCapabilities: getModelCapabilities(
+            settingsStore.settings.api.provider,
+            apiStore.activeModel,
+            apiStore.modelList,
+          ),
+        } satisfies MediaHydrationContext,
+        options?.mediaContext,
+      );
 
       const builder = new PromptBuilder({
         generationId: options?.generationId ?? uuidv4(),
@@ -376,10 +380,10 @@ const baseExtensionAPI: ExtensionAPI = {
         chatMetadata,
         chatHistory,
         persona,
-        samplerSettings: defaultsDeep({}, options?.samplerSettings, settingsStore.settings.api.samplers),
+        samplerSettings: mergeWithUndefinedMulti({}, settingsStore.settings.api.samplers, options?.samplerSettings),
         tokenizer,
         books,
-        worldInfo: defaultsDeep({}, options?.worldInfo, settingsStore.settings.worldInfo),
+        worldInfo: mergeWithUndefinedMulti({}, settingsStore.settings.worldInfo, options?.worldInfo),
         mediaContext,
       });
 
@@ -424,7 +428,7 @@ const baseExtensionAPI: ExtensionAPI = {
       update: (updates) => {
         const store = useChatStore();
         if (store.activeChat) {
-          store.activeChat.metadata = { ...store.activeChat.metadata, ...updates };
+          store.activeChat.metadata = mergeWithUndefinedMulti({}, store.activeChat.metadata, updates);
           store.triggerSave();
         }
       },
@@ -667,7 +671,7 @@ const baseExtensionAPI: ExtensionAPI = {
         providerSpecific,
         customPromptPostProcessing,
       } = await resolveConnectionProfileSettings({
-        profileName: options.connectionProfileName,
+        profile: options.connectionProfile,
         samplerOverrides: options.samplerOverrides,
       });
 
@@ -943,6 +947,7 @@ globalThis.NeoTavern = {
       console.error(`[Extension] Failed to initialize extension "${extensionId}":`, error);
     }
   },
+  api: baseExtensionAPI,
 };
 
 Object.freeze(baseExtensionAPI);

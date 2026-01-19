@@ -412,7 +412,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       providerSpecific: effectiveProviderSpecific,
       customPromptPostProcessing: effectivePostProcessing,
     } = await resolveConnectionProfileSettings({
-      profileName: chatMetadata.connection_profile,
+      profile: chatMetadata.connection_profile,
     });
 
     if (!effectiveModel) throw new Error(t('chat.generate.noModelError'));

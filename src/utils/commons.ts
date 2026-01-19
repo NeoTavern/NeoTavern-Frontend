@@ -1,3 +1,5 @@
+import { mergeWith } from 'lodash-es';
+
 export function onlyUnique<T>(value: T, index: number, self: T[]): boolean {
   return self.indexOf(value) === index;
 }
@@ -134,4 +136,51 @@ export function downloadFile(content: string, fileName: string, contentType: str
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(a.href);
+}
+
+/**
+ * A customizer for lodash's mergeWith that allows for `undefined` values to be merged.
+ * This function mutates the destination object directly because lodash's default behavior
+ * is to ignore `undefined` values from the source, even if the customizer explicitly returns `undefined`.
+ *
+ * @param objValue - The value from the object being merged into.
+ * @param srcValue - The value from the source object.
+ * @param key - The key of the property being merged.
+ * @param object - The destination object.
+ * @returns `undefined`, signaling lodash to use its default merge behavior (which we've preempted by mutation).
+ */
+function customizer(objValue: unknown, srcValue: unknown, key: string | number | symbol, object: object): unknown {
+  if (srcValue === undefined) {
+    if (object && typeof object === 'object') {
+      (object as Record<string | number | symbol, unknown>)[key] = undefined;
+    }
+    return undefined;
+  }
+}
+
+/**
+ * Deeply merges objects, allowing `undefined` values from sources to overwrite existing values.
+ * @param object - The destination object.
+ * @param sources - The source objects.
+ * @returns The merged object.
+ */
+export function mergeWithUndefined<TObject, TSource>(object: TObject, source: TSource): TObject & TSource {
+  return mergeWith(object, source, customizer);
+}
+
+/**
+ * Deeply merges multiple objects, allowing `undefined` values from sources to overwrite existing values.
+ * This is a typed version of lodash's mergeWith.
+ * @param object - The destination object.
+ * @param sources - The source objects.
+ * @returns The merged object.
+ */
+export function mergeWithUndefinedMulti<TObject, TSource1, TSource2>(
+  object: TObject,
+  source1: TSource1,
+  source2: TSource2,
+): TObject & TSource1 & TSource2;
+export function mergeWithUndefinedMulti<TObject, TSource1>(object: TObject, source1: TSource1): TObject & TSource1;
+export function mergeWithUndefinedMulti<TObject>(object: TObject, ...sources: unknown[]): TObject {
+  return mergeWith(object, ...sources, customizer);
 }

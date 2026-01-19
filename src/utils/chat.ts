@@ -172,15 +172,15 @@ export function formatText(text: string, forbidExternalMedia: boolean = false, i
 }
 
 export function formatMessage(message: ChatMessage, forbidExternalMedia: boolean = false): string {
-  const textToFormat = message?.extra?.display_text || message.mes;
-  const ignored = message.extra?.ignored_media ?? [];
+  const textToFormat = message?.extra.display_text || message.mes;
+  const ignored = message.extra.ignored_media ?? [];
   return formatText(textToFormat, forbidExternalMedia, ignored);
 }
 
 export function formatReasoning(message: ChatMessage, forbidExternalMedia: boolean = false): string {
-  if (!message.extra?.reasoning) return '';
+  if (!message.extra.reasoning) return '';
   const textToFormat = message.extra.reasoning_display_text || message.extra.reasoning;
-  const ignored = message.extra?.ignored_media ?? [];
+  const ignored = message.extra.ignored_media ?? [];
   return formatText(textToFormat, forbidExternalMedia, ignored);
 }
 

@@ -33,8 +33,9 @@ export interface PopupOptions {
   defaultResult?: number;
   cropImage?: string;
   component?: Component;
-  selectOptions?: { text: string; value: string }[];
-  selectValue?: string;
+  selectOptions?: { label: string; value: string }[];
+  selectValue?: string | string[];
+  selectMultiple?: boolean;
   // TODO: Is there way to make type-safe...?
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   componentProps?: Record<string, any>;
@@ -46,7 +47,7 @@ export interface PopupState extends PopupOptions {
   content: string;
   type: POPUP_TYPE;
   inputValue?: string;
-  selectValue?: string;
+  selectValue?: string | string[];
 }
 
 export type PopupShowOptions = Partial<Omit<PopupState, 'id' | 'visible'>>;
