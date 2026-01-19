@@ -219,7 +219,8 @@ class TrackerManager {
         ? messagesToConsider
         : messagesToConsider.slice(-settings.includeLastXMessages);
 
-    const baseApiMessages = await this.api.chat.buildPrompt({ chatHistory: messageHistory });
+    const generationId = `tracker-${currentIndex}-${Date.now()}`;
+    const baseApiMessages = await this.api.chat.buildPrompt({ chatHistory: messageHistory, generationId });
     const apiMessages: ApiChatMessage[] = [...baseApiMessages];
 
     return apiMessages;
@@ -261,9 +262,16 @@ class TrackerManager {
     }
   }
 
-  public injectContext(apiMessages: ApiChatMessage[], originalMessage: ChatMessage, index: number): void {
+  public injectContext(
+    apiMessages: ApiChatMessage[],
+    originalMessage: ChatMessage,
+    index: number,
+    chatLength: number,
+    generationId: string,
+  ): void {
     const messageWithExtra = originalMessage as unknown as { extra: TrackerMessageExtra };
     const trackers = messageWithExtra.extra?.['core.tracker']?.trackers;
+    if (generationId.startsWith('tracker-') && chatLength - 1 === index) return; // Don't inject into own tracker runs
 
     if (!trackers) return;
 
@@ -445,9 +453,15 @@ export function activate(api: TrackerExtensionAPI) {
   const onChatCleared = () => manager.unmountAllUi();
   const onHistoryMessageProcessing = (
     payload: { apiMessages: ApiChatMessage[] },
-    context: { originalMessage: ChatMessage; index: number },
+    context: { originalMessage: ChatMessage; index: number; generationId: string; chatLength: number },
   ) => {
-    manager.injectContext(payload.apiMessages, context.originalMessage, context.index);
+    manager.injectContext(
+      payload.apiMessages,
+      context.originalMessage,
+      context.index,
+      context.chatLength,
+      context.generationId,
+    );
   };
 
   unbinds.push(api.events.on('chat:entered', onChatEntered));
