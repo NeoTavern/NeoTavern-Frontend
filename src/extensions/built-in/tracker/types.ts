@@ -15,6 +15,7 @@ export interface TrackerSettings {
   maxResponseTokens: number;
   includeLastXMessages: number;
   includeLastXTrackers: number;
+  parallelRequestLimit: number;
 }
 
 export interface TrackerData {
@@ -27,11 +28,11 @@ export interface TrackerData {
 }
 
 export interface TrackerChatExtraData {
-  schemaName?: string;
+  schemaNames?: string[];
 }
 
 export interface TrackerMessageExtraData {
-  tracker?: TrackerData;
+  trackers?: Record<string, TrackerData>;
 }
 
 export interface TrackerChatExtra {
@@ -116,4 +117,5 @@ export const DEFAULT_SETTINGS: TrackerSettings = {
   maxResponseTokens: 16000,
   includeLastXMessages: 5,
   includeLastXTrackers: 3,
+  parallelRequestLimit: 2,
 };

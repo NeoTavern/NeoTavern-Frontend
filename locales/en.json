@@ -1548,14 +1548,11 @@
         "renamePresetTitle": "Rename Preset",
         "deletePresetTitle": "Delete Preset",
         "deletePresetContent": "Are you sure you want to delete the preset '{name}'? This cannot be undone.",
-        "selectSchemaTitle": "Select Tracker Schema",
-        "selectSchemaContent": "Choose a schema to use for tracking data in this chat."
+        "selectSchemaTitle": "Manage Chat Schemas",
+        "selectSchemaContent": "Select the schemas you want to use for tracking in this chat."
       },
       "toasts": {
         "alreadyInProgress": "Tracker generation is already in progress for this message.",
-        "schemaNotFound": "Schema preset \"{name}\" not found.",
-        "invalidJson": "The selected schema preset contains invalid JSON.",
-        "schemaSet": "Tracker schema for this chat set to \"{name}\".",
         "presetExistsError": "A preset with that name already exists.",
         "presetCreated": "Preset created.",
         "presetRenamed": "Preset renamed.",
@@ -1563,7 +1560,7 @@
         "presetDeleted": "Preset deleted."
       },
       "chatForm": {
-        "changeSchema": "Change Tracker Schema"
+        "manageSchemas": "Manage Tracker Schemas"
       }
     }
   },

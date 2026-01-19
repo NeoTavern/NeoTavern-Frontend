@@ -11,46 +11,70 @@ const props = defineProps<{
 // TODO: i18n
 
 const t = props.api.i18n.t;
-const isCollapsed = ref(true);
+const collapsedStates = ref<Record<string, boolean>>({});
 
-const trackerData = computed<TrackerData | undefined>(() => {
+const trackers = computed<Record<string, TrackerData> | undefined>(() => {
   const msg = props.message as unknown as { extra: TrackerMessageExtra };
-  return msg.extra?.['core.tracker']?.tracker;
+  return msg.extra?.['core.tracker']?.trackers;
 });
 
-const hasContent = computed(() => {
-  return trackerData.value?.status === 'success' && trackerData.value.trackerHtml;
+const successfulTrackers = computed(() => {
+  if (!trackers.value) return [];
+  return Object.values(trackers.value).filter((t) => t.status === 'success' && t.trackerHtml);
 });
+
+function isCollapsed(schemaName: string) {
+  return collapsedStates.value[schemaName] !== false; // Default to collapsed
+}
+
+function toggleCollapse(schemaName: string) {
+  collapsedStates.value[schemaName] = !isCollapsed(schemaName);
+}
 </script>
 
 <template>
-  <div v-if="hasContent" class="tracker-display">
-    <div
-      class="tracker-display-header"
-      role="button"
-      tabindex="0"
-      :aria-expanded="!isCollapsed"
-      :aria-label="t('extensionsBuiltin.tracker.display.title')"
-      @click.stop="isCollapsed = !isCollapsed"
-      @keydown.enter.stop.prevent="isCollapsed = !isCollapsed"
-      @keydown.space.stop.prevent="isCollapsed = !isCollapsed"
-    >
-      <span>{{ t('extensionsBuiltin.tracker.display.title') }} ({{ trackerData?.schemaName }})</span>
-      <i class="fa-solid" :class="isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'" aria-hidden="true"></i>
+  <div v-if="successfulTrackers.length > 0" class="tracker-display-container">
+    <div v-for="tracker in successfulTrackers" :key="tracker.schemaName" class="tracker-display">
+      <div
+        class="tracker-display-header"
+        role="button"
+        tabindex="0"
+        :aria-expanded="!isCollapsed(tracker.schemaName!)"
+        :aria-label="t('extensionsBuiltin.tracker.display.title')"
+        @click.stop="toggleCollapse(tracker.schemaName!)"
+        @keydown.enter.stop.prevent="toggleCollapse(tracker.schemaName!)"
+        @keydown.space.stop.prevent="toggleCollapse(tracker.schemaName!)"
+      >
+        <span>{{ t('extensionsBuiltin.tracker.display.title') }} ({{ tracker.schemaName }})</span>
+        <i
+          class="fa-solid"
+          :class="isCollapsed(tracker.schemaName!) ? 'fa-chevron-down' : 'fa-chevron-up'"
+          aria-hidden="true"
+        ></i>
+      </div>
+      <transition name="expand">
+        <div
+          v-show="!isCollapsed(tracker.schemaName!)"
+          class="tracker-display-content"
+          v-html="tracker.trackerHtml"
+        ></div>
+      </transition>
     </div>
-    <transition name="expand">
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <div v-show="!isCollapsed" class="tracker-display-content" v-html="trackerData?.trackerHtml"></div>
-    </transition>
   </div>
 </template>
 
 <style lang="scss">
+.tracker-display-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+}
+
 .tracker-display {
   border: 1px solid var(--theme-border-color);
   background-color: var(--black-30a);
   border-radius: var(--base-border-radius);
-  margin-top: var(--spacing-sm);
   overflow: hidden;
 
   .tracker-display-header {

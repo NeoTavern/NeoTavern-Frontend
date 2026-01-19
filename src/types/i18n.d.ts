@@ -1556,9 +1556,6 @@ export interface MessageSchema {
       };
       toasts: {
         alreadyInProgress: string;
-        schemaNotFound: string;
-        invalidJson: string;
-        schemaSet: string;
         presetExistsError: string;
         presetCreated: string;
         presetRenamed: string;
@@ -1566,7 +1563,7 @@ export interface MessageSchema {
         presetDeleted: string;
       };
       chatForm: {
-        changeSchema: string;
+        manageSchemas: string;
       };
     };
   };

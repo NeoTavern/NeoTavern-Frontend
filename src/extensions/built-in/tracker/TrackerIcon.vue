@@ -17,12 +17,22 @@ const emit = defineEmits<{
 
 const t = props.api.i18n.t;
 
-const trackerData = computed<TrackerData | undefined>(() => {
+const trackers = computed<Record<string, TrackerData> | undefined>(() => {
   const msg = props.message as unknown as { extra: TrackerMessageExtra };
-  return msg.extra?.['core.tracker']?.tracker;
+  return msg.extra?.['core.tracker']?.trackers;
 });
 
-const status = computed(() => trackerData.value?.status ?? 'idle');
+const status = computed(() => {
+  if (!trackers.value) return 'idle';
+  const allTrackers = Object.values(trackers.value);
+  if (allTrackers.length === 0) return 'idle';
+
+  if (allTrackers.some((t) => t.status === 'pending')) return 'pending';
+  if (allTrackers.some((t) => t.status === 'error')) return 'error';
+  if (allTrackers.every((t) => t.status === 'success')) return 'success';
+
+  return 'idle';
+});
 
 const iconClass = computed(() => {
   switch (status.value) {
@@ -38,13 +48,25 @@ const iconClass = computed(() => {
 });
 
 const title = computed(() => {
+  if (!trackers.value) return t('extensionsBuiltin.tracker.status.idle');
+
+  const allTrackers = Object.values(trackers.value);
+  const getNames = (s: TrackerData['status']) =>
+    allTrackers
+      .filter((t) => t.status === s)
+      .map((t) => t.schemaName)
+      .join(', ');
+
   switch (status.value) {
     case 'pending':
-      return t('extensionsBuiltin.tracker.status.pending');
+      return `${t('extensionsBuiltin.tracker.status.pending')}: ${getNames('pending')}`;
     case 'success':
       return t('extensionsBuiltin.tracker.status.success');
     case 'error':
-      return `${t('extensionsBuiltin.tracker.status.error')}: ${trackerData.value?.error ?? 'Unknown'}`;
+      const errorTracker = allTrackers.find((t) => t.status === 'error');
+      return `${t('extensionsBuiltin.tracker.status.error')} in ${getNames('error')}: ${
+        errorTracker?.error ?? 'Unknown'
+      }`;
     default:
       return t('extensionsBuiltin.tracker.status.idle');
   }

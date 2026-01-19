@@ -23,11 +23,13 @@ interface MountedComponent {
   component: Component;
 }
 
+// TODO: i18n
+
 class TrackerManager {
   private mountedIcons = new Map<number, MountedComponent>();
   private mountedDisplays = new Map<number, MountedComponent>();
   private pendingRequests = new Set<number>();
-  private changeSchemaMenuItem: HTMLElement | null = null;
+  private manageSchemaMenuItem: HTMLElement | null = null;
 
   constructor(private api: TrackerExtensionAPI) {}
 
@@ -49,131 +51,164 @@ class TrackerManager {
     const settings = this.getSettings();
     const chat = this.api.chat.getHistory();
     const message = chat[index];
-
     if (!message) return;
 
-    // 1. Determine which schema to use
-    let schemaName = this.api.chat.metadata.get()?.extra?.['core.tracker']?.schemaName;
-
-    if (!schemaName) {
-      const { result, value } = await this.promptForSchemaSelection();
-      if (result !== POPUP_RESULT.AFFIRMATIVE || !value) {
-        return; // User cancelled
-      }
-      schemaName = value;
-
-      this.api.chat.metadata.update({
-        extra: {
-          'core.tracker': {
-            schemaName,
-          },
-        },
-      });
+    let chatSchemaNames = this.api.chat.metadata.get()?.extra?.['core.tracker']?.schemaNames ?? [];
+    if (chatSchemaNames.length === 0) {
+      this.api.ui.showToast('No tracker schemas are configured for this chat. Please manage schemas first.', 'info');
+      await this.manageChatSchemas();
+      chatSchemaNames = this.api.chat.metadata.get()?.extra?.['core.tracker']?.schemaNames ?? [];
+      if (chatSchemaNames.length === 0) return; // User cancelled
     }
 
-    const preset = settings.schemaPresets.find((p) => p.name === schemaName);
-    if (!preset) {
-      this.api.ui.showToast(
-        this.api.i18n.t('extensionsBuiltin.tracker.toasts.schemaNotFound', { name: schemaName }),
-        'error',
-      );
-      return;
-    }
-
-    let schemaObject: object;
-    try {
-      schemaObject = JSON.parse(preset.schema);
-    } catch (e) {
-      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.tracker.toasts.invalidJson'), 'error');
-      console.error('Failed to parse tracker schema JSON:', e);
-      return;
-    }
-
-    // 2. Update UI to 'pending' state
     this.pendingRequests.add(index);
-    await this.updateTrackerData(index, { status: 'pending', schemaName });
 
     try {
-      // 3. Build context for the prompt
       const contextMessages = await this.buildTrackerContext(chat, index);
-      const systemPrompt = this.api.macro.process(settings.prompt);
-      contextMessages.push({ role: 'system', name: 'System', content: systemPrompt });
 
-      // 4. Prepare structured response options
-      const structuredResponse: StructuredResponseOptions = {
-        schema: {
-          name: 'tracker_data_extraction',
-          strict: true,
-          value: schemaObject,
-        },
-        format: settings.promptEngineering,
-      };
-
-      // 5. Call LLM
-      // eslint-disable-next-line @typescript-eslint/no-this-alias
-      const thus = this;
-      const response = await this.api.llm.generate(contextMessages, {
-        connectionProfile: settings.connectionProfile,
-        samplerOverrides: { max_tokens: settings.maxResponseTokens },
-        structuredResponse,
-        async onCompletion({ structured_content, parse_error }) {
-          let trackerHtml = '';
-          if (!parse_error && structured_content) {
-            trackerHtml = thus.api.macro.process(
-              preset.template,
-              undefined,
-              structured_content as Record<string, unknown>,
-            );
-          }
-
-          await thus.updateTrackerData(index, {
-            error: parse_error?.message,
-            status: parse_error ? 'error' : 'success',
-            trackerJson: parse_error ? undefined : (structured_content as Record<string, unknown>),
-            trackerHtml,
+      const tasks = chatSchemaNames.map((schemaName) => async () => {
+        const preset = settings.schemaPresets.find((p) => p.name === schemaName);
+        if (!preset) {
+          console.warn(`Tracker schema preset not found: ${schemaName}`);
+          await this.updateTrackerData(index, schemaName, {
+            status: 'error',
+            error: 'Schema preset not found.',
+            schemaName,
           });
-        },
+          return;
+        }
+
+        let schemaObject: object;
+        try {
+          schemaObject = JSON.parse(preset.schema);
+        } catch (e) {
+          console.error('Failed to parse tracker schema JSON:', e);
+          await this.updateTrackerData(index, schemaName, {
+            status: 'error',
+            error: 'Invalid schema JSON.',
+            schemaName,
+          });
+          return;
+        }
+
+        await this.updateTrackerData(index, schemaName, { status: 'pending', schemaName });
+
+        try {
+          const systemPrompt = this.api.macro.process(settings.prompt);
+          const messagesForLlm: ApiChatMessage[] = [
+            ...contextMessages,
+            { role: 'system' as const, name: 'System', content: systemPrompt },
+          ];
+          const structuredResponse: StructuredResponseOptions = {
+            schema: { name: 'tracker_data_extraction', strict: true, value: schemaObject },
+            format: settings.promptEngineering,
+          };
+
+          // eslint-disable-next-line @typescript-eslint/no-this-alias
+          const thus = this;
+          const response = await this.api.llm.generate(messagesForLlm, {
+            connectionProfile: settings.connectionProfile,
+            samplerOverrides: { max_tokens: settings.maxResponseTokens },
+            structuredResponse,
+            async onCompletion({ structured_content, parse_error }) {
+              let trackerHtml = '';
+              if (!parse_error && structured_content) {
+                trackerHtml = thus.api.macro.process(
+                  preset.template,
+                  undefined,
+                  structured_content as Record<string, unknown>,
+                );
+              }
+
+              await thus.updateTrackerData(index, schemaName, {
+                error: parse_error?.message,
+                status: parse_error ? 'error' : 'success',
+                trackerJson: parse_error ? undefined : (structured_content as Record<string, unknown>),
+                trackerHtml,
+              });
+            },
+          });
+
+          if (Symbol.asyncIterator in response) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            for await (const _ of response) {
+            }
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+          console.error(`Tracker generation failed for schema "${schemaName}":`, error);
+          await this.updateTrackerData(index, schemaName, { status: 'error', error: errorMessage, schemaName });
+        }
       });
 
-      if (Symbol.asyncIterator in response) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        for await (const _ of response) {
-        }
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-      console.error('Tracker generation failed:', error);
-      await this.updateTrackerData(index, { status: 'error', error: errorMessage, schemaName });
+      await this.runPromisesWithLimit(tasks, settings.parallelRequestLimit);
     } finally {
       this.pendingRequests.delete(index);
     }
   }
 
-  public async changeChatSchema(): Promise<void> {
+  private async runPromisesWithLimit<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
+    const results: T[] = [];
+    let activePromises = 0;
+    let taskIndex = 0;
+
+    return new Promise((resolve) => {
+      const executeNext = () => {
+        if (taskIndex >= tasks.length && activePromises === 0) {
+          resolve(results);
+          return;
+        }
+
+        while (activePromises < limit && taskIndex < tasks.length) {
+          activePromises++;
+          const currentTaskIndex = taskIndex;
+          tasks[taskIndex++]()
+            .then((result) => {
+              results[currentTaskIndex] = result;
+            })
+            .catch(() => {
+              // Errors are handled inside the task, just continue
+            })
+            .finally(() => {
+              activePromises--;
+              executeNext();
+            });
+        }
+      };
+
+      executeNext();
+    });
+  }
+
+  public async manageChatSchemas(): Promise<void> {
     const { result, value } = await this.promptForSchemaSelection();
-    if (result === POPUP_RESULT.AFFIRMATIVE && value) {
+    if (result === POPUP_RESULT.AFFIRMATIVE && Array.isArray(value)) {
       this.api.chat.metadata.update({
         extra: {
           'core.tracker': {
-            schemaName: value,
+            schemaNames: value,
           },
         },
       });
-      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.tracker.toasts.schemaSet', { name: value }), 'success');
+      const toastMessage =
+        value.length > 0
+          ? `This chat now uses: ${value.join(', ')}`
+          : 'All tracker schemas have been removed from this chat.';
+      this.api.ui.showToast(toastMessage, 'success');
     }
   }
 
-  private async promptForSchemaSelection(): Promise<{ result: number; value: string }> {
+  private async promptForSchemaSelection(): Promise<{ result: number; value: string[] }> {
     const settings = this.getSettings();
-    const currentDefault =
-      this.api.chat.metadata.get()?.extra?.['core.tracker']?.schemaName || settings.activeSchemaPresetName;
+    const currentSelection = this.api.chat.metadata.get()?.extra?.['core.tracker']?.schemaNames || [];
 
     return await this.api.ui.showPopup({
       title: this.api.i18n.t('extensionsBuiltin.tracker.popups.selectSchemaTitle'),
       type: POPUP_TYPE.SELECT,
       content: this.api.i18n.t('extensionsBuiltin.tracker.popups.selectSchemaContent'),
       selectOptions: settings.schemaPresets.map((p) => ({ label: p.name, value: p.name })),
-      selectValue: currentDefault,
+      selectValue: currentSelection,
+      selectMultiple: true,
       okButton: true,
       cancelButton: true,
     });
@@ -181,34 +216,36 @@ class TrackerManager {
 
   private async buildTrackerContext(chat: ChatMessage[], currentIndex: number): Promise<ApiChatMessage[]> {
     const settings = this.getSettings();
-    const messagesToConsider = chat.slice(0, currentIndex);
+    const messagesToConsider = chat.slice(0, currentIndex + 1); // Include the current message
 
-    // Include last X messages
     const messageHistory =
       settings.includeLastXMessages === -1
         ? messagesToConsider
         : messagesToConsider.slice(-settings.includeLastXMessages);
 
-    // Build ApiChatMessage array
     const baseApiMessages = await this.api.chat.buildPrompt({ chatHistory: messageHistory });
     const apiMessages: ApiChatMessage[] = [...baseApiMessages];
 
     return apiMessages;
   }
 
-  private async updateTrackerData(index: number, partialData: Partial<TrackerData>) {
+  private async updateTrackerData(index: number, schemaName: string, partialData: Partial<TrackerData>) {
     const message = this.api.chat.getHistory()[index];
     if (!message) return;
 
     const existingExtra = message.extra['core.tracker'] || {};
-    const existingTracker = existingExtra.tracker || { status: 'idle' };
+    const existingTrackers = existingExtra.trackers || {};
+    const existingTracker = existingTrackers[schemaName] || { status: 'idle' };
 
     const newTrackerData: TrackerData = { ...existingTracker, ...partialData };
 
     await this.api.chat.updateMessageObject(index, {
       extra: {
         'core.tracker': {
-          tracker: newTrackerData,
+          trackers: {
+            ...existingTrackers,
+            [schemaName]: newTrackerData,
+          },
         },
       },
     });
@@ -230,32 +267,36 @@ class TrackerManager {
 
   public injectContext(apiMessages: ApiChatMessage[], originalMessage: ChatMessage, index: number): void {
     const messageWithExtra = originalMessage as unknown as { extra: TrackerMessageExtra };
-    const trackerData = messageWithExtra.extra?.['core.tracker']?.tracker;
+    const trackers = messageWithExtra.extra?.['core.tracker']?.trackers;
 
-    if (trackerData?.status === 'success' && trackerData.trackerJson) {
-      const settings = this.getSettings();
-      // Find all successful trackers up to the current message
-      const trackerHistory = this.api.chat
-        .getHistory()
-        .slice(0, index + 1)
-        .filter((msg) => msg.extra['core.tracker']?.tracker?.status === 'success');
+    if (!trackers) return;
 
-      // Only inject if it's within the N most recent trackers
-      if (settings.includeLastXTrackers !== -1 && trackerHistory.length > settings.includeLastXTrackers) {
-        const recentTrackers = trackerHistory.slice(-settings.includeLastXTrackers);
-        if (!recentTrackers.includes(originalMessage)) {
-          return; // This tracker is too old, so don't inject it.
+    const settings = this.getSettings();
+    // Find all successful trackers up to the current message
+    const trackerHistory = this.api.chat
+      .getHistory()
+      .slice(0, index + 1)
+      .flatMap((msg) => Object.values(msg.extra['core.tracker']?.trackers || {}))
+      .filter((tracker) => tracker.status === 'success');
+
+    for (const trackerData of Object.values(trackers)) {
+      if (trackerData.status === 'success' && trackerData.trackerJson) {
+        // Only inject if it's within the N most recent trackers
+        if (settings.includeLastXTrackers !== -1 && trackerHistory.length > settings.includeLastXTrackers) {
+          const recentTrackers = trackerHistory.slice(-settings.includeLastXTrackers);
+          if (!recentTrackers.includes(trackerData)) {
+            continue; // This tracker is too old, so don't inject it.
+          }
         }
-      }
 
-      // TODO: No need user to distinguish user vs bot here
-      // No need to specify with "last". It is better to write simple like "Current tracker data is: ..."
-      // TODO: Move to extension settings
-      const messageSource = originalMessage.is_user ? "the user's last message" : 'your last response';
-      const trackerContent = `[The following data was tracked for ${messageSource} using the "${
-        trackerData.schemaName
-      }" schema: ${JSON.stringify(trackerData.trackerJson)}]`;
-      apiMessages.push({ role: 'system', name: 'System', content: trackerContent });
+        // TODO: No need user to distinguish user vs bot here
+        // TODO: Move to extension settings
+        const messageSource = originalMessage.is_user ? "the user's message" : 'your response';
+        const trackerContent = `[Data for schema "${
+          trackerData.schemaName
+        }" was tracked from ${messageSource}: ${JSON.stringify(trackerData.trackerJson)}]`;
+        apiMessages.push({ role: 'system', name: 'System', content: trackerContent });
+      }
     }
   }
 
@@ -333,10 +374,10 @@ class TrackerManager {
         menuItem.setAttribute('role', 'menuitem');
         menuItem.tabIndex = 0;
         menuItem.innerHTML = `<i class="fa-solid fa-chart-simple"></i> <span>${this.api.i18n.t(
-          'extensionsBuiltin.tracker.chatForm.changeSchema',
+          'extensionsBuiltin.tracker.chatForm.manageSchemas',
         )}</span>`;
         menuItem.onclick = () => {
-          this.changeChatSchema();
+          this.manageChatSchemas();
           // Hide the menu after clicking
           const menu = menuItem.closest('.options-menu') as HTMLElement | null;
           if (menu) menu.style.display = 'none';
@@ -344,25 +385,25 @@ class TrackerManager {
         menuItem.onkeydown = (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            this.changeChatSchema();
+            this.manageChatSchemas();
           }
         };
 
         optionsMenu.appendChild(separator);
         optionsMenu.appendChild(menuItem);
-        this.changeSchemaMenuItem = menuItem; // Store reference for cleanup
+        this.manageSchemaMenuItem = menuItem; // Store reference for cleanup
       }
     }, 200);
   }
 
   public unmountChatFormUi(): void {
-    if (this.changeSchemaMenuItem) {
-      const separator = this.changeSchemaMenuItem.previousElementSibling;
+    if (this.manageSchemaMenuItem) {
+      const separator = this.manageSchemaMenuItem.previousElementSibling;
       if (separator instanceof HTMLHRElement) {
         separator.remove();
       }
-      this.changeSchemaMenuItem.remove();
-      this.changeSchemaMenuItem = null;
+      this.manageSchemaMenuItem.remove();
+      this.manageSchemaMenuItem = null;
     }
   }
 

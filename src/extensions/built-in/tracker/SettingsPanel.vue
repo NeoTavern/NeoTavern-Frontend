@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector, PresetControl } from '../../../components/common';
-import { FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
+import { Button, FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
 import {
@@ -145,6 +145,23 @@ async function handlePresetDelete() {
   }
 }
 
+async function handleResetAll() {
+  const { result } = await props.api.ui.showPopup({
+    title: 'Reset All Tracker Settings?',
+    content:
+      'This will reset all schema presets and the prompt template to their default values. This action cannot be undone.',
+    type: POPUP_TYPE.CONFIRM,
+    okButton: 'common.reset',
+  });
+
+  if (result === POPUP_RESULT.AFFIRMATIVE) {
+    settings.value.schemaPresets = JSON.parse(JSON.stringify(DEFAULT_PRESETS));
+    settings.value.prompt = DEFAULT_PROMPT;
+    settings.value.activeSchemaPresetName = DEFAULT_PRESETS[0].name;
+    props.api.ui.showToast('Tracker settings have been reset.', 'success');
+  }
+}
+
 const autoModeOptions = [
   { label: 'None', value: 'none' },
   { label: 'AI Responses', value: 'responses' },
@@ -158,14 +175,74 @@ const promptEngineeringOptions = [
   { label: 'Force XML', value: 'xml' },
 ];
 
-const promptTools = [
+const promptTools = computed(() => [
   {
     id: 'reset',
     icon: 'fa-rotate-left',
     title: t('common.reset'),
-    onClick: ({ setValue }: { setValue: (v: string) => void }) => setValue(DEFAULT_PROMPT),
+    onClick: async ({ setValue }: { setValue: (v: string) => void }) => {
+      const { result } = await props.api.ui.showPopup({
+        title: 'Reset Prompt?',
+        content: 'Are you sure you want to reset the prompt template to its default value?',
+        type: POPUP_TYPE.CONFIRM,
+        okButton: 'common.reset',
+      });
+      if (result === POPUP_RESULT.AFFIRMATIVE) {
+        setValue(DEFAULT_PROMPT);
+        props.api.ui.showToast('Prompt template has been reset.', 'success');
+      }
+    },
   },
-];
+]);
+
+const defaultActivePreset = computed(() => {
+  if (!activePreset.value) return null;
+  return DEFAULT_PRESETS.find((p) => p.name === activePreset.value?.name) ?? null;
+});
+
+const schemaTools = computed(() => [
+  {
+    id: 'reset',
+    icon: 'fa-rotate-left',
+    title: t('common.reset'),
+    disabled: !defaultActivePreset.value,
+    onClick: async ({ setValue }: { setValue: (v: string) => void }) => {
+      if (!defaultActivePreset.value) return;
+      const { result } = await props.api.ui.showPopup({
+        title: 'Reset Schema?',
+        content: `Are you sure you want to reset the schema for "${activePreset.value?.name}" to its default value?`,
+        type: POPUP_TYPE.CONFIRM,
+        okButton: 'common.reset',
+      });
+      if (result === POPUP_RESULT.AFFIRMATIVE) {
+        setValue(defaultActivePreset.value.schema);
+        props.api.ui.showToast('Schema has been reset.', 'success');
+      }
+    },
+  },
+]);
+
+const templateTools = computed(() => [
+  {
+    id: 'reset',
+    icon: 'fa-rotate-left',
+    title: t('common.reset'),
+    disabled: !defaultActivePreset.value,
+    onClick: async ({ setValue }: { setValue: (v: string) => void }) => {
+      if (!defaultActivePreset.value) return;
+      const { result } = await props.api.ui.showPopup({
+        title: 'Reset Template?',
+        content: `Are you sure you want to reset the HTML template for "${activePreset.value?.name}" to its default value?`,
+        type: POPUP_TYPE.CONFIRM,
+        okButton: 'common.reset',
+      });
+      if (result === POPUP_RESULT.AFFIRMATIVE) {
+        setValue(defaultActivePreset.value.template);
+        props.api.ui.showToast('HTML template has been reset.', 'success');
+      }
+    },
+  },
+]);
 </script>
 
 <template>
@@ -190,6 +267,9 @@ const promptTools = [
       >
         <Select v-model="settings.promptEngineering" :options="promptEngineeringOptions" />
       </FormItem>
+    </div>
+    <div class="reset-all-container">
+      <Button icon="fa-rotate-left" variant="danger" @click="handleResetAll">Reset All Settings</Button>
     </div>
 
     <div class="group-header">Schema Presets</div>
@@ -217,6 +297,7 @@ const promptTools = [
           class="mono-area"
           :rows="10"
           :identifier="`extension.tracker.schema.${activePreset.name}`"
+          :tools="schemaTools"
         />
       </FormItem>
       <FormItem label="HTML Template" description="Handlebars template to render the extracted data in the chat.">
@@ -226,6 +307,7 @@ const promptTools = [
           class="mono-area"
           :rows="6"
           :identifier="`extension.tracker.template.${activePreset.name}`"
+          :tools="templateTools"
         />
       </FormItem>
     </template>
@@ -262,6 +344,16 @@ const promptTools = [
         <Input v-model.number="settings.includeLastXTrackers" type="number" :min="-1" />
       </FormItem>
     </div>
+    <div class="group-header">Advanced</div>
+    <div class="setting-row">
+      <FormItem
+        label="Parallel Request Limit"
+        description="How many trackers can run at the same time."
+        style="flex: 1; max-width: 200px"
+      >
+        <Input v-model.number="settings.parallelRequestLimit" type="number" :min="1" :max="10" />
+      </FormItem>
+    </div>
   </div>
 </template>
 
@@ -294,5 +386,9 @@ const promptTools = [
   font-size: 0.85em;
   max-height: 100px;
   overflow-y: auto;
+}
+.reset-all-container {
+  display: flex;
+  justify-content: flex-end;
 }
 </style>
