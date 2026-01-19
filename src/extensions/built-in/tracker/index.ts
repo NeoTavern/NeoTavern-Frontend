@@ -248,6 +248,9 @@ class TrackerManager {
         }
       }
 
+      // TODO: No need user to distinguish user vs bot here
+      // No need to specify with "last". It is better to write simple like "Current tracker data is: ..."
+      // TODO: Move to extension settings
       const messageSource = originalMessage.is_user ? "the user's last message" : 'your last response';
       const trackerContent = `[The following data was tracked for ${messageSource} using the "${
         trackerData.schemaName
