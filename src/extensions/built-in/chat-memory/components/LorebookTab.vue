@@ -228,7 +228,7 @@ async function handleLorebookSummarize() {
     const messages: Array<ApiChatMessage> = [{ role: 'system', content: compiledPrompt, name: 'System' }];
 
     const response = await props.api.llm.generate(messages, {
-      connectionProfileName: props.connectionProfile,
+      connectionProfile: props.connectionProfile,
       signal: abortController.value.signal,
     });
 

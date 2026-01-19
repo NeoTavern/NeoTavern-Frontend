@@ -264,7 +264,7 @@ async function summarizeRange(mode: 'missing-only' | 'force-all') {
       const prompt = props.api.macro.process(messageSummaryPrompt.value, undefined, { text: msg.mes });
 
       const response = await props.api.llm.generate([{ role: 'system', content: prompt, name: 'System' }], {
-        connectionProfileName: props.connectionProfile,
+        connectionProfile: props.connectionProfile,
       });
 
       let fullContent = '';

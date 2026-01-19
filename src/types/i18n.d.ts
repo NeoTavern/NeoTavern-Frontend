@@ -943,7 +943,6 @@ export interface MessageSchema {
       errors: {
         noSelection: string;
         deleteNone: string;
-        renameNone: string;
         nameExists: string;
         notFound: string;
       };
@@ -1536,6 +1535,40 @@ export interface MessageSchema {
       displayDurationMs: string;
       promptTemplate: string;
       promptHint: string;
+    };
+    tracker: {
+      status: {
+        pending: string;
+        success: string;
+        error: string;
+        idle: string;
+      };
+      display: {
+        title: string;
+      };
+      popups: {
+        createPresetTitle: string;
+        newPresetName: string;
+        renamePresetTitle: string;
+        deletePresetTitle: string;
+        deletePresetContent: string;
+        selectSchemaTitle: string;
+        selectSchemaContent: string;
+      };
+      toasts: {
+        alreadyInProgress: string;
+        schemaNotFound: string;
+        invalidJson: string;
+        schemaSet: string;
+        presetExistsError: string;
+        presetCreated: string;
+        presetRenamed: string;
+        cannotDeleteLastPreset: string;
+        presetDeleted: string;
+      };
+      chatForm: {
+        changeSchema: string;
+      };
     };
   };
   login: {

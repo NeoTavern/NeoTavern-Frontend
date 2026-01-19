@@ -45,7 +45,7 @@ function openCreateProfilePopup() {
 }
 
 function openViewProfilePopup() {
-  const selectedProfile = apiStore.connectionProfiles.find((p) => p.name === apiStore.selectedConnectionProfileName);
+  const selectedProfile = apiStore.connectionProfiles.find((p) => p.id === apiStore.selectedConnectionProfile);
   if (selectedProfile) {
     profilePopupMode.value = 'view';
     profileForView.value = selectedProfile;
@@ -261,7 +261,7 @@ const profileActionOrder = ['info', 'save', 'create', 'edit', 'delete', 'import'
           @export="apiStore.exportConnectionProfile"
         >
           <template #selector>
-            <ConnectionProfileSelector v-model="apiStore.selectedConnectionProfileName" />
+            <ConnectionProfileSelector v-model="apiStore.selectedConnectionProfile" />
           </template>
         </PresetControl>
       </div>

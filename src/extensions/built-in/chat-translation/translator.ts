@@ -2,21 +2,6 @@ import Handlebars from 'handlebars';
 import type { ApiChatMessage, ExtensionAPI } from '../../../types';
 import { type ChatTranslationSettings, DEFAULT_PROMPT } from './types';
 
-// Register helpers once
-Handlebars.registerHelper('slice', (context, count) => {
-  if (!Array.isArray(context)) return [];
-  return context.slice(count);
-});
-
-Handlebars.registerHelper('add', (a, b) => {
-  return Number(a) + Number(b);
-});
-
-Handlebars.registerHelper('join', (context, separator) => {
-  if (!Array.isArray(context)) return '';
-  return context.join(separator);
-});
-
 export class Translator {
   constructor(private api: ExtensionAPI<ChatTranslationSettings>) {}
 
@@ -75,7 +60,7 @@ export class Translator {
       // but usually translation is a direct instruction.
 
       const response = await this.api.llm.generate(messages, {
-        connectionProfileName: settings.connectionProfile,
+        connectionProfile: settings.connectionProfile,
       });
 
       let translatedText = '';
@@ -151,7 +136,7 @@ export class Translator {
       const messages: ApiChatMessage[] = [{ role: 'system', content: prompt, name: 'System' }];
 
       const response = await this.api.llm.generate(messages, {
-        connectionProfileName: settings.connectionProfile,
+        connectionProfile: settings.connectionProfile,
       });
 
       let translatedText = '';

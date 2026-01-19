@@ -33,6 +33,23 @@ export class MacroService {
     Handlebars.registerHelper('eq', function (a, b) {
       return a === b;
     });
+    Handlebars.registerHelper('slice', (context, count) => {
+      if (!Array.isArray(context)) return [];
+      return context.slice(count);
+    });
+    Handlebars.registerHelper('add', (a, b) => {
+      return Number(a) + Number(b);
+    });
+    Handlebars.registerHelper('join', (context, separator) => {
+      if (!Array.isArray(context)) return '';
+      return context.join(separator);
+    });
+    Handlebars.registerHelper('uppercase', (str: string) => {
+      return String(str).toUpperCase();
+    });
+    Handlebars.registerHelper('lowercase', (str: string) => {
+      return String(str).toLowerCase();
+    });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

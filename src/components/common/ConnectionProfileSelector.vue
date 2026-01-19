@@ -21,7 +21,7 @@ const selectedProfile = computed({
 const options = computed(() => {
   return [
     { label: t('apiConnections.profileManagement.none'), value: '' },
-    ...apiStore.connectionProfiles.map((p) => ({ label: p.name, value: p.name })),
+    ...apiStore.connectionProfiles.map((p) => ({ label: p.name, value: p.id })),
   ];
 });
 </script>

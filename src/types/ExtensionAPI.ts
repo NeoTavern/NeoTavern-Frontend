@@ -30,7 +30,7 @@ export interface ChatInputDetail {
 }
 
 export interface LlmGenerationOptions {
-  connectionProfileName?: string;
+  connectionProfile?: string;
   formatter?: ApiFormatter;
   samplerOverrides?: Partial<SamplerSettings>;
   instructTemplateName?: string;

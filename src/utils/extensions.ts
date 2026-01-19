@@ -667,7 +667,7 @@ const baseExtensionAPI: ExtensionAPI = {
         providerSpecific,
         customPromptPostProcessing,
       } = await resolveConnectionProfileSettings({
-        profileName: options.connectionProfileName,
+        profile: options.connectionProfile,
         samplerOverrides: options.samplerOverrides,
       });
 

@@ -180,7 +180,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
 
     try {
       const response = await api.llm.generate(genMessages, {
-        connectionProfileName: settings.impersonateConnectionProfile,
+        connectionProfile: settings.impersonateConnectionProfile,
       });
 
       let generated = chatInput;

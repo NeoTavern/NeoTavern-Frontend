@@ -212,7 +212,7 @@ export class GroupChatService {
     this.isGeneratingSummary.value = true;
     try {
       const response = await this.api.llm.generate(messages, {
-        connectionProfileName: connectionProfile,
+        connectionProfile,
       });
 
       let content = '';
@@ -410,7 +410,7 @@ export class GroupChatService {
 
     try {
       const response = await this.api.llm.generate(messages, {
-        connectionProfileName: connectionProfile,
+        connectionProfile,
         signal,
       });
 

@@ -33,7 +33,7 @@ export interface PopupOptions {
   defaultResult?: number;
   cropImage?: string;
   component?: Component;
-  selectOptions?: { text: string; value: string }[];
+  selectOptions?: { label: string; value: string }[];
   selectValue?: string;
   // TODO: Is there way to make type-safe...?
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

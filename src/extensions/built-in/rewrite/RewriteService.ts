@@ -119,7 +119,7 @@ export class RewriteService {
   public async generateRewrite(
     input: string,
     templateId: string,
-    profileName: string,
+    connectionProfile: string,
     customPromptOverride?: string,
     contextData?: { activeCharacter?: Character; characters?: Character[]; persona?: Persona },
     additionalMacros?: Record<string, unknown>,
@@ -156,7 +156,7 @@ export class RewriteService {
     const messages: ApiChatMessage[] = [{ role: 'user', content: processedContent, name: 'User' }];
 
     const response = await this.api.llm.generate(messages, {
-      connectionProfileName: profileName,
+      connectionProfile: connectionProfile,
       signal,
     });
 
@@ -165,7 +165,7 @@ export class RewriteService {
 
   public async generateSessionResponse(
     messages: RewriteSessionMessage[],
-    profileName: string,
+    connectionProfile: string,
     format: StructuredResponseFormat,
     signal?: AbortSignal,
   ): Promise<RewriteLLMResponse> {
@@ -185,7 +185,7 @@ export class RewriteService {
     // If format is 'text', we skip structured response and return raw text as justification
     if (format === 'text') {
       const response = await this.api.llm.generate(apiMessages, {
-        connectionProfileName: profileName,
+        connectionProfile: connectionProfile,
         signal,
       });
 
@@ -233,7 +233,7 @@ export class RewriteService {
     return new Promise(async (resolve, reject) => {
       try {
         const response = await this.api.llm.generate(apiMessages, {
-          connectionProfileName: profileName,
+          connectionProfile: connectionProfile,
           signal,
           structuredResponse: structuredResponseOptions,
           onCompletion: (data) => {

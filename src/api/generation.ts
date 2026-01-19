@@ -49,18 +49,18 @@ export interface ResolvedConnectionProfileSettings {
  * Handles apiUrl overrides, secret rotation, and sampler preset loading.
  */
 export async function resolveConnectionProfileSettings(options: {
-  profileName?: string;
+  profile?: string;
   samplerOverrides?: Partial<SamplerSettings>;
   effectiveProvider?: ApiProvider;
 }): Promise<ResolvedConnectionProfileSettings> {
   const settingsStore = useSettingsStore();
   const apiStore = useApiStore();
-  const { profileName, samplerOverrides, effectiveProvider: providedProvider } = options;
+  const { profile, samplerOverrides, effectiveProvider: providedProvider } = options;
 
   // Get connection profile if specified
   let profileSettings: ConnectionProfile | null = null;
-  if (profileName) {
-    profileSettings = apiStore.connectionProfiles.find((p) => p.name === profileName) || null;
+  if (profile) {
+    profileSettings = apiStore.connectionProfiles.find((p) => p.id === profile) || null;
   }
 
   // Determine effective provider
