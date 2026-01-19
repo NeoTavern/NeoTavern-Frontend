@@ -233,7 +233,7 @@ const promptTools = [
     <div class="group-header">Prompt</div>
     <FormItem
       label="Prompt Template"
-      description="The prompt sent to the AI for data extraction. Use {{messageText}} for the content."
+      description="The prompt sent to the AI for data extraction."
     >
       <Textarea
         v-model="settings.prompt"

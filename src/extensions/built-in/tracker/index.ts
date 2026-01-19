@@ -96,7 +96,7 @@ class TrackerManager {
     try {
       // 3. Build context for the prompt
       const contextMessages = await this.buildTrackerContext(chat, index);
-      const systemPrompt = this.api.macro.process(settings.prompt, undefined, { messageText: message.mes });
+      const systemPrompt = this.api.macro.process(settings.prompt);
       contextMessages.push({ role: 'system', name: 'System', content: systemPrompt });
 
       // 4. Prepare structured response options
