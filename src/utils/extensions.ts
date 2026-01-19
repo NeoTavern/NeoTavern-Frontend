@@ -943,6 +943,7 @@ globalThis.NeoTavern = {
       console.error(`[Extension] Failed to initialize extension "${extensionId}":`, error);
     }
   },
+  api: baseExtensionAPI,
 };
 
 Object.freeze(baseExtensionAPI);

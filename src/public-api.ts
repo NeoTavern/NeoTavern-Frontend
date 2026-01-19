@@ -36,5 +36,6 @@ declare global {
       extensionName: string,
       initCallback: (extensionName: string, api: ExtensionAPI) => void,
     ) => void;
+    api: ExtensionAPI;
   };
 }
