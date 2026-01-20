@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { GenerationMode } from '../../../constants';
 import type { ApiChatMessage, Character, ChatMessage, ExtensionAPI } from '../../../types';
 import {
   GroupGenerationHandlingMode,
@@ -465,7 +466,7 @@ export class GroupChatService {
     this.generatingAvatar.value = nextAvatar;
 
     try {
-      await this.api.chat.generateResponse({
+      await this.api.chat.generateResponse(GenerationMode.NEW, {
         forceSpeakerAvatar: nextAvatar,
       });
     } catch (e) {

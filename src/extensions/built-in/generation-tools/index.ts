@@ -13,6 +13,7 @@ export { manifest };
 
 const DEFAULT_SETTINGS: ExtensionSettings = {
   rerollContinueEnabled: true,
+  swipeEnabled: true,
   impersonateEnabled: true,
   impersonateConnectionProfile: undefined,
   impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
@@ -36,9 +37,10 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
   }
 
-  const REROLL_CONTINUE_BUTTON_ID = 'reroll-continue-button';
-  const IMPERSONATE_BUTTON_ID = 'impersonate-button';
-  const GENERATE_BUTTON_ID = 'generate-button';
+  const REROLL_BUTTON_ID = 'generation-tools-reroll';
+  const SWIPE_BUTTON_ID = 'generation-tools-swipe';
+  const IMPERSONATE_BUTTON_ID = 'generation-tools-impersonate';
+  const GENERATE_BUTTON_ID = 'generation-tools-generate';
 
   const t = api.i18n.t;
 
@@ -46,39 +48,58 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
   const updateButtonState = () => {
     const settings = getSettings(api);
     const isChatActive = api.chat.getChatInfo() !== null;
+    const lastMessage = api.chat.getLastMessage();
+    const isLastMessageFromUser = lastMessage?.is_user ?? true; // Default to true if no message
 
     const rerollClick = () => rerollContinue();
+    const swipeClick = () => swipe();
     const impersonateClick = () => impersonate();
     const generateClick = () => generate();
 
     // Reroll/Continue
     api.ui.registerChatFormOptionsMenuItem({
-      id: REROLL_CONTINUE_BUTTON_ID,
+      id: REROLL_BUTTON_ID,
       icon: 'fa-solid fa-rotate-right',
-      label: t('extensionsBuiltin.rerollContinue.buttonLabel'),
+      label: t('extensionsBuiltin.generationTools.rerollButtonLabel'),
       visible: !!snapshot && settings.rerollContinueEnabled && isChatActive,
       onClick: rerollClick,
     });
     api.ui.registerChatQuickAction('core.generation', '', {
-      id: REROLL_CONTINUE_BUTTON_ID,
+      id: REROLL_BUTTON_ID,
       icon: 'fa-solid fa-rotate-right',
-      label: t('extensionsBuiltin.rerollContinue.buttonLabel'),
+      label: t('extensionsBuiltin.generationTools.rerollButtonLabel'),
       visible: !!snapshot && settings.rerollContinueEnabled && isChatActive,
       onClick: rerollClick,
+    });
+
+    // Swipe
+    api.ui.registerChatFormOptionsMenuItem({
+      id: SWIPE_BUTTON_ID,
+      icon: 'fa-solid fa-angles-right',
+      label: t('extensionsBuiltin.generationTools.swipeButtonLabel'),
+      visible: settings.swipeEnabled && isChatActive && !isLastMessageFromUser,
+      onClick: swipeClick,
+    });
+    api.ui.registerChatQuickAction('core.generation', '', {
+      id: SWIPE_BUTTON_ID,
+      icon: 'fa-solid fa-angles-right',
+      label: t('extensionsBuiltin.generationTools.swipeButtonLabel'),
+      visible: settings.swipeEnabled && isChatActive && !isLastMessageFromUser,
+      onClick: swipeClick,
     });
 
     // Impersonate
     api.ui.registerChatFormOptionsMenuItem({
       id: IMPERSONATE_BUTTON_ID,
       icon: 'fa-solid fa-user-secret',
-      label: t('extensionsBuiltin.rerollContinue.impersonateButtonLabel'),
+      label: t('extensionsBuiltin.generationTools.impersonateButtonLabel'),
       visible: settings.impersonateEnabled && isChatActive,
       onClick: impersonateClick,
     });
     api.ui.registerChatQuickAction('core.generation', '', {
       id: IMPERSONATE_BUTTON_ID,
       icon: 'fa-solid fa-user-secret',
-      label: t('extensionsBuiltin.rerollContinue.impersonateButtonLabel'),
+      label: t('extensionsBuiltin.generationTools.impersonateButtonLabel'),
       visible: settings.impersonateEnabled && isChatActive,
       onClick: impersonateClick,
     });
@@ -87,14 +108,14 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     api.ui.registerChatFormOptionsMenuItem({
       id: GENERATE_BUTTON_ID,
       icon: 'fa-solid fa-wand-magic-sparkles',
-      label: t('extensionsBuiltin.rerollContinue.generateButtonLabel'),
+      label: t('extensionsBuiltin.generationTools.generateButtonLabel'),
       visible: settings.generateEnabled && isChatActive,
       onClick: generateClick,
     });
     api.ui.registerChatQuickAction('core.generation', '', {
       id: GENERATE_BUTTON_ID,
       icon: 'fa-solid fa-wand-magic-sparkles',
-      label: t('extensionsBuiltin.rerollContinue.generateButtonLabel'),
+      label: t('extensionsBuiltin.generationTools.generateButtonLabel'),
       visible: settings.generateEnabled && isChatActive,
       onClick: generateClick,
     });
@@ -115,7 +136,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
         swipeId: lastMessage.swipe_id ?? 0,
       };
 
-      console.debug('[Reroll Continue] Snapshot taken for message', index);
+      console.debug('[Generation Tools] Snapshot taken for message', index);
     } else if (
       context.mode === GenerationMode.NEW ||
       context.mode === GenerationMode.REGENERATE ||
@@ -149,13 +170,13 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
   const generate = async () => {
     const settings = getSettings(api);
     if (!settings.generateEnabled) {
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.generateDisabled'), 'info');
+      api.ui.showToast(t('extensionsBuiltin.generationTools.generateDisabled'), 'info');
       return;
     }
 
     const input = api.chat.getChatInput()?.value.trim() ?? '';
     if (!input) {
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.generateNoInput'), 'info');
+      api.ui.showToast(t('extensionsBuiltin.generationTools.generateNoInput'), 'info');
       return;
     }
 
@@ -172,19 +193,19 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
   const rerollContinue = async () => {
     const settings = getSettings(api);
     if (!settings.rerollContinueEnabled) {
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.rerollDisabled'), 'info');
+      api.ui.showToast(t('extensionsBuiltin.generationTools.rerollDisabled'), 'info');
       return;
     }
 
     if (!snapshot) {
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.noSnapshot'), 'info');
+      api.ui.showToast(t('extensionsBuiltin.generationTools.noSnapshot'), 'info');
       return;
     }
 
     const history = api.chat.getHistory();
     // Validation
     if (history.length - 1 !== snapshot.messageIndex) {
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.contextChanged'), 'warning');
+      api.ui.showToast(t('extensionsBuiltin.generationTools.contextChanged'), 'warning');
       snapshot = null;
       updateButtonState();
       return;
@@ -194,7 +215,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
 
     // Basic safety check
     if (!currentMessage.mes.includes(snapshot.contentBefore)) {
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.divergenceError'), 'warning');
+      api.ui.showToast(t('extensionsBuiltin.generationTools.divergenceError'), 'warning');
       snapshot = null;
       updateButtonState();
       return;
@@ -202,11 +223,11 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
 
     // Check swipe consistency
     if ((currentMessage.swipe_id ?? 0) !== snapshot.swipeId) {
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.swipeError'), 'warning');
+      api.ui.showToast(t('extensionsBuiltin.generationTools.swipeError'), 'warning');
       return;
     }
 
-    api.ui.showToast(t('extensionsBuiltin.rerollContinue.reverting'), 'info');
+    api.ui.showToast(t('extensionsBuiltin.generationTools.reverting'), 'info');
 
     try {
       // Revert content
@@ -217,8 +238,8 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       // Trigger Continue
       await api.chat.generateResponse(GenerationMode.CONTINUE);
     } catch (error) {
-      console.error('[Reroll Continue] Failed to reroll:', error);
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.error'), 'error');
+      console.error('[Generation Tools] Failed to reroll:', error);
+      api.ui.showToast(t('extensionsBuiltin.generationTools.error'), 'error');
     }
   };
 
@@ -226,13 +247,13 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
   const impersonate = async () => {
     const settings = getSettings(api);
     if (!settings.impersonateEnabled) {
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.impersonateDisabled'), 'info');
+      api.ui.showToast(t('extensionsBuiltin.generationTools.impersonateDisabled'), 'info');
       return;
     }
 
     const persone = api.persona.getActive();
     if (!persone) {
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.noPersona'), 'error');
+      api.ui.showToast(t('extensionsBuiltin.generationTools.noPersona'), 'error');
       return;
     }
 
@@ -241,7 +262,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       contextMessages = await api.chat.buildPrompt();
     } catch (err) {
       console.error('[Impersonate] Failed to build prompt:', err);
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.buildPromptFailed'), 'error');
+      api.ui.showToast(t('extensionsBuiltin.generationTools.buildPromptFailed'), 'error');
       return;
     }
 
@@ -269,11 +290,11 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     genMessages.push(newMessage);
 
     if (!settings.impersonateConnectionProfile) {
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.noConnectionProfile'), 'error');
+      api.ui.showToast(t('extensionsBuiltin.generationTools.noConnectionProfile'), 'error');
       return;
     }
 
-    api.ui.showToast(t('extensionsBuiltin.rerollContinue.impersonating'), 'info');
+    api.ui.showToast(t('extensionsBuiltin.generationTools.impersonating'), 'info');
 
     try {
       const response = await api.llm.generate(genMessages, {
@@ -301,35 +322,58 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       }
     } catch (error) {
       console.error('[Impersonate] Failed:', error);
-      api.ui.showToast(t('extensionsBuiltin.rerollContinue.impersonationFailed'), 'error');
+      api.ui.showToast(t('extensionsBuiltin.generationTools.impersonationFailed'), 'error');
     }
   };
 
-  // 6. Event Listeners
+  // 6. Swipe Action
+  const swipe = async () => {
+    const settings = getSettings(api);
+    if (!settings.swipeEnabled) {
+      api.ui.showToast(t('extensionsBuiltin.generationTools.swipeDisabled'), 'info');
+      return;
+    }
+
+    const lastMessage = api.chat.getLastMessage();
+    if (!lastMessage || lastMessage.is_user) {
+      api.ui.showToast(t('extensionsBuiltin.generationTools.swipeNotApplicable'), 'warning');
+      return;
+    }
+
+    api.ui.showToast(t('extensionsBuiltin.generationTools.swiping'), 'info');
+    api.chat.generateResponse(GenerationMode.ADD_SWIPE);
+  };
+
+  // 7. Event Listeners
   const unbinds: Array<() => void> = [];
 
   unbinds.push(api.events.on('process:generation-context', onGenerationContext));
   unbinds.push(api.events.on('prompt:built', onPromptBuilt));
   // @ts-expect-error - Custom event for settings change
-  unbinds.push(api.events.on('reroll-continue:settings-changed', updateButtonState));
+  unbinds.push(api.events.on('generation-tools:settings-changed', updateButtonState));
 
-  // Clear snapshot when changing chats
-  unbinds.push(
-    api.events.on('chat:entered', () => {
-      snapshot = null;
-      updateButtonState();
-    }),
-  );
+  // Listen for various chat events to keep button states accurate
+  const updateStateAndSnapshot = () => {
+    snapshot = null;
+    updateButtonState();
+  };
+  unbinds.push(api.events.on('chat:entered', updateStateAndSnapshot));
+  unbinds.push(api.events.on('message:created', updateButtonState));
+  unbinds.push(api.events.on('message:deleted', updateStateAndSnapshot));
+  unbinds.push(api.events.on('chat:cleared', updateStateAndSnapshot));
+  unbinds.push(api.events.on('message:updated', updateButtonState));
 
   updateButtonState();
 
   return () => {
     settingsApp?.unmount();
     unbinds.forEach((u) => u());
-    api.ui.unregisterChatFormOptionsMenuItem(REROLL_CONTINUE_BUTTON_ID);
+    api.ui.unregisterChatFormOptionsMenuItem(REROLL_BUTTON_ID);
+    api.ui.unregisterChatFormOptionsMenuItem(SWIPE_BUTTON_ID);
     api.ui.unregisterChatFormOptionsMenuItem(IMPERSONATE_BUTTON_ID);
     api.ui.unregisterChatFormOptionsMenuItem(GENERATE_BUTTON_ID);
-    api.ui.unregisterChatQuickAction('core.generation', REROLL_CONTINUE_BUTTON_ID);
+    api.ui.unregisterChatQuickAction('core.generation', REROLL_BUTTON_ID);
+    api.ui.unregisterChatQuickAction('core.generation', SWIPE_BUTTON_ID);
     api.ui.unregisterChatQuickAction('core.generation', IMPERSONATE_BUTTON_ID);
     api.ui.unregisterChatQuickAction('core.generation', GENERATE_BUTTON_ID);
   };

@@ -6,6 +6,7 @@ export interface RerollSnapshot {
 
 export interface ExtensionSettings {
   rerollContinueEnabled: boolean;
+  swipeEnabled: boolean;
   impersonateEnabled: boolean;
   impersonateConnectionProfile?: string;
   impersonatePrompt: string;
