@@ -121,7 +121,8 @@ onUnmounted(() => {
                 variant="ghost"
                 :icon="action.icon"
                 :disabled="action.disabled"
-                :title="action.title"
+                :label="action.label"
+                :title="action.title ?? action.label"
                 @click="action.onClick"
               />
             </div>

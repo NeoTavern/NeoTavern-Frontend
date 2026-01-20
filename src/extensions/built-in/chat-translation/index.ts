@@ -56,13 +56,21 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
   };
 
   const injectInputOption = () => {
+    const onClick = () => {
+      translator.translateInput();
+    };
     api.ui.registerChatFormOptionsMenuItem({
       id: 'chat-translation-translate-input',
       icon: 'fa-solid fa-language',
       label: 'Translate Input',
-      onClick: () => {
-        translator.translateInput();
-      },
+      onClick,
+      visible: api.chat.getChatInfo() !== null,
+    });
+    api.ui.registerChatQuickAction('core.input-message', '', {
+      id: 'chat-translation-translate-input',
+      icon: 'fa-solid fa-language',
+      label: 'Translate Input',
+      onClick,
       visible: api.chat.getChatInfo() !== null,
     });
   };
@@ -120,5 +128,6 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
     unbinds.forEach((u) => u());
     document.querySelectorAll('.translation-button-wrapper').forEach((el) => el.remove());
     api.ui.unregisterChatFormOptionsMenuItem('chat-translation-translate-input');
+    api.ui.unregisterChatQuickAction('core.input-message', 'chat-translation-translate-input');
   };
 }

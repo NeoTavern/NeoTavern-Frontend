@@ -707,6 +707,11 @@ export interface MessageSchema {
       layoutRow: string;
       layoutColumn: string;
       enabledActions: string;
+      group: {
+        generation: string;
+        inputMessage: string;
+        contextAI: string;
+      };
     };
   };
   character: {

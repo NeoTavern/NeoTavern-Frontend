@@ -237,22 +237,30 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
   };
 
   const injectMenuOption = () => {
+    const onClick = () => {
+      api.ui.showPopup({
+        title: t('extensionsBuiltin.chatMemory.popupTitle'),
+        component: markRaw(MemoryPopup),
+        componentProps: { api },
+        wide: true,
+        large: true,
+        okButton: false,
+        cancelButton: 'common.close',
+      });
+    };
     api.ui.registerChatFormOptionsMenuItem({
       id: 'chat-memory-option',
       icon: 'fa-solid fa-brain',
       label: t('extensionsBuiltin.chatMemory.menuItem'),
       visible: api.chat.getChatInfo() !== null,
-      onClick() {
-        api.ui.showPopup({
-          title: t('extensionsBuiltin.chatMemory.popupTitle'),
-          component: markRaw(MemoryPopup),
-          componentProps: { api },
-          wide: true,
-          large: true,
-          okButton: false,
-          cancelButton: 'common.close',
-        });
-      },
+      onClick,
+    });
+    api.ui.registerChatQuickAction('core.context-ai', '', {
+      id: 'chat-memory-quick-action',
+      icon: 'fa-solid fa-brain',
+      label: t('extensionsBuiltin.chatMemory.menuItem'),
+      visible: api.chat.getChatInfo() !== null,
+      onClick,
     });
   };
 
@@ -340,5 +348,6 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
     document.querySelectorAll('.content-dimmed').forEach((el) => el.classList.remove('content-dimmed'));
     document.getElementById('chat-memory-styles')?.remove();
     api.ui.unregisterChatFormOptionsMenuItem('chat-memory-option');
+    api.ui.unregisterChatQuickAction('core.context-ai', 'chat-memory-quick-action');
   };
 }

@@ -703,7 +703,12 @@
       "layout": "Layout",
       "layoutRow": "Row",
       "layoutColumn": "Column",
-      "enabledActions": "Enabled Actions"
+      "enabledActions": "Enabled Actions",
+      "group": {
+        "generation": "Generation",
+        "inputMessage": "Input & Message",
+        "contextAI": "Context & AI"
+      }
     }
   },
   "character": {

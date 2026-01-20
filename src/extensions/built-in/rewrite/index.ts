@@ -146,23 +146,30 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
 
   // 3. Input Options Injection
   const injectInputOption = () => {
+    const onClick = () => {
+      const input = api.chat.getChatInput();
+      if (!input || !input.value) return;
+
+      handleRewrite(
+        input.value,
+        (newVal) => {
+          api.chat.setChatInput(newVal);
+        },
+        'chat.input',
+        api.chat.getHistory().length,
+      );
+    };
     api.ui.registerChatFormOptionsMenuItem({
       id: 'rewrite-input-option',
       icon: 'fa-solid fa-wand-magic-sparkles',
       label: t('extensionsBuiltin.rewrite.buttons.rewriteInput'),
-      onClick: () => {
-        const input = api.chat.getChatInput();
-        if (!input || !input.value) return;
-
-        handleRewrite(
-          input.value,
-          (newVal) => {
-            api.chat.setChatInput(newVal);
-          },
-          'chat.input',
-          api.chat.getHistory().length,
-        );
-      },
+      onClick,
+    });
+    api.ui.registerChatQuickAction('core.input-message', '', {
+      id: 'rewrite-input-option',
+      icon: 'fa-solid fa-wand-magic-sparkles',
+      label: t('extensionsBuiltin.rewrite.buttons.rewriteInput'),
+      onClick,
     });
   };
 
@@ -191,5 +198,6 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
     unbinds.forEach((u) => u());
     document.querySelectorAll('.rewrite-button-wrapper').forEach((el) => el.remove());
     api.ui.unregisterChatFormOptionsMenuItem('rewrite-input-option');
+    api.ui.unregisterChatQuickAction('core.input-message', 'rewrite-input-option');
   };
 }

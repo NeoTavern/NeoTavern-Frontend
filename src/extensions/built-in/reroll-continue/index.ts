@@ -35,23 +35,39 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
   const updateButtonState = () => {
     const settings = getSettings(api);
 
+    const rerollClick = () => {
+      rerollContinue();
+    };
+    const impersonateClick = () => {
+      impersonate();
+    };
     api.ui.registerChatFormOptionsMenuItem({
       id: REROLL_CONTINUE_BUTTON_ID,
       icon: 'fa-solid fa-rotate-right',
       label: t('extensionsBuiltin.rerollContinue.buttonLabel'),
       visible: !!snapshot && settings.rerollContinueEnabled && api.chat.getChatInfo() !== null,
-      onClick: () => {
-        rerollContinue();
-      },
+      onClick: rerollClick,
     });
     api.ui.registerChatFormOptionsMenuItem({
       id: IMPERSONATE_BUTTON_ID,
       icon: 'fa-solid fa-user-secret',
       label: t('extensionsBuiltin.rerollContinue.impersonateButtonLabel'),
       visible: settings.impersonateEnabled && api.chat.getChatInfo() !== null,
-      onClick: () => {
-        impersonate();
-      },
+      onClick: impersonateClick,
+    });
+    api.ui.registerChatQuickAction('core.generation', '', {
+      id: REROLL_CONTINUE_BUTTON_ID,
+      icon: 'fa-solid fa-rotate-right',
+      label: t('extensionsBuiltin.rerollContinue.buttonLabel'),
+      visible: !!snapshot && settings.rerollContinueEnabled && api.chat.getChatInfo() !== null,
+      onClick: rerollClick,
+    });
+    api.ui.registerChatQuickAction('core.generation', '', {
+      id: IMPERSONATE_BUTTON_ID,
+      icon: 'fa-solid fa-user-secret',
+      label: t('extensionsBuiltin.rerollContinue.impersonateButtonLabel'),
+      visible: settings.impersonateEnabled && api.chat.getChatInfo() !== null,
+      onClick: impersonateClick,
     });
   };
 
@@ -260,5 +276,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     unbinds.forEach((u) => u());
     api.ui.unregisterChatFormOptionsMenuItem(REROLL_CONTINUE_BUTTON_ID);
     api.ui.unregisterChatFormOptionsMenuItem(IMPERSONATE_BUTTON_ID);
+    api.ui.unregisterChatQuickAction('core.generation', REROLL_CONTINUE_BUTTON_ID);
+    api.ui.unregisterChatQuickAction('core.generation', IMPERSONATE_BUTTON_ID);
   };
 }

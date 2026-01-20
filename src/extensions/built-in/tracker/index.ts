@@ -365,12 +365,19 @@ class TrackerManager {
   }
 
   public injectChatFormUi(): void {
+    const onClick = () => this.manageChatSchemas();
     this.api.ui.registerChatFormOptionsMenuItem({
       id: 'tracker-manage-schemas',
       icon: 'fa-solid fa-chart-simple',
       label: this.api.i18n.t('extensionsBuiltin.tracker.chatForm.manageSchemas'),
       visible: this.api.chat.getChatInfo() !== null,
-      onClick: () => this.manageChatSchemas(),
+      onClick,
+    });
+    this.api.ui.registerChatQuickAction('core.context-ai', '', {
+      id: 'tracker-manage-schemas',
+      icon: 'fa-solid fa-chart-simple',
+      label: this.api.i18n.t('extensionsBuiltin.tracker.chatForm.manageSchemas'),
+      onClick,
     });
   }
 
@@ -390,6 +397,7 @@ class TrackerManager {
     this.mountedDisplays.clear();
     this.pendingRequests.clear();
     this.api.ui.unregisterChatFormOptionsMenuItem('tracker-manage-schemas');
+    this.api.ui.unregisterChatQuickAction('core.context-ai', 'tracker-manage-schemas');
   }
 }
 

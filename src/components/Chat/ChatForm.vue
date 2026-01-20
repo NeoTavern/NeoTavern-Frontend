@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
 import { isCapabilitySupported } from '../../api/provider-definitions';
 import { useChatMedia } from '../../composables/useChatMedia';
 import { useMobile } from '../../composables/useMobile';
@@ -37,6 +37,7 @@ const { isDeviceMobile } = useMobile();
 const { t } = useStrictI18n();
 
 const chatInput = ref<InstanceType<typeof Textarea> | null>(null);
+const chatFormContainerRef = ref<HTMLElement | null>(null);
 
 const {
   fileInput,
@@ -71,8 +72,8 @@ const { floatingStyles: optionsMenuStyles } = useFloating(optionsButtonRef, opti
 const isToolsMenuVisible = ref(false);
 const toolsMenuRef = ref<HTMLElement | null>(null);
 
-const { floatingStyles: toolsMenuStyles } = useFloating(optionsButtonRef, toolsMenuRef, {
-  placement: 'top-start',
+const { floatingStyles: toolsMenuStyles } = useFloating(chatFormContainerRef, toolsMenuRef, {
+  placement: 'top',
   open: isToolsMenuVisible,
   whileElementsMounted: autoUpdate,
   middleware: [offset(8), flip(), shift({ padding: 10 })],
@@ -156,8 +157,14 @@ function toggleSelectionMode() {
 }
 
 function openToolsMenu() {
-  isToolsMenuVisible.value = true;
-  isOptionsMenuVisible.value = false;
+  if (isToolsMenuVisible.value) {
+    isToolsMenuVisible.value = false;
+  } else {
+    isOptionsMenuVisible.value = false;
+    nextTick(() => {
+      isToolsMenuVisible.value = true;
+    });
+  }
 }
 
 function handleAttachMedia() {
@@ -167,9 +174,11 @@ function handleAttachMedia() {
   }
 }
 
-const builtInMenuItems = computed<ChatFormOptionsMenuItemDefinition[]>(() => {
+// --- Menu Item Definitions ---
+
+const allPossibleCoreActions = computed<ChatFormOptionsMenuItemDefinition[]>(() => {
   const hasMessages = (chatStore.activeChat?.messages.length ?? 0) > 0;
-  const items: ChatFormOptionsMenuItemDefinition[] = [
+  return [
     {
       id: 'core.regenerate',
       icon: 'fa-solid fa-repeat',
@@ -207,18 +216,28 @@ const builtInMenuItems = computed<ChatFormOptionsMenuItemDefinition[]>(() => {
       icon: 'fa-solid fa-screwdriver-wrench',
       label: t('chat.tools.title'),
       onClick: openToolsMenu,
+      visible: true,
     },
   ];
+});
 
-  // If there are extension items, add a separator after the last built-in item
-  if (componentRegistryStore.chatFormOptionsMenuRegistry.size > 0 && items.length > 0) {
-    const lastItem = items[items.length - 1];
-    if (lastItem.separator !== 'after') {
-      lastItem.separator = 'after';
-    }
+const builtInMenuItems = computed(() => {
+  const visibleItems = allPossibleCoreActions.value.filter((item) => item.visible ?? true);
+
+  if (componentRegistryStore.chatFormOptionsMenuRegistry.size === 0 || visibleItems.length === 0) {
+    return visibleItems;
   }
 
-  return items;
+  // Create copies to avoid mutating computed properties
+  const itemsWithSeparator = visibleItems.map((item) => ({ ...item }));
+  const lastItem = itemsWithSeparator[itemsWithSeparator.length - 1];
+
+  // Add a separator before any extension items
+  if (lastItem.separator !== 'after') {
+    lastItem.separator = 'after';
+  }
+
+  return itemsWithSeparator;
 });
 
 const allMenuItems = computed(() =>
@@ -248,21 +267,61 @@ function handleKeydown(event: KeyboardEvent) {
 function handleClickOutside(event: MouseEvent) {
   const target = event.target as Node;
 
+  // Close Options Menu
   const isInsideOptionsMenu = optionsMenuRef.value?.contains(target);
   const isInsideOptionsButton = optionsButtonRef.value?.contains(target);
-
-  // Close Options Menu if click is outside of it and its trigger button
   if (!isInsideOptionsMenu && !isInsideOptionsButton) {
     isOptionsMenuVisible.value = false;
   }
 
-  const isInsideToolsMenu = toolsMenuRef.value?.contains(target);
-
-  // Close Tools Menu if click is outside of it, its trigger button, and the options menu (which opens it)
-  if (!isInsideToolsMenu && !isInsideOptionsButton && !isInsideOptionsMenu) {
-    isToolsMenuVisible.value = false;
+  // Close Tools Menu
+  if (isToolsMenuVisible.value) {
+    const isInsideToolsMenu = toolsMenuRef.value?.contains(target);
+    if (!isInsideToolsMenu) {
+      isToolsMenuVisible.value = false;
+    }
   }
 }
+
+// --- Quick Action Registration ---
+const quickActionGroups = computed(() => [
+  {
+    id: 'core.generation',
+    label: t('chat.quickActions.group.generation'),
+    actionIds: ['core.regenerate', 'core.continue'],
+  },
+  {
+    id: 'core.input-message',
+    label: t('chat.quickActions.group.inputMessage'),
+    actionIds: ['core.select', 'core.attach'],
+  },
+  {
+    id: 'core.context-ai',
+    label: t('chat.quickActions.group.contextAI'),
+    actionIds: ['core.tools'],
+  },
+]);
+
+watchEffect(() => {
+  const actionsById = new Map(allPossibleCoreActions.value.map((action) => [action.id, action]));
+
+  for (const group of quickActionGroups.value) {
+    for (const actionId of group.actionIds) {
+      const action = actionsById.get(actionId);
+      if (action) {
+        componentRegistryStore.registerChatQuickAction(group.id, group.label, {
+          id: action.id,
+          icon: action.icon,
+          title: action.title ?? action.label,
+          label: action.label,
+          onClick: action.onClick,
+          disabled: action.disabled,
+          visible: action.visible,
+        });
+      }
+    }
+  }
+});
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);
@@ -284,6 +343,12 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside);
   chatUiStore.setChatInputElement(null);
+
+  for (const group of quickActionGroups.value) {
+    for (const actionId of group.actionIds) {
+      componentRegistryStore.unregisterChatQuickAction(group.id, actionId);
+    }
+  }
 });
 
 watch(
@@ -327,7 +392,7 @@ defineExpose({
 </script>
 
 <template>
-  <div id="chat-form" class="chat-form">
+  <div id="chat-form" ref="chatFormContainerRef" class="chat-form">
     <div v-if="attachedMedia.length > 0" class="chat-form-media-previews">
       <div v-for="(media, index) in attachedMedia" :key="index" class="media-preview-item">
         <img :src="media.url" :alt="media.title" />
