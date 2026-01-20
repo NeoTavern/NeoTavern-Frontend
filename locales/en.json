@@ -1315,7 +1315,7 @@
         "promptLabel": "Prompt Prefix",
         "promptDesc": "Optional text to prepend to the message prompt.",
         "generateTitle": "Generate Settings",
-        "generatePromptDesc": "Optional text to prepend to the Generate prompt"
+        "generatePromptDesc": "Optional text to prepend to the Generate & Swipe prompt"
       }
     },
     "chatBranching": {

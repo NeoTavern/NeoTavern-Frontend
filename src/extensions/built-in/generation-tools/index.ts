@@ -185,7 +185,6 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     const generationId = api.uuid();
 
     generateInputs.set(generationId, input);
-    api.chat.setChatInput('');
     api.chat.generateResponse(mode, { generationId });
   };
 
@@ -340,8 +339,15 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       return;
     }
 
+    const input = api.chat.getChatInput()?.value.trim() ?? '';
+    const generationId = api.uuid();
+
+    if (settings.generateEnabled && input) {
+      generateInputs.set(generationId, input);
+    }
+
     api.ui.showToast(t('extensionsBuiltin.generationTools.swiping'), 'info');
-    api.chat.generateResponse(GenerationMode.ADD_SWIPE);
+    api.chat.generateResponse(GenerationMode.ADD_SWIPE, { generationId });
   };
 
   // 7. Event Listeners

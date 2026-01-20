@@ -464,7 +464,7 @@ defineExpose({
         :model-value="userInput"
         :placeholder="t('chat.inputPlaceholder')"
         autocomplete="off"
-        :disabled="chatStore.isGenerating || isUploading"
+        :disabled="isUploading"
         :allow-maximize="false"
         identifier="chat.input"
         @update:model-value="emit('update:userInput', $event)"
