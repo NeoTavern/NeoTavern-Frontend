@@ -100,6 +100,10 @@ export class Commentator {
         return;
       }
 
+      if (this.ongoingControllers.size > 0) {
+        return;
+      }
+
       this.lastTriggeredInput = trimmedInput;
       this.lastGenerationTriggerTime = Date.now();
       this.debounceTimer = null;
