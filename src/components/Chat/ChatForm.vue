@@ -248,19 +248,18 @@ function handleKeydown(event: KeyboardEvent) {
 function handleClickOutside(event: MouseEvent) {
   const target = event.target as Node;
 
-  // Options Menu
-  const isOutsideOptionsMenu = optionsMenuRef.value && !optionsMenuRef.value.contains(target);
-  const isOutsideOptionsButton = optionsButtonRef.value && !optionsButtonRef.value.contains(target);
+  const isInsideOptionsMenu = optionsMenuRef.value?.contains(target);
+  const isInsideOptionsButton = optionsButtonRef.value?.contains(target);
 
-  if (isOutsideOptionsMenu && isOutsideOptionsButton) {
+  // Close Options Menu if click is outside of it and its trigger button
+  if (!isInsideOptionsMenu && !isInsideOptionsButton) {
     isOptionsMenuVisible.value = false;
   }
 
-  // Tools Menu
-  const isOutsideToolsMenu = toolsMenuRef.value && !toolsMenuRef.value.contains(target);
-  const isOutsideToolsButton = optionsButtonRef.value && !optionsButtonRef.value.contains(target);
+  const isInsideToolsMenu = toolsMenuRef.value?.contains(target);
 
-  if (isOutsideToolsMenu && isOutsideToolsButton) {
+  // Close Tools Menu if click is outside of it, its trigger button, and the options menu (which opens it)
+  if (!isInsideToolsMenu && !isInsideOptionsButton && !isInsideOptionsMenu) {
     isToolsMenuVisible.value = false;
   }
 }
