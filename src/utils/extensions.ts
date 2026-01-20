@@ -51,13 +51,7 @@ import { useComponentRegistryStore } from '../stores/component-registry.store';
 import { useLayoutStore } from '../stores/layout.store';
 import { useToolStore } from '../stores/tool.store';
 import { useWorldInfoUiStore } from '../stores/world-info-ui.store';
-import type {
-  ChatFormOptionsMenuItemDefinition,
-  ChatQuickActionDefinition,
-  LlmGenerationOptions,
-  TextareaToolDefinition,
-} from '../types/ExtensionAPI';
-import type { CodeMirrorTarget } from '../types/settings';
+import type { LlmGenerationOptions } from '../types/ExtensionAPI';
 
 /**
  * A centralized utility to count tokens for message content (string or array of parts).
@@ -938,42 +932,6 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
         const namespacedId = `${extensionId}.${id}`;
         if (componentRegistryStore.rightSidebarRegistry.has(namespacedId)) layoutStore.toggleRightSidebar(namespacedId);
       }
-    },
-    registerTextareaTool: (identifier: CodeMirrorTarget | string | RegExp, definition: TextareaToolDefinition) => {
-      const toolId = definition.id.startsWith(extensionId) ? definition.id : `${extensionId}.${definition.id}`;
-      useComponentRegistryStore().registerTextareaTool(identifier, { ...definition, id: toolId });
-      return () => useComponentRegistryStore().unregisterTextareaTool(identifier, toolId);
-    },
-    unregisterTextareaTool: (identifier: CodeMirrorTarget | string | RegExp, toolId: string) => {
-      const namespacedToolId = toolId.startsWith(extensionId) ? toolId : `${extensionId}.${toolId}`;
-      useComponentRegistryStore().unregisterTextareaTool(identifier, namespacedToolId);
-    },
-    registerChatFormOptionsMenuItem: (item: ChatFormOptionsMenuItemDefinition) => {
-      const namespacedId = item.id.startsWith(extensionId) ? item.id : `${extensionId}.${item.id}`;
-      useComponentRegistryStore().registerChatFormOptionsMenuItem({ ...item, id: namespacedId });
-      return () => useComponentRegistryStore().unregisterChatFormOptionsMenuItem(namespacedId);
-    },
-    unregisterChatFormOptionsMenuItem: (itemId: string) => {
-      const namespacedId = itemId.startsWith(extensionId) ? itemId : `${extensionId}.${itemId}`;
-      useComponentRegistryStore().unregisterChatFormOptionsMenuItem(namespacedId);
-    },
-    registerChatQuickAction: (groupId: string, groupLabel: string, action: ChatQuickActionDefinition) => {
-      const namespacedActionId = action.id.startsWith(extensionId) ? action.id : `${extensionId}.${action.id}`;
-      useComponentRegistryStore().registerChatQuickAction(groupId, groupLabel, { ...action, id: namespacedActionId });
-      return () => useComponentRegistryStore().unregisterChatQuickAction(groupId, namespacedActionId);
-    },
-    unregisterChatQuickAction: (groupId: string, actionId: string) => {
-      const namespacedActionId = actionId.startsWith(extensionId) ? actionId : `${extensionId}.${actionId}`;
-      useComponentRegistryStore().unregisterChatQuickAction(groupId, namespacedActionId);
-    },
-    registerChatSettingsTab: (id: string, title: string, component: Vue.Component) => {
-      const namespacedId = id.startsWith(extensionId) ? id : `${extensionId}.${id}`;
-      useComponentRegistryStore().registerChatSettingsTab(namespacedId, title, component);
-      return () => useComponentRegistryStore().unregisterChatSettingsTab(namespacedId);
-    },
-    unregisterChatSettingsTab: (id: string) => {
-      const namespacedId = id.startsWith(extensionId) ? id : `${extensionId}.${id}`;
-      useComponentRegistryStore().unregisterChatSettingsTab(namespacedId);
     },
   };
 
