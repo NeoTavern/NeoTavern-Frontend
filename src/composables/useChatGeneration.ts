@@ -905,11 +905,13 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           if (chunk.reasoning) finalReasoning = chunk.reasoning;
           fullResponseContent += chunk.delta;
 
-          // Create message on first chunk with content or images
+          // Create message on first chunk with content, reasoning, or images
           const hasContent = chunk.delta && chunk.delta.trim();
           const hasImages = chunk.images && chunk.images.length > 0;
+          const hasReasoning = chunk.reasoning && chunk.reasoning.trim();
+          const hasToolCalls = chunk.tool_calls && chunk.tool_calls.length > 0;
 
-          if (!messageCreated && (hasContent || hasImages || (chunk.tool_calls && chunk.tool_calls.length > 0))) {
+          if (!messageCreated && (hasContent || hasImages || hasToolCalls || hasReasoning)) {
             if (mode === GenerationMode.NEW || mode === GenerationMode.REGENERATE) {
               const botMessage: ChatMessage = {
                 name: activeCharacter!.name,
