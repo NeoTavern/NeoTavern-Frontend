@@ -69,7 +69,7 @@ export function createDefaultSettings(): Settings {
         disabledActions: [],
         layout: 'row',
         showLabels: true,
-      }
+      },
     },
     disabledExtensions: [],
     disabledTools: [],
@@ -286,7 +286,7 @@ export function migrateLegacyUserSettings(
         disabledActions: [],
         layout: 'row',
         showLabels: true,
-      }
+      },
     },
     character: {
       spoilerFreeMode: p.spoiler_free_mode,

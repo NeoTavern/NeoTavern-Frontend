@@ -1,6 +1,6 @@
 import type { Component } from 'vue';
 import type { StrictT } from '../composables/useStrictI18n';
-import type { EventPriority } from '../constants';
+import type { EventPriority, GenerationMode } from '../constants';
 import type { PromptBuilder } from '../services/prompt-engine';
 import type { WorldInfoProcessor } from '../services/world-info';
 import type { Character } from './character';
@@ -413,9 +413,10 @@ export interface ExtensionAPI<
     updateMessage: (index: number, newContent: string, newReasoning?: string) => Promise<void>;
     updateMessageObject: (index: number, updates: Partial<TypedChatMessage<TMessageExtra>>) => Promise<void>;
     deleteMessage: (index: number) => Promise<void>;
-    regenerateResponse: (options?: { generationId?: string; forceSpeakerAvatar?: string }) => Promise<void>;
-    continueResponse: (options?: { generationId?: string }) => Promise<void>;
-    generateResponse: (options?: { generationId?: string; forceSpeakerAvatar?: string }) => Promise<void>;
+    generateResponse: (
+      initialMode: GenerationMode,
+      options?: { generationId?: string; forceSpeakerAvatar?: string },
+    ) => Promise<void>;
     clear: () => Promise<void>;
     abortGeneration: () => void;
     getChatInput: () => ChatInputDetail | null;

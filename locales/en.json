@@ -1296,6 +1296,9 @@
       "noConnectionProfile": "No connection profile selected for impersonate",
       "impersonating": "Impersonating user...",
       "impersonationFailed": "Impersonation failed",
+      "generateButtonLabel": "Generate",
+      "generateDisabled": "Generate feature is disabled in settings.",
+      "generateNoInput": "Cannot generate without text in the input box.",
       "settings": {
         "rerollEnabled": "Enable Reroll/Continue",
         "impersonateEnabled": "Enable Impersonate",
@@ -1304,7 +1307,10 @@
         "connectionProfileDesc": "Select LLM profile for impersonation generation",
         "promptDesc": "Custom prompt template for impersonation. Supports {'{{user}}'} and {'{{char}}'} placeholders.",
         "promptLabel": "Prompt Template",
-        "reset": "Reset"
+        "reset": "Reset",
+        "generateEnabled": "Enable Generate",
+        "generateTitle": "Generate Settings",
+        "generatePromptDesc": "The system prompt used to instruct the AI during a \"Generate\" action. {'{{input}}'} will be replaced with the text from the chat input box."
       }
     },
     "chatBranching": {

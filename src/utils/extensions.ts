@@ -1,6 +1,6 @@
 import * as Vue from 'vue';
 import { createVNode, render, type App } from 'vue';
-import { CustomPromptPostProcessing, GenerationMode, default_avatar } from '../constants';
+import { CustomPromptPostProcessing, default_avatar } from '../constants';
 import type {
   ApiChatContentPart,
   ApiChatMessage,
@@ -254,14 +254,8 @@ const baseExtensionAPI: ExtensionAPI = {
     deleteMessage: async (index) => {
       await useChatStore().deleteMessage(index);
     },
-    regenerateResponse: async (options) => {
-      return await useChatStore().generateResponse(GenerationMode.REGENERATE, options);
-    },
-    continueResponse: async (options) => {
-      return await useChatStore().generateResponse(GenerationMode.CONTINUE, options);
-    },
-    generateResponse: async (options) => {
-      return await useChatStore().generateResponse(GenerationMode.NEW, options);
+    generateResponse: async (initialMode, options) => {
+      return await useChatStore().generateResponse(initialMode, options);
     },
     clear: async () => {
       return await useChatStore().clearChat(true);

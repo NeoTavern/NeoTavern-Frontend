@@ -2,7 +2,12 @@ import { GenerationMode } from '../../../constants';
 import type { ApiChatMessage, ExtensionAPI, GenerationContext } from '../../../types';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
-import { DEFAULT_IMPERSONATE_PROMPT, type ExtensionSettings, type RerollSnapshot } from './types';
+import {
+  DEFAULT_GENERATE_PROMPT,
+  DEFAULT_IMPERSONATE_PROMPT,
+  type ExtensionSettings,
+  type RerollSnapshot,
+} from './types';
 
 export { manifest };
 
@@ -11,6 +16,8 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
   impersonateEnabled: true,
   impersonateConnectionProfile: undefined,
   impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
+  generateEnabled: true,
+  generatePrompt: DEFAULT_GENERATE_PROMPT,
 };
 
 function getSettings(api: ExtensionAPI<ExtensionSettings>): ExtensionSettings {
@@ -21,6 +28,9 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
   let snapshot: RerollSnapshot | null = null;
   let settingsApp: { unmount: () => void } | null = null;
 
+  // Map to store user input for special "Generate" calls, keyed by generationId
+  const generateInputs = new Map<string, string>();
+
   const settingsContainer = document.getElementById(api.meta.containerId);
   if (settingsContainer) {
     settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
@@ -28,50 +38,69 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
 
   const REROLL_CONTINUE_BUTTON_ID = 'reroll-continue-button';
   const IMPERSONATE_BUTTON_ID = 'impersonate-button';
+  const GENERATE_BUTTON_ID = 'generate-button';
 
   const t = api.i18n.t;
 
   // Helper to toggle button visibility based on state
   const updateButtonState = () => {
     const settings = getSettings(api);
+    const isChatActive = api.chat.getChatInfo() !== null;
 
-    const rerollClick = () => {
-      rerollContinue();
-    };
-    const impersonateClick = () => {
-      impersonate();
-    };
+    const rerollClick = () => rerollContinue();
+    const impersonateClick = () => impersonate();
+    const generateClick = () => generate();
+
+    // Reroll/Continue
     api.ui.registerChatFormOptionsMenuItem({
       id: REROLL_CONTINUE_BUTTON_ID,
       icon: 'fa-solid fa-rotate-right',
       label: t('extensionsBuiltin.rerollContinue.buttonLabel'),
-      visible: !!snapshot && settings.rerollContinueEnabled && api.chat.getChatInfo() !== null,
+      visible: !!snapshot && settings.rerollContinueEnabled && isChatActive,
       onClick: rerollClick,
-    });
-    api.ui.registerChatFormOptionsMenuItem({
-      id: IMPERSONATE_BUTTON_ID,
-      icon: 'fa-solid fa-user-secret',
-      label: t('extensionsBuiltin.rerollContinue.impersonateButtonLabel'),
-      visible: settings.impersonateEnabled && api.chat.getChatInfo() !== null,
-      onClick: impersonateClick,
     });
     api.ui.registerChatQuickAction('core.generation', '', {
       id: REROLL_CONTINUE_BUTTON_ID,
       icon: 'fa-solid fa-rotate-right',
       label: t('extensionsBuiltin.rerollContinue.buttonLabel'),
-      visible: !!snapshot && settings.rerollContinueEnabled && api.chat.getChatInfo() !== null,
+      visible: !!snapshot && settings.rerollContinueEnabled && isChatActive,
       onClick: rerollClick,
+    });
+
+    // Impersonate
+    api.ui.registerChatFormOptionsMenuItem({
+      id: IMPERSONATE_BUTTON_ID,
+      icon: 'fa-solid fa-user-secret',
+      label: t('extensionsBuiltin.rerollContinue.impersonateButtonLabel'),
+      visible: settings.impersonateEnabled && isChatActive,
+      onClick: impersonateClick,
     });
     api.ui.registerChatQuickAction('core.generation', '', {
       id: IMPERSONATE_BUTTON_ID,
       icon: 'fa-solid fa-user-secret',
       label: t('extensionsBuiltin.rerollContinue.impersonateButtonLabel'),
-      visible: settings.impersonateEnabled && api.chat.getChatInfo() !== null,
+      visible: settings.impersonateEnabled && isChatActive,
       onClick: impersonateClick,
+    });
+
+    // Generate
+    api.ui.registerChatFormOptionsMenuItem({
+      id: GENERATE_BUTTON_ID,
+      icon: 'fa-solid fa-wand-magic-sparkles',
+      label: t('extensionsBuiltin.rerollContinue.generateButtonLabel'),
+      visible: settings.generateEnabled && isChatActive,
+      onClick: generateClick,
+    });
+    api.ui.registerChatQuickAction('core.generation', '', {
+      id: GENERATE_BUTTON_ID,
+      icon: 'fa-solid fa-wand-magic-sparkles',
+      label: t('extensionsBuiltin.rerollContinue.generateButtonLabel'),
+      visible: settings.generateEnabled && isChatActive,
+      onClick: generateClick,
     });
   };
 
-  // 1. Capture Snapshot Logic
+  // 1. Capture Snapshot Logic for Reroll/Continue
   const onGenerationContext = (context: GenerationContext) => {
     if (context.mode === GenerationMode.CONTINUE) {
       const history = api.chat.getHistory();
@@ -87,17 +116,61 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       };
 
       console.debug('[Reroll Continue] Snapshot taken for message', index);
-    } else if (context.mode === GenerationMode.NEW || context.mode === GenerationMode.REGENERATE) {
+    } else if (
+      context.mode === GenerationMode.NEW ||
+      context.mode === GenerationMode.REGENERATE ||
+      context.mode === GenerationMode.ADD_SWIPE
+    ) {
       // Clear snapshot to prevent jumping back to an old state after a new generation
       snapshot = null;
     }
     updateButtonState();
   };
 
-  // 2. Reroll Action
+  // 2. Inject prompt for special "Generate" calls
+  const onPromptBuilt = (messages: ApiChatMessage[], context: { generationId: string }) => {
+    if (generateInputs.has(context.generationId)) {
+      const settings = getSettings(api);
+      const userInput = generateInputs.get(context.generationId)!;
+      const processedPrompt = api.macro.process(settings.generatePrompt, undefined, { input: userInput });
+
+      messages.push({
+        role: 'system',
+        content: processedPrompt,
+        name: 'System',
+      });
+
+      // Clean up to prevent re-injection on retries
+      generateInputs.delete(context.generationId);
+    }
+  };
+
+  // 3. Generate Action
+  const generate = async () => {
+    const settings = getSettings(api);
+    if (!settings.generateEnabled) {
+      api.ui.showToast(t('extensionsBuiltin.rerollContinue.generateDisabled'), 'info');
+      return;
+    }
+
+    const input = api.chat.getChatInput()?.value.trim() ?? '';
+    if (!input) {
+      api.ui.showToast(t('extensionsBuiltin.rerollContinue.generateNoInput'), 'info');
+      return;
+    }
+
+    const lastMessage = api.chat.getLastMessage();
+    const mode = lastMessage?.is_user ? GenerationMode.NEW : GenerationMode.ADD_SWIPE;
+    const generationId = api.uuid();
+
+    generateInputs.set(generationId, input);
+    api.chat.setChatInput('');
+    api.chat.generateResponse(mode, { generationId });
+  };
+
+  // 4. Reroll Action
   const rerollContinue = async () => {
     const settings = getSettings(api);
-
     if (!settings.rerollContinueEnabled) {
       api.ui.showToast(t('extensionsBuiltin.rerollContinue.rerollDisabled'), 'info');
       return;
@@ -142,17 +215,16 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       });
 
       // Trigger Continue
-      await api.chat.continueResponse();
+      await api.chat.generateResponse(GenerationMode.CONTINUE);
     } catch (error) {
       console.error('[Reroll Continue] Failed to reroll:', error);
       api.ui.showToast(t('extensionsBuiltin.rerollContinue.error'), 'error');
     }
   };
 
-  // Impersonate Action
+  // 5. Impersonate Action
   const impersonate = async () => {
     const settings = getSettings(api);
-
     if (!settings.impersonateEnabled) {
       api.ui.showToast(t('extensionsBuiltin.rerollContinue.impersonateDisabled'), 'info');
       return;
@@ -233,33 +305,13 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     }
   };
 
-  // 3. UI Injection
-  const injectButton = () => {
-    api.ui.registerChatFormOptionsMenuItem({
-      id: 'reroll-continue-button',
-      icon: 'fa-solid fa-rotate-right',
-      label: t('extensionsBuiltin.rerollContinue.buttonLabel'),
-      onClick: () => {
-        rerollContinue();
-      },
-    });
-
-    api.ui.registerChatFormOptionsMenuItem({
-      id: 'impersonate-button',
-      icon: 'fa-solid fa-user-secret',
-      label: t('extensionsBuiltin.rerollContinue.impersonateButtonLabel'),
-      onClick: () => {
-        impersonate();
-      },
-    });
-
-    updateButtonState();
-  };
-
-  // 4. Event Listeners
+  // 6. Event Listeners
   const unbinds: Array<() => void> = [];
 
   unbinds.push(api.events.on('process:generation-context', onGenerationContext));
+  unbinds.push(api.events.on('prompt:built', onPromptBuilt));
+  // @ts-expect-error - Custom event for settings change
+  unbinds.push(api.events.on('reroll-continue:settings-changed', updateButtonState));
 
   // Clear snapshot when changing chats
   unbinds.push(
@@ -269,14 +321,16 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     }),
   );
 
-  injectButton();
+  updateButtonState();
 
   return () => {
     settingsApp?.unmount();
     unbinds.forEach((u) => u());
     api.ui.unregisterChatFormOptionsMenuItem(REROLL_CONTINUE_BUTTON_ID);
     api.ui.unregisterChatFormOptionsMenuItem(IMPERSONATE_BUTTON_ID);
+    api.ui.unregisterChatFormOptionsMenuItem(GENERATE_BUTTON_ID);
     api.ui.unregisterChatQuickAction('core.generation', REROLL_CONTINUE_BUTTON_ID);
     api.ui.unregisterChatQuickAction('core.generation', IMPERSONATE_BUTTON_ID);
+    api.ui.unregisterChatQuickAction('core.generation', GENERATE_BUTTON_ID);
   };
 }

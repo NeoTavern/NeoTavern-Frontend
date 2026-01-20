@@ -4,7 +4,7 @@ import { ConnectionProfileSelector } from '../../../components/common';
 import { CollapsibleSection, FormItem, Textarea, Toggle } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
 import type { TextareaToolDefinition } from '../../../types/ExtensionAPI';
-import { DEFAULT_IMPERSONATE_PROMPT, type ExtensionSettings } from './types';
+import { DEFAULT_GENERATE_PROMPT, DEFAULT_IMPERSONATE_PROMPT, type ExtensionSettings } from './types';
 
 const props = defineProps<{
   api: ExtensionAPI<ExtensionSettings>;
@@ -15,6 +15,8 @@ const settings = ref<ExtensionSettings>({
   impersonateEnabled: true,
   impersonateConnectionProfile: undefined,
   impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
+  generateEnabled: true,
+  generatePrompt: DEFAULT_GENERATE_PROMPT,
 });
 
 const t = props.api.i18n.t;
@@ -30,13 +32,14 @@ watch(
   settings,
   (newSettings) => {
     props.api.settings.set(undefined, newSettings);
-    // TODO: Emit event to update options menu and quick actions for enabled/disabled state
+    // @ts-expect-error - Custom event for settings change
+    props.api.events.emit('reroll-continue:settings-changed');
     props.api.settings.save();
   },
   { deep: true },
 );
 
-const promptTools = computed<TextareaToolDefinition[]>(() => [
+const impersonatePromptTools = computed<TextareaToolDefinition[]>(() => [
   {
     id: 'reset',
     icon: 'fa-rotate-left',
@@ -46,16 +49,31 @@ const promptTools = computed<TextareaToolDefinition[]>(() => [
     },
   },
 ]);
+
+const generatePromptTools = computed<TextareaToolDefinition[]>(() => [
+  {
+    id: 'reset',
+    icon: 'fa-rotate-left',
+    title: t('extensionsBuiltin.rerollContinue.settings.reset'),
+    onClick: ({ setValue }) => {
+      setValue(DEFAULT_GENERATE_PROMPT);
+    },
+  },
+]);
 </script>
 
 <template>
-  <div class="impersonate-settings">
+  <div class="extension-settings">
     <FormItem :label="t('extensionsBuiltin.rerollContinue.settings.rerollEnabled')">
       <Toggle v-model="settings.rerollContinueEnabled" />
     </FormItem>
 
     <FormItem :label="t('extensionsBuiltin.rerollContinue.settings.impersonateEnabled')">
       <Toggle v-model="settings.impersonateEnabled" />
+    </FormItem>
+
+    <FormItem :label="t('extensionsBuiltin.rerollContinue.settings.generateEnabled')">
+      <Toggle v-model="settings.generateEnabled" />
     </FormItem>
 
     <CollapsibleSection :title="t('extensionsBuiltin.rerollContinue.settings.impersonateTitle')" :is-open="false">
@@ -75,8 +93,24 @@ const promptTools = computed<TextareaToolDefinition[]>(() => [
           allow-maximize
           class="prompt-area"
           :rows="8"
-          identifier="extension.reroll-continue.prompt"
-          :tools="promptTools"
+          identifier="extension.reroll-continue.impersonate-prompt"
+          :tools="impersonatePromptTools"
+        />
+      </FormItem>
+    </CollapsibleSection>
+
+    <CollapsibleSection :title="t('extensionsBuiltin.rerollContinue.settings.generateTitle')" :is-open="false">
+      <FormItem
+        :label="t('extensionsBuiltin.rerollContinue.settings.promptLabel')"
+        :description="t('extensionsBuiltin.rerollContinue.settings.generatePromptDesc')"
+      >
+        <Textarea
+          v-model="settings.generatePrompt"
+          allow-maximize
+          class="prompt-area"
+          :rows="8"
+          identifier="extension.reroll-continue.generate-prompt"
+          :tools="generatePromptTools"
         />
       </FormItem>
     </CollapsibleSection>
@@ -84,7 +118,7 @@ const promptTools = computed<TextareaToolDefinition[]>(() => [
 </template>
 
 <style scoped>
-.impersonate-settings {
+.extension-settings {
   display: flex;
   flex-direction: column;
   gap: 1rem;

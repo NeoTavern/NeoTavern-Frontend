@@ -1299,6 +1299,9 @@ export interface MessageSchema {
       noConnectionProfile: string;
       impersonating: string;
       impersonationFailed: string;
+      generateButtonLabel: string;
+      generateDisabled: string;
+      generateNoInput: string;
       settings: {
         rerollEnabled: string;
         impersonateEnabled: string;
@@ -1308,6 +1311,9 @@ export interface MessageSchema {
         promptDesc: string;
         promptLabel: string;
         reset: string;
+        generateEnabled: string;
+        generateTitle: string;
+        generatePromptDesc: string;
       };
     };
     chatBranching: {
