@@ -335,6 +335,11 @@ export interface Settings {
     regenerateOnEdit: boolean;
     confirmMessageDelete: boolean;
     stopOnNameHijack: StopOnNameHijack;
+    quickActions: {
+      layout: 'row' | 'column';
+      showLabels: boolean;
+      disabledActions: string[];
+    };
   };
   character: {
     spoilerFreeMode: boolean;

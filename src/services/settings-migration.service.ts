@@ -65,6 +65,11 @@ export function createDefaultSettings(): Settings {
       stopOnNameHijack: 'all',
       confirmMessageDelete: true,
       regenerateOnEdit: true,
+      quickActions: {
+        disabledActions: [],
+        layout: 'row',
+        showLabels: true,
+      }
     },
     disabledExtensions: [],
     disabledTools: [],
@@ -277,6 +282,11 @@ export function migrateLegacyUserSettings(
       confirmMessageDelete: p.confirm_message_delete,
       stopOnNameHijack: 'all',
       regenerateOnEdit: true,
+      quickActions: {
+        disabledActions: [],
+        layout: 'row',
+        showLabels: true,
+      }
     },
     character: {
       spoilerFreeMode: p.spoiler_free_mode,
