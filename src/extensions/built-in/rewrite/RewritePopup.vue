@@ -438,7 +438,7 @@ async function handleGenerateOneShot() {
     if (error?.name === 'AbortError' || error?.message?.includes('abort')) {
       props.api.ui.showToast(t('extensionsBuiltin.rewrite.messages.generationAborted'), 'info');
     } else {
-      props.api.ui.showToast(t('extensionsBuiltin.rewrite.messages.generationFailed'), 'error');
+      props.api.ui.showToast(t('extensionsBuiltin.rewrite.messages.generationFailed' ) + ': ' + error.message, 'error');
     }
   } finally {
     isGenerating.value = false;
