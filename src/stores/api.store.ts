@@ -469,17 +469,12 @@ export const useApiStore = defineStore('api', () => {
   }
 
   async function updateConnectionProfile() {
-    const name = selectedConnectionProfile.value;
-    if (!name) {
+    const profileIndex = connectionProfiles.value.findIndex((p) => p.id === selectedConnectionProfile.value);
+    if (profileIndex === -1) {
       toast.error(t('apiConnections.profileManagement.errors.noSelection'));
       return;
     }
 
-    const profileIndex = connectionProfiles.value.findIndex((p) => p.name === name);
-    if (profileIndex === -1) {
-      toast.error(t('apiConnections.profileManagement.errors.notFound'));
-      return;
-    }
 
     const profile = connectionProfiles.value[profileIndex];
     // Create a copy to update
