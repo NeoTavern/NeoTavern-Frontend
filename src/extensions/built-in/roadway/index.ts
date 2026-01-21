@@ -48,7 +48,7 @@ class RoadwayManager {
         'core.roadway': { enabled },
       },
     });
-    this.api.ui.showToast(`Roadway mode ${enabled ? 'enabled' : 'disabled'}.`, enabled ? 'success' : 'info');
+    this.api.ui.showToast(`Roadway ${enabled ? 'enabled' : 'disabled'}.`, enabled ? 'success' : 'info');
     // Manually trigger the UI refresh for the whole chat, since metadata changed.
     this.handleChatContextChange();
   }
@@ -264,7 +264,7 @@ class RoadwayManager {
       id: 'roadway-toggle',
       icon: 'fa-solid fa-route',
       label: 'Roadway',
-      title: `Toggle Roadway Mode (${isRoadwayEnabled ? 'On' : 'Off'})`,
+      title: `Toggle Roadway (${isRoadwayEnabled ? 'On' : 'Off'})`,
       onClick: () => this.toggleRoadwayMode(),
     };
 

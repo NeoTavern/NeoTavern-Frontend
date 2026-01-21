@@ -83,7 +83,7 @@ const impersonatePromptTools = createResetTool(
     </FormItem>
     <FormItem
       label="Auto-generate Choices"
-      description="Automatically generate choices after every AI response when Roadway mode is active in a chat."
+      description="Automatically generate choices after every AI response when Roadway is active in a chat."
     >
       <Toggle v-model="settings.autoMode" />
     </FormItem>
