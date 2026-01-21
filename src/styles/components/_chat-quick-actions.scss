@@ -111,6 +111,11 @@
       min-width: 36px;
       font-size: 0.9em;
     }
+
+    @include mobile-override() {
+      overflow-x: auto;
+      justify-content: flex-start;
+    }
   }
 
   // Specific overrides for COLUMN layout
