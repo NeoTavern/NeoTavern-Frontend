@@ -196,23 +196,33 @@
   cursor: pointer;
   transition: all var(--animation-duration-sm) ease-in-out;
 
-  &:checked {
+  &:checked,
+  &:indeterminate {
     background-color: var(--theme-checkbox-bg-r) var(--theme-checkbox-bg-g) var(--theme-checkbox-bg-b);
     border-color: var(--theme-underline-color);
   }
 
-  &:checked::after {
+  &:checked::after,
+  &:indeterminate::after {
     content: '';
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
+    background-color: var(--theme-checkbox-tick-color);
+  }
+
+  &:checked::after {
     width: 12px;
     height: 12px;
-    background-color: var(--theme-checkbox-tick-color);
     mask: url("data:image/svg+xml;charset=UTF-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/></svg>")
       no-repeat 50% 50%;
     mask-size: contain;
+  }
+
+  &:indeterminate::after {
+    width: 10px;
+    height: 2px;
   }
 
   &:hover:not(:disabled) {

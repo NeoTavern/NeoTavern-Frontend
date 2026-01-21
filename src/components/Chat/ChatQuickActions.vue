@@ -3,7 +3,7 @@ import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useChatUiStore, type QuickActionsLayout } from '../../stores/chat-ui.store';
-import { useComponentRegistryStore } from '../../stores/component-registry.store';
+import { useComponentRegistryStore, type ChatQuickActionGroupDefinition } from '../../stores/component-registry.store';
 import { Button, Checkbox } from '../UI';
 
 const { t } = useStrictI18n();
@@ -28,17 +28,18 @@ const { floatingStyles: configMenuStyles } = useFloating(configButtonRef, config
 const allRegisteredGroups = computed(() => Array.from(componentRegistryStore.chatQuickActionsRegistry.values()));
 
 const actionGroups = computed(() => {
-  return allRegisteredGroups.value
-    .filter(
-      (group) => (group.visible ?? true) && group.actions.length > 0 && !chatUiStore.isQuickActionDisabled(group.id),
-    )
-    .map((group) => ({
-      ...group,
-      actions: group.actions.filter(
-        (action) => (action.visible ?? true) && !chatUiStore.isQuickActionDisabled(action.id),
-      ),
-    }))
-    .filter((group) => group.actions.length > 0);
+  return (
+    allRegisteredGroups.value
+      .map((group) => ({
+        ...group,
+        // Filter out actions that are explicitly disabled in settings
+        actions: group.actions.filter(
+          (action) => (action.visible ?? true) && !chatUiStore.isQuickActionDisabled(action.id),
+        ),
+      }))
+      // Only show groups that are visible and have at least one enabled action
+      .filter((group) => (group.visible ?? true) && group.actions.length > 0)
+  );
 });
 
 const layoutClass = computed(() => (chatUiStore.quickActionsLayout === 'column' ? 'is-layout-column' : ''));
@@ -67,6 +68,22 @@ function handleClickOutside(event: MouseEvent) {
   if (!isInsideConfigMenu && !isInsideConfigButton) {
     isConfigVisible.value = false;
   }
+}
+
+function isGroupIndeterminate(group: ChatQuickActionGroupDefinition): boolean {
+  if (group.actions.length === 0) {
+    return false;
+  }
+  const disabledCount = group.actions.filter((action) => chatUiStore.isQuickActionDisabled(action.id)).length;
+  return disabledCount > 0 && disabledCount < group.actions.length;
+}
+
+function isGroupChecked(group: ChatQuickActionGroupDefinition): boolean {
+  if (group.actions.length === 0) {
+    return false;
+  }
+  const allDisabled = group.actions.every((action) => chatUiStore.isQuickActionDisabled(action.id));
+  return !allDisabled;
 }
 
 onMounted(() => {
@@ -169,16 +186,16 @@ onUnmounted(() => {
         <div class="chat-quick-actions-config-actions-list">
           <div v-for="group in allRegisteredGroups" :key="group.id" class="config-group">
             <Checkbox
-              :model-value="!chatUiStore.isQuickActionDisabled(group.id)"
+              :model-value="isGroupChecked(group)"
+              :indeterminate="isGroupIndeterminate(group)"
               :label="group.label || group.id"
               class="config-group-header"
-              @update:model-value="chatUiStore.toggleQuickAction(group.id)"
+              @update:model-value="chatUiStore.toggleQuickActionGroup(group.actions)"
             />
             <div v-for="action in group.actions" :key="action.id" class="config-action">
               <Checkbox
                 :model-value="!chatUiStore.isQuickActionDisabled(action.id)"
                 :label="action.label ?? action.title ?? action.id"
-                :disabled="chatUiStore.isQuickActionDisabled(group.id)"
                 @update:model-value="chatUiStore.toggleQuickAction(action.id)"
               />
             </div>

@@ -47,6 +47,27 @@ export const useChatUiStore = defineStore('chat-ui', () => {
     settingsStore.setSetting('chat.quickActions.disabledActions', newDisabled);
   }
 
+  function toggleQuickActionGroup(actions: { id: string }[]) {
+    const currentDisabled = settingsStore.settings.chat.quickActions.disabledActions;
+    const actionIds = actions.map((action) => action.id);
+
+    // If every action in the group is already disabled, enable all of them.
+    // Otherwise, disable all of them.
+    const allAreDisabled = actionIds.every((id) => currentDisabled.includes(id));
+
+    let newDisabled = [...currentDisabled];
+
+    if (allAreDisabled) {
+      // Enable all: remove them from the disabled list
+      newDisabled = newDisabled.filter((id) => !actionIds.includes(id));
+    } else {
+      // Disable all: add any that aren't already there to the disabled list
+      const actionsToDisable = actionIds.filter((id) => !newDisabled.includes(id));
+      newDisabled.push(...actionsToDisable);
+    }
+    settingsStore.setSetting('chat.quickActions.disabledActions', newDisabled);
+  }
+
   // --- Other functions ---
 
   function startEditing(index: number, content: string) {
@@ -85,6 +106,7 @@ export const useChatUiStore = defineStore('chat-ui', () => {
     setQuickActionsShowLabels,
     isQuickActionDisabled,
     toggleQuickAction,
+    toggleQuickActionGroup,
 
     startEditing,
     cancelEditing,
