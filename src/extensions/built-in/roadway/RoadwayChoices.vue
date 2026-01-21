@@ -147,7 +147,7 @@ function stopChoiceGeneration() {
           />
           <Button
             variant="ghost"
-            icon="fa-wand-magic-sparkles"
+            icon="fa-user-secret"
             title="Impersonate"
             :disabled="isImpersonating"
             @click="handleImpersonate(choice)"
