@@ -27,6 +27,44 @@ import {
 } from '../types';
 import { mergeWithUndefinedMulti, uuidv4 } from '../utils/commons';
 
+// Helper for SillyTavern import/migration
+export interface SillyTavernPersonaExport {
+  personas?: Record<string, string>;
+  persona_descriptions?: Record<
+    string,
+    {
+      description: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      connections: any[];
+      lorebook?: string; // Can be a single string
+    }
+  >;
+}
+
+/**
+ * Parses persona data from the SillyTavern export format into a standard Persona array.
+ * @param data - The SillyTavern persona data object.
+ * @returns An array of Persona objects.
+ */
+export function migrateSillyTavernPersonas(data: SillyTavernPersonaExport): Persona[] {
+  const personas: Persona[] = [];
+  const stNames = data.personas ?? {};
+  const stDescs = data.persona_descriptions ?? {};
+  const allAvatarIds = new Set([...Object.keys(stNames), ...Object.keys(stDescs)]);
+
+  for (const avatarId of allAvatarIds) {
+    const desc = stDescs[avatarId];
+    personas.push({
+      avatarId: avatarId,
+      name: stNames[avatarId] ?? '[Unnamed]',
+      connections: desc?.connections ?? [],
+      description: desc?.description ?? '',
+      lorebooks: desc?.lorebook ? [desc.lorebook] : [],
+    });
+  }
+  return personas;
+}
+
 export function createDefaultSettings(): Settings {
   const defaultSettings: Settings = {
     account: defaultAccountSettings,
@@ -211,20 +249,7 @@ export function migrateLegacyUserSettings(
   const oai = legacy.oai_settings || ({} as LegacySettings['oai_settings']);
 
   // Migrate personas from old format to new array format
-  const migratedPersonas: Persona[] = [];
-  const oldPersonaNames = p.personas ?? {};
-  const oldPersonaDescriptions = p.persona_descriptions ?? {};
-  const allAvatarIds = new Set([...Object.keys(oldPersonaNames), ...Object.keys(oldPersonaDescriptions)]);
-
-  for (const avatarId of allAvatarIds) {
-    migratedPersonas.push({
-      avatarId: avatarId,
-      name: oldPersonaNames[avatarId] ?? '[Unnamed]',
-      connections: oldPersonaDescriptions[avatarId]?.connections ?? [],
-      description: oldPersonaDescriptions[avatarId]?.description ?? '',
-      lorebooks: [],
-    } as Persona);
-  }
+  const migratedPersonas = migrateSillyTavernPersonas(p);
 
   // Migrate presets
   if (

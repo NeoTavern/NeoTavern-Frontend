@@ -15,7 +15,7 @@ import { useSettingsStore } from '../../stores/settings.store';
 import { useWorldInfoStore } from '../../stores/world-info.store';
 import { POPUP_RESULT, POPUP_TYPE, type Character, type CropData } from '../../types';
 import { getThumbnailUrl } from '../../utils/character';
-import { downloadFile, getBase64Async, uuidv4 } from '../../utils/commons';
+import { downloadFile, getBase64Async } from '../../utils/commons';
 import { EmptyState, Pagination, PanelLayout, SidebarHeader } from '../common';
 import { Button, Checkbox, FileInput, FormItem, ListItem, Search, Select, Textarea } from '../UI';
 
@@ -117,33 +117,7 @@ function handleExport() {
 
 async function handleFileImport(files: File[]) {
   if (!files || files.length === 0) return;
-
-  const file = files[0];
-  try {
-    const content = await file.text();
-    const importedPersonas = JSON.parse(content);
-
-    // Validate the imported data
-    if (!Array.isArray(importedPersonas)) {
-      toast.error(t('personaManagement.errors.invalidFileFormat'));
-      return;
-    }
-
-    // Import the personas
-    for (const persona of importedPersonas) {
-      // Check if persona with same avatarId already exists
-      if (personaStore.personas.some((p) => p.avatarId === persona.avatarId)) {
-        // Generate a new avatarId to avoid conflicts
-        persona.avatarId = `${uuidv4()}.png`;
-      }
-
-      // Add the persona to the store
-      personaStore.personas.push(persona);
-    }
-  } catch (error) {
-    console.error('Failed to import personas:', error);
-    toast.error(t('personaManagement.errors.importFailed'));
-  }
+  await personaStore.importPersonasFromFile(files[0]);
 }
 
 async function handleDelete() {

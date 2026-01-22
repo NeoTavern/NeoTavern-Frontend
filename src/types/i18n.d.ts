@@ -88,6 +88,7 @@ export interface MessageSchema {
     activated: string;
     noDescription: string;
     currentPersona: string;
+    importSuccess: string;
     description: {
       label: string;
       placeholder: string;
@@ -130,7 +131,6 @@ export interface MessageSchema {
       label: string;
     };
     errors: {
-      invalidFileFormat: string;
       importFailed: string;
     };
   };

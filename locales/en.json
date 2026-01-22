@@ -85,6 +85,7 @@
     "activated": "Persona {name} activated.",
     "noDescription": "[No description]",
     "currentPersona": "Current Persona",
+    "importSuccess": "Imported {count} persona(s)",
     "description": {
       "label": "Persona Description",
       "placeholder": "Example:\n[{'{{user}}'} is a 28-year-old Romanian cat girl.]"
@@ -127,7 +128,6 @@
       "label": "Lorebooks"
     },
     "errors": {
-      "invalidFileFormat": "Invalid file format. Expected an array of personas.",
       "importFailed": "Failed to import personas. Please check the file format."
     }
   },
