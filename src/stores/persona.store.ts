@@ -314,12 +314,19 @@ export const usePersonaStore = defineStore('persona', () => {
 
       const parsedPersonas = parseImportedPersonas(jsonData);
 
+      const res = await fetch(default_user_avatar);
+      const blob = await res.blob();
+      const defaultPersonaAvatar = new File([blob], 'avatar.png', { type: 'image/png' });
+
       let importedCount = 0;
       for (const persona of parsedPersonas) {
         // Ensure avatarId is unique to prevent conflicts with existing personas or images
         if (personas.value.some((p) => p.avatarId === persona.avatarId)) {
           persona.avatarId = `${uuidv4()}.png`;
         }
+
+        await uploadPersonaAvatar(persona.avatarId, defaultPersonaAvatar);
+
         personas.value.push(persona);
         importedCount++;
       }
