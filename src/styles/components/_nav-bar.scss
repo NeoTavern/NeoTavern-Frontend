@@ -117,6 +117,18 @@
     gap: var(--spacing-md);
     display: inline-flex;
 
+    // Center sections by adding auto margins to the first and last child.
+    // On overflow, margins collapse and items align left.
+    &:first-child {
+      margin-left: auto;
+      padding-left: var(--spacing-md);
+    }
+
+    &:last-child {
+      margin-right: auto;
+      padding-right: var(--spacing-md);
+    }
+
     & + & {
       margin-top: 0;
       border-left: 1px solid var(--theme-border-color);
