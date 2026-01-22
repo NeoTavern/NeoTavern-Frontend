@@ -81,9 +81,6 @@
   }
 
   .quick-action-group {
-    @include flex-container(row, center, center);
-    gap: var(--spacing-sm);
-
     // Default styles for ROW layout (groups stacked vertically)
     padding-bottom: var(--spacing-sm);
     border-bottom: 1px solid var(--theme-border-color);
@@ -91,6 +88,22 @@
     &:last-child {
       border-bottom: none;
       padding-bottom: 0;
+    }
+
+    @include mobile-override() {
+      display: flex;
+      overflow-x: auto;
+    }
+  }
+
+  .quick-action-group-content {
+    @include flex-container(row, center, center);
+    gap: var(--spacing-sm);
+    width: 100%;
+
+    @include mobile-override() {
+      margin: 0 auto;
+      width: auto;
     }
 
     .group-label {
@@ -111,19 +124,11 @@
       min-width: 36px;
       font-size: 0.9em;
     }
-
-    @include mobile-override() {
-      overflow-x: auto;
-      justify-content: flex-start;
-    }
   }
 
   // Specific overrides for COLUMN layout
   .is-layout-column {
     .quick-action-group {
-      flex-direction: column;
-      align-items: flex-start;
-
       // Unset row styles
       border-bottom: none;
       padding-bottom: 0;
@@ -136,6 +141,12 @@
         border-right: none;
         padding-right: 0;
       }
+    }
+
+    .quick-action-group-content {
+      flex-direction: column;
+      align-items: flex-start;
+      width: auto;
     }
 
     .group-actions {

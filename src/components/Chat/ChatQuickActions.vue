@@ -131,20 +131,22 @@ onUnmounted(() => {
       <div>
         <div class="chat-quick-actions-content" :class="layoutClass">
           <div v-for="group in actionGroups" :key="group.id" class="quick-action-group">
-            <span v-if="group.label" class="group-label">{{ group.label }}</span>
-            <div class="group-actions">
-              <Button
-                v-for="action in group.actions"
-                :key="action.id"
-                class="quick-action-btn"
-                variant="ghost"
-                :icon="action.icon"
-                :disabled="action.disabled"
-                :label="chatUiStore.quickActionsShowLabels ? action.label : undefined"
-                :title="action.title ?? action.label"
-                :data-opens-popover="action.opensPopover"
-                @click="action.onClick"
-              />
+            <div class="quick-action-group-content">
+              <span v-if="group.label" class="group-label">{{ group.label }}</span>
+              <div class="group-actions">
+                <Button
+                  v-for="action in group.actions"
+                  :key="action.id"
+                  class="quick-action-btn"
+                  variant="ghost"
+                  :icon="action.icon"
+                  :disabled="action.disabled"
+                  :label="chatUiStore.quickActionsShowLabels ? action.label : undefined"
+                  :title="action.title ?? action.label"
+                  :data-opens-popover="action.opensPopover"
+                  @click="action.onClick"
+                />
+              </div>
             </div>
           </div>
         </div>
