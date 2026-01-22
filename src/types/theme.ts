@@ -38,7 +38,6 @@ export interface ThemeVariables {
 
   // Layout
   '--panel-width': string;
-  '--sidebar-width': string;
 
   // Avatars
   '--avatar-width': string;
@@ -81,7 +80,7 @@ export const THEME_CATEGORIES: Record<string, (keyof ThemeVariables)[]> = {
     '--scrollbar-track-radius',
     '--scrollbar-thumb-border-width',
   ],
-  UI: ['--base-border-radius', '--blur-strength', '--shadow-width', '--panel-width', '--sidebar-width'],
+  UI: ['--base-border-radius', '--blur-strength', '--shadow-width', '--panel-width'],
   Avatars: ['--avatar-width', '--avatar-height', '--avatar-border-radius'],
 };
 
@@ -117,7 +116,6 @@ export const VARIABLE_LABELS: Record<keyof ThemeVariables, I18nKey> = {
   '--shadow-width': 'themes.variables.typography.shadowWidth',
 
   '--panel-width': 'themes.variables.layout.panelWidth',
-  '--sidebar-width': 'themes.variables.layout.sidebarWidth',
 
   '--avatar-width': 'themes.variables.avatars.width',
   '--avatar-height': 'themes.variables.avatars.height',
@@ -156,7 +154,6 @@ export const VARIABLE_TYPES: Record<keyof ThemeVariables, 'color' | 'text' | 'nu
   '--shadow-width': 'number',
 
   '--panel-width': 'text',
-  '--sidebar-width': 'text',
 
   '--avatar-width': 'text',
   '--avatar-height': 'text',

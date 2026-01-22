@@ -926,8 +926,7 @@
         "shadowWidth": "Shadow Size (px)"
       },
       "layout": {
-        "panelWidth": "Main Panel Width",
-        "sidebarWidth": "Sidebar Width"
+        "panelWidth": "Main Panel Width"
       },
       "avatars": {
         "width": "Avatar Width",

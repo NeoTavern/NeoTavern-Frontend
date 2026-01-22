@@ -930,7 +930,6 @@ export interface MessageSchema {
       };
       layout: {
         panelWidth: string;
-        sidebarWidth: string;
       };
       avatars: {
         width: string;
