@@ -85,6 +85,7 @@
     "activated": "Persona {name} activated.",
     "noDescription": "[No description]",
     "currentPersona": "Current Persona",
+    "importSuccess": "Imported {count} persona(s)",
     "description": {
       "label": "Persona Description",
       "placeholder": "Example:\n[{'{{user}}'} is a 28-year-old Romanian cat girl.]"
@@ -127,7 +128,6 @@
       "label": "Lorebooks"
     },
     "errors": {
-      "invalidFileFormat": "Invalid file format. Expected an array of personas.",
       "importFailed": "Failed to import personas. Please check the file format."
     }
   },
@@ -897,6 +897,9 @@
         "emphasisColor": "Emphasis Color",
         "underlineColor": "Underline Color",
         "quoteColor": "Quote Color",
+        "emphasisColorUser": "Emphasis Color (User)",
+        "underlineColorUser": "Underline Color (User)",
+        "quoteColorUser": "Quote Color (User)",
         "backgroundTint": "Background Tint",
         "chatTint": "Chat Container Tint",
         "userMessageTint": "User Message Bubble",
@@ -926,8 +929,7 @@
         "shadowWidth": "Shadow Size (px)"
       },
       "layout": {
-        "panelWidth": "Main Panel Width",
-        "sidebarWidth": "Sidebar Width"
+        "panelWidth": "Main Panel Width"
       },
       "avatars": {
         "width": "Avatar Width",

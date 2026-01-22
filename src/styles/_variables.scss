@@ -78,6 +78,9 @@ $base-border-radius-rounded: 8px;
   --theme-emphasis-color: #{rgb(145, 145, 145)};
   --theme-underline-color: #{rgb(188, 231, 207)};
   --theme-quote-color: #{rgb(225, 138, 36)};
+  --theme-emphasis-color-user: #{rgb(145, 145, 145)};
+  --theme-underline-color-user: #{rgb(188, 231, 207)};
+  --theme-quote-color-user: #{rgb(225, 138, 36)};
   --theme-background-tint: #{rgb(23, 23, 23)};
   --theme-chat-tint: #{rgb(23, 23, 23)};
   --theme-user-message-tint: #{rgba(0, 0, 0, 0.3)};
@@ -173,9 +176,7 @@ $base-border-radius-rounded: 8px;
   // Avatars
   --avatar-height: 48px;
   --avatar-width: 48px;
-  --avatar-border-radius: #{$base-border-radius};
-  --avatar-border-radius-round: #{$base-border-radius-round};
-  --avatar-border-radius-rounded: #{$base-border-radius-rounded};
+  --avatar-border-radius: 50%;
   --avatar-inline-small-factor: 0.6;
 
   // Component Sizing
@@ -183,10 +184,12 @@ $base-border-radius-rounded: 8px;
   --textarea-padding-x: var(--spacing-md);
 
   // --- Effects ---
-  --blur-strength: 10; // Unitless value for slider controls
+  --blur-strength: 0; // Unitless value for slider controls
   --blur-radius: calc(var(--blur-strength) * 1px);
   --shadow-width: 2; // Unitless value for slider controls
   --shadow-blur-radius: calc(var(--shadow-width) * 1px);
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: calc(var(--shadow-width) * 0.5px);
 
   // --- Animations ---
   --animation-duration-xs: 60ms; // For fast interactions

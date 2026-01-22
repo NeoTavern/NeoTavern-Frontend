@@ -80,7 +80,7 @@
   &-avatar {
     width: var(--avatar-width);
     height: var(--avatar-height);
-    border-radius: var(--avatar-border-radius-round);
+    border-radius: var(--avatar-border-radius);
     border: 1px solid var(--theme-border-color);
     box-shadow: 0 0 5px var(--black-50a);
     overflow: hidden;
@@ -236,6 +236,25 @@
     font[color] u,
     font[color] q {
       color: inherit;
+    }
+  }
+
+  // User-specific text formatting
+  &.is-user {
+    .message-content {
+      i,
+      em {
+        color: var(--theme-emphasis-color-user);
+      }
+
+      u {
+        color: var(--theme-underline-color-user);
+        text-decoration-color: var(--theme-underline-color-user);
+      }
+
+      q {
+        color: var(--theme-quote-color-user);
+      }
     }
   }
 

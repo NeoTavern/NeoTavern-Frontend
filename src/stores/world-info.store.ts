@@ -212,12 +212,18 @@ export const useWorldInfoStore = defineStore('world-info', () => {
   async function importBook(file: File): Promise<string | undefined> {
     try {
       const filename = uuidv4();
+      let lorebookName = file.name;
+      try {
+        const lorebook = JSON.parse(await file.text()) as WorldInfoBook;
+        if (lorebook.name) {
+          lorebookName = lorebook.name;
+        }
+      } catch {}
       const newFile = new File([file], `${filename}.json`, { type: file.type });
-      const { name } = await api.importWorldInfoBook(newFile);
-      // We don't automatically fetch it here, UI decides when to show it
-      bookInfos.value.push({ file_id: filename, name });
+      await api.importWorldInfoBook(newFile);
+      bookInfos.value.push({ file_id: filename, name: lorebookName });
       await nextTick();
-      await eventEmitter.emit('world-info:book-imported', name);
+      await eventEmitter.emit('world-info:book-imported', filename);
       return filename;
     } catch (error: unknown) {
       console.error('Failed to import lorebook:', error);

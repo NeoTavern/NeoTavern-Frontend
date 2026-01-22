@@ -50,7 +50,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-tap-highlight-color: transparent;
-  text-shadow: 0 0 var(--shadow-blur-radius) var(--theme-shadow-color);
+  text-shadow: var(--shadow-offset-x) var(--shadow-offset-y) var(--shadow-blur-radius) var(--theme-shadow-color);
 }
 
 html {

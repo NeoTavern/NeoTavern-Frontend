@@ -88,6 +88,7 @@ export interface MessageSchema {
     activated: string;
     noDescription: string;
     currentPersona: string;
+    importSuccess: string;
     description: {
       label: string;
       placeholder: string;
@@ -130,7 +131,6 @@ export interface MessageSchema {
       label: string;
     };
     errors: {
-      invalidFileFormat: string;
       importFailed: string;
     };
   };
@@ -900,6 +900,9 @@ export interface MessageSchema {
         emphasisColor: string;
         underlineColor: string;
         quoteColor: string;
+        emphasisColorUser: string;
+        underlineColorUser: string;
+        quoteColorUser: string;
         backgroundTint: string;
         chatTint: string;
         userMessageTint: string;
@@ -930,7 +933,6 @@ export interface MessageSchema {
       };
       layout: {
         panelWidth: string;
-        sidebarWidth: string;
       };
       avatars: {
         width: string;

@@ -52,6 +52,8 @@ const hueColor = computed(() => {
   return `rgb(${r}, ${g}, ${b})`;
 });
 
+const hasTransparency = computed(() => alpha.value < 1);
+
 // Initialize state from modelValue
 watch(
   () => props.modelValue,
@@ -169,6 +171,7 @@ const hexInputValue = computed({
       <div
         ref="triggerRef"
         class="color-swatch-trigger"
+        :class="{ 'has-transparency': hasTransparency }"
         :style="{ backgroundColor: currentColor }"
         @click="toggleOpen"
       ></div>
@@ -227,7 +230,11 @@ const hexInputValue = computed({
             ></div>
           </div>
         </div>
-        <div class="preview-swatch" :style="{ backgroundColor: currentColor }"></div>
+        <div
+          class="preview-swatch"
+          :class="{ 'has-transparency': hasTransparency }"
+          :style="{ backgroundColor: currentColor }"
+        ></div>
       </div>
 
       <!-- Input -->
@@ -273,16 +280,19 @@ const hexInputValue = computed({
     border-radius: 4px;
     border: 1px solid var(--white-30a);
     cursor: pointer;
-    background-image:
-      linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%);
-    background-size: 10px 10px;
-    background-position:
-      0 0,
-      0 5px,
-      5px -5px,
-      -5px 0px;
     box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+
+    &.has-transparency {
+      background-image:
+        linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%);
+      background-size: 10px 10px;
+      background-position:
+        0 0,
+        0 5px,
+        5px -5px,
+        -5px 0px;
+    }
   }
 
   .color-value {
@@ -362,15 +372,18 @@ const hexInputValue = computed({
     height: 32px;
     border-radius: 50%;
     border: 1px solid var(--white-30a);
-    background-image:
-      linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%);
-    background-size: 8px 8px;
-    background-position:
-      0 0,
-      0 4px,
-      4px -4px,
-      -4px 0px;
+
+    &.has-transparency {
+      background-image:
+        linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%);
+      background-size: 8px 8px;
+      background-position:
+        0 0,
+        0 4px,
+        4px -4px,
+        -4px 0px;
+    }
   }
 }
 

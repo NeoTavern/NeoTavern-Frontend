@@ -8,12 +8,25 @@ import {
 import { useStrictI18n } from '../composables/useStrictI18n';
 import { toast } from '../composables/useToast';
 import { default_user_avatar } from '../constants';
+import { migrateSillyTavernPersonas, type SillyTavernPersonaExport } from '../services/settings-migration.service';
 import { type Character, type CropData, type Persona, type PersonaDescription } from '../types';
 import { getThumbnailUrl } from '../utils/character';
 import { uuidv4 } from '../utils/commons';
 import { eventEmitter } from '../utils/extensions';
 import { useSettingsStore } from './settings.store';
 import { useUiStore } from './ui.store';
+
+// Helper to check if an object is a valid Persona object
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isPersona(obj: any): obj is Persona {
+  return obj && typeof obj.avatarId === 'string' && typeof obj.name === 'string' && typeof obj.description === 'string';
+}
+
+// Type guard for SillyTavern persona exports
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isSillyTavernExport(obj: any): boolean {
+  return obj && typeof obj.personas === 'object' && typeof obj.persona_descriptions === 'object';
+}
 
 export const usePersonaStore = defineStore('persona', () => {
   const { t } = useStrictI18n();
@@ -264,6 +277,66 @@ export const usePersonaStore = defineStore('persona', () => {
     }
   }
 
+  function parseImportedPersonas(data: unknown): Persona[] {
+    let importedPersonas: Partial<Persona>[] = [];
+
+    // Case 1: NeoTavern array export
+    if (Array.isArray(data) && data.every(isPersona)) {
+      importedPersonas = data;
+    }
+    // Case 2: NeoTavern single persona export
+    else if (isPersona(data)) {
+      importedPersonas = [data];
+    }
+    // Case 3: SillyTavern export
+    else if (isSillyTavernExport(data)) {
+      importedPersonas = migrateSillyTavernPersonas(data as SillyTavernPersonaExport);
+    }
+
+    if (importedPersonas.length === 0) {
+      throw new Error('Invalid or empty persona file format.');
+    }
+
+    // Sanitize and complete persona objects
+    return importedPersonas.map((p) => ({
+      avatarId: p.avatarId || `${uuidv4()}.png`,
+      name: p.name || '[Unnamed Persona]',
+      description: p.description || '',
+      lorebooks: p.lorebooks || [],
+      connections: p.connections || [],
+    }));
+  }
+
+  async function importPersonasFromFile(file: File) {
+    try {
+      const content = await file.text();
+      const jsonData = JSON.parse(content);
+
+      const parsedPersonas = parseImportedPersonas(jsonData);
+
+      let importedCount = 0;
+      for (const persona of parsedPersonas) {
+        // Ensure avatarId is unique to prevent conflicts with existing personas or images
+        if (personas.value.some((p) => p.avatarId === persona.avatarId)) {
+          persona.avatarId = `${uuidv4()}.png`;
+        }
+        personas.value.push(persona);
+        importedCount++;
+      }
+
+      if (importedCount > 0) {
+        toast.success(t('personaManagement.importSuccess', { count: importedCount }));
+      }
+    } catch (error) {
+      console.error('Failed to import personas:', error);
+      if (error instanceof Error) {
+        toast.error(`${t('personaManagement.errors.importFailed')}: ${error.message}`);
+      } else {
+        toast.error(t('personaManagement.errors.importFailed'));
+      }
+    }
+  }
+
   function isDefault(avatarId: string): boolean {
     return settingsStore.settings.persona.defaultPersonaId === avatarId;
   }
@@ -314,6 +387,7 @@ export const usePersonaStore = defineStore('persona', () => {
     duplicatePersona,
     createPersona,
     createPersonaFromCharacter,
+    importPersonasFromFile,
     isDefault,
     toggleDefault,
     toggleCharacterConnection,

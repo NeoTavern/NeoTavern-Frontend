@@ -7,10 +7,8 @@
   top: 0;
   left: 0;
   box-shadow: 2px 0 20px 0 var(--black-70a);
-  backdrop-filter: blur(var(--blur-strength) px);
   @include card-base();
   @include hardware-accelerate();
-  -webkit-backdrop-filter: blur(var(--blur-strength) px);
   z-index: var(--z-navbar);
 }
 
