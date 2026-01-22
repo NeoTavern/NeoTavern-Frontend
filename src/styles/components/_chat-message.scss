@@ -239,6 +239,25 @@
     }
   }
 
+  // User-specific text formatting
+  &.is-user {
+    .message-content {
+      i,
+      em {
+        color: var(--theme-emphasis-color-user);
+      }
+
+      u {
+        color: var(--theme-underline-color-user);
+        text-decoration-color: var(--theme-underline-color-user);
+      }
+
+      q {
+        color: var(--theme-quote-color-user);
+      }
+    }
+  }
+
   &-media-container {
     margin-top: var(--spacing-sm);
     display: grid;

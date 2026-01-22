@@ -900,6 +900,9 @@ export interface MessageSchema {
         emphasisColor: string;
         underlineColor: string;
         quoteColor: string;
+        emphasisColorUser: string;
+        underlineColorUser: string;
+        quoteColorUser: string;
         backgroundTint: string;
         chatTint: string;
         userMessageTint: string;

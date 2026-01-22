@@ -6,6 +6,9 @@ export interface ThemeVariables {
   '--theme-emphasis-color': string;
   '--theme-underline-color': string;
   '--theme-quote-color': string;
+  '--theme-emphasis-color-user': string;
+  '--theme-underline-color-user': string;
+  '--theme-quote-color-user': string;
   '--theme-background-tint': string;
   '--theme-chat-tint': string;
   '--theme-user-message-tint': string;
@@ -65,6 +68,10 @@ export const THEME_CATEGORIES: Record<string, (keyof ThemeVariables)[]> = {
   Accents: [
     '--theme-quote-color',
     '--theme-underline-color',
+    '--theme-emphasis-color',
+    '--theme-quote-color-user',
+    '--theme-underline-color-user',
+    '--theme-emphasis-color-user',
     '--color-accent-red',
     '--color-accent-green',
     '--color-warning',
@@ -89,6 +96,9 @@ export const VARIABLE_LABELS: Record<keyof ThemeVariables, I18nKey> = {
   '--theme-emphasis-color': 'themes.variables.colors.emphasisColor',
   '--theme-underline-color': 'themes.variables.colors.underlineColor',
   '--theme-quote-color': 'themes.variables.colors.quoteColor',
+  '--theme-emphasis-color-user': 'themes.variables.colors.emphasisColorUser',
+  '--theme-underline-color-user': 'themes.variables.colors.underlineColorUser',
+  '--theme-quote-color-user': 'themes.variables.colors.quoteColorUser',
   '--theme-background-tint': 'themes.variables.colors.backgroundTint',
   '--theme-chat-tint': 'themes.variables.colors.chatTint',
   '--theme-user-message-tint': 'themes.variables.colors.userMessageTint',
@@ -127,6 +137,9 @@ export const VARIABLE_TYPES: Record<keyof ThemeVariables, 'color' | 'text' | 'nu
   '--theme-emphasis-color': 'color',
   '--theme-underline-color': 'color',
   '--theme-quote-color': 'color',
+  '--theme-emphasis-color-user': 'color',
+  '--theme-underline-color-user': 'color',
+  '--theme-quote-color-user': 'color',
   '--theme-background-tint': 'color',
   '--theme-chat-tint': 'color',
   '--theme-user-message-tint': 'color',
