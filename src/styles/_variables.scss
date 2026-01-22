@@ -173,9 +173,7 @@ $base-border-radius-rounded: 8px;
   // Avatars
   --avatar-height: 48px;
   --avatar-width: 48px;
-  --avatar-border-radius: #{$base-border-radius};
-  --avatar-border-radius-round: #{$base-border-radius-round};
-  --avatar-border-radius-rounded: #{$base-border-radius-rounded};
+  --avatar-border-radius: 50%;
   --avatar-inline-small-factor: 0.6;
 
   // Component Sizing

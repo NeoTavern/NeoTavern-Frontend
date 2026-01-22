@@ -395,7 +395,7 @@
       width: var(--avatar-width);
       height: var(--avatar-height);
       object-fit: cover;
-      border-radius: var(--avatar-border-radius-round);
+      border-radius: var(--avatar-border-radius);
     }
   }
 
@@ -958,7 +958,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    border-radius: var(--avatar-border-radius-round);
+    border-radius: var(--avatar-border-radius);
   }
 
   &-grid {
@@ -967,7 +967,7 @@
     grid-template-rows: 1fr 1fr;
     width: 100%;
     height: 100%;
-    border-radius: var(--avatar-border-radius-round);
+    border-radius: var(--avatar-border-radius);
     overflow: hidden;
     border: 1px solid var(--theme-border-color);
     background-color: var(--theme-border-color);

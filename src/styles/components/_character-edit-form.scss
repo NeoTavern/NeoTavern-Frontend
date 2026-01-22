@@ -98,7 +98,7 @@
     height: calc(var(--avatar-height) * 2);
     object-position: center center;
     object-fit: cover;
-    border-radius: var(--avatar-border-radius-round);
+    border-radius: var(--avatar-border-radius);
     border: 1px solid var(--theme-border-color);
     @include subtle-shadow();
   }
