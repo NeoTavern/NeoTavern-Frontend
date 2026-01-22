@@ -306,6 +306,17 @@ function handleInputChange(value: string) {
 
 function handleInputFocus() {
   eventEmitter.emit('chat:input-focused');
+
+  if (isDeviceMobile.value) {
+    setTimeout(() => {
+      if (chatFormContainerRef.value) {
+        chatFormContainerRef.value.scrollIntoView({
+          behavior: 'smooth',
+          block: 'end',
+        });
+      }
+    }, 150);
+  }
 }
 
 function handleClickOutside(event: MouseEvent) {
