@@ -15,10 +15,8 @@ import {
 } from '../services/settings-migration.service';
 import { settingsDefinition } from '../settings-definition';
 import { type SettingDefinition, type Settings, type SettingsPath } from '../types';
-import type { LegacySettings } from '../types/settings';
 import type { ValueForPath } from '../types/utils';
 import { eventEmitter } from '../utils/extensions';
-import { useUiStore } from './ui.store';
 
 type SettingsValue<P extends SettingsPath> = ValueForPath<Settings, P>;
 
@@ -106,18 +104,6 @@ export const useSettingsStore = defineStore('settings', () => {
         }
 
         settings.value = migrated;
-
-        // 3. Load Legacy User Data (Avatar/Name)
-        // Kept for backward compatibility with external avatar changes
-        try {
-          const userSettingsResponse = await fetchUserSettings();
-          const legacySettings: LegacySettings = userSettingsResponse.settings;
-          const uiStore = useUiStore();
-          uiStore.activePlayerName = legacySettings.username || null;
-          uiStore.activePlayerAvatar = legacySettings.user_avatar || null;
-        } catch (e) {
-          console.warn('Failed to fetch legacy user settings for avatar/name', e);
-        }
 
         settingsInitializing.value = false;
         await nextTick();
