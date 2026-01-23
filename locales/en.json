@@ -329,7 +329,8 @@
         "invalidFieldTypes": "Invalid preset: field types are incorrect."
       },
       "messages": {
-        "migrateSuccess": "Legacy preset migrated successfully."
+        "migrateSuccess": "Legacy preset migrated successfully.",
+        "migrateTextCompletion": "Text completion preset migrated successfully."
       }
     },
     "promptManager": {

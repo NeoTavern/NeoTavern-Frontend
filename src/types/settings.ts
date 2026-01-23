@@ -283,6 +283,43 @@ export interface LegacyOaiPresetSettings {
   openrouter_providers?: string[];
 }
 
+export interface LegacyTextCompletionPreset {
+  temp?: number;
+  top_p?: number;
+  top_k?: number;
+  top_a?: number;
+  min_p?: number;
+  rep_pen?: number;
+  freq_pen?: number;
+  presence_pen?: number;
+  genamt?: number;
+  max_length?: number;
+  dynatemp?: boolean;
+  min_temp?: number;
+  max_temp?: number;
+  dynatemp_exponent?: number;
+  smoothing_factor?: number;
+  mirostat_mode?: number;
+  mirostat_tau?: number;
+  mirostat_eta?: number;
+  dry_multiplier?: number;
+  dry_base?: number;
+  dry_allowed_length?: number;
+  dry_penalty_last_n?: number;
+  dry_sequence_breakers?: string;
+  xtc_threshold?: number;
+  xtc_probability?: number;
+  nsigma?: number;
+  tfs?: number;
+  typical_p?: number;
+  rep_pen_range?: number;
+  sampler_order?: number[];
+  grammar_string?: string;
+  banned_tokens?: string;
+  samplers?: string[];
+  sampler_priority?: string[];
+}
+
 export type CodeMirrorTarget =
   | 'character.description'
   | 'character.first_mes'

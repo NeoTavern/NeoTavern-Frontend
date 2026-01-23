@@ -333,6 +333,7 @@ export interface MessageSchema {
       };
       messages: {
         migrateSuccess: string;
+        migrateTextCompletion: string;
       };
     };
     promptManager: {

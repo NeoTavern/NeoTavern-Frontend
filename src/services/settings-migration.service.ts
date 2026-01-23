@@ -20,6 +20,7 @@ import {
   type KnownPromptIdentifiers,
   type LegacyOaiPresetSettings,
   type LegacySettings,
+  type LegacyTextCompletionPreset,
   type Persona,
   type Prompt,
   type SamplerSettings,
@@ -153,6 +154,76 @@ export function createDefaultSettings(): Settings {
   return defaultSettings;
 }
 
+export function migrateLegacyTextCompletionPreset(legacyPreset: LegacyTextCompletionPreset): SamplerSettings {
+  // Parse DRY sequence breakers if present
+  let dryBreakers: string[] = [];
+  if (legacyPreset.dry_sequence_breakers) {
+    try {
+      dryBreakers = JSON.parse(legacyPreset.dry_sequence_breakers);
+    } catch {
+      // If parsing fails, treat as single string
+      dryBreakers = [legacyPreset.dry_sequence_breakers];
+    }
+  }
+
+  const newPreset: SamplerSettings = {
+    temperature: legacyPreset.temp ?? defaultSamplerSettings.temperature,
+    frequency_penalty: legacyPreset.freq_pen ?? defaultSamplerSettings.frequency_penalty,
+    presence_penalty: legacyPreset.presence_pen ?? defaultSamplerSettings.presence_penalty,
+    repetition_penalty: legacyPreset.rep_pen ?? defaultSamplerSettings.repetition_penalty,
+    top_p: legacyPreset.top_p ?? defaultSamplerSettings.top_p,
+    top_k: legacyPreset.top_k ?? defaultSamplerSettings.top_k,
+    top_a: legacyPreset.top_a ?? defaultSamplerSettings.top_a,
+    min_p: legacyPreset.min_p ?? defaultSamplerSettings.min_p,
+    max_context: legacyPreset.max_length ?? defaultSamplerSettings.max_context,
+    max_context_unlocked: defaultSamplerSettings.max_context_unlocked,
+    max_tokens: legacyPreset.genamt ?? defaultSamplerSettings.max_tokens,
+    stream: defaultSamplerSettings.stream,
+    prompts: structuredClone(defaultSamplerSettings.prompts),
+    seed: defaultSamplerSettings.seed,
+    n: defaultSamplerSettings.n,
+    stop: defaultSamplerSettings.stop,
+    providers: {
+      claude: structuredClone(defaultSamplerSettings.providers.claude),
+      google: structuredClone(defaultSamplerSettings.providers.google),
+      koboldcpp: {
+        rep_pen_range: legacyPreset.rep_pen_range,
+        sampler_order: legacyPreset.sampler_order,
+        dynatemp_range:
+          legacyPreset.dynatemp && legacyPreset.min_temp !== undefined && legacyPreset.max_temp !== undefined
+            ? legacyPreset.max_temp - legacyPreset.min_temp
+            : undefined,
+        dynatemp_exponent: legacyPreset.dynatemp_exponent,
+        smoothing_factor: legacyPreset.smoothing_factor,
+        mirostat: legacyPreset.mirostat_mode,
+        mirostat_tau: legacyPreset.mirostat_tau,
+        mirostat_eta: legacyPreset.mirostat_eta,
+        grammar: legacyPreset.grammar_string,
+        grammar_retain_state: undefined,
+        banned_tokens: legacyPreset.banned_tokens
+          ? legacyPreset.banned_tokens.split('\n').filter((t) => t.trim())
+          : undefined,
+        use_default_badwordsids: undefined,
+        dry_multiplier: legacyPreset.dry_multiplier,
+        dry_base: legacyPreset.dry_base,
+        dry_allowed_length: legacyPreset.dry_allowed_length,
+        dry_penalty_last_n: legacyPreset.dry_penalty_last_n,
+        dry_sequence_breakers: dryBreakers.length > 0 ? dryBreakers : undefined,
+        xtc_threshold: legacyPreset.xtc_threshold,
+        xtc_probability: legacyPreset.xtc_probability,
+        nsigma: legacyPreset.nsigma,
+        tfs: legacyPreset.tfs,
+        typical: legacyPreset.typical_p,
+      },
+      ollama: structuredClone(defaultSamplerSettings.providers.ollama),
+    },
+    show_thoughts: defaultSamplerSettings.show_thoughts,
+    reasoning_effort: defaultSamplerSettings.reasoning_effort,
+  };
+
+  return newPreset;
+}
+
 export function migrateLegacyOaiPreset(legacyPreset: LegacyOaiPresetSettings): SamplerSettings {
   // Migrate prompts from legacy ordered config to flat list
   const migratedPrompts: Prompt[] = [];
@@ -262,6 +333,28 @@ export function migrateLegacyUserSettings(
         await saveSamplerPreset(name, migrateLegacyOaiPreset(userSettingsResponse.openai_settings[i]));
       } catch (e: unknown) {
         console.error(`Failed to parse legacy preset "${name}":`, userSettingsResponse.openai_settings[i]);
+        console.error(e);
+      }
+    });
+  }
+
+  // Migrate text completion presets
+  if (
+    neoSamplerPresets.length === 0 &&
+    Array.isArray(userSettingsResponse.textgenerationwebui_preset_names) &&
+    Array.isArray(userSettingsResponse.textgenerationwebui_presets)
+  ) {
+    userSettingsResponse.textgenerationwebui_preset_names.forEach(async (name: string, i: number) => {
+      try {
+        await saveSamplerPreset(
+          name,
+          migrateLegacyTextCompletionPreset(userSettingsResponse.textgenerationwebui_presets[i]),
+        );
+      } catch (e: unknown) {
+        console.error(
+          `Failed to parse text completion preset "${name}":`,
+          userSettingsResponse.textgenerationwebui_presets[i],
+        );
         console.error(e);
       }
     });

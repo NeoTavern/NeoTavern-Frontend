@@ -421,12 +421,24 @@ export const useApiStore = defineStore('api', () => {
         let presetData = JSON.parse(content);
         const name = file.name.replace(/\.json$/, '');
 
+        // Detect and migrate legacy formats
         if ('openai_max_context' in presetData || 'prompt_order' in presetData) {
           try {
             presetData = migrateLegacyOaiPreset(presetData as LegacyOaiPresetSettings);
             toast.success(t('aiConfig.presets.messages.migrateSuccess'));
           } catch (error) {
             console.error('Migration failed:', error);
+            toast.error(t('aiConfig.presets.errors.migrateFailed'));
+            return;
+          }
+        } else if ('temp' in presetData || 'genamt' in presetData || 'rep_pen' in presetData) {
+          // Text completion (Kobold-style) preset
+          try {
+            const { migrateLegacyTextCompletionPreset } = await import('../services/settings-migration.service');
+            presetData = migrateLegacyTextCompletionPreset(presetData);
+            toast.success(t('aiConfig.presets.messages.migrateTextCompletion'));
+          } catch (error) {
+            console.error('Text completion migration failed:', error);
             toast.error(t('aiConfig.presets.errors.migrateFailed'));
             return;
           }

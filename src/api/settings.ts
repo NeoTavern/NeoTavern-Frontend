@@ -1,4 +1,11 @@
-import type { LegacyOaiPresetSettings, LegacyOaiSettings, LegacySettings, ReasoningTemplate, Settings } from '../types';
+import type {
+  LegacyOaiPresetSettings,
+  LegacyOaiSettings,
+  LegacySettings,
+  LegacyTextCompletionPreset,
+  ReasoningTemplate,
+  Settings,
+} from '../types';
 import type { InstructTemplate } from '../types/instruct';
 import { getRequestHeaders } from '../utils/client';
 
@@ -6,6 +13,8 @@ export interface UserSettingsResponse {
   settings: string; // JSON string of LegacySettings
   openai_setting_names: string[];
   openai_settings: string[]; // JSON string of LegacyOaiPresetSettings
+  textgenerationwebui_preset_names: string[];
+  textgenerationwebui_presets: string[]; // JSON string of LegacyTextCompletionPreset
   world_names: string[];
   instruct: InstructTemplate[];
   reasoning: ReasoningTemplate[];
@@ -15,6 +24,8 @@ export interface ParsedUserSettingsResponse {
   settings: LegacySettings;
   openai_setting_names: string[];
   openai_settings: LegacyOaiPresetSettings[];
+  textgenerationwebui_preset_names: string[];
+  textgenerationwebui_presets: LegacyTextCompletionPreset[];
   world_names: string[];
   instruct: InstructTemplate[];
   reasoning: ReasoningTemplate[];
@@ -60,6 +71,8 @@ export async function fetchUserSettings(force = false): Promise<ParsedUserSettin
         settings: JSON.parse(data.settings) as LegacySettings,
         openai_setting_names: data.openai_setting_names,
         openai_settings: data.openai_settings.map((s) => JSON.parse(s) as LegacyOaiSettings),
+        textgenerationwebui_preset_names: data.textgenerationwebui_preset_names ?? [],
+        textgenerationwebui_presets: (data.textgenerationwebui_presets ?? []).map((s) => JSON.parse(s)),
         world_names: data.world_names,
         instruct: data.instruct,
         reasoning: data.reasoning ?? [],
