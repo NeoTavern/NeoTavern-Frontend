@@ -37,13 +37,13 @@ const status = computed(() => {
 const iconClass = computed(() => {
   switch (status.value) {
     case 'pending':
-      return 'fa-solid fa-chart-simple fa-spin';
+      return 'fa-solid fa-clipboard-list fa-spin';
     case 'success':
-      return 'fa-solid fa-chart-simple success';
+      return 'fa-solid fa-clipboard-list success';
     case 'error':
-      return 'fa-solid fa-chart-simple error';
+      return 'fa-solid fa-clipboard-list error';
     default:
-      return 'fa-solid fa-chart-simple';
+      return 'fa-solid fa-clipboard-list';
   }
 });
 

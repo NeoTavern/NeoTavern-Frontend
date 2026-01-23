@@ -97,7 +97,7 @@ class TrackerManager {
         await this.updateTrackerData(index, schemaName, { status: 'pending', schemaName });
 
         try {
-          const systemPrompt = this.api.macro.process(settings.prompt);
+          const systemPrompt = this.api.macro.process(preset.prompt);
           const messagesForLlm: ApiChatMessage[] = [
             ...contextMessages,
             { role: 'system' as const, name: 'System', content: systemPrompt },
@@ -368,14 +368,14 @@ class TrackerManager {
     const onClick = () => this.manageChatSchemas();
     this.api.ui.registerChatFormOptionsMenuItem({
       id: 'tracker-manage-schemas',
-      icon: 'fa-solid fa-chart-simple',
+      icon: 'fa-solid fa-clipboard-list',
       label: this.api.i18n.t('extensionsBuiltin.tracker.chatForm.manageSchemas'),
       visible: this.api.chat.getChatInfo() !== null,
       onClick,
     });
     this.api.ui.registerChatQuickAction('core.context-ai', '', {
       id: 'tracker-manage-schemas',
-      icon: 'fa-solid fa-chart-simple',
+      icon: 'fa-solid fa-clipboard-list',
       label: this.api.i18n.t('extensionsBuiltin.tracker.chatForm.manageSchemas'),
       onClick,
     });

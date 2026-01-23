@@ -6,7 +6,6 @@ import type { ExtensionAPI } from '../../../types';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
 import {
   DEFAULT_PRESETS,
-  DEFAULT_PROMPT,
   DEFAULT_SETTINGS,
   type TrackerChatExtra,
   type TrackerMessageExtra,
@@ -147,18 +146,16 @@ async function handlePresetDelete() {
 
 async function handleResetAll() {
   const { result } = await props.api.ui.showPopup({
-    title: 'Reset All Tracker Settings?',
-    content:
-      'This will reset all schema presets and the prompt template to their default values. This action cannot be undone.',
+    title: 'Reset All Tracker Presets?',
+    content: 'This will reset all schema presets to their default values. This action cannot be undone.',
     type: POPUP_TYPE.CONFIRM,
     okButton: 'common.reset',
   });
 
   if (result === POPUP_RESULT.AFFIRMATIVE) {
     settings.value.schemaPresets = JSON.parse(JSON.stringify(DEFAULT_PRESETS));
-    settings.value.prompt = DEFAULT_PROMPT;
     settings.value.activeSchemaPresetName = DEFAULT_PRESETS[0].name;
-    props.api.ui.showToast('Tracker settings have been reset.', 'success');
+    props.api.ui.showToast('Tracker presets have been reset.', 'success');
   }
 }
 
@@ -174,26 +171,6 @@ const promptEngineeringOptions = [
   { label: 'Force JSON', value: 'json' },
   { label: 'Force XML', value: 'xml' },
 ];
-
-const promptTools = computed(() => [
-  {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: t('common.reset'),
-    onClick: async ({ setValue }: { setValue: (v: string) => void }) => {
-      const { result } = await props.api.ui.showPopup({
-        title: 'Reset Prompt?',
-        content: 'Are you sure you want to reset the prompt template to its default value?',
-        type: POPUP_TYPE.CONFIRM,
-        okButton: 'common.reset',
-      });
-      if (result === POPUP_RESULT.AFFIRMATIVE) {
-        setValue(DEFAULT_PROMPT);
-        props.api.ui.showToast('Prompt template has been reset.', 'success');
-      }
-    },
-  },
-]);
 
 const defaultActivePreset = computed(() => {
   if (!activePreset.value) return null;
@@ -243,6 +220,28 @@ const templateTools = computed(() => [
     },
   },
 ]);
+
+const promptTools = computed(() => [
+  {
+    id: 'reset',
+    icon: 'fa-rotate-left',
+    title: t('common.reset'),
+    disabled: !defaultActivePreset.value,
+    onClick: async ({ setValue }: { setValue: (v: string) => void }) => {
+      if (!defaultActivePreset.value) return;
+      const { result } = await props.api.ui.showPopup({
+        title: 'Reset Prompt?',
+        content: `Are you sure you want to reset the prompt template for "${activePreset.value?.name}" to its default value?`,
+        type: POPUP_TYPE.CONFIRM,
+        okButton: 'common.reset',
+      });
+      if (result === POPUP_RESULT.AFFIRMATIVE) {
+        setValue(defaultActivePreset.value.prompt);
+        props.api.ui.showToast('Prompt template has been reset.', 'success');
+      }
+    },
+  },
+]);
 </script>
 
 <template>
@@ -269,7 +268,7 @@ const templateTools = computed(() => [
       </FormItem>
     </div>
     <div class="reset-all-container">
-      <Button icon="fa-rotate-left" variant="danger" @click="handleResetAll">Reset All Settings</Button>
+      <Button icon="fa-rotate-left" variant="danger" @click="handleResetAll">Reset All Presets</Button>
     </div>
 
     <div class="group-header">Schema Presets</div>
@@ -310,19 +309,17 @@ const templateTools = computed(() => [
           :tools="templateTools"
         />
       </FormItem>
+      <FormItem label="Prompt Template" description="The prompt sent to the AI for data extraction.">
+        <Textarea
+          v-model="activePreset.prompt"
+          allow-maximize
+          class="mono-area"
+          :rows="6"
+          :identifier="`extension.tracker.prompt.${activePreset.name}`"
+          :tools="promptTools"
+        />
+      </FormItem>
     </template>
-
-    <div class="group-header">Prompt</div>
-    <FormItem label="Prompt Template" description="The prompt sent to the AI for data extraction.">
-      <Textarea
-        v-model="settings.prompt"
-        allow-maximize
-        class="mono-area"
-        :rows="6"
-        identifier="extension.tracker.prompt"
-        :tools="promptTools"
-      />
-    </FormItem>
 
     <div class="group-header">Context Management</div>
     <div class="setting-row">

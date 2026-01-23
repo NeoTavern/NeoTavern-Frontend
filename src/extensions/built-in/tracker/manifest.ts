@@ -6,5 +6,5 @@ export const manifest: ExtensionManifest = {
   description: 'Tracks RP for consistent results',
   version: '1.0.0',
   author: 'NeoTavern Team',
-  icon: 'fa-solid fa-chart-simple',
+  icon: 'fa-solid fa-clipboard-list',
 };

@@ -2,6 +2,7 @@ export interface TrackerSchemaPreset {
   name: string;
   schema: string; // JSON schema as a string
   template: string; // Handlebars HTML template as a string
+  prompt: string;
 }
 
 export interface TrackerSettings {
@@ -11,7 +12,6 @@ export interface TrackerSettings {
   promptEngineering: 'native' | 'json' | 'xml';
   schemaPresets: TrackerSchemaPreset[];
   activeSchemaPresetName: string;
-  prompt: string;
   maxResponseTokens: number;
   includeLastXMessages: number;
   includeLastXTrackers: number;
@@ -184,6 +184,7 @@ export const DEFAULT_PRESETS: TrackerSchemaPreset[] = [
     name: 'Scene Tracker',
     schema: JSON.stringify(DEFAULT_SCHEMA_VALUE, null, 2),
     template: DEFAULT_TEMPLATE,
+    prompt: DEFAULT_PROMPT,
   },
 ];
 
@@ -194,7 +195,6 @@ export const DEFAULT_SETTINGS: TrackerSettings = {
   promptEngineering: 'native',
   schemaPresets: DEFAULT_PRESETS,
   activeSchemaPresetName: 'Scene Tracker',
-  prompt: DEFAULT_PROMPT,
   maxResponseTokens: 16000,
   includeLastXMessages: 5,
   includeLastXTrackers: 3,

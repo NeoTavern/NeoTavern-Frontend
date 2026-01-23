@@ -20,7 +20,9 @@ const trackers = computed<Record<string, TrackerData> | undefined>(() => {
 
 const successfulTrackers = computed(() => {
   if (!trackers.value) return [];
-  return Object.values(trackers.value).filter((t) => t.status === 'success' && t.trackerHtml);
+  return Object.values(trackers.value).filter(
+    (t) => t.status === 'success' && t.trackerHtml && t.trackerHtml.trim() !== '',
+  );
 });
 
 function isCollapsed(schemaName: string) {
