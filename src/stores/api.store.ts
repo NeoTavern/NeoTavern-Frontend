@@ -328,6 +328,8 @@ export const useApiStore = defineStore('api', () => {
       const existingIndex = presets.value.findIndex((p) => p.name === name);
       if (existingIndex >= 0) {
         presets.value[existingIndex] = { name, preset: presetData };
+      } else {
+        presets.value.push({ name, preset: presetData });
       }
       settingsStore.settings.api.selectedSampler = name;
     } catch (error: unknown) {
@@ -385,13 +387,21 @@ export const useApiStore = defineStore('api', () => {
     });
 
     if (result === POPUP_RESULT.AFFIRMATIVE) {
+      // Update UI optimistically
+      const previousPresets = [...presets.value];
+      const previousSelection = settingsStore.settings.api.selectedSampler;
+
+      if (settingsStore.settings.api.selectedSampler === name) {
+        settingsStore.settings.api.selectedSampler = 'Default';
+      }
+      presets.value = presets.value.filter((p) => p.name !== name);
+
       try {
         await apideleteSamplerPreset(name);
-        if (settingsStore.settings.api.selectedSampler === name) {
-          settingsStore.settings.api.selectedSampler = 'Default';
-        }
-        presets.value = presets.value.filter((p) => p.name !== name);
       } catch (error: unknown) {
+        // Revert on error
+        presets.value = previousPresets;
+        settingsStore.settings.api.selectedSampler = previousSelection;
         toast.error(`Failed to delete preset "${name}".`);
         console.error('Failed to delete preset:', error);
       }
@@ -422,15 +432,28 @@ export const useApiStore = defineStore('api', () => {
           }
         }
 
-        // TODO: Add confirmation for overwriting existing preset, like original ST
-        await saveSamplerPreset(name, presetData);
+        // Update UI optimistically
         const existingIndex = presets.value.findIndex((p) => p.name === name);
+        const previousPresets = [...presets.value];
+        const previousSelection = settingsStore.settings.api.selectedSampler;
+
         if (existingIndex >= 0) {
           presets.value[existingIndex] = { name, preset: presetData };
         } else {
           presets.value.push({ name, preset: presetData });
         }
         settingsStore.settings.api.selectedSampler = name;
+
+        try {
+          // TODO: Add confirmation for overwriting existing preset, like original ST
+          await saveSamplerPreset(name, presetData);
+        } catch (error) {
+          // Revert on error
+          presets.value = previousPresets;
+          settingsStore.settings.api.selectedSampler = previousSelection;
+          toast.error(t('aiConfig.presets.errors.importInvalid'));
+          console.error(error);
+        }
       } catch (error) {
         toast.error(t('aiConfig.presets.errors.importInvalid'));
         console.error(error);
