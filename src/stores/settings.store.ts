@@ -11,6 +11,7 @@ import {
   createDefaultSettings,
   mergeWithDefaults,
   migrateLegacyUserSettings,
+  migrateSettings,
 } from '../services/settings-migration.service';
 import { settingsDefinition } from '../settings-definition';
 import { type SettingDefinition, type Settings, type SettingsPath } from '../types';
@@ -69,30 +70,54 @@ export const useSettingsStore = defineStore('settings', () => {
 
     initializationPromise = (async () => {
       try {
-        const userSettingsResponse = await fetchUserSettings();
-        const neoSamplerPresets = await fetchAllSamplerPresets();
-        const legacySettings: LegacySettings = userSettingsResponse.settings;
+        let currentSettings: Settings;
+        // 1. Fetch existing Neo settings
+        const neoSettings = await fetchNeoSettings();
 
-        let experimentalSettings: Settings;
-
-        try {
-          const neoSettings = await fetchNeoSettings();
-          if (Object.keys(neoSettings).length === 0) {
-            throw new Error('Empty Neo settings');
+        if (Object.keys(neoSettings).length > 0) {
+          // Case A: Existing NeoTavern User (Versioned or Unversioned)
+          // We merge with defaults to ensure missing fields (like 'version' for old users) are populated.
+          // This implicitly upgrades "v0" (unversioned) settings to "v1" (default version).
+          const { settings: merged } = mergeWithDefaults(neoSettings);
+          currentSettings = merged;
+        } else {
+          // Case B: New User or First-time Migration
+          console.warn('No Neo settings found, attempting migration from Legacy settings.');
+          try {
+            const userSettingsResponse = await fetchUserSettings();
+            const neoSamplerPresets = await fetchAllSamplerPresets();
+            currentSettings = migrateLegacyUserSettings(userSettingsResponse, neoSamplerPresets);
+            // Save immediately after migration so we have a base
+            await saveNeoSettings(currentSettings);
+          } catch (migrationError) {
+            console.error('Legacy migration failed, falling back to defaults:', migrationError);
+            currentSettings = createDefaultSettings();
+            await saveNeoSettings(currentSettings);
           }
-          const result = mergeWithDefaults(neoSettings, legacySettings);
-          experimentalSettings = result.settings;
-        } catch (neoError) {
-          console.warn('No Neo settings found, performing one-time migration:', neoError);
-          experimentalSettings = migrateLegacyUserSettings(userSettingsResponse, neoSamplerPresets);
-          await saveNeoSettings(experimentalSettings);
         }
 
-        settings.value = experimentalSettings;
+        // 2. Run Version-based Migrations
+        // This handles v1 -> v2, etc. in the future.
+        const { migrated, hasChanged } = migrateSettings(currentSettings);
 
-        const uiStore = useUiStore();
-        uiStore.activePlayerName = legacySettings.username || null;
-        uiStore.activePlayerAvatar = legacySettings.user_avatar || null;
+        if (hasChanged) {
+          console.log('Settings were migrated to a new version. Saving changes.');
+          await saveNeoSettings(migrated);
+        }
+
+        settings.value = migrated;
+
+        // 3. Load Legacy User Data (Avatar/Name)
+        // Kept for backward compatibility with external avatar changes
+        try {
+          const userSettingsResponse = await fetchUserSettings();
+          const legacySettings: LegacySettings = userSettingsResponse.settings;
+          const uiStore = useUiStore();
+          uiStore.activePlayerName = legacySettings.username || null;
+          uiStore.activePlayerAvatar = legacySettings.user_avatar || null;
+        } catch (e) {
+          console.warn('Failed to fetch legacy user settings for avatar/name', e);
+        }
 
         settingsInitializing.value = false;
         await nextTick();
@@ -107,6 +132,7 @@ export const useSettingsStore = defineStore('settings', () => {
       } catch (error) {
         console.error('Failed to initialize settings:', error);
         toast.error('Could not load user settings. Using defaults.');
+        settings.value = createDefaultSettings();
         settingsInitializing.value = false;
       } finally {
         initializationPromise = null;
