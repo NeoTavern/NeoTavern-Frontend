@@ -28,10 +28,12 @@ const STANDARD_HTML_TAGS = new Set([
   'h4',
   'h5',
   'h6',
+  'hgroup',
   'header',
   'footer',
   'address',
   'main',
+  'search',
   // Content grouping
   'p',
   'hr',
@@ -94,6 +96,7 @@ const STANDARD_HTML_TAGS = new Set([
   'area',
   'svg',
   'math',
+  'portal',
   // Tabular data
   'table',
   'caption',
@@ -124,6 +127,7 @@ const STANDARD_HTML_TAGS = new Set([
   'details',
   'summary',
   'dialog',
+  'menu',
   // Web components
   'template',
   'slot',
