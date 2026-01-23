@@ -131,5 +131,126 @@ describe('Chat Utils', () => {
       expect(result).toContain('@keyframes pulse');
       expect(result).toContain('transform: scale(1.1)');
     });
+
+    test('Should parse markdown-like text with angle brackets (not HTML)', () => {
+      const input = `<Info_Board>
+📅: Unknown | Eternal Spring | 68°F | 🌙 | Clear
+🕒: Dusk
+🗺️: [Location: Seraphina's Glade (Heart of Eldoria)] | [Characters Present: Seraphina, Joe] | [Action: Recovery & Observation]
+💎: [Hunger: Low] | [Energy: Low (Recovering)] | [Physical Position: Sitting up on bedding] | [Social: Cautious] | [Hygiene: Needs care] | [Physical Comfort: Sore]
+👗: Black sundress
+👔: Torn, blood-stained traveler's clothes
+💭: [Thoughts: Assessing the stranger's state, monitoring the glade's energy] | [Emotions: Relieved, watchful, concerned]
+🦄: [Horny: None] | [Tension: Low (Post-crisis calm)] | [Fantasy: None]
+</Info_Board>`;
+
+      const result = formatText(input, false);
+
+      // Should treat this as markdown and preserve line breaks (converted to <br>)
+      // The content should be wrapped in <p> tags by markdown parser
+      expect(result).toContain('<br>');
+
+      // Should not be treated as raw HTML block
+      // The angle brackets should be escaped or wrapped in paragraph tags
+      expect(result).toContain('📅');
+      expect(result).toContain('Dusk');
+
+      // Verify multiple lines are preserved with breaks
+      const brCount = (result.match(/<br>/g) || []).length;
+      expect(brCount).toBeGreaterThan(3); // Multiple line breaks expected
+    });
+
+    test('Should handle mixed false-positive HTML tags with real HTML', () => {
+      const input = `<Info_Board>
+Character: **Alice**
+Status: <strong>Active</strong>
+Mood: Happy :)
+</Info_Board>
+
+Regular text with <em>real emphasis</em> and <code>code</code>.
+
+<Another_Custom_Tag>
+More content here
+With line breaks
+</Another_Custom_Tag>`;
+
+      const result = formatText(input, false);
+
+      // Unknown tags should be escaped and treated as text
+      expect(result).toContain('&lt;Info_Board&gt;');
+      expect(result).toContain('&lt;/Info_Board&gt;');
+      expect(result).toContain('&lt;Another_Custom_Tag&gt;');
+
+      // Real HTML tags should work
+      expect(result).toContain('<strong>Active</strong>');
+      expect(result).toContain('<em>real emphasis</em>');
+      expect(result).toContain('<code>code</code>');
+
+      // Markdown should work (** for bold)
+      expect(result).toContain('<strong>Alice</strong>');
+
+      // Line breaks should be preserved
+      expect(result).toContain('<br>');
+      const brCount = (result.match(/<br>/g) || []).length;
+      expect(brCount).toBeGreaterThan(3);
+    });
+
+    test('Should allow real HTML block tags inline with markdown', () => {
+      const input = `# Heading
+
+<div class="alert">
+This is an alert
+With multiple lines
+</div>
+
+Regular **markdown** text.
+
+<section>
+<h2>Section Title</h2>
+<p>Paragraph text</p>
+</section>`;
+
+      const result = formatText(input, false);
+
+      // Real HTML tags should be preserved
+      expect(result).toContain('<div class="alert">');
+      expect(result).toContain('<section>');
+      expect(result).toContain('<h2>Section Title</h2>');
+      expect(result).toContain('<p>Paragraph text</p>');
+
+      // Markdown should still work outside HTML blocks
+      expect(result).toContain('<h1');
+      expect(result).toContain('<strong>markdown</strong>');
+
+      // Note: Line breaks INSIDE block-level HTML elements are preserved as whitespace,
+      // not converted to <br> tags. This is correct markdown behavior.
+      // Block HTML is treated as raw HTML by the parser.
+      expect(result).toContain('This is an alert');
+      expect(result).toContain('With multiple lines');
+    });
+
+    test('Should escape custom tags regardless of case', () => {
+      const input = `<CustomTag>Content</CustomTag>
+<customtag>More content</customtag>
+<Info_Board>Data</Info_Board>
+<ALLCAPS>Text</ALLCAPS>`;
+
+      const result = formatText(input, false);
+
+      // All custom tags should be escaped
+      expect(result).toContain('&lt;CustomTag&gt;');
+      expect(result).toContain('&lt;/CustomTag&gt;');
+      expect(result).toContain('&lt;customtag&gt;');
+      expect(result).toContain('&lt;/customtag&gt;');
+      expect(result).toContain('&lt;Info_Board&gt;');
+      expect(result).toContain('&lt;ALLCAPS&gt;');
+
+      // Content should still be visible
+      expect(result).toContain('Content');
+      expect(result).toContain('More content');
+
+      // Line breaks should be preserved
+      expect(result).toContain('<br>');
+    });
   });
 });

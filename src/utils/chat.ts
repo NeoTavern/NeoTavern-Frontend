@@ -6,10 +6,138 @@ import type { ChatMediaItem, ChatMessage } from '../types';
 import { getMessageTimeStamp } from './commons';
 import { scopeHtml } from './style-scoper';
 
+// Comprehensive list of standard HTML tags (HTML5 + common elements)
+const STANDARD_HTML_TAGS = new Set([
+  // Document metadata
+  'html',
+  'head',
+  'title',
+  'base',
+  'link',
+  'meta',
+  'style',
+  // Sectioning
+  'body',
+  'article',
+  'section',
+  'nav',
+  'aside',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'header',
+  'footer',
+  'address',
+  'main',
+  // Content grouping
+  'p',
+  'hr',
+  'pre',
+  'blockquote',
+  'ol',
+  'ul',
+  'li',
+  'dl',
+  'dt',
+  'dd',
+  'figure',
+  'figcaption',
+  'div',
+  // Text-level semantics
+  'a',
+  'em',
+  'strong',
+  'small',
+  's',
+  'cite',
+  'q',
+  'dfn',
+  'abbr',
+  'data',
+  'time',
+  'code',
+  'var',
+  'samp',
+  'kbd',
+  'sub',
+  'sup',
+  'i',
+  'b',
+  'u',
+  'mark',
+  'ruby',
+  'rt',
+  'rp',
+  'bdi',
+  'bdo',
+  'span',
+  'br',
+  'wbr',
+  // Edits
+  'ins',
+  'del',
+  // Embedded content
+  'img',
+  'iframe',
+  'embed',
+  'object',
+  'param',
+  'video',
+  'audio',
+  'source',
+  'track',
+  'canvas',
+  'map',
+  'area',
+  'svg',
+  'math',
+  // Tabular data
+  'table',
+  'caption',
+  'colgroup',
+  'col',
+  'tbody',
+  'thead',
+  'tfoot',
+  'tr',
+  'td',
+  'th',
+  // Forms
+  'form',
+  'label',
+  'input',
+  'button',
+  'select',
+  'datalist',
+  'optgroup',
+  'option',
+  'textarea',
+  'output',
+  'progress',
+  'meter',
+  'fieldset',
+  'legend',
+  // Interactive elements
+  'details',
+  'summary',
+  'dialog',
+  // Web components
+  'template',
+  'slot',
+  // Other
+  'script',
+  'noscript',
+  'picture',
+]);
+
 /**
  * Heuristic to check if a string is a self-contained HTML block.
  * This is used to decide whether to parse as Markdown or treat as raw HTML.
  * It helps preserve structure and <style> tags that Markdown might mangle.
+ * Only recognizes actual HTML elements to avoid false positives with markdown text.
  * @param text The string to check.
  */
 function isHtmlBlock(text: string): boolean {
@@ -18,7 +146,13 @@ function isHtmlBlock(text: string): boolean {
   // ^<([a-z][a-z0-9-]*)\b  : Starts with <tagname (word boundary ensures strict match)
   // [\s\S]*                : Any content in between
   // <\/\1>$                : Ends with </tagname> (matching the captured tag name)
-  return /^<([a-z][a-z0-9-]*)\b[\s\S]*<\/\1>$/i.test(trimmed);
+  const match = /^<([a-z][a-z0-9-]*)\b[\s\S]*<\/\1>$/i.exec(trimmed);
+
+  if (!match) return false;
+
+  const tagName = match[1].toLowerCase();
+
+  return STANDARD_HTML_TAGS.has(tagName);
 }
 
 // --- Markdown & Formatting ---
@@ -132,7 +266,17 @@ export function formatText(text: string, forbidExternalMedia: boolean = false, i
   if (isHtmlBlock(text)) {
     rawHtml = text;
   } else {
-    rawHtml = marked.parse(text, { renderer: customRenderer }) as string;
+    // Escape non-standard HTML-like tags (e.g. <Info_Board>, <CustomTag>) so markdown treats them as literal text
+    // This preserves line breaks that would otherwise be lost when markdown passes unknown tags through
+    const processedText = text.replace(/<\/?([a-z_][a-z0-9_-]*)\b[^>]*>/gi, (match, tagName) => {
+      const normalizedTag = tagName.toLowerCase();
+      // If it's not a standard HTML tag, escape it
+      if (!STANDARD_HTML_TAGS.has(normalizedTag)) {
+        return match.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+      return match;
+    });
+    rawHtml = marked.parse(processedText, { renderer: customRenderer }) as string;
   }
 
   // Mask <style> tags to prevent DOMPurify from stripping them (e.g. due to @keyframes or other complex CSS)
