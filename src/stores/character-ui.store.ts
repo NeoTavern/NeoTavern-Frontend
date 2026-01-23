@@ -20,6 +20,10 @@ export const useCharacterUiStore = defineStore('character-ui', () => {
   const isCreating = ref(false);
   const draftCharacter = ref<Character>(DEFAULT_CHARACTER);
   const selectedCharacterAvatarForEditing = ref<string | null>(null);
+  const selectedCharacterAvatars = ref<string[]>([]);
+  const isBulkSelectionMode = ref(false);
+
+  const isBulkSelectionActive = computed(() => selectedCharacterAvatars.value.length > 0);
 
   const sortOrder = computed({
     get: () => settingsStore.settings.account.characterSortOrder ?? 'name:asc',
@@ -61,6 +65,10 @@ export const useCharacterUiStore = defineStore('character-ui', () => {
   });
 
   const editFormCharacter = computed<Character | null>(() => {
+    if (isBulkSelectionMode.value) {
+      return null;
+    }
+
     if (isCreating.value) {
       return draftCharacter.value;
     }
@@ -77,7 +85,15 @@ export const useCharacterUiStore = defineStore('character-ui', () => {
     return null;
   });
 
+  function clearCharacterSelection() {
+    selectedCharacterAvatars.value = [];
+  }
+
   function startCreating() {
+    if (isBulkSelectionMode.value) {
+      isBulkSelectionMode.value = false;
+      clearCharacterSelection();
+    }
     selectedCharacterAvatarForEditing.value = null;
     isCreating.value = true;
   }
@@ -86,9 +102,34 @@ export const useCharacterUiStore = defineStore('character-ui', () => {
     isCreating.value = false;
   }
 
+  function isCharacterSelected(avatar: string): boolean {
+    return selectedCharacterAvatars.value.includes(avatar);
+  }
+
+  function toggleCharacterSelection(avatar: string) {
+    const index = selectedCharacterAvatars.value.indexOf(avatar);
+    if (index > -1) {
+      selectedCharacterAvatars.value.splice(index, 1);
+    } else {
+      selectedCharacterAvatars.value.push(avatar);
+    }
+  }
+
+  function toggleBulkSelectionMode() {
+    isBulkSelectionMode.value = !isBulkSelectionMode.value;
+    if (!isBulkSelectionMode.value) {
+      clearCharacterSelection();
+    }
+  }
+
   function selectCharacterByAvatar(avatar: string) {
     const character = characterStore.characters.find((c) => c.avatar === avatar);
     if (!character) return;
+
+    if (isBulkSelectionMode.value) {
+      isBulkSelectionMode.value = false;
+      clearCharacterSelection();
+    }
 
     if (isCreating.value) {
       cancelCreating();
@@ -121,6 +162,9 @@ export const useCharacterUiStore = defineStore('character-ui', () => {
     isCreating,
     draftCharacter,
     selectedCharacterAvatarForEditing,
+    selectedCharacterAvatars,
+    isBulkSelectionActive,
+    isBulkSelectionMode,
     sortOrder,
     displayableCharacters,
     paginatedCharacters,
@@ -130,5 +174,9 @@ export const useCharacterUiStore = defineStore('character-ui', () => {
     cancelCreating,
     selectCharacterByAvatar,
     highlightCharacter,
+    isCharacterSelected,
+    toggleCharacterSelection,
+    clearCharacterSelection,
+    toggleBulkSelectionMode,
   };
 });

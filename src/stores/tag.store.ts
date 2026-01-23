@@ -95,6 +95,33 @@ export const useTagStore = defineStore('tag', () => {
     customTagAssignments.value = newAssignments;
   }
 
+  function bulkUpdateTags(avatars: string[], tagsToAdd: string[], tagsToRemove: string[]) {
+    const newAssignments = { ...customTagAssignments.value };
+    const lowerTagsToRemove = tagsToRemove.map((t) => t.toLowerCase());
+
+    for (const avatar of avatars) {
+      const currentTags = new Set(newAssignments[avatar]?.map((t) => t) ?? []);
+
+      // Add tags
+      for (const tag of tagsToAdd) {
+        currentTags.add(tag);
+      }
+
+      // Remove tags by creating a new array from the set
+      const tagsAfterRemoval = [...currentTags].filter((t) => !lowerTagsToRemove.includes(t.toLowerCase()));
+
+      // Use a Set to ensure uniqueness after potential case changes from adding/existing tags
+      const finalTags = [...new Set(tagsAfterRemoval)];
+
+      if (finalTags.length > 0) {
+        newAssignments[avatar] = finalTags;
+      } else {
+        delete newAssignments[avatar];
+      }
+    }
+    customTagAssignments.value = newAssignments;
+  }
+
   function removeAssignmentsForCharacter(avatar: string) {
     const newAssignments = { ...customTagAssignments.value };
     delete newAssignments[avatar];
@@ -116,6 +143,7 @@ export const useTagStore = defineStore('tag', () => {
     deleteTag,
     getCustomTagsForCharacter,
     setCustomTagsForCharacter,
+    bulkUpdateTags,
     initialize,
   };
 });

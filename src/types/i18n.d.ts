@@ -573,6 +573,8 @@ export interface MessageSchema {
     expand: string;
     collapse: string;
     model: string;
+    clearSelection: string;
+    apply: string;
   };
   popup: {
     cropAvatar: {
@@ -765,6 +767,7 @@ export interface MessageSchema {
     searchToggle: string;
     searchPlaceholder: string;
     filterTags: string;
+    bulkSelectToggle: string;
     sorting: {
       title: string;
       nameAsc: string;
@@ -790,6 +793,17 @@ export interface MessageSchema {
       foreground: string;
       add: string;
       removeColor: string;
+    };
+    bulkTags: {
+      title: string;
+      selected: string;
+      edit: string;
+      selectCharacter: string;
+      description: string;
+      addTags: string;
+      addPlaceholder: string;
+      removeTags: string;
+      removePlaceholder: string;
     };
   };
   characterEditor: {
@@ -1636,6 +1650,7 @@ export interface MessageSchema {
       added: string;
       removed: string;
       suggestionsList: string;
+      invalidSelection: string;
     };
     imageCropper: {
       cropBoxLabel: string;

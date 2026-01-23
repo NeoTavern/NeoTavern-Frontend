@@ -569,7 +569,9 @@
     "regenerate": "Regenerate",
     "expand": "Expand",
     "collapse": "Collapse",
-    "model": "Model"
+    "model": "Model",
+    "clearSelection": "Clear Selection",
+    "apply": "Apply"
   },
   "popup": {
     "cropAvatar": {
@@ -762,6 +764,7 @@
     "searchToggle": "Toggle search bar",
     "searchPlaceholder": "Search",
     "filterTags": "Filter Tags",
+    "bulkSelectToggle": "Toggle bulk select mode",
     "sorting": {
       "title": "Order",
       "nameAsc": "A-Z",
@@ -787,6 +790,17 @@
       "foreground": "Text",
       "add": "Add Tag",
       "removeColor": "Remove Color"
+    },
+    "bulkTags": {
+      "title": "Bulk Edit Tags",
+      "selected": "Selected: {count}",
+      "edit": "Edit Tags",
+      "selectCharacter": "Select {name}",
+      "description": "You are editing tags for {count} selected characters. Changes will be applied to all of them.",
+      "addTags": "Add Tags",
+      "addPlaceholder": "Enter tags to add...",
+      "removeTags": "Remove Tags",
+      "removePlaceholder": "Select tags to remove..."
     }
   },
   "characterEditor": {
@@ -1632,7 +1646,8 @@
       "addTag": "Add Tag",
       "added": "{count} tag(s) added: {tags}",
       "removed": "Removed tag: {tag}",
-      "suggestionsList": "Suggestions"
+      "suggestionsList": "Suggestions",
+      "invalidSelection": "Please select from available suggestions only."
     },
     "imageCropper": {
       "cropBoxLabel": "Crop selection box. Drag to move or resize.",

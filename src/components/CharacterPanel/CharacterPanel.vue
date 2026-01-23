@@ -10,7 +10,8 @@ import { useSettingsStore } from '../../stores/settings.store';
 import type { Character } from '../../types';
 import { getThumbnailUrl } from '../../utils/character';
 import { EmptyState, Pagination, PanelLayout } from '../common';
-import { Button, FileInput, ListItem, Search, Select } from '../UI';
+import { Button, Checkbox, FileInput, ListItem, Search, Select } from '../UI';
+import BulkTagEditorPopup from './BulkTagEditorPopup.vue';
 import CharacterEditForm from './CharacterEditForm.vue';
 import CustomTagManagerPopup from './CustomTagManagerPopup.vue';
 
@@ -43,6 +44,22 @@ watch(
 function createNew() {
   characterUiStore.startCreating();
   layoutStore.autoCloseSidebarsOnMobile();
+}
+
+function handleCharacterClick(character: Character) {
+  if (characterUiStore.isBulkSelectionMode) {
+    characterUiStore.toggleCharacterSelection(character.avatar);
+  } else {
+    handleCharacterSelect(character);
+  }
+}
+
+function handleCharacterDoubleClick(character: Character) {
+  if (characterUiStore.isBulkSelectionMode) {
+    characterUiStore.toggleCharacterSelection(character.avatar);
+  } else {
+    handleCharacterSelect(character);
+  }
 }
 
 function handleCharacterSelect(character: Character) {
@@ -93,6 +110,17 @@ function openTagManager() {
     title: t('characterPanel.tags.managerTitle'),
     component: CustomTagManagerPopup,
     wide: true,
+  });
+}
+
+function openBulkTagEditor() {
+  popupStore.show({
+    title: t('characterPanel.bulkTags.title'),
+    component: BulkTagEditorPopup,
+    componentProps: {
+      avatars: characterUiStore.selectedCharacterAvatars,
+    },
+    okButton: false,
   });
 }
 
@@ -177,7 +205,14 @@ onMounted(async () => {
             :title="t('characterPanel.tags.manage')"
             @click="openTagManager"
           />
-
+          <Button
+            variant="ghost"
+            icon="fa-solid fa-check-double"
+            :title="t('characterPanel.bulkSelectToggle')"
+            :active="characterUiStore.isBulkSelectionMode"
+            :aria-pressed="characterUiStore.isBulkSelectionMode"
+            @click="characterUiStore.toggleBulkSelectionMode"
+          />
           <Button
             variant="ghost"
             icon="fa-search"
@@ -212,6 +247,26 @@ onMounted(async () => {
           </Search>
         </div>
       </div>
+      <div v-if="characterUiStore.isBulkSelectionMode" class="character-panel-bulk-actions">
+        <span>{{
+          t('characterPanel.bulkTags.selected', { count: characterUiStore.selectedCharacterAvatars.length })
+        }}</span>
+        <Button
+          variant="ghost"
+          :disabled="!characterUiStore.isBulkSelectionActive"
+          :title="t('characterPanel.bulkTags.edit')"
+          @click="openBulkTagEditor"
+        >
+          <i class="fa-solid fa-tags"></i>
+          {{ t('characterPanel.bulkTags.edit') }}
+        </Button>
+        <Button
+          variant="ghost"
+          icon="fa-solid fa-xmark"
+          :title="t('common.clearSelection')"
+          @click="characterUiStore.clearCharacterSelection"
+        ></Button>
+      </div>
       <div class="character-panel-pagination">
         <Pagination
           v-if="characterUiStore.displayableCharacters.length > 0"
@@ -240,13 +295,25 @@ onMounted(async () => {
             "
             role="listitem"
             :active="characterUiStore.editFormCharacter?.avatar === character.avatar"
+            :selected="characterUiStore.isCharacterSelected(character.avatar)"
             :class="{ 'flash animated': character.avatar === characterUiStore.highlightedAvatar }"
             :data-character-avatar="character.avatar"
             :aria-label="character.name"
-            @click="handleCharacterSelect(character)"
+            @click="handleCharacterClick(character)"
+            @dblclick="handleCharacterDoubleClick(character)"
           >
             <template #start>
-              <img :src="getThumbnailUrl('avatar', character.avatar)" :alt="''" />
+              <div class="character-panel-list-item-start">
+                <Checkbox
+                  v-if="characterUiStore.isBulkSelectionMode"
+                  :model-value="characterUiStore.isCharacterSelected(character.avatar)"
+                  :label="''"
+                  :title="t('characterPanel.bulkTags.selectCharacter', { name: character.name })"
+                  @update:model-value="characterUiStore.toggleCharacterSelection(character.avatar)"
+                  @click.stop
+                />
+                <img :src="getThumbnailUrl('avatar', character.avatar)" :alt="''" />
+              </div>
             </template>
 
             <template #default>

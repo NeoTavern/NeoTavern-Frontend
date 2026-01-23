@@ -9,6 +9,7 @@ interface Props {
   placeholder?: string;
   label?: string;
   suggestions?: string[];
+  onlySuggestions?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -69,8 +70,20 @@ function addTag(tagValue?: string) {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  // If onlySuggestions is true, filter to only valid suggestions
+  let validTags = newTags;
+  if (props.onlySuggestions) {
+    validTags = newTags.filter((t) => props.suggestions.includes(t));
+    if (validTags.length === 0) {
+      liveMessage.value = t('a11y.tagInput.invalidSelection');
+      inputValue.value = '';
+      activeIndex.value = -1;
+      return;
+    }
+  }
+
   // Deduplicate against existing
-  const distinct = newTags.filter((t) => !props.modelValue.includes(t));
+  const distinct = validTags.filter((t) => !props.modelValue.includes(t));
 
   if (distinct.length > 0) {
     emit('update:modelValue', [...props.modelValue, ...distinct]);

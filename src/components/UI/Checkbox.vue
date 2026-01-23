@@ -10,6 +10,7 @@ const props = defineProps<{
   disabled?: boolean;
   id?: string;
   indeterminate?: boolean;
+  title?: string;
 }>();
 
 const emit = defineEmits(['update:modelValue']);
@@ -40,6 +41,7 @@ watchEffect(() => {
         type="checkbox"
         :checked="modelValue"
         :disabled="disabled"
+        :title="title"
         :aria-describedby="descriptionId"
         @change="onChange"
       />

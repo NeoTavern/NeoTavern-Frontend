@@ -6,6 +6,21 @@
     gap: var(--spacing-xs);
   }
 
+  &-bulk-actions {
+    @include flex-container(row, flex-start, center);
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-xs);
+    border-bottom: 1px solid var(--theme-border-color);
+    background-color: var(--black-30a);
+
+    span {
+      flex-grow: 1;
+      padding-left: var(--spacing-xs);
+      font-size: 0.9em;
+      opacity: 0.8;
+    }
+  }
+
   &-actions {
     #extension-buttons-container {
       display: contents;
@@ -36,6 +51,13 @@
       gap: var(--spacing-xs);
       margin-top: var(--spacing-xs);
     }
+  }
+
+  &-list-item-start {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding-right: var(--spacing-sm);
   }
 
   &-pagination {

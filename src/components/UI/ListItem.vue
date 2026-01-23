@@ -6,10 +6,15 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'click', event: MouseEvent | KeyboardEvent): void;
+  (e: 'dblclick', event: MouseEvent): void;
 }>();
 
 function onClick(event: MouseEvent) {
   emit('click', event);
+}
+
+function onDblClick(event: MouseEvent) {
+  emit('dblclick', event);
 }
 
 function onKeyDown(event: KeyboardEvent) {
@@ -29,6 +34,7 @@ function onKeyDown(event: KeyboardEvent) {
     :aria-pressed="active"
     :aria-selected="selected"
     @click="onClick"
+    @dblclick="onDblClick"
     @keydown="onKeyDown"
   >
     <!-- Left: Avatar/Icon -->
