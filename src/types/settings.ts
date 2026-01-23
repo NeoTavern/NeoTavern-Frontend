@@ -344,6 +344,7 @@ export interface CustomTag {
 }
 
 export interface Settings {
+  version: number;
   ui: {
     background: {
       name: string;

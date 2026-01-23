@@ -135,6 +135,11 @@ const STANDARD_HTML_TAGS = new Set([
   'script',
   'noscript',
   'picture',
+
+  // Old
+  'font',
+  'center',
+  'strike',
 ]);
 
 /**

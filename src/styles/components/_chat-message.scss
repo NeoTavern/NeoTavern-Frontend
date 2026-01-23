@@ -237,6 +237,31 @@
     font[color] q {
       color: inherit;
     }
+
+    [style*='color'] em,
+    [style*='color'] i,
+    [style*='color'] u,
+    [style*='color'] q {
+      color: inherit;
+    }
+
+    [style*='background'] em,
+    [style*='background'] i,
+    [style*='background'] u,
+    [style*='background'] q {
+      background: inherit;
+      background-color: inherit;
+    }
+
+    [style*='font-weight'] em,
+    [style*='font-weight'] i {
+      font-weight: inherit;
+    }
+
+    [style*='font-style'] em,
+    [style*='font-style'] i {
+      font-style: inherit;
+    }
   }
 
   // User-specific text formatting
@@ -254,6 +279,44 @@
 
       q {
         color: var(--theme-quote-color-user);
+      }
+
+      // Nested overrides
+      q i,
+      q em {
+        color: inherit;
+      }
+
+      font[color] em,
+      font[color] i,
+      font[color] u,
+      font[color] q {
+        color: inherit;
+      }
+
+      [style*='color'] em,
+      [style*='color'] i,
+      [style*='color'] u,
+      [style*='color'] q {
+        color: inherit;
+      }
+
+      [style*='background'] em,
+      [style*='background'] i,
+      [style*='background'] u,
+      [style*='background'] q {
+        background: inherit;
+        background-color: inherit;
+      }
+
+      [style*='font-weight'] em,
+      [style*='font-weight'] i {
+        font-weight: inherit;
+      }
+
+      [style*='font-style'] em,
+      [style*='font-style'] i {
+        font-style: inherit;
       }
     }
   }
@@ -445,6 +508,31 @@
     font[color] u,
     font[color] q {
       color: inherit;
+    }
+
+    [style*='color'] em,
+    [style*='color'] i,
+    [style*='color'] u,
+    [style*='color'] q {
+      color: inherit;
+    }
+
+    [style*='background'] em,
+    [style*='background'] i,
+    [style*='background'] u,
+    [style*='background'] q {
+      background: inherit;
+      background-color: inherit;
+    }
+
+    [style*='font-weight'] em,
+    [style*='font-weight'] i {
+      font-weight: inherit;
+    }
+
+    [style*='font-style'] em,
+    [style*='font-style'] i {
+      font-style: inherit;
     }
   }
 
