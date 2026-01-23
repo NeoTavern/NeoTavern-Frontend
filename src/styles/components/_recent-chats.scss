@@ -26,7 +26,6 @@
     .selection-actions {
       display: flex;
       gap: var(--spacing-sm);
-      @include hide-mobile();
     }
 
     .menu-button.small {
