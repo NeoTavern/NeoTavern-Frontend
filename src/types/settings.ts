@@ -378,6 +378,7 @@ export interface Settings {
       layout: 'row' | 'column';
       showLabels: boolean;
       showGroupNames: boolean;
+      showDividers: boolean;
       disabledActions: string[];
     };
   };

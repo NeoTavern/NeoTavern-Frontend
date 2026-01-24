@@ -722,6 +722,7 @@ export interface MessageSchema {
       displayOptions: string;
       showLabels: string;
       showGroupNames: string;
+      showDividers: string;
       group: {
         generation: string;
         inputMessage: string;
@@ -1318,12 +1319,15 @@ export interface MessageSchema {
     };
     generationTools: {
       rerollButtonLabel: string;
+      deleteContinueButtonLabel: string;
       swipeButtonLabel: string;
       impersonateButtonLabel: string;
       generateButtonLabel: string;
       generateDisabled: string;
       generateNoInput: string;
       rerollDisabled: string;
+      deleteContinueDisabled: string;
+      deletingContinue: string;
       noSnapshot: string;
       contextChanged: string;
       divergenceError: string;
@@ -1342,6 +1346,7 @@ export interface MessageSchema {
       settings: {
         reset: string;
         rerollEnabled: string;
+        deleteContinueEnabled: string;
         impersonateEnabled: string;
         generateEnabled: string;
         swipeEnabled: string;

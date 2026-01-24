@@ -130,7 +130,12 @@ onUnmounted(() => {
     <div id="quick-actions-content" class="chat-quick-actions-content-wrapper" :class="{ 'is-expanded': isExpanded }">
       <div>
         <div class="chat-quick-actions-content" :class="layoutClass">
-          <div v-for="group in actionGroups" :key="group.id" class="quick-action-group">
+          <div
+            v-for="group in actionGroups"
+            :key="group.id"
+            class="quick-action-group"
+            :class="{ 'no-dividers': !chatUiStore.quickActionsShowDividers }"
+          >
             <div class="quick-action-group-content">
               <span v-if="group.label && chatUiStore.quickActionsShowGroupNames" class="group-label">{{
                 group.label
@@ -187,6 +192,11 @@ onUnmounted(() => {
           :model-value="chatUiStore.quickActionsShowGroupNames"
           :label="t('chat.quickActions.showGroupNames')"
           @update:model-value="chatUiStore.setQuickActionsShowGroupNames($event)"
+        />
+        <Checkbox
+          :model-value="chatUiStore.quickActionsShowDividers"
+          :label="t('chat.quickActions.showDividers')"
+          @update:model-value="chatUiStore.setQuickActionsShowDividers($event)"
         />
       </div>
 

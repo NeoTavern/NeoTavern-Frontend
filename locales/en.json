@@ -719,6 +719,7 @@
       "displayOptions": "Display Options",
       "showLabels": "Show Labels",
       "showGroupNames": "Show Group Names",
+      "showDividers": "Show Dividers",
       "group": {
         "generation": "Generation",
         "inputMessage": "Input & Message",
@@ -1314,14 +1315,17 @@
       "promptHint": "Customize how the LLM translates text. Supports Handlebars variables: {'{{prompt}}'}, {'{{sourceLang}}'}, {'{{targetLang}}'}, {'{{name}}'}."
     },
     "generationTools": {
-      "rerollButtonLabel": "Reroll / Continue",
+      "rerollButtonLabel": "Reroll continue",
+      "deleteContinueButtonLabel": "Delete continue",
       "swipeButtonLabel": "Swipe",
       "impersonateButtonLabel": "Impersonate",
       "generateButtonLabel": "Generate",
       "generateDisabled": "Generate  is disabled in settings.",
       "generateNoInput": "Please enter some text in the chat input to use Generate .",
-      "rerollDisabled": "Reroll/Continue is disabled in settings.",
-      "noSnapshot": "No Reroll/Continue snapshot available.",
+      "rerollDisabled": "Reroll continue is disabled in settings.",
+      "deleteContinueDisabled": "Delete continue is disabled in settings.",
+      "deletingContinue": "Deleting continue...",
+      "noSnapshot": "No reroll continue snapshot available.",
       "contextChanged": "Chat history has changed since the  last 'Continue'. Cannot reroll.",
       "divergenceError": "Current message content has diverged from the snapshot",
       "swipeError": "Error during Swipe",
@@ -1338,7 +1342,8 @@
       "swiping": "Swiping...",
       "settings": {
         "reset": "Reset Settings",
-        "rerollEnabled": "Reroll / Continue",
+        "rerollEnabled": "Reroll continue",
+        "deleteContinueEnabled": "Delete continue",
         "impersonateEnabled": "Impersonate",
         "generateEnabled": "Generate",
         "swipeEnabled": "Swipe",

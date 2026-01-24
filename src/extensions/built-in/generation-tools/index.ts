@@ -13,6 +13,7 @@ export { manifest };
 
 const DEFAULT_SETTINGS: ExtensionSettings = {
   rerollContinueEnabled: true,
+  deleteContinueEnabled: true,
   swipeEnabled: true,
   impersonateEnabled: true,
   impersonateConnectionProfile: undefined,
@@ -38,6 +39,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
   }
 
   const REROLL_BUTTON_ID = 'generation-tools-reroll';
+  const DELETE_CONTINUE_BUTTON_ID = 'generation-tools-delete-continue';
   const SWIPE_BUTTON_ID = 'generation-tools-swipe';
   const IMPERSONATE_BUTTON_ID = 'generation-tools-impersonate';
   const GENERATE_BUTTON_ID = 'generation-tools-generate';
@@ -52,11 +54,12 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     const isLastMessageFromUser = lastMessage?.is_user ?? true; // Default to true if no message
 
     const rerollClick = () => rerollContinue();
+    const deleteContinueClick = () => deleteContinue();
     const swipeClick = () => swipe();
     const impersonateClick = () => impersonate();
     const generateClick = () => generate();
 
-    // Reroll/Continue
+    // Reroll continue
     api.ui.registerChatFormOptionsMenuItem({
       id: REROLL_BUTTON_ID,
       icon: 'fa-solid fa-rotate-right',
@@ -70,6 +73,23 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       label: t('extensionsBuiltin.generationTools.rerollButtonLabel'),
       disabled: !(!!snapshot && settings.rerollContinueEnabled && isChatActive),
       onClick: rerollClick,
+    });
+
+    // Delete continue
+    api.ui.registerChatFormOptionsMenuItem({
+      id: DELETE_CONTINUE_BUTTON_ID,
+      icon: 'fa-solid fa-delete-left',
+      label: t('extensionsBuiltin.generationTools.deleteContinueButtonLabel'),
+      visible: !!snapshot && settings.deleteContinueEnabled && isChatActive,
+      onClick: deleteContinueClick,
+    });
+    api.ui.registerChatQuickAction('core.generation', '', {
+      id: DELETE_CONTINUE_BUTTON_ID,
+      icon: 'fa-solid fa-delete-left',
+      label: t('extensionsBuiltin.generationTools.deleteContinueButtonLabel'),
+      disabled: !(!!snapshot && isChatActive),
+      visible: settings.deleteContinueEnabled,
+      onClick: deleteContinueClick,
     });
 
     // Swipe
@@ -121,7 +141,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     });
   };
 
-  // 1. Capture Snapshot Logic for Reroll/Continue
+  // 1. Capture Snapshot Logic for Reroll continue
   const onGenerationContext = (context: GenerationContext) => {
     if (context.mode === GenerationMode.CONTINUE) {
       const history = api.chat.getHistory();
@@ -242,7 +262,62 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     }
   };
 
-  // 5. Impersonate Action
+  // 5. Delete Continue Action
+  const deleteContinue = async () => {
+    const settings = getSettings(api);
+    if (!settings.deleteContinueEnabled) {
+      api.ui.showToast(t('extensionsBuiltin.generationTools.deleteContinueDisabled'), 'info');
+      return;
+    }
+
+    if (!snapshot) {
+      api.ui.showToast(t('extensionsBuiltin.generationTools.noSnapshot'), 'info');
+      return;
+    }
+
+    const history = api.chat.getHistory();
+    // Validation
+    if (history.length - 1 !== snapshot.messageIndex) {
+      api.ui.showToast(t('extensionsBuiltin.generationTools.contextChanged'), 'warning');
+      snapshot = null;
+      updateButtonState();
+      return;
+    }
+
+    const currentMessage = history[snapshot.messageIndex];
+
+    // Basic safety check
+    if (!currentMessage.mes.includes(snapshot.contentBefore)) {
+      api.ui.showToast(t('extensionsBuiltin.generationTools.divergenceError'), 'warning');
+      snapshot = null;
+      updateButtonState();
+      return;
+    }
+
+    // Check swipe consistency
+    if ((currentMessage.swipe_id ?? 0) !== snapshot.swipeId) {
+      api.ui.showToast(t('extensionsBuiltin.generationTools.swipeError'), 'warning');
+      return;
+    }
+
+    api.ui.showToast(t('extensionsBuiltin.generationTools.deletingContinue'), 'info');
+
+    try {
+      // Revert content without regenerating
+      await api.chat.updateMessageObject(snapshot.messageIndex, {
+        mes: snapshot.contentBefore,
+      });
+
+      // Clear snapshot after successful deletion
+      snapshot = null;
+      updateButtonState();
+    } catch (error) {
+      console.error('[Generation Tools] Failed to delete continue:', error);
+      api.ui.showToast(t('extensionsBuiltin.generationTools.error'), 'error');
+    }
+  };
+
+  // 6. Impersonate Action
   const impersonate = async () => {
     const settings = getSettings(api);
     if (!settings.impersonateEnabled) {
@@ -316,7 +391,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     }
   };
 
-  // 6. Swipe Action
+  // 7. Swipe Action
   const swipe = async () => {
     const settings = getSettings(api);
     if (!settings.swipeEnabled) {
@@ -341,7 +416,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     api.chat.generateResponse(GenerationMode.ADD_SWIPE, { generationId });
   };
 
-  // 7. Event Listeners
+  // 8. Event Listeners
   const unbinds: Array<() => void> = [];
 
   unbinds.push(api.events.on('process:generation-context', onGenerationContext));
@@ -366,10 +441,12 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     settingsApp?.unmount();
     unbinds.forEach((u) => u());
     api.ui.unregisterChatFormOptionsMenuItem(REROLL_BUTTON_ID);
+    api.ui.unregisterChatFormOptionsMenuItem(DELETE_CONTINUE_BUTTON_ID);
     api.ui.unregisterChatFormOptionsMenuItem(SWIPE_BUTTON_ID);
     api.ui.unregisterChatFormOptionsMenuItem(IMPERSONATE_BUTTON_ID);
     api.ui.unregisterChatFormOptionsMenuItem(GENERATE_BUTTON_ID);
     api.ui.unregisterChatQuickAction('core.generation', REROLL_BUTTON_ID);
+    api.ui.unregisterChatQuickAction('core.generation', DELETE_CONTINUE_BUTTON_ID);
     api.ui.unregisterChatQuickAction('core.generation', SWIPE_BUTTON_ID);
     api.ui.unregisterChatQuickAction('core.generation', IMPERSONATE_BUTTON_ID);
     api.ui.unregisterChatQuickAction('core.generation', GENERATE_BUTTON_ID);

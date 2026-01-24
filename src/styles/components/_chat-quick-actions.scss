@@ -85,6 +85,10 @@
     padding-bottom: var(--spacing-sm);
     border-bottom: 1px solid var(--theme-border-color);
 
+    &.no-dividers {
+      border-bottom: none;
+    }
+
     &:last-child {
       border-bottom: none;
       padding-bottom: 0;
@@ -136,6 +140,10 @@
       // Set column styles
       border-right: 1px solid var(--theme-border-color);
       padding-right: var(--spacing-sm);
+
+      &.no-dividers {
+        border-right: none;
+      }
 
       &:last-child {
         border-right: none;

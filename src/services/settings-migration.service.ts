@@ -291,6 +291,7 @@ export function createDefaultSettings(): Settings {
         layout: 'row',
         showLabels: true,
         showGroupNames: true,
+        showDividers: true,
       },
     },
     disabledExtensions: [],

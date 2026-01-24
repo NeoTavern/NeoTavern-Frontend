@@ -12,6 +12,7 @@ const props = defineProps<{
 
 const settings = ref<ExtensionSettings>({
   rerollContinueEnabled: true,
+  deleteContinueEnabled: true,
   swipeEnabled: true,
   impersonateEnabled: true,
   impersonateConnectionProfile: undefined,
@@ -67,6 +68,10 @@ const generatePromptTools = computed<TextareaToolDefinition[]>(() => [
   <div class="extension-settings">
     <FormItem :label="t('extensionsBuiltin.generationTools.settings.rerollEnabled')">
       <Toggle v-model="settings.rerollContinueEnabled" />
+    </FormItem>
+
+    <FormItem :label="t('extensionsBuiltin.generationTools.settings.deleteContinueEnabled')">
+      <Toggle v-model="settings.deleteContinueEnabled" />
     </FormItem>
 
     <FormItem :label="t('extensionsBuiltin.generationTools.settings.swipeEnabled')">

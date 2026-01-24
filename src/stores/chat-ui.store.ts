@@ -23,6 +23,7 @@ export const useChatUiStore = defineStore('chat-ui', () => {
   const quickActionsLayout = computed(() => settingsStore.settings.chat.quickActions.layout);
   const quickActionsShowLabels = computed(() => settingsStore.settings.chat.quickActions.showLabels);
   const quickActionsShowGroupNames = computed(() => settingsStore.settings.chat.quickActions.showGroupNames);
+  const quickActionsShowDividers = computed(() => settingsStore.settings.chat.quickActions.showDividers);
 
   function setQuickActionsLayout(layout: QuickActionsLayout) {
     settingsStore.setSetting('chat.quickActions.layout', layout);
@@ -34,6 +35,10 @@ export const useChatUiStore = defineStore('chat-ui', () => {
 
   function setQuickActionsShowGroupNames(show: boolean) {
     settingsStore.setSetting('chat.quickActions.showGroupNames', show);
+  }
+
+  function setQuickActionsShowDividers(show: boolean) {
+    settingsStore.setSetting('chat.quickActions.showDividers', show);
   }
 
   function isQuickActionDisabled(id: string): boolean {
@@ -114,9 +119,11 @@ export const useChatUiStore = defineStore('chat-ui', () => {
     quickActionsLayout,
     quickActionsShowLabels,
     quickActionsShowGroupNames,
+    quickActionsShowDividers,
     setQuickActionsLayout,
     setQuickActionsShowLabels,
     setQuickActionsShowGroupNames,
+    setQuickActionsShowDividers,
     isQuickActionDisabled,
     toggleQuickAction,
     toggleQuickActionGroup,
