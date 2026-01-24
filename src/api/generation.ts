@@ -768,7 +768,7 @@ export class ChatCompletionService {
 
       let reasoning = responseHandler.extractReasoning ? responseHandler.extractReasoning(responseData) : undefined;
       const toolCalls = responseHandler.extractToolCalls ? responseHandler.extractToolCalls(responseData) : undefined;
-      let finalContent = messageContent.trim();
+      let finalContent = options.isContinuation ? messageContent.trimEnd() : messageContent.trim();
       const images = responseHandler.extractImages ? responseHandler.extractImages(responseData) : undefined;
 
       if (options.reasoningTemplate && options.reasoningTemplate.prefix && options.reasoningTemplate.suffix) {
