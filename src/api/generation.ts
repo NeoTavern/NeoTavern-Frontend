@@ -303,11 +303,31 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
   // Handle Formatter (Chat vs Text)
   if (formatter === 'text' && instructTemplate && activeCharacter) {
     // Text Completion Mode
+    // Check if this is continuation or prefill (both should not add suffix to last assistant message)
+    let isContinuation = options.mode === 'continue';
+
+    // Also check for prefill (last assistant message ending with ':')
+    if (!isContinuation) {
+      const lastMsg = finalMessages.length > 0 ? finalMessages[finalMessages.length - 1] : null;
+      if (lastMsg && lastMsg.role === 'assistant') {
+        const contentStr =
+          typeof lastMsg.content === 'string'
+            ? lastMsg.content
+            : Array.isArray(lastMsg.content) &&
+                lastMsg.content.length > 0 &&
+                lastMsg.content[lastMsg.content.length - 1].type === 'text'
+              ? lastMsg.content[lastMsg.content.length - 1].text || ''
+              : '';
+        isContinuation = contentStr.trim().endsWith(':');
+      }
+    }
+
     const prompt = convertMessagesToInstructString(
       finalMessages,
       instructTemplate,
       playerName || 'User',
       activeCharacter.name,
+      isContinuation,
     );
     if (provider === api_providers.OPENROUTER) {
       // @ts-expect-error for openrouter
@@ -875,7 +895,10 @@ export class ChatCompletionService {
 
                 if (hasContentChange || hasReasoningChange || hasImages || hasToolCalls) {
                   if (isFirstChunk && deltaToYield) {
-                    deltaToYield = deltaToYield.trimStart();
+                    // Only trim leading whitespace if NOT in continuation/prefill mode
+                    if (!options.isContinuation) {
+                      deltaToYield = deltaToYield.trimStart();
+                    }
                     isFirstChunk = false;
                   }
 

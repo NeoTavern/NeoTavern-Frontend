@@ -667,6 +667,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       toolConfig: {
         includeRegisteredTools: true,
       },
+      mode: mode,
     };
 
     const payloadController = new AbortController();
@@ -832,6 +833,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         context: activeCharacter.name,
       },
       reasoningTemplate: context.settings.reasoningTemplate,
+      isContinuation: mode === GenerationMode.CONTINUE || isLastMsgPrefill,
       onCompletion: (data: { outputTokens: number }) => {
         if (generatedMessage) {
           if (!generatedMessage.extra) generatedMessage.extra = {};
@@ -887,8 +889,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       let finalToolCalls: ApiChatToolCall[] | undefined;
       let fullResponseContent = '';
       let finalReasoning: string | undefined;
+      let isFirstChunk = true;
 
       // For CONTINUE mode, we work on existing message
+      const isContinuation = mode === GenerationMode.CONTINUE || isLastMsgPrefill;
       if (mode === GenerationMode.CONTINUE) {
         targetMessageIndex = activeChatMessages.length - 1;
         messageCreated = true;
@@ -913,10 +917,13 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           fullResponseContent += chunk.delta;
 
           // Create message on first chunk with content, reasoning, or images
-          const hasContent = chunk.delta && chunk.delta.trim();
+          // For continuation/prefill, preserve leading whitespace on first chunk
+          const hasContent = chunk.delta && (isContinuation && isFirstChunk ? chunk.delta : chunk.delta.trim());
           const hasImages = chunk.images && chunk.images.length > 0;
           const hasReasoning = chunk.reasoning && chunk.reasoning.trim();
           const hasToolCalls = chunk.tool_calls && chunk.tool_calls.length > 0;
+
+          if (hasContent) isFirstChunk = false;
 
           if (!messageCreated && (hasContent || hasImages || hasToolCalls || hasReasoning)) {
             if (mode === GenerationMode.NEW || mode === GenerationMode.REGENERATE) {

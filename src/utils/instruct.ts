@@ -6,10 +6,13 @@ export function convertMessagesToInstructString(
   instruct: InstructTemplate,
   user: string,
   char: string,
+  isContinuation = false,
 ): string {
   const formattedParts: string[] = [];
 
-  for (const message of messages) {
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
+    const isLastMessage = i === messages.length - 1;
     let content = message.content;
     if (!content) continue;
 
@@ -73,7 +76,9 @@ export function convertMessagesToInstructString(
       suffix = suffix.replaceAll(key, value);
     }
 
-    formattedParts.push(`${sequence}${content}${suffix}`);
+    // Don't add suffix to last assistant message if it's a continuation
+    const skipSuffix = isContinuation && isLastMessage && message.role === 'assistant';
+    formattedParts.push(`${sequence}${content}${skipSuffix ? '' : suffix}`);
   }
 
   // Join all parts

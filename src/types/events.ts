@@ -32,6 +32,7 @@ export interface GenerationPayloadBuilderConfig {
   reasoningTemplate?: ReasoningTemplate;
   activeCharacter?: Character;
   toolConfig?: ToolGenerationConfig;
+  mode: GenerationMode;
 }
 
 export interface LlmUsageData {

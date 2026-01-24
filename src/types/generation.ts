@@ -284,6 +284,7 @@ export type BuildChatCompletionPayloadOptions = {
   activeCharacter?: Character;
   structuredResponse?: StructuredResponseOptions;
   toolConfig?: ToolGenerationConfig;
+  mode?: GenerationMode;
 };
 
 export type GenerationContext = {
@@ -424,4 +425,9 @@ export interface GenerationOptions {
    * If provided, the generation will be guided to produce a structured output (e.g., JSON, XML).
    */
   structuredResponse?: StructuredResponseOptions;
+  /**
+   * Whether this is a continuation or prefill scenario.
+   * If true, leading whitespace will be preserved on the first chunk.
+   */
+  isContinuation?: boolean;
 }
