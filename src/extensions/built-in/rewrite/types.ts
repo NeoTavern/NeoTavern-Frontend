@@ -58,7 +58,7 @@ export interface RewriteTemplateOverride {
 
 export interface RewriteSettings {
   templates: RewriteTemplate[];
-  defaultConnectionProfile?: string;
+  defaultConnectionProfile: string;
 
   // Map of Identifier (e.g. 'chat.input') -> Template ID
   lastUsedTemplates: Record<string, string>;

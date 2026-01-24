@@ -15,7 +15,7 @@ const settings = ref<ExtensionSettings>({
   deleteContinueEnabled: true,
   swipeEnabled: true,
   impersonateEnabled: true,
-  impersonateConnectionProfile: undefined,
+  impersonateConnectionProfile: '',
   impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
   generateEnabled: true,
   generatePrompt: DEFAULT_GENERATE_PROMPT,

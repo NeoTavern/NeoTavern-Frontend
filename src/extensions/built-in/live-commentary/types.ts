@@ -1,6 +1,6 @@
 export interface LiveCommentarySettings {
   enabled: boolean;
-  connectionProfile?: string;
+  connectionProfile: string;
   debounceMs: number;
   maxWaitMs: number; // Maximum time between triggers during continuous typing
   minIntervalMs: number;
@@ -90,7 +90,7 @@ export const DEFAULT_INJECTION_TEMPLATE = `[As the user was typing, {{char}} tho
 
 export const DEFAULT_SETTINGS: LiveCommentarySettings = {
   enabled: false,
-  connectionProfile: undefined,
+  connectionProfile: '',
   debounceMs: 1500,
   maxWaitMs: 8000,
   minIntervalMs: 5000,

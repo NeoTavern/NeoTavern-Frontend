@@ -21,7 +21,7 @@ const tabs = computed(() => [
 ]);
 
 // --- Shared State ---
-const connectionProfile = ref<string | undefined>(undefined);
+const connectionProfile = ref<string>('');
 
 // --- Lifecycle ---
 onMounted(async () => {

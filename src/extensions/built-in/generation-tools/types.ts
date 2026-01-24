@@ -9,7 +9,7 @@ export interface ExtensionSettings {
   deleteContinueEnabled: boolean;
   swipeEnabled: boolean;
   impersonateEnabled: boolean;
-  impersonateConnectionProfile?: string;
+  impersonateConnectionProfile: string;
   impersonatePrompt: string;
   generateEnabled: boolean;
   generatePrompt: string;

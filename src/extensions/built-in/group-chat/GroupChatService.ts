@@ -203,7 +203,12 @@ export class GroupChatService {
 
     const extensionSettings = this.api.settings.get();
     const template = extensionSettings?.defaultSummaryPromptTemplate || DEFAULT_SUMMARY_TEMPLATE;
-    const connectionProfile = extensionSettings?.defaultConnectionProfile;
+    const connectionProfile =
+      extensionSettings?.defaultConnectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    if (!connectionProfile) {
+      this.api.ui.showToast(this.t('extensionsBuiltin.groupChat.errors.noConnectionProfile'), 'error');
+      return;
+    }
 
     const prompt = this.api.macro.process(template, { activeCharacter: char });
 
@@ -391,7 +396,12 @@ export class GroupChatService {
     const extensionSettings = this.api.settings.get();
     const template = extensionSettings?.defaultDecisionPromptTemplate || DEFAULT_DECISION_TEMPLATE;
     const contextSize = config?.decisionContextSize ?? 15;
-    const connectionProfile = extensionSettings?.defaultConnectionProfile;
+    const connectionProfile =
+      extensionSettings?.defaultConnectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    if (!connectionProfile) {
+      this.api.ui.showToast(this.t('extensionsBuiltin.groupChat.errors.noConnectionProfile'), 'error');
+      return null;
+    }
 
     // Context Construction
     const recentMessages = history.slice(-contextSize);

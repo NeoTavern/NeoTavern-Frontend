@@ -976,6 +976,7 @@ export interface MessageSchema {
       export: string;
       save: string;
       none: string;
+      globalActive: string;
       createPopupTitle: string;
       viewPopupTitle: string;
       profileName: string;
@@ -1443,6 +1444,7 @@ export interface MessageSchema {
       errors: {
         templateNotFound: string;
         selectProfile: string;
+        noConnectionProfile: string;
       };
       messages: {
         generationAborted: string;
@@ -1467,6 +1469,7 @@ export interface MessageSchema {
       };
       errors: {
         summaryFailed: string;
+        noConnectionProfile: string;
       };
       warnings: {
         missingSummaries: string;

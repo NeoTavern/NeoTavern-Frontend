@@ -6,7 +6,7 @@ export enum AutoTranslateMode {
 }
 
 export interface ChatTranslationSettings {
-  connectionProfile?: string;
+  connectionProfile: string;
   sourceLang: string;
   targetLang: string;
   autoMode: AutoTranslateMode;

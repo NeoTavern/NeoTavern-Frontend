@@ -4,9 +4,15 @@ import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useApiStore } from '../../stores/api.store';
 import { Select } from '../UI';
 
-const props = defineProps<{
-  modelValue?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue?: string;
+    showGlobalOption?: boolean;
+  }>(),
+  {
+    showGlobalOption: true,
+  },
+);
 
 const emit = defineEmits(['update:modelValue']);
 
@@ -21,10 +27,13 @@ const selectedProfile = computed({
 const options = computed(() => {
   const sortedProfiles = [...apiStore.connectionProfiles].sort((a, b) => a.name.localeCompare(b.name));
 
-  return [
-    { label: t('apiConnections.profileManagement.none'), value: '' },
-    ...sortedProfiles.map((p) => ({ label: p.name, value: p.id })),
-  ];
+  const profileOptions = sortedProfiles.map((p) => ({ label: p.name, value: p.id }));
+
+  const defaultOption = props.showGlobalOption
+    ? { label: t('apiConnections.profileManagement.globalActive'), value: '' }
+    : { label: t('apiConnections.profileManagement.none'), value: '' };
+
+  return [defaultOption, ...profileOptions];
 });
 </script>
 

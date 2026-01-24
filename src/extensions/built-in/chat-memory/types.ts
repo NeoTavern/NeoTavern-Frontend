@@ -24,7 +24,7 @@ export interface MemoryMessageExtra {
 }
 
 export interface ExtensionSettings {
-  connectionProfile?: string;
+  connectionProfile: string;
   prompt: string; // Lorebook summary prompt
   autoHideMessages: boolean;
 

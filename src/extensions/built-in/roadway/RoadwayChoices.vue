@@ -54,9 +54,15 @@ async function handleEdit(choiceText: string) {
 }
 
 async function handleImpersonate(choiceText: string) {
+  const settings = getSettings();
+  const connectionProfile =
+    settings.impersonateConnectionProfile || props.api.settings.getGlobal('api.selectedConnectionProfile');
+  if (!connectionProfile) {
+    props.api.ui.showToast('Roadway: Impersonate Connection Profile is not set.', 'error');
+    return;
+  }
   isImpersonating.value = true;
   impersonateAbortController.value = new AbortController();
-  const settings = getSettings();
   const rawImpersonatePrompt = settings.impersonatePrompt || DEFAULT_IMPERSONATE_PROMPT;
   const processedImpersonatePrompt = props.api.macro.process(rawImpersonatePrompt, undefined, {
     choice: choiceText,
@@ -73,7 +79,7 @@ async function handleImpersonate(choiceText: string) {
     ];
 
     const responseStream = await props.api.llm.generate(messages, {
-      connectionProfile: settings.impersonateConnectionProfile,
+      connectionProfile,
       signal: impersonateAbortController.value.signal,
     });
 

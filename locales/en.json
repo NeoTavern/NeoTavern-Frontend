@@ -973,6 +973,7 @@
       "export": "Export current profile",
       "save": "Save changes to current profile",
       "none": "None",
+      "globalActive": "Global active connection",
       "createPopupTitle": "New Connection Profile",
       "viewPopupTitle": "Connection Profile Details",
       "profileName": "Profile Name",
@@ -1439,7 +1440,8 @@
       },
       "errors": {
         "templateNotFound": "Template not found",
-        "selectProfile": "Please select a connection profile"
+        "selectProfile": "Please select a connection profile",
+        "noConnectionProfile": "No connection profile selected"
       },
       "messages": {
         "generationAborted": "Generation aborted",
@@ -1463,7 +1465,8 @@
         "summaryInjectionTemplateDesc": "Template for the complete description with summaries. Controls where and how summaries appear. Note: This modifies the character description during generation in Swap+Summaries mode."
       },
       "errors": {
-        "summaryFailed": "Failed to generate summary"
+        "summaryFailed": "Failed to generate summary",
+        "noConnectionProfile": "No connection profile selected"
       },
       "warnings": {
         "missingSummaries": "Warning: {count} character{plural} missing {summaryPlural} in Swap+Summaries mode"

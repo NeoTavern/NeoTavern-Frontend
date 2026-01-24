@@ -410,7 +410,7 @@ async function handleGenerateOneShot() {
     const response = await service.generateRewrite(
       inputToProcess,
       selectedTemplateId.value,
-      selectedProfile.value,
+      selectedProfile.value || props.api.settings.getGlobal('api.selectedConnectionProfile'),
       promptToUse,
       contextData,
       {
@@ -541,8 +541,8 @@ async function executeSessionGeneration() {
   try {
     const response = await service.generateSessionResponse(
       activeSession.value.messages,
-      selectedProfile.value,
       structuredResponseFormat.value,
+      selectedProfile.value || props.api.settings.getGlobal('api.selectedConnectionProfile'),
       abortController.value?.signal,
     );
 

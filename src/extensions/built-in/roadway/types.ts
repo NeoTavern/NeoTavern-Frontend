@@ -2,12 +2,12 @@ export interface RoadwaySettings {
   enabled: boolean;
   autoMode: boolean;
 
-  choiceGenConnectionProfile?: string;
+  choiceGenConnectionProfile: string;
   choiceGenPrompt: string;
   choiceCount: number;
   structuredRequestFormat: 'native' | 'json' | 'xml';
 
-  impersonateConnectionProfile?: string;
+  impersonateConnectionProfile: string;
   impersonatePrompt: string;
 }
 
@@ -50,10 +50,10 @@ Directive: {{choice}}`;
 export const DEFAULT_SETTINGS: RoadwaySettings = {
   enabled: true,
   autoMode: false,
-  choiceGenConnectionProfile: undefined,
+  choiceGenConnectionProfile: '',
   choiceGenPrompt: DEFAULT_CHOICE_GEN_PROMPT,
   choiceCount: 5,
   structuredRequestFormat: 'native',
-  impersonateConnectionProfile: undefined,
+  impersonateConnectionProfile: '',
   impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
 };

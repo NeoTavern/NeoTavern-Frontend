@@ -7,7 +7,7 @@ export interface TrackerSchemaPreset {
 
 export interface TrackerSettings {
   enabled: boolean;
-  connectionProfile?: string;
+  connectionProfile: string;
   autoMode: 'none' | 'responses' | 'inputs' | 'both';
   promptEngineering: 'native' | 'json' | 'xml';
   schemaPresets: TrackerSchemaPreset[];
@@ -190,7 +190,7 @@ export const DEFAULT_PRESETS: TrackerSchemaPreset[] = [
 
 export const DEFAULT_SETTINGS: TrackerSettings = {
   enabled: false,
-  connectionProfile: undefined,
+  connectionProfile: '',
   autoMode: 'none',
   promptEngineering: 'native',
   schemaPresets: DEFAULT_PRESETS,

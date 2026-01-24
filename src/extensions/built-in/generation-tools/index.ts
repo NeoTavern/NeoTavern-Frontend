@@ -16,7 +16,7 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
   deleteContinueEnabled: true,
   swipeEnabled: true,
   impersonateEnabled: true,
-  impersonateConnectionProfile: undefined,
+  impersonateConnectionProfile: '',
   impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
   generateEnabled: true,
   generatePrompt: DEFAULT_GENERATE_PROMPT,
@@ -362,7 +362,9 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     }
     genMessages.push(newMessage);
 
-    if (!settings.impersonateConnectionProfile) {
+    const connectionProfile =
+      settings.impersonateConnectionProfile || api.settings.getGlobal('api.selectedConnectionProfile');
+    if (!connectionProfile) {
       api.ui.showToast(t('extensionsBuiltin.generationTools.noConnectionProfile'), 'error');
       return;
     }
@@ -371,7 +373,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
 
     try {
       const response = await api.llm.generate(genMessages, {
-        connectionProfile: settings.impersonateConnectionProfile,
+        connectionProfile,
       });
 
       let generated = chatInputValue;

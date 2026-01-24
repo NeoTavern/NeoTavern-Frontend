@@ -2,6 +2,8 @@ import Handlebars from 'handlebars';
 import type { ApiChatMessage, ExtensionAPI } from '../../../types';
 import { type ChatTranslationSettings, DEFAULT_PROMPT } from './types';
 
+// TODO: i18n
+
 export class Translator {
   constructor(private api: ExtensionAPI<ChatTranslationSettings>) {}
 
@@ -34,7 +36,9 @@ export class Translator {
 
     const settings = this.getSettings();
 
-    if (!settings.connectionProfile) {
+    const connectionProfile =
+      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    if (!connectionProfile) {
       this.api.ui.showToast('No connection profile selected for translation', 'error');
       return;
     }
@@ -60,7 +64,7 @@ export class Translator {
       // but usually translation is a direct instruction.
 
       const response = await this.api.llm.generate(messages, {
-        connectionProfile: settings.connectionProfile,
+        connectionProfile,
       });
 
       let translatedText = '';
@@ -104,7 +108,9 @@ export class Translator {
 
     const settings = this.getSettings();
 
-    if (!settings.connectionProfile) {
+    const connectionProfile =
+      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    if (!connectionProfile) {
       this.api.ui.showToast('No connection profile selected for translation', 'error');
       return;
     }
@@ -136,7 +142,7 @@ export class Translator {
       const messages: ApiChatMessage[] = [{ role: 'system', content: prompt, name: 'System' }];
 
       const response = await this.api.llm.generate(messages, {
-        connectionProfile: settings.connectionProfile,
+        connectionProfile,
       });
 
       let translatedText = '';

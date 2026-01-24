@@ -73,7 +73,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
 
     const settings = api.settings.get();
     const promptTemplate = settings?.messageSummaryPrompt || DEFAULT_MESSAGE_SUMMARY_PROMPT;
-    const connectionProfile = settings?.connectionProfile;
+    const connectionProfile = settings?.connectionProfile || api.settings.getGlobal('api.selectedConnectionProfile');
 
     if (!connectionProfile) {
       api.ui.showToast(t('extensionsBuiltin.chatMemory.noProfile'), 'error');

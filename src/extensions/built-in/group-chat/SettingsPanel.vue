@@ -21,7 +21,7 @@ const settings = ref<GroupExtensionSettings>({
   defaultDecisionPromptTemplate: DEFAULT_DECISION_TEMPLATE,
   defaultSummaryPromptTemplate: DEFAULT_SUMMARY_TEMPLATE,
   summaryInjectionTemplate: DEFAULT_SUMMARY_INJECTION_TEMPLATE,
-  defaultConnectionProfile: undefined,
+  defaultConnectionProfile: '',
 });
 
 onMounted(() => {

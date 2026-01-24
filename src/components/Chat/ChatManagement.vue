@@ -287,7 +287,7 @@ const tabs = computed(() => {
         </FormItem>
 
         <FormItem :label="t('chatManagement.connectionProfile')">
-          <ConnectionProfileSelector v-model="activeChatConnectionProfile" />
+          <ConnectionProfileSelector v-model="activeChatConnectionProfile" :show-global-option="false" />
         </FormItem>
 
         <FormItem :label="t('chatManagement.chatLorebooks')">

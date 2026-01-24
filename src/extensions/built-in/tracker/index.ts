@@ -51,7 +51,9 @@ class TrackerManager {
     const chat = this.api.chat.getHistory();
     const message = chat[index];
     if (!message) return;
-    if (!settings.connectionProfile) {
+    const connectionProfile =
+      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    if (!connectionProfile) {
       this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.tracker.toasts.noConnectionProfile'), 'error');
       return;
     }
@@ -110,7 +112,7 @@ class TrackerManager {
           // eslint-disable-next-line @typescript-eslint/no-this-alias
           const thus = this;
           const response = await this.api.llm.generate(messagesForLlm, {
-            connectionProfile: settings.connectionProfile,
+            connectionProfile,
             samplerOverrides: { max_tokens: settings.maxResponseTokens },
             structuredResponse,
             async onCompletion({ structured_content, parse_error }) {

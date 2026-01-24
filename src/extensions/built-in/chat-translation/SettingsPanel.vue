@@ -13,7 +13,7 @@ const props = defineProps<{
 const t = props.api.i18n.t;
 
 const settings = ref<ChatTranslationSettings>({
-  connectionProfile: undefined,
+  connectionProfile: '',
   sourceLang: 'Auto',
   targetLang: 'English',
   autoMode: AutoTranslateMode.NONE,

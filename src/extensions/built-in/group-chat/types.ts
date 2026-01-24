@@ -33,5 +33,5 @@ export interface GroupExtensionSettings {
   defaultDecisionPromptTemplate: string;
   defaultSummaryPromptTemplate: string;
   summaryInjectionTemplate: string;
-  defaultConnectionProfile?: string;
+  defaultConnectionProfile: string;
 }

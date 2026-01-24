@@ -159,7 +159,9 @@ export class Commentator {
 
   private async generateForCharacter(character: Character, userInput: string): Promise<void> {
     const settings = this.getSettings();
-    if (!settings.connectionProfile) {
+    const connectionProfile =
+      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    if (!connectionProfile) {
       if (this.ongoingControllers.size === 0) {
         this.api.ui.showToast('Live Commentary: No connection profile selected.', 'warning');
       }
@@ -253,7 +255,7 @@ export class Commentator {
       const messages: ApiChatMessage[] = [{ role: 'system', content: prompt, name: 'System' }];
 
       const response = await this.api.llm.generate(messages, {
-        connectionProfile: settings.connectionProfile,
+        connectionProfile,
         signal: controller.signal,
       });
 

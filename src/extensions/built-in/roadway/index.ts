@@ -73,7 +73,9 @@ class RoadwayManager {
 
   public async generateChoicesForMessage(message: ChatMessage, index: number): Promise<void> {
     const settings = this.getSettings();
-    if (!settings.choiceGenConnectionProfile) {
+    const connectionProfile =
+      settings.choiceGenConnectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    if (!connectionProfile) {
       this.api.ui.showToast('Roadway: Choice Generation Connection Profile is not set.', 'error');
       return;
     }
@@ -117,7 +119,7 @@ class RoadwayManager {
       // eslint-disable-next-line @typescript-eslint/no-this-alias
       const thus = this;
       const response = await this.api.llm.generate(contextMessages, {
-        connectionProfile: settings.choiceGenConnectionProfile,
+        connectionProfile,
         structuredResponse,
         signal: abortController.signal,
         async onCompletion({ structured_content, parse_error }) {

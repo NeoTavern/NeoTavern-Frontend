@@ -24,6 +24,7 @@ export class RewriteService {
       templates: [],
       lastUsedTemplates: {},
       templateOverrides: {},
+      defaultConnectionProfile: '',
     };
     const current = this.api.settings.get() || defaults;
     return current;
@@ -119,13 +120,16 @@ export class RewriteService {
   public async generateRewrite(
     input: string,
     templateId: string,
-    connectionProfile: string,
+    connectionProfile?: string,
     customPromptOverride?: string,
     contextData?: { activeCharacter?: Character; characters?: Character[]; persona?: Persona },
     additionalMacros?: Record<string, unknown>,
     argOverrides?: Record<string, boolean | number | string>,
     signal?: AbortSignal,
   ) {
+    if (!connectionProfile) {
+      throw new Error(this.api.i18n.t('extensionsBuiltin.rewrite.errors.noConnectionProfile'));
+    }
     const settings = this.getSettings();
     const template = settings.templates.find((t) => t.id === templateId);
     if (!template && !customPromptOverride)
@@ -156,7 +160,7 @@ export class RewriteService {
     const messages: ApiChatMessage[] = [{ role: 'user', content: processedContent, name: 'User' }];
 
     const response = await this.api.llm.generate(messages, {
-      connectionProfile: connectionProfile,
+      connectionProfile,
       signal,
     });
 
@@ -165,11 +169,14 @@ export class RewriteService {
 
   public async generateSessionResponse(
     messages: RewriteSessionMessage[],
-    connectionProfile: string,
     format: StructuredResponseFormat,
+    connectionProfile?: string,
     signal?: AbortSignal,
   ): Promise<RewriteLLMResponse> {
     const apiMessages: ApiChatMessage[] = messages.map((m) => {
+      if (!connectionProfile) {
+        throw new Error(this.api.i18n.t('extensionsBuiltin.rewrite.errors.noConnectionProfile'));
+      }
       let content = m.content;
       if (typeof content !== 'string') {
         // TODO: Handle other content types properly (e.g., images, files)
@@ -185,7 +192,7 @@ export class RewriteService {
     // If format is 'text', we skip structured response and return raw text as justification
     if (format === 'text') {
       const response = await this.api.llm.generate(apiMessages, {
-        connectionProfile: connectionProfile,
+        connectionProfile,
         signal,
       });
 
@@ -233,7 +240,7 @@ export class RewriteService {
     return new Promise(async (resolve, reject) => {
       try {
         const response = await this.api.llm.generate(apiMessages, {
-          connectionProfile: connectionProfile,
+          connectionProfile,
           signal,
           structuredResponse: structuredResponseOptions,
           onCompletion: (data) => {

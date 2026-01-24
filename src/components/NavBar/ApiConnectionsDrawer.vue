@@ -261,7 +261,7 @@ const profileActionOrder = ['info', 'save', 'create', 'edit', 'delete', 'import'
           @export="apiStore.exportConnectionProfile"
         >
           <template #selector>
-            <ConnectionProfileSelector v-model="apiStore.selectedConnectionProfile" />
+            <ConnectionProfileSelector v-model="apiStore.selectedConnectionProfile" :show-global-option="false" />
           </template>
         </PresetControl>
       </div>

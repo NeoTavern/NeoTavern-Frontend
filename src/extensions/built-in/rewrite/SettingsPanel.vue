@@ -14,7 +14,7 @@ const t = props.api.i18n.t;
 
 const settings = ref<RewriteSettings>({
   templates: [...DEFAULT_TEMPLATES],
-  defaultConnectionProfile: undefined,
+  defaultConnectionProfile: '',
   lastUsedTemplates: {},
   templateOverrides: {},
 });
