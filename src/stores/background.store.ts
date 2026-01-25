@@ -4,6 +4,7 @@ import { deleteBackground, fetchAllBackgrounds, renameBackground, uploadBackgrou
 import { useStrictI18n } from '../composables/useStrictI18n';
 import { toast } from '../composables/useToast';
 import type { BackgroundFitting } from '../types';
+import { useCharacterStore } from './character.store';
 import { useChatStore } from './chat.store';
 import { useSettingsStore } from './settings.store';
 
@@ -11,6 +12,7 @@ export const useBackgroundStore = defineStore('background', () => {
   const { t } = useStrictI18n();
   const settingsStore = useSettingsStore();
   const chatStore = useChatStore();
+  const characterStore = useCharacterStore();
 
   const systemBackgrounds = ref<string[]>([]);
   const chatBackgrounds = ref<string[]>([]);
@@ -31,6 +33,14 @@ export const useBackgroundStore = defineStore('background', () => {
   });
 
   const currentBackgroundUrl = computed(() => {
+    // Check if character avatar background is enabled
+    if (settingsStore.settings.ui.background.useCharacterAvatar) {
+      const activeCharacter = characterStore.activeCharacters[0];
+      if (activeCharacter?.avatar) {
+        return `url("/characters/${encodeURIComponent(activeCharacter.avatar)}")`;
+      }
+    }
+
     const lockedBg = chatStore.activeChat?.metadata.custom_background;
     return lockedBg ?? settingsStore.settings.ui.background.url;
   });

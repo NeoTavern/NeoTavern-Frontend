@@ -152,6 +152,15 @@ export const settingsDefinition: SettingDefinition[] = [
     widget: 'checkbox',
     defaultValue: false,
   },
+  {
+    id: 'ui.background.useCharacterAvatar',
+    label: 'settings.ui.background.useCharacterAvatar.label',
+    description: 'settings.ui.background.useCharacterAvatar.description',
+    category: 'UI & Display',
+    type: 'boolean',
+    widget: 'checkbox',
+    defaultValue: false,
+  },
 
   // --- Appearance ---
   {

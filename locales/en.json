@@ -1276,6 +1276,12 @@
           "chat": "Chat",
           "theme": "Theme"
         }
+      },
+      "background": {
+        "useCharacterAvatar": {
+          "label": "Use Character Avatar as Background",
+          "description": "Display the current character's avatar image as the chat background."
+        }
       }
     },
     "chat": {
