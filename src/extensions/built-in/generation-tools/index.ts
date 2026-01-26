@@ -23,7 +23,12 @@ const DEFAULT_SETTINGS: ExtensionSettings = {
 };
 
 function getSettings(api: ExtensionAPI<ExtensionSettings>): ExtensionSettings {
-  return api.settings.get() ?? DEFAULT_SETTINGS;
+  const existing = api.settings.get();
+  if (!existing) {
+    api.settings.set(undefined, DEFAULT_SETTINGS);
+    return DEFAULT_SETTINGS;
+  }
+  return existing;
 }
 
 export function activate(api: ExtensionAPI<ExtensionSettings>) {
@@ -32,6 +37,8 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
 
   // Map to store user input for special "Generate" calls, keyed by generationId
   const generateInputs = new Map<string, string>();
+  // Track generation IDs with timeouts to prevent memory leaks
+  const generateTimeouts = new Map<string, number>();
 
   const settingsContainer = document.getElementById(api.meta.containerId);
   if (settingsContainer) {
@@ -150,13 +157,15 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       const index = history.length - 1;
       const lastMessage = history[index];
 
-      snapshot = {
-        messageIndex: index,
-        contentBefore: lastMessage.mes,
-        swipeId: lastMessage.swipe_id ?? 0,
-      };
+      if (!snapshot || snapshot.messageIndex !== index) {
+        snapshot = {
+          messageIndex: index,
+          contentBefore: lastMessage.mes,
+          swipeId: lastMessage.swipe_id ?? 0,
+        };
 
-      console.debug('[Generation Tools] Snapshot taken for message', index);
+        console.debug('[Generation Tools] Snapshot taken for message', index);
+      }
     } else if (
       context.mode === GenerationMode.NEW ||
       context.mode === GenerationMode.REGENERATE ||
@@ -183,6 +192,11 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
 
       // Clean up to prevent re-injection on retries
       generateInputs.delete(context.generationId);
+      const timeout = generateTimeouts.get(context.generationId);
+      if (timeout) {
+        clearTimeout(timeout);
+        generateTimeouts.delete(context.generationId);
+      }
     }
   };
 
@@ -205,6 +219,14 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     const generationId = api.uuid();
 
     generateInputs.set(generationId, input);
+    const timeout = setTimeout(
+      () => {
+        generateInputs.delete(generationId);
+        generateTimeouts.delete(generationId);
+      },
+      5 * 60 * 1000,
+    );
+    generateTimeouts.set(generationId, timeout);
     api.chat.generateResponse(mode, { generationId });
   };
 
@@ -287,7 +309,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     const currentMessage = history[snapshot.messageIndex];
 
     // Basic safety check
-    if (!currentMessage.mes.includes(snapshot.contentBefore)) {
+    if (!currentMessage.mes.startsWith(snapshot.contentBefore)) {
       api.ui.showToast(t('extensionsBuiltin.generationTools.divergenceError'), 'warning');
       snapshot = null;
       updateButtonState();
@@ -424,8 +446,16 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     const input = api.chat.getChatInput()?.value.trim() ?? '';
     const generationId = api.uuid();
 
-    if (settings.generateEnabled && input) {
+    if (input) {
       generateInputs.set(generationId, input);
+      const timeout = setTimeout(
+        () => {
+          generateInputs.delete(generationId);
+          generateTimeouts.delete(generationId);
+        },
+        5 * 60 * 1000,
+      );
+      generateTimeouts.set(generationId, timeout);
     }
 
     api.ui.showToast(t('extensionsBuiltin.generationTools.swiping'), 'info');
@@ -456,6 +486,9 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
   return () => {
     settingsApp?.unmount();
     unbinds.forEach((u) => u());
+    generateTimeouts.forEach((timeout) => clearTimeout(timeout));
+    generateTimeouts.clear();
+    generateInputs.clear();
     api.ui.unregisterChatFormOptionsMenuItem(REROLL_BUTTON_ID);
     api.ui.unregisterChatFormOptionsMenuItem(DELETE_CONTINUE_BUTTON_ID);
     api.ui.unregisterChatFormOptionsMenuItem(SWIPE_BUTTON_ID);
