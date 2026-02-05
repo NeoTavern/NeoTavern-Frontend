@@ -22,7 +22,7 @@ export interface ZoomedAvatar {
   tools?: Ref<ZoomedAvatarTool[]> | ZoomedAvatarTool[];
 }
 
-export interface ChatMetadata {
+export interface ChatMetadata<T = Record<string, unknown>> {
   name?: string;
   integrity: string;
   custom_background?: string;
@@ -38,7 +38,7 @@ export interface ChatMetadata {
   };
 
   // Extension specific data storage
-  extra?: Record<string, unknown>;
+  extra?: Record<string, unknown> & T;
 }
 
 export interface SwipeInfo {
@@ -81,13 +81,13 @@ export interface ChatMessage {
   } & Record<string, any>;
 }
 
-export type ChatHeader = {
-  chat_metadata: ChatMetadata;
+export type ChatHeader<T = Record<string, unknown>> = {
+  chat_metadata: ChatMetadata<T>;
 };
 
-export type FullChat = [ChatHeader, ...ChatMessage[]];
+export type FullChat<T = Record<string, unknown>> = [ChatHeader<T>, ...ChatMessage[]];
 
-export type ChatInfo = {
+export type ChatInfo<T = Record<string, unknown>> = {
   /**
    * File name without extension
    */
@@ -100,5 +100,5 @@ export type ChatInfo = {
   chat_items: number;
   mes: string;
   last_mes: string; // ISO timestamp
-  chat_metadata: ChatMetadata;
+  chat_metadata: ChatMetadata<T>;
 };

@@ -225,8 +225,8 @@ class TrackerManager {
         : messagesToConsider.slice(-settings.includeLastXMessages);
 
     const generationId = `tracker-${currentIndex}-${Date.now()}`;
-    const baseApiMessages = await this.api.chat.buildPrompt({ chatHistory: messageHistory, generationId });
-    const apiMessages: ApiChatMessage[] = [...baseApiMessages];
+    const itemizedPrompt = await this.api.chat.buildPrompt({ chatHistory: messageHistory, generationId });
+    const apiMessages: ApiChatMessage[] = [...itemizedPrompt.messages];
 
     return apiMessages;
   }
@@ -245,7 +245,6 @@ class TrackerManager {
       extra: {
         'core.tracker': {
           trackers: {
-            ...existingTrackers,
             [schemaName]: newTrackerData,
           },
         },

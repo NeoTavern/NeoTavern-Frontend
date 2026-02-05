@@ -71,7 +71,8 @@ async function handleImpersonate(choiceText: string) {
   try {
     const chatHistory = props.api.chat.getHistory().slice(0, props.index + 1);
     const generationId = `roadway-impersonate-${props.index}-${Date.now()}`;
-    const baseApiMessages = await props.api.chat.buildPrompt({ chatHistory, generationId });
+    const itemizedPrompt = await props.api.chat.buildPrompt({ chatHistory, generationId });
+    const baseApiMessages = itemizedPrompt.messages;
 
     // Determine formatter for proper message formatting
     let formatter = props.api.settings.getGlobal('api.formatter');

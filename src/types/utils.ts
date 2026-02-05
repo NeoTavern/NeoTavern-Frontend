@@ -15,3 +15,10 @@ export type ValueForPath<T, P extends string> = P extends `${infer K}.${infer R}
   : P extends keyof T
     ? T[P]
     : never;
+
+// DeepPartial makes all properties optional recursively
+export type DeepPartial<T> = T extends object
+  ? {
+      [P in keyof T]?: DeepPartial<T[P]>;
+    }
+  : T;

@@ -355,7 +355,8 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
 
     let contextMessages: ApiChatMessage[] = [];
     try {
-      contextMessages = await api.chat.buildPrompt();
+      const itemizedPrompt = await api.chat.buildPrompt();
+      contextMessages = itemizedPrompt.messages;
     } catch (err) {
       console.error('[Impersonate] Failed to build prompt:', err);
       api.ui.showToast(t('extensionsBuiltin.generationTools.buildPromptFailed'), 'error');

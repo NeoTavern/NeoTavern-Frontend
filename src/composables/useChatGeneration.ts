@@ -632,7 +632,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       model: context.settings.model,
       api: context.settings.provider,
       tokenizer: settings.api.tokenizer,
-      presetName: chatMetadata.connection_profile || settings.api.selectedSampler || 'Default',
+      presetName: chatMetadata.connection_profile || settings.api.selectedSampler || 'Default', // FIXME: Instead of "chatMetadata.connection_profile", we should get the sampler name from the resolved connection profile
       messages: messages,
       breakdown: breakdown,
       timestamp: Date.now(),
@@ -1106,5 +1106,8 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     generateResponse,
     sendMessage,
     abortGeneration,
+    setGeneratingState: (generating: boolean) => {
+      _isGenerating.value = generating;
+    },
   };
 }

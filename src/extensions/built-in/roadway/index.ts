@@ -90,7 +90,8 @@ class RoadwayManager {
 
       const chatHistory = this.api.chat.getHistory().slice(0, index + 1);
       const generationId = `roadway-choices-${index}-${Date.now()}`;
-      const contextMessages = await this.api.chat.buildPrompt({ chatHistory, generationId });
+      const itemizedPrompt = await this.api.chat.buildPrompt({ chatHistory, generationId });
+      const contextMessages = itemizedPrompt.messages;
 
       const choicePrompt = this.api.macro.process(settings.choiceGenPrompt, undefined, {
         choiceCount: settings.choiceCount,

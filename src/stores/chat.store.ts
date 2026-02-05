@@ -16,6 +16,7 @@ import {
   type ChatMetadata,
   type FullChat,
 } from '../types';
+import type { DeepPartial } from '../types/utils';
 import { getCharacterDifferences, getThumbnailUrl } from '../utils/character';
 import { extractMediaFromMarkdown, getFirstMessage } from '../utils/chat';
 import { downloadFile, formatFileSize, getMessageTimeStamp, mergeWithUndefined, uuidv4 } from '../utils/commons';
@@ -108,7 +109,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  const { isGenerating, generateResponse, abortGeneration, sendMessage } = useChatGeneration({
+  const { isGenerating, generateResponse, abortGeneration, sendMessage, setGeneratingState } = useChatGeneration({
     activeChat,
     syncSwipeToMes,
     stopAutoModeTimer,
@@ -476,7 +477,7 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
-  async function updateMessageObject(index: number, updates: Partial<ChatMessage>): Promise<void> {
+  async function updateMessageObject(index: number, updates: DeepPartial<ChatMessage>): Promise<void> {
     if (!activeChat.value || index < 0 || index >= activeChat.value.messages.length) return;
     const message = activeChat.value.messages[index];
     mergeWithUndefined(message, updates);
@@ -735,6 +736,7 @@ export const useChatStore = defineStore('chat', () => {
     sendMessage,
     generateResponse,
     abortGeneration,
+    setGeneratingState,
     startEditing,
     cancelEditing,
     saveMessageEdit,

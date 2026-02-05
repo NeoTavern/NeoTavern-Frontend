@@ -1,0 +1,268 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue';
+import { Button, Input } from '../../../../components/UI';
+import type { MythicChatExtraData, MythicExtensionAPI } from '../types';
+import { genUNENpc } from '../une';
+
+interface Props {
+  api: MythicExtensionAPI;
+}
+
+const props = defineProps<Props>();
+
+const chatInfo = computed(() => props.api.chat.getChatInfo());
+const extra = computed(
+  () => chatInfo.value?.chat_metadata.extra?.['core.mythic-agents'] as MythicChatExtraData | undefined,
+);
+const scene = computed(() => extra.value?.scene);
+
+const editingNpcId = ref<string | null>(null);
+const editForm = ref({
+  name: '',
+  type: '',
+});
+
+function startEdit(npc: { id: string; name: string; type: string }) {
+  editingNpcId.value = npc.id;
+  editForm.value = {
+    name: npc.name,
+    type: npc.type,
+  };
+}
+
+function cancelEdit() {
+  editingNpcId.value = null;
+}
+
+function saveEdit() {
+  if (!editingNpcId.value) return;
+  const updatedScene = {
+    ...scene.value,
+    characters:
+      scene.value?.characters.map((c) =>
+        c.id === editingNpcId.value ? { ...c, name: editForm.value.name, type: editForm.value.type } : c,
+      ) || [],
+  };
+  props.api.chat.metadata.update({
+    extra: {
+      'core.mythic-agents': {
+        scene: updatedScene,
+      },
+    },
+  });
+  editingNpcId.value = null;
+}
+
+function regenerateUNE(id: string) {
+  const newUNE = genUNENpc();
+  const updatedScene = {
+    ...scene.value,
+    characters:
+      scene.value?.characters.map((c) =>
+        c.id === id ? { ...c, une_profile: newUNE, name: `${newUNE.modifier} ${newUNE.noun}` } : c,
+      ) || [],
+  };
+  props.api.chat.metadata.update({
+    extra: {
+      'core.mythic-agents': {
+        scene: updatedScene,
+      },
+    },
+  });
+}
+
+function addNpc() {
+  const une_profile = genUNENpc();
+  const newNpc = {
+    id: Date.now().toString(),
+    name: `${une_profile.modifier} ${une_profile.noun}`,
+    type: 'NPC',
+    une_profile,
+  };
+  const updatedScene = {
+    ...scene.value,
+    characters: [...(scene.value?.characters || []), newNpc],
+  };
+  props.api.chat.metadata.update({
+    extra: {
+      'core.mythic-agents': {
+        scene: updatedScene,
+      },
+    },
+  });
+}
+
+function removeNpc(id: string) {
+  const updatedScene = {
+    ...scene.value,
+    characters: scene.value?.characters.filter((c) => c.id !== id) || [],
+  };
+  props.api.chat.metadata.update({
+    extra: {
+      'core.mythic-agents': {
+        scene: updatedScene,
+      },
+    },
+  });
+}
+</script>
+
+<template>
+  <div class="npcs">
+    <div class="actions">
+      <Button block @click="addNpc"> <i class="fas fa-plus"></i> Add Random NPC </Button>
+    </div>
+
+    <div
+      v-if="!scene?.characters.filter((c) => !['pc', 'player'].includes(c.type.toLowerCase())).length"
+      class="empty-state"
+    >
+      No NPCs in current scene.
+    </div>
+
+    <div class="npc-list">
+      <div
+        v-for="npc in scene?.characters.filter((c) => !['pc', 'player'].includes(c.type.toLowerCase())) || []"
+        :key="npc.id"
+        class="npc-card"
+      >
+        <div class="npc-header">
+          <div v-if="editingNpcId !== npc.id" class="npc-identity">
+            <div class="npc-name">{{ npc.name }}</div>
+            <div class="npc-type">{{ npc.type }}</div>
+          </div>
+          <div v-else class="npc-identity">
+            <div class="edit-input-wrapper">
+              <Input v-model="editForm.name" placeholder="Name" />
+            </div>
+            <div class="edit-input-wrapper">
+              <Input v-model="editForm.type" placeholder="Type" />
+            </div>
+          </div>
+          <div class="npc-actions">
+            <Button v-if="editingNpcId !== npc.id" size="small" title="Edit NPC" @click="startEdit(npc)">
+              <i class="fas fa-edit"></i>
+            </Button>
+            <Button v-else size="small" variant="confirm" title="Save" @click="saveEdit">
+              <i class="fas fa-check"></i>
+            </Button>
+            <Button v-if="editingNpcId === npc.id" size="small" variant="ghost" title="Cancel" @click="cancelEdit">
+              <i class="fas fa-times"></i>
+            </Button>
+            <Button size="small" variant="danger" class="delete-btn" title="Remove NPC" @click="removeNpc(npc.id)">
+              <i class="fas fa-trash"></i>
+            </Button>
+          </div>
+        </div>
+
+        <div class="npc-details">
+          <div class="une-profile">
+            <div class="profile-row">
+              <span class="label">Identity:</span>
+              <span class="value">{{ npc.une_profile.modifier }} {{ npc.une_profile.noun }}</span>
+              <Button size="small" title="Regenerate UNE" @click="regenerateUNE(npc.id)">
+                <i class="fas fa-dice"></i>
+              </Button>
+            </div>
+            <div class="profile-row">
+              <span class="label">Motivation:</span>
+              <span class="value"> {{ npc.une_profile.motivation_verb }} {{ npc.une_profile.motivation_noun }} </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style lang="scss" scoped>
+.npcs {
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.actions {
+  margin-bottom: var(--spacing-xs);
+}
+
+.npc-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.npc-card {
+  background-color: var(--black-30a);
+  border: 1px solid var(--theme-border-color);
+  border-radius: var(--base-border-radius);
+  padding: var(--spacing-md);
+  transition: border-color var(--animation-duration-sm);
+
+  &:hover {
+    border-color: var(--theme-border-color-hover, var(--grey-50));
+  }
+}
+
+.npc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--theme-border-color);
+  padding-bottom: var(--spacing-sm);
+}
+
+.npc-name {
+  font-weight: bold;
+  font-size: 1.1em;
+  color: var(--theme-text-color);
+}
+
+.npc-type {
+  font-size: 0.85em;
+  color: var(--theme-emphasis-color);
+  font-style: italic;
+}
+
+.npc-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+.edit-input-wrapper {
+  width: 120px;
+}
+
+.une-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-row {
+  display: flex;
+  gap: var(--spacing-sm);
+  font-size: 0.9em;
+}
+
+.label {
+  color: var(--theme-emphasis-color);
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.value {
+  color: var(--theme-text-color);
+}
+
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--theme-emphasis-color);
+  font-style: italic;
+  background-color: var(--black-30a);
+  border-radius: var(--base-border-radius);
+}
+</style>

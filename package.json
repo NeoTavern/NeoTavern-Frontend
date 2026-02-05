@@ -70,12 +70,14 @@
     "highlight.js": "^11.11.1",
     "http-proxy-middleware": "^3.0.5",
     "js-yaml": "^4.1.1",
+    "jsep": "^1.4.0",
     "localforage": "^1.10.0",
     "lodash-es": "^4.17.21",
     "marked": "^17.0.0",
     "pinia": "^3.0.4",
     "vue": "^3.4.31",
     "vue-i18n": "^11.1.12",
-    "yaml": "^2.8.1"
+    "yaml": "^2.8.1",
+    "zod": "^4.3.6"
   }
 }

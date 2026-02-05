@@ -1,6 +1,6 @@
 import * as Vue from 'vue';
 import { createVNode, render, type App } from 'vue';
-import { CustomPromptPostProcessing, default_avatar } from '../constants';
+import { CustomPromptPostProcessing, default_avatar, default_user_avatar } from '../constants';
 import type {
   ApiChatContentPart,
   ApiChatMessage,
@@ -10,8 +10,10 @@ import type {
   ExtensionAPI,
   ExtensionEventMap,
   ExtensionMetadata,
+  ItemizedPrompt,
   MediaHydrationContext,
   MountableComponent,
+  PromptTokenBreakdown,
   SettingsPath,
   Tokenizer,
   WorldInfoBook,
@@ -35,6 +37,7 @@ import { useChatStore } from '../stores/chat.store';
 import { getExtensionContainerId } from '../stores/extension.store';
 import { usePersonaStore } from '../stores/persona.store';
 import { usePopupStore } from '../stores/popup.store';
+import { usePromptStore } from '../stores/prompt.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { useUiStore } from '../stores/ui.store';
 import { useWorldInfoStore } from '../stores/world-info.store';
@@ -83,6 +86,7 @@ export async function countTokens(
 // --- Event Emitter ---
 
 import { getModelCapabilities } from '../api/provider-definitions';
+import { getThumbnailUrl } from './character';
 import { mergeWithUndefinedMulti } from './commons';
 import { eventEmitter } from './event-emitter';
 export { eventEmitter };
@@ -232,6 +236,68 @@ const baseExtensionAPI: ExtensionAPI = {
       const messages = useChatStore().activeChat?.messages ?? [];
       return messages.length > 0 ? deepClone(messages[messages.length - 1]) : null;
     },
+    createMessage: (message: ApiChatMessage) => {
+      if (!message.content) {
+        throw new Error('Message content cannot be empty.');
+      }
+      let content: string = '';
+      if (Array.isArray(message.content)) {
+        const anyNonText = message.content.find((part) => part.type !== 'text');
+        if (anyNonText) {
+          throw new Error('Cannot create message with non-text content parts.');
+        }
+        content = message.content.map((part) => part.text).join('');
+      } else if (typeof message.content === 'string') {
+        content = message.content;
+      } else {
+        throw new Error('Invalid message content format.');
+      }
+      const chatStore = useChatStore();
+      if (!chatStore.activeChat) {
+        throw new Error('No active chat.');
+      }
+      const personaStore = usePersonaStore();
+      const characterStore = useCharacterStore();
+      const activeCharacter = characterStore.activeCharacters[0];
+      if (!activeCharacter) {
+        throw new Error('No active character.');
+      }
+      const activePersona = personaStore.activePersona;
+      if (!activePersona) {
+        throw new Error('No active persona.');
+      }
+      const now = getMessageTimeStamp();
+      const fullMessage: ChatMessage = {
+        is_user: message.role === 'user',
+        is_system: false,
+        mes: content,
+        name: message.name,
+        send_date: now,
+        original_avatar:
+          message.role === 'system'
+            ? 'system'
+            : message.role === 'user'
+              ? activePersona.avatarId
+              : activeCharacter.avatar,
+        force_avatar:
+          message.role === 'system'
+            ? 'favicon.ico'
+            : message.role === 'user'
+              ? getThumbnailUrl('persona', activePersona.avatarId || default_user_avatar)
+              : undefined,
+        extra: {},
+        swipe_id: 0,
+        swipe_info: [
+          {
+            extra: {},
+            send_date: now,
+          },
+        ],
+        swipes: [content],
+      };
+      chatStore.activeChat.messages.push(fullMessage);
+      return deepClone(fullMessage);
+    },
     insertMessage: (message, index) => {
       const store = useChatStore();
       if (!store.activeChat) throw new Error('No active chat.');
@@ -262,6 +328,9 @@ const baseExtensionAPI: ExtensionAPI = {
     },
     abortGeneration: () => {
       useChatStore().abortGeneration();
+    },
+    setGeneratingState: (generating: boolean) => {
+      useChatStore().setGeneratingState(generating);
     },
     getChatInput: () => {
       const el = useChatUiStore().chatInputElement;
@@ -389,7 +458,75 @@ const baseExtensionAPI: ExtensionAPI = {
         mediaContext,
       });
 
-      return await builder.build();
+      const messages = await builder.build();
+
+      // Calculate token breakdown similar to core generation
+      const promptTotalText = await Promise.all(
+        messages.map(async (m) => await countTokens(m.content, tokenizer)),
+      ).then((counts) => counts.reduce((a, b) => a + b, 0));
+      const promptTotal = promptTotalText + builder.mediaTokenCost;
+
+      const processedWorldInfo = builder.processedWorldInfo;
+      let wiTokens = 0;
+      if (processedWorldInfo) {
+        const parts = [
+          processedWorldInfo.worldInfoBefore,
+          processedWorldInfo.worldInfoAfter,
+          ...processedWorldInfo.anBefore,
+          ...processedWorldInfo.anAfter,
+          ...processedWorldInfo.emBefore,
+          ...processedWorldInfo.emAfter,
+          ...processedWorldInfo.depthEntries.flatMap((d) => d.entries),
+          ...Object.values(processedWorldInfo.outletEntries).flat(),
+        ];
+        const fullWiText = parts.filter(Boolean).join('\n');
+        if (fullWiText) wiTokens = await countTokens(fullWiText, tokenizer);
+      }
+
+      const charDesc = await countTokens(contextCharacters[0].description || '', tokenizer);
+      const charPers = await countTokens(contextCharacters[0].personality || '', tokenizer);
+      const charScen = await countTokens(contextCharacters[0].scenario || '', tokenizer);
+      const charEx = await countTokens(contextCharacters[0].mes_example || '', tokenizer);
+      const personaDesc = await countTokens(persona.description || '', tokenizer);
+
+      const breakdown: PromptTokenBreakdown = {
+        systemTotal: 0,
+        description: charDesc,
+        personality: charPers,
+        scenario: charScen,
+        examples: charEx,
+        persona: personaDesc,
+        worldInfo: wiTokens,
+        chatHistory: 0,
+        extensions: 0,
+        bias: 0,
+        promptTotal: promptTotal,
+        maxContext: builder.maxContext,
+        padding: builder.maxContext - promptTotal - builder.samplerSettings.max_tokens,
+      };
+
+      for (const m of messages) {
+        const count = await countTokens(m.content, tokenizer);
+        if (m.role === 'system') breakdown.systemTotal += count;
+        else breakdown.chatHistory += count;
+      }
+      breakdown.chatHistory += builder.mediaTokenCost;
+
+      const itemizedPrompt: ItemizedPrompt = {
+        generationId: builder.generationId,
+        messageIndex: options?.messageIndex ?? 0,
+        swipeId: options?.swipeId ?? 0,
+        model: apiStore.activeModel,
+        api: settingsStore.settings.api.provider,
+        tokenizer: settingsStore.settings.api.tokenizer,
+        presetName: chatMetadata.connection_profile || settingsStore.settings.api.selectedSampler || 'Default',
+        messages,
+        breakdown,
+        timestamp: Date.now(),
+        worldInfoEntries: processedWorldInfo?.triggeredEntries ?? {},
+      };
+
+      return itemizedPrompt;
     },
     create: async (chat, filename) => {
       const chatStore = useChatStore();
@@ -424,6 +561,10 @@ const baseExtensionAPI: ExtensionAPI = {
         const store = useChatStore();
         if (store.activeChat) {
           store.activeChat.metadata = metadata;
+          const chatInfo = store.chatInfos.find((info) => info.file_id === store.activeChatFile);
+          if (chatInfo) {
+            chatInfo.chat_metadata = metadata;
+          }
           store.triggerSave();
         }
       },
@@ -431,9 +572,16 @@ const baseExtensionAPI: ExtensionAPI = {
         const store = useChatStore();
         if (store.activeChat) {
           store.activeChat.metadata = mergeWithUndefinedMulti({}, store.activeChat.metadata, updates);
+          const chatInfo = store.chatInfos.find((info) => info.file_id === store.activeChatFile);
+          if (chatInfo) {
+            chatInfo.chat_metadata = store.activeChat.metadata;
+          }
           store.triggerSave();
         }
       },
+    },
+    addItemizedPrompt: (prompt) => {
+      usePromptStore().addItemizedPrompt(prompt);
     },
     PromptBuilder,
     WorldInfoProcessor,
