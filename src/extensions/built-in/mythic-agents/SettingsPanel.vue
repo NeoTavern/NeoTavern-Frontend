@@ -62,13 +62,15 @@ const eventFocusesJson = ref('');
 const eventActionsJson = ref('');
 const eventSubjectsJson = ref('');
 const uneJson = ref('');
+const characterTypesJson = ref('');
 
 function loadJsonFromSettings() {
   fateChartJson.value = JSON.stringify(settings.value.fateChart, null, 2);
   eventFocusesJson.value = JSON.stringify(settings.value.eventGeneration.focuses, null, 2);
-  eventActionsJson.value = JSON.stringify(settings.value.eventGeneration.actions, null, 2);
-  eventSubjectsJson.value = JSON.stringify(settings.value.eventGeneration.subjects, null, 2);
+  eventActionsJson.value = settings.value.eventGeneration.actions.join('\n');
+  eventSubjectsJson.value = settings.value.eventGeneration.subjects.join('\n');
   uneJson.value = JSON.stringify(settings.value.une, null, 2);
+  characterTypesJson.value = settings.value.characterTypes.join('\n');
 }
 
 // Validation Logic
@@ -261,23 +263,18 @@ function resetEventFocuses() {
 }
 
 function saveStringArray(target: 'actions' | 'subjects', jsonValue: string) {
-  try {
-    const data = JSON.parse(jsonValue);
-    if (!Array.isArray(data) || !data.every((i) => typeof i === 'string')) {
-      props.api.ui.showToast('Must be an array of strings', 'error');
-      return;
-    }
-    settings.value.eventGeneration[target] = data;
-    props.api.ui.showToast(`${target} updated`, 'success');
-  } catch {
-    props.api.ui.showToast('Invalid JSON', 'error');
-  }
+  const data = jsonValue
+    .split('\n')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  settings.value.eventGeneration[target] = data;
+  props.api.ui.showToast(`${target} updated`, 'success');
 }
 
 function resetStringArray(target: 'actions' | 'subjects') {
   const def = DEFAULT_EVENT_GENERATION_DATA[target];
-  if (target === 'actions') eventActionsJson.value = JSON.stringify(def, null, 2);
-  if (target === 'subjects') eventSubjectsJson.value = JSON.stringify(def, null, 2);
+  if (target === 'actions') eventActionsJson.value = def.join('\n');
+  if (target === 'subjects') eventSubjectsJson.value = def.join('\n');
   settings.value.eventGeneration[target] = def;
 }
 
@@ -298,6 +295,20 @@ async function saveUNE() {
 function resetUNE() {
   uneJson.value = JSON.stringify(DEFAULT_UNE_SETTINGS, null, 2);
   saveUNE();
+}
+
+async function saveCharacterTypes() {
+  const data = characterTypesJson.value
+    .split('\n')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  settings.value.characterTypes = data;
+  props.api.ui.showToast('Character Types updated', 'success');
+}
+
+function resetCharacterTypes() {
+  characterTypesJson.value = 'NPC\nPC';
+  saveCharacterTypes();
 }
 
 // Lifecycle
@@ -419,6 +430,21 @@ const uneTools = [
     onClick: resetUNE,
   },
 ];
+
+const characterTypesTools = [
+  {
+    id: 'save',
+    icon: 'fa-save',
+    title: 'Apply',
+    onClick: saveCharacterTypes,
+  },
+  {
+    id: 'reset',
+    icon: 'fa-undo',
+    title: 'Reset',
+    onClick: resetCharacterTypes,
+  },
+];
 </script>
 
 <template>
@@ -466,7 +492,12 @@ const uneTools = [
     </div>
 
     <div v-if="activeTab === 'fateChart'" class="tab-content">
-      <Textarea v-model="fateChartJson" :rows="20" :identifier="'extension.mythic-agents.fateChart'" :tools="fateChartTools" />
+      <Textarea
+        v-model="fateChartJson"
+        :rows="20"
+        :identifier="'extension.mythic-agents.fateChart'"
+        :tools="fateChartTools"
+      />
     </div>
 
     <div v-if="activeTab === 'eventTables'" class="tab-content">
@@ -475,15 +506,39 @@ const uneTools = [
           Use <code>min</code> and <code>max</code> (1-100) for probability. <code>action</code> supports logic like
           <code>(random_npc or random_pc) and new_warrior</code>.
         </p>
-        <Textarea v-model="eventFocusesJson" :rows="15" :identifier="'extension.mythic-agents.eventFocuses'" :tools="eventFocusesTools" />
+        <Textarea
+          v-model="eventFocusesJson"
+          :rows="15"
+          :identifier="'extension.mythic-agents.eventFocuses'"
+          :tools="eventFocusesTools"
+        />
       </CollapsibleSection>
 
       <CollapsibleSection title="Event Actions">
-        <Textarea v-model="eventActionsJson" :rows="10" :identifier="'extension.mythic-agents.eventActions'" :tools="eventActionsTools" />
+        <Textarea
+          v-model="eventActionsJson"
+          :rows="10"
+          :identifier="'extension.mythic-agents.eventActions'"
+          :tools="eventActionsTools"
+        />
       </CollapsibleSection>
 
       <CollapsibleSection title="Event Subjects">
-        <Textarea v-model="eventSubjectsJson" :rows="10" :identifier="'extension.mythic-agents.eventSubjects'" :tools="eventSubjectsTools" />
+        <Textarea
+          v-model="eventSubjectsJson"
+          :rows="10"
+          :identifier="'extension.mythic-agents.eventSubjects'"
+          :tools="eventSubjectsTools"
+        />
+      </CollapsibleSection>
+
+      <CollapsibleSection title="Character Types">
+        <Textarea
+          v-model="characterTypesJson"
+          :rows="5"
+          :identifier="'extension.mythic-agents.characterTypes'"
+          :tools="characterTypesTools"
+        />
       </CollapsibleSection>
     </div>
 
