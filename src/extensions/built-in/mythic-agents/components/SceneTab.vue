@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import { Button } from '../../../../components/UI';
 import {
   generateInitialScene as sceneManagerGenerateInitialScene,
-  updateScene as sceneManagerUpdateScene,
 } from '../scene-manager';
 import type { MythicChatExtraData, MythicExtensionAPI } from '../types';
 
@@ -34,49 +33,12 @@ async function generateInitialScene() {
     console.error('Failed to generate initial scene:', error);
   }
 }
-
-async function updateScene() {
-  if (!scene.value) return;
-
-  const oldChaos = scene.value.chaos_rank;
-
-  try {
-    const oldThreads = scene.value.threads || [];
-    const updatedScene = await sceneManagerUpdateScene(props.api, scene.value);
-    const newThreads = updatedScene.threads;
-    const resolved = oldThreads.filter(
-      (t) => !newThreads.some((nt) => nt.toLowerCase().trim() === t.toLowerCase().trim()),
-    );
-    props.api.chat.metadata.update({
-      extra: {
-        'core.mythic-agents': {
-          scene: updatedScene,
-          chaos: updatedScene.chaos_rank,
-          resolved_threads: [...(extra.value?.resolved_threads || []), ...resolved],
-        },
-      },
-    });
-
-    if (updatedScene.chaos_rank !== oldChaos) {
-      props.api.ui.showToast(
-        `Chaos rank ${updatedScene.chaos_rank > oldChaos ? 'increased' : 'decreased'} to ${updatedScene.chaos_rank}`,
-        'info',
-      );
-    }
-  } catch (error) {
-    console.error('Update scene error:', error);
-    props.api.ui.showToast('Failed to update scene. Check console for details.', 'error');
-  }
-}
 </script>
 
 <template>
   <div class="scene">
     <div class="controls">
       <Button block class="action-btn" @click="generateInitialScene"> <i class="fas fa-film"></i> New Scene </Button>
-      <Button block :disabled="!scene" class="action-btn" @click="updateScene">
-        <i class="fas fa-sync"></i> Update Scene
-      </Button>
     </div>
 
     <div class="section-header">Current Scene Details</div>

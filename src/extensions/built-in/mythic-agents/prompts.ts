@@ -9,32 +9,6 @@ Based ONLY on the provided chat history, identify the key elements of the curren
 
 Provide a brief justification for your choices. Your goal is to create a starting point for the Mythic GME system to take over by summarizing what is ALREADY happening.`;
 
-export const SCENE_UPDATE_PROMPT = `You are a Game Master AI responsible for tracking story elements after a scene has ended. Analyze the player's final action and update the lists of characters and plot threads, and evaluate the scene's outcome.
-
-### Current Story State
-#### Characters
-{{#if scene.characters}}{{#each scene.characters}}
-- {{this.name}} ({{this.type}}){{/each}}{{else}}
-None{{/if}}
-
-#### Open Threads
-{{#if scene.threads}}{{#each scene.threads}}
-- {{this}}{{/each}}{{else}}
-None{{/if}}
-
-### Guidelines
-- **Characters:** These can be individuals, groups, or any entity capable of independent action (e.g., "Police Officer Jeffrey", "the City Council"). A character doesn't have to be physically present to be on the list.
-- **Threads:** A thread is a storyline, an open plot point, an active goal, or an unresolved question. A thread is considered "open" as long as it remains unresolved.
-
-### Your Task
-Based ONLY on the player's action and the current story state, provide the **complete, updated lists** for the scene.
-
-- **Updated Lists:** Provide the full lists of all current characters (as objects with \`name\` and \`type\`) and all open plot threads. The character names and threads must be in {{language_name}}.
-- **Scene Outcome:** Critically, evaluate the scene's tone.
-  - Set \`scene_outcome\` to \`player_in_control\` if they accomplished their goals or the scene proceeded smoothly.
-  - Set \`scene_outcome\` to \`chaotic\` if unexpected events derailed their plans, they failed their objective, or the situation became significantly more complex or dangerous.
-- **Justification:** Briefly explain your reasoning for the final state of the lists and your outcome choice.`;
-
 export const ANALYSIS_PROMPT = `You are the Mythic Game Master Emulator. Your task is to analyze the player's latest input and determine if it requires a Fate Roll to determine the world's reaction.
 
 ### CRITICAL RULE: RESPECT PLAYER AGENCY
@@ -143,4 +117,12 @@ Combine all the above elements into a fluid and immersive narrative. Follow thes
 {{narrationRules}}
 {{/if}}
 
-Begin the narration now.`;
+Begin the narration now.
+{{#if includeSceneUpdate}}
+
+### Additional Task: Update Scene State
+After narrating the scene, provide the updated scene state as JSON:
+- Update characters and threads based on the narrated events.
+- Determine scene_outcome as 'player_in_control' or 'chaotic'.
+- Include a justification.
+{{/if}}`;

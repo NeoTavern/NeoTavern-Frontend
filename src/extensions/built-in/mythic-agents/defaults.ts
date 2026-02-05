@@ -1,4 +1,4 @@
-import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT, SCENE_UPDATE_PROMPT } from './prompts';
+import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT } from './prompts';
 import type { EventGenerationData, FateChartData, MythicSettings, UNESettings } from './types';
 
 export const DEFAULT_FATE_CHART_DATA: FateChartData = {
@@ -77,7 +77,7 @@ export const DEFAULT_FATE_CHART_DATA: FateChartData = {
     Likely: { chance: 55, exceptional_yes: 11, exceptional_no: 92 },
     'Very Likely': { chance: 75, exceptional_yes: 15, exceptional_no: 96 },
     'Near Sure Thing': { chance: 80, exceptional_yes: 16, exceptional_no: 97 },
-    'A sure thing': { chance: 85, exceptional_yes: 17, exceptional_no: 97 },
+    'A Sure Thing': { chance: 85, exceptional_yes: 17, exceptional_no: 97 },
     'Has to be': { chance: 95, exceptional_yes: 19, exceptional_no: 100 },
   },
   '3': {
@@ -1987,13 +1987,13 @@ export const DEFAULT_UNE_SETTINGS: UNESettings = {
 export const DEFAULT_BASE_SETTINGS: MythicSettings = {
   enabled: false,
   autoAnalyze: true,
+  autoSceneUpdate: true,
   chaos: 5,
   connectionProfileId: '',
   language: 'English',
   prompts: {
     analysis: ANALYSIS_PROMPT,
     initialScene: INITIAL_SCENE_PROMPT,
-    sceneUpdate: SCENE_UPDATE_PROMPT,
     narration: NARRATION_PROMPT,
   },
   selectedPreset: 'Default',

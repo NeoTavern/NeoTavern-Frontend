@@ -1,7 +1,8 @@
 import { GenerationMode } from '../../../constants';
 import type { ExtensionAPI } from '../../../types';
+import { uuidv4 } from '../../../utils/commons';
 import { DEFAULT_BASE_SETTINGS } from './defaults';
-import { analyzeUserAction, generateNarration } from './llm';
+import { analyzeUserAction, generateNarration, generateNarrationAndSceneUpdate } from './llm';
 import { manifest } from './manifest';
 import MythicPanel from './MythicPanel.vue';
 import { askOracle } from './oracle';
@@ -14,6 +15,7 @@ import type {
   MythicMessageExtra,
   MythicSettings,
 } from './types';
+import { genUNENpc } from './une';
 
 type MythicExtensionAPI = ExtensionAPI<MythicSettings, MythicChatExtra, MythicMessageExtra>;
 
@@ -79,6 +81,9 @@ export function activate(api: MythicExtensionAPI) {
     if (!lastMessage || !lastMessage.is_user) return;
 
     const currentPreset = settings.presets.find((p) => p.name === settings.selectedPreset) || settings.presets[0];
+    if (!currentPreset) {
+      throw new Error('No valid preset found for Mythic Agents');
+    }
 
     // Analyze
     let analysis;
@@ -128,32 +133,75 @@ export function activate(api: MythicExtensionAPI) {
           randomEvent = result.randomEvent;
         }
 
-        // Generate narration
-        const narration = await generateNarration(
-          api,
-          extra.scene!,
-          anal,
-          fateRollResult,
-          randomEvent,
-          context?.controller.signal,
-        );
-        if (context?.controller.signal.aborted) return;
-
         // Update scene with new NPCs if any
+        let updatedScene = { ...extra.scene! };
         if (randomEvent?.new_npcs) {
-          const updatedScene = {
-            ...extra.scene!,
-            characters: [...extra.scene!.characters, ...randomEvent.new_npcs],
-          };
-          api.chat.metadata.update({
-            extra: {
-              'core.mythic-agents': {
-                scene: updatedScene,
-              },
-            },
-          });
-          extra.scene = updatedScene;
+          updatedScene.characters = [...updatedScene.characters, ...randomEvent.new_npcs];
         }
+
+        let narration: string;
+        // Generate narration and optionally update scene
+        if (settings.autoSceneUpdate) {
+          const { narration: narr, sceneUpdate } = await generateNarrationAndSceneUpdate(
+            api,
+            updatedScene,
+            anal,
+            fateRollResult,
+            randomEvent,
+            context?.controller.signal,
+          );
+          if (context?.controller.signal.aborted) return;
+          narration = narr;
+
+          // Apply scene update
+          const existingChars = new Map(updatedScene.characters.map((c) => [c.name.toLowerCase(), c]));
+          const newCharacters: MythicCharacter[] = [];
+          for (const char of sceneUpdate.characters) {
+            const key = char.name.toLowerCase();
+            if (existingChars.has(key)) {
+              newCharacters.push(existingChars.get(key)!);
+            } else {
+              // New character, generate UNE
+              newCharacters.push({
+                id: uuidv4(),
+                name: char.name,
+                type: char.type,
+                une_profile: genUNENpc(),
+              });
+            }
+          }
+          let newChaos = updatedScene.chaos_rank;
+          if (sceneUpdate.scene_outcome === 'chaotic') {
+            newChaos = Math.min(9, newChaos + 1);
+          } else if (sceneUpdate.scene_outcome === 'player_in_control') {
+            newChaos = Math.max(1, newChaos - 1);
+          }
+          updatedScene = {
+            chaos_rank: newChaos,
+            characters: newCharacters,
+            threads: sceneUpdate.threads,
+          };
+        } else {
+          narration = await generateNarration(
+            api,
+            updatedScene,
+            anal,
+            fateRollResult,
+            randomEvent,
+            context?.controller.signal,
+          );
+          if (context?.controller.signal.aborted) return;
+        }
+
+        // Update metadata
+        api.chat.metadata.update({
+          extra: {
+            'core.mythic-agents': {
+              scene: updatedScene,
+            },
+          },
+        });
+        extra.scene = updatedScene;
 
         // Create assistant message
         const assistantMsg = api.chat.createMessage({

@@ -18,7 +18,7 @@ import {
   DEFAULT_FATE_CHART_DATA,
   DEFAULT_UNE_SETTINGS,
 } from './defaults';
-import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT, SCENE_UPDATE_PROMPT } from './prompts';
+import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT } from './prompts';
 import type {
   EventFocus,
   FateChartData,
@@ -55,7 +55,6 @@ const mainTabs = [
 
 const promptTypes: { key: keyof NonNullable<MythicSettings['prompts']>; label: string }[] = [
   { key: 'initialScene', label: 'Initial Scene' },
-  { key: 'sceneUpdate', label: 'Scene Update' },
   { key: 'analysis', label: 'Analysis' },
   { key: 'narration', label: 'Narration' },
 ];
@@ -518,7 +517,6 @@ const getPromptTools = (type: keyof NonNullable<MythicSettings['prompts']>) => [
       if (confirm) {
         let defaultPrompt = '';
         if (type === 'initialScene') defaultPrompt = INITIAL_SCENE_PROMPT;
-        if (type === 'sceneUpdate') defaultPrompt = SCENE_UPDATE_PROMPT;
         if (type === 'analysis') defaultPrompt = ANALYSIS_PROMPT;
         if (type === 'narration') defaultPrompt = NARRATION_PROMPT;
         setValue(defaultPrompt);
@@ -664,6 +662,12 @@ const customActions: CustomAction[] = [
         description="Automatically analyze user messages for implied questions and roll fate when Mythic is active."
       >
         <Toggle v-model="settings.autoAnalyze" />
+      </FormItem>
+      <FormItem
+        label="Auto-Update Scene"
+        description="Automatically update the scene state after each narration."
+      >
+        <Toggle v-model="settings.autoSceneUpdate" />
       </FormItem>
       <FormItem
         label="Connection Profile"

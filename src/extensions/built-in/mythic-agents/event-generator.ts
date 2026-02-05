@@ -1,5 +1,6 @@
 import type { Expression } from 'jsep';
 import jsep from 'jsep';
+import { uuidv4 } from '../../../utils/commons';
 import type { EventFocus, EventGenerationData, EventMeaningResult, MythicCharacter, Scene, UNESettings } from './types';
 import { genUNENpc } from './une';
 
@@ -125,7 +126,7 @@ export function generateFullRandomEvent(
         const characterType = type.replace(/_/g, ' ');
 
         result.new_npcs!.push({
-          id: `npc_${Date.now()}_${Math.random()}`,
+          id: uuidv4(),
           name: `${une_profile.modifier} ${une_profile.noun}`, // Placeholder name
           type: characterType.toUpperCase(),
           une_profile,

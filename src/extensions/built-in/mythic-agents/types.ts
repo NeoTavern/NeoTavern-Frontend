@@ -164,19 +164,18 @@ export type MythicPreset = z.infer<typeof MythicPresetSchema>;
 export const MythicSettingsSchema = z.object({
   enabled: z.boolean(),
   autoAnalyze: z.boolean(),
+  autoSceneUpdate: z.boolean().default(true),
   connectionProfileId: z.string().optional(),
   chaos: z.number().min(1).max(9).default(5),
   language: z.string().default('English'),
   prompts: z
     .object({
       initialScene: z.string(),
-      sceneUpdate: z.string(),
       analysis: z.string(),
       narration: z.string(),
     })
     .default({
       initialScene: '',
-      sceneUpdate: '',
       analysis: '',
       narration: '',
     }),

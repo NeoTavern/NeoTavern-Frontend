@@ -226,7 +226,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       },
       5 * 60 * 1000,
     );
-    generateTimeouts.set(generationId, timeout);
+    generateTimeouts.set(generationId, timeout as unknown as number);
     api.chat.generateResponse(mode, { generationId });
   };
 
@@ -456,7 +456,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
         },
         5 * 60 * 1000,
       );
-      generateTimeouts.set(generationId, timeout);
+      generateTimeouts.set(generationId, timeout as unknown as number);
     }
 
     api.ui.showToast(t('extensionsBuiltin.generationTools.swiping'), 'info');
