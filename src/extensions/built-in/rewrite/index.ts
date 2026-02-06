@@ -23,8 +23,31 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
     identifier: string,
     referenceMessageIndex?: number,
   ) => {
+    let title = t('extensionsBuiltin.rewrite.popupTitle');
+
+    if (identifier.startsWith('character.global.')) {
+      const charAvatar = identifier.replace('character.global.', '');
+      const char = api.character.getEditing();
+      if (char && char.avatar === charAvatar) {
+        title = t('extensionsBuiltin.rewrite.popupTitleCharacter', { name: char.name || 'Character' });
+      } else {
+        title = t('extensionsBuiltin.rewrite.popupTitleCharacter', { name: 'Character' });
+      }
+    } else if (identifier.startsWith('character.')) {
+      const fieldName = identifier.replace('character.', '');
+      title = t('extensionsBuiltin.rewrite.popupTitleField', { field: fieldName });
+    } else if (identifier === 'chat.message') {
+      title = t('extensionsBuiltin.rewrite.popupTitleMessage');
+    } else if (identifier === 'chat.input') {
+      title = t('extensionsBuiltin.rewrite.popupTitleInput');
+    } else if (identifier.startsWith('extension.')) {
+      title = t('extensionsBuiltin.rewrite.popupTitleExtension');
+    } else if (scope.fields.length === 1) {
+      title = t('extensionsBuiltin.rewrite.popupTitleField', { field: scope.fields[0].label });
+    }
+
     await api.ui.showPopup({
-      title: t('extensionsBuiltin.rewrite.popupTitle'),
+      title,
       component: markRaw(RewritePopup),
       componentProps: {
         api,

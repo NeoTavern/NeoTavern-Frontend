@@ -1377,6 +1377,11 @@
     },
     "rewrite": {
       "popupTitle": "Magic Rewrite",
+      "popupTitleCharacter": "Rewrite Character: {name}",
+      "popupTitleField": "Rewrite {field}",
+      "popupTitleMessage": "Rewrite Message",
+      "popupTitleInput": "Rewrite Input",
+      "popupTitleExtension": "Rewrite Extension Field",
       "settings": {
         "defaultConnectionProfile": "Default Connection Profile",
         "templates": "Templates",

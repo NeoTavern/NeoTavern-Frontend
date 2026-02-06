@@ -1380,6 +1380,11 @@ export interface MessageSchema {
     };
     rewrite: {
       popupTitle: string;
+      popupTitleCharacter: string;
+      popupTitleField: string;
+      popupTitleMessage: string;
+      popupTitleInput: string;
+      popupTitleExtension: string;
       settings: {
         defaultConnectionProfile: string;
         templates: string;
