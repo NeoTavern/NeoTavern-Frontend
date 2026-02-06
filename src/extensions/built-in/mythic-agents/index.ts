@@ -1,6 +1,7 @@
 import { GenerationMode } from '../../../constants';
 import type { TypedChatMessage } from '../../../types/ExtensionAPI';
 import { uuidv4 } from '../../../utils/commons';
+import { eventEmitter } from '../../../utils/extensions';
 import { DEFAULT_BASE_SETTINGS } from './defaults';
 import { analyzeUserAction, generateNarration, generateNarrationAndSceneUpdate } from './llm';
 import { manifest } from './manifest';
@@ -61,26 +62,7 @@ export function activate(api: MythicExtensionAPI) {
       }
     }
 
-    if (!currentMythicData?.scene) {
-      // Generate initial scene
-      const scene = await generateInitialScene(api, undefined);
-      const chaos = settings.chaos;
-      currentMythicData = {
-        scene: { ...scene, chaos_rank: chaos },
-        chaos,
-      };
-      // Set initial chat metadata
-      api.chat.metadata.update({
-        extra: {
-          actionHistory: [],
-          resolved_threads: [],
-        },
-      });
-    }
-
     payload.handled = true;
-
-    // Get the last message
     const lastMessage = api.chat.getLastMessage();
     if (!lastMessage) return;
 
@@ -125,10 +107,30 @@ export function activate(api: MythicExtensionAPI) {
       try {
         if (context?.controller.signal.aborted) return;
 
+        if (!currentMythicData?.scene) {
+          const scene = await generateInitialScene(api, undefined);
+          const chaos = settings.chaos;
+          currentMythicData = {
+            scene: { ...scene, chaos_rank: chaos },
+            chaos,
+          };
+          api.chat.metadata.update({
+            extra: {
+              actionHistory: [],
+              resolved_threads: [],
+            },
+          });
+        }
+
         // Analyze
         let analysis;
         try {
-          analysis = await analyzeUserAction(api, currentMythicData.scene!, context?.controller.signal);
+          analysis = await analyzeUserAction(
+            api,
+            currentMythicData.scene!,
+            isSwipe ? api.chat.getHistory().slice(0, -1) : undefined,
+            context?.controller.signal,
+          );
           if (context?.controller.signal.aborted) return;
         } catch (error) {
           console.error('Mythic Agents analysis error:', error);
@@ -188,6 +190,7 @@ export function activate(api: MythicExtensionAPI) {
             randomEvent,
             messageIndex,
             swipeId,
+            isSwipe ? api.chat.getHistory().slice(0, -1) : undefined,
             context?.controller.signal,
           );
           if (context?.controller.signal.aborted) return;
@@ -232,47 +235,16 @@ export function activate(api: MythicExtensionAPI) {
             randomEvent,
             messageIndex,
             swipeId,
+            isSwipe ? api.chat.getHistory().slice(0, -1) : undefined,
             context?.controller.signal,
           );
           if (context?.controller.signal.aborted) return;
         }
 
-        // Update metadata - removed, using message extra
-        // extra.scene = updatedScene;
-
         // Create assistant message object
         const genStarted = new Date().toISOString();
         const genFinished = new Date().toISOString();
-        const assistantMsg = await api.chat.createMessage({
-          role: 'assistant',
-          content: narration,
-          name: activeCharacter.name,
-        });
-        assistantMsg.gen_started = genStarted;
-        assistantMsg.gen_finished = genFinished;
         const actionData = { analysis: anal, fateRollResult, randomEvent };
-
-        assistantMsg.extra = {
-          'core.mythic-agents': { action: actionData },
-        };
-
-        assistantMsg.extra = {
-          'core.mythic-agents': {
-            action: actionData,
-            scene: updatedScene,
-            chaos: updatedScene.chaos_rank,
-          },
-        };
-        if (assistantMsg.swipe_info && assistantMsg.swipe_info[0]) {
-          assistantMsg.swipe_info[0].extra = {
-            ...assistantMsg.swipe_info[0].extra,
-            'core.mythic-agents': {
-              action: actionData,
-              scene: updatedScene,
-              chaos: updatedScene.chaos_rank,
-            },
-          };
-        }
 
         const currentActionHistory = api.chat.metadata.get()?.extra?.actionHistory ?? [];
         api.chat.metadata.update({
@@ -284,8 +256,14 @@ export function activate(api: MythicExtensionAPI) {
         if (isSwipe) {
           // Update the last message (which is assistant) to add swipe
           const history = api.chat.getHistory();
-          const lastMsgIndex = history.length - 1;
+          const lastMsgIndex = messageIndex;
           const lastMsg = history[lastMsgIndex];
+          if (!Array.isArray(lastMsg.swipes)) {
+            lastMsg.swipes = [lastMsg.mes];
+          }
+          if (!Array.isArray(lastMsg.swipe_info)) {
+            lastMsg.swipe_info = [];
+          }
           const newSwipes = [...lastMsg.swipes, narration];
           const newSwipeInfo = [
             ...lastMsg.swipe_info,
@@ -296,7 +274,7 @@ export function activate(api: MythicExtensionAPI) {
               generation_id: payload.generationId,
               extra: {
                 'core.mythic-agents': {
-                  action: { analysis: anal, fateRollResult, randomEvent },
+                  action: actionData,
                   scene: updatedScene,
                   chaos: updatedScene.chaos_rank,
                 },
@@ -317,14 +295,34 @@ export function activate(api: MythicExtensionAPI) {
               },
             },
           });
-          const currentActionHistorySwipe = api.chat.metadata.get()?.extra?.actionHistory ?? [];
-          api.chat.metadata.update({
-            extra: {
-              actionHistory: [...currentActionHistorySwipe, actionData],
-            },
+          await eventEmitter.emit('message:swipe-changed', lastMsgIndex, lastMsg.swipe_id);
+        } else {
+          const assistantMsg = await api.chat.createMessage({
+            role: 'assistant',
+            content: narration,
+            name: activeCharacter.name,
           });
-        }
-        if (!isSwipe) {
+          assistantMsg.gen_started = genStarted;
+          assistantMsg.gen_finished = genFinished;
+
+          assistantMsg.extra = {
+            'core.mythic-agents': {
+              action: actionData,
+              scene: updatedScene,
+              chaos: updatedScene.chaos_rank,
+            },
+          };
+          if (assistantMsg.swipe_info && assistantMsg.swipe_info[0]) {
+            assistantMsg.swipe_info[0].extra = {
+              ...assistantMsg.swipe_info[0].extra,
+              'core.mythic-agents': {
+                action: actionData,
+                scene: updatedScene,
+                chaos: updatedScene.chaos_rank,
+              },
+            };
+          }
+
           const history = api.chat.getHistory();
           await api.chat.updateMessageObject(history.length - 1, { extra: assistantMsg.extra });
         }

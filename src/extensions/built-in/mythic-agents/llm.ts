@@ -1,4 +1,5 @@
 import type { StructuredResponseOptions } from '../../../types';
+import type { ChatMessage } from '../../../types/chat';
 import { uuidv4 } from '../../../utils/commons';
 import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT } from './prompts';
 import type { AnalysisOutput, MythicCharacter, MythicExtensionAPI, Scene, SceneUpdate } from './types';
@@ -8,6 +9,7 @@ import { genUNENpc } from './une';
 export async function analyzeUserAction(
   api: MythicExtensionAPI,
   scene: Scene,
+  chatHistory?: ChatMessage[],
   signal?: AbortSignal,
 ): Promise<AnalysisOutput> {
   const settings = api.settings.get();
@@ -21,7 +23,7 @@ export async function analyzeUserAction(
     schema: { name: 'analysis_output', strict: true, value: AnalysisOutputSchema.toJSONSchema() },
     format: 'json',
   };
-  const itemizedPrompt = await api.chat.buildPrompt({ structuredResponse });
+  const itemizedPrompt = await api.chat.buildPrompt({ structuredResponse, chatHistory });
   const messages = itemizedPrompt.messages;
   messages.push({ role: 'user', name: 'User', content: processedPrompt });
 
@@ -106,6 +108,7 @@ export async function generateNarration(
   randomEvent: { focus: string; action: string; subject: string; new_npcs?: MythicCharacter[] } | undefined,
   messageIndex: number,
   swipeId: number = 0,
+  chatHistory?: ChatMessage[],
   signal?: AbortSignal,
 ): Promise<string> {
   const settings = api.settings.get();
@@ -123,7 +126,7 @@ export async function generateNarration(
 
   const generationId = uuidv4();
 
-  const itemizedPrompt = await api.chat.buildPrompt({ generationId, messageIndex, swipeId });
+  const itemizedPrompt = await api.chat.buildPrompt({ generationId, messageIndex, swipeId, chatHistory });
   const messages = [...itemizedPrompt.messages];
   messages.push({ role: 'user', name: 'User', content: processedPrompt });
   itemizedPrompt.messages = messages;
@@ -151,6 +154,7 @@ export async function generateNarrationAndSceneUpdate(
   randomEvent: { focus: string; action: string; subject: string; new_npcs?: MythicCharacter[] } | undefined,
   messageIndex: number,
   swipeId: number = 0,
+  chatHistory?: ChatMessage[],
   signal?: AbortSignal,
 ): Promise<{ narration: string; sceneUpdate: SceneUpdate }> {
   const settings = api.settings.get();
@@ -183,7 +187,13 @@ export async function generateNarrationAndSceneUpdate(
     format: 'json',
   };
 
-  const itemizedPrompt = await api.chat.buildPrompt({ generationId, messageIndex, swipeId, structuredResponse });
+  const itemizedPrompt = await api.chat.buildPrompt({
+    generationId,
+    messageIndex,
+    swipeId,
+    structuredResponse,
+    chatHistory,
+  });
   const messages = [...itemizedPrompt.messages];
   messages.push({ role: 'user', name: 'User', content: processedPrompt });
   itemizedPrompt.messages = messages;
