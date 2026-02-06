@@ -4,6 +4,7 @@ import { ConnectionProfileSelector, SplitPane } from '../../../components/common
 import { Button, Checkbox, FormItem, Input, Select, Textarea } from '../../../components/UI';
 import { POPUP_RESULT, POPUP_TYPE, type ExtensionAPI } from '../../../types';
 import { uuidv4 } from '../../../utils/commons';
+import { RewriteService } from './RewriteService';
 import { DEFAULT_TEMPLATES, type RewriteSettings, type RewriteTemplate, type RewriteTemplateArg } from './types';
 
 const props = defineProps<{
@@ -19,6 +20,8 @@ const settings = ref<RewriteSettings>({
   templateOverrides: {},
 });
 const isSidebarCollapsed = ref(false);
+
+const service = new RewriteService(props.api);
 
 onMounted(() => {
   const saved = props.api.settings.get();
@@ -138,6 +141,19 @@ async function resetTemplates() {
       }
     });
     editingTemplateId.value = null;
+  }
+}
+
+async function deleteAllSessions() {
+  const { result } = await props.api.ui.showPopup({
+    type: POPUP_TYPE.CONFIRM,
+    title: t('common.delete'),
+    content: t('common.confirm'),
+  });
+
+  if (result === POPUP_RESULT.AFFIRMATIVE) {
+    await service.clearAllSessions();
+    props.api.ui.showToast(t('common.deleted'), 'success');
   }
 }
 
@@ -366,6 +382,17 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
             <div v-else class="empty-state">{{ t('extensionsBuiltin.rewrite.settings.selectTemplate') }}</div>
           </template>
         </SplitPane>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="header-row">
+        <h3>{{ t('extensionsBuiltin.rewrite.session.sessions') }}</h3>
+        <div class="actions">
+          <Button icon="fa-trash-can" variant="danger" @click="deleteAllSessions">{{
+            t('extensionsBuiltin.rewrite.settings.deleteAllSessions')
+          }}</Button>
+        </div>
       </div>
     </div>
   </div>

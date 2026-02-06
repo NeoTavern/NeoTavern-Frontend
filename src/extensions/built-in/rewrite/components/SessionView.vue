@@ -3,20 +3,20 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { Button, Textarea } from '../../../../components/UI';
 import { useStrictI18n } from '../../../../composables/useStrictI18n';
 import { POPUP_RESULT, POPUP_TYPE, type ExtensionAPI } from '../../../../types';
-import type { RewriteLLMResponse, RewriteSessionMessage, RewriteSettings } from '../types';
+import type { FieldChange, RewriteField, RewriteLLMResponse, RewriteSessionMessage, RewriteSettings } from '../types';
 
 const props = defineProps<{
   api: ExtensionAPI<RewriteSettings>;
   messages: RewriteSessionMessage[];
   isGenerating: boolean;
-  currentText: string;
+  initialFields: RewriteField[];
 }>();
 
 const emit = defineEmits<{
   (e: 'send', text: string): void;
   (e: 'delete-from', messageId: string): void;
   (e: 'edit-message', messageId: string, newContent: string): void;
-  (e: 'show-diff', previous: string, current: string): void;
+  (e: 'show-diff', changes: FieldChange[]): void;
   (e: 'abort'): void;
   (e: 'regenerate'): void;
 }>();
@@ -46,7 +46,6 @@ const systemMessagePreview = computed(() => {
   const content = systemMessageContent.value;
   if (!content) return '';
   const lines = content.split('\n');
-  // Return first few lines or truncated text
   return lines.slice(0, 2).join('\n') + (lines.length > 2 || content.length > 100 ? '...' : '');
 });
 
@@ -54,7 +53,6 @@ const systemMessagePreview = computed(() => {
 watch(
   () => props.messages,
   () => {
-    // Scroll to bottom on new message
     nextTick(() => {
       if (chatContainer.value) {
         chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
@@ -63,26 +61,6 @@ watch(
   },
   { deep: true, immediate: true },
 );
-
-// State Calculation
-// Calculates the text state BEFORE each message index.
-// textStates[i] corresponds to the text content before message[i] was applied.
-const messageStates = computed(() => {
-  const states: string[] = [];
-  let current = props.currentText;
-
-  for (const msg of props.messages) {
-    states.push(current);
-
-    if (msg.role === 'assistant') {
-      const response = getResponseText(msg);
-      if (response) {
-        current = response;
-      }
-    }
-  }
-  return states;
-});
 
 function handleSend() {
   if (userInput.value.trim() && !props.isGenerating) {
@@ -103,33 +81,38 @@ function getMessageContent(msg: RewriteSessionMessage): RewriteLLMResponse | str
   }
 }
 
-function getJustification(msg: RewriteSessionMessage): string {
+function getChangesFromMessage(msg: RewriteSessionMessage): FieldChange[] {
   const content = getMessageContent(msg);
-  if (typeof content === 'string') return '';
-  return content.justification;
-}
+  if (typeof content === 'string' || !content) return [];
 
-function getResponseText(msg: RewriteSessionMessage): string | undefined {
-  const content = getMessageContent(msg);
-  if (typeof content === 'string') return content;
-  return content.response;
-}
+  const initialFieldsMap = new Map(props.initialFields.map((f) => [f.id, f]));
 
-function showDiff(msg: RewriteSessionMessage, index: number) {
-  if (msg.role !== 'assistant') return;
-  const current = getResponseText(msg);
-  if (!current) return;
-
-  // The state before this message is stored in messageStates at the same index
-  const previous = messageStates.value[index];
-
-  if (previous === undefined) return;
-  emit('show-diff', previous, current);
+  if (content.changes) {
+    return content.changes.map((c) => {
+      const field = initialFieldsMap.get(c.fieldId);
+      return {
+        ...c,
+        label: field?.label || c.fieldId,
+        oldValue: field?.value || '',
+      };
+    });
+  }
+  if (content.response && props.initialFields.length > 0) {
+    const field = props.initialFields[0];
+    return [
+      {
+        fieldId: field.id,
+        label: field.label,
+        oldValue: field.value,
+        newValue: content.response,
+      },
+    ];
+  }
+  return [];
 }
 
 // Edit Logic
 function startEdit(msg: RewriteSessionMessage) {
-  if (msg.role === 'assistant') return; // Editing assistant messages not supported in this view logic currently
   editingMessageId.value = msg.id;
   editContent.value = msg.content as string;
 }
@@ -163,7 +146,7 @@ async function handleDelete(msgId: string) {
 <template>
   <div class="session-view">
     <div ref="chatContainer" class="chat-container">
-      <div v-for="(msg, index) in messages" :key="msg.id" class="message" :class="`role-${msg.role}`">
+      <div v-for="msg in messages" :key="msg.id" class="message" :class="`role-${msg.role}`">
         <!-- System Message -->
         <div v-if="msg.role === 'system'" class="system-message">
           <div class="system-header" @click="toggleSystemCollapse">
@@ -220,23 +203,32 @@ async function handleDelete(msgId: string) {
 
         <!-- Assistant Message -->
         <div v-if="msg.role === 'assistant'" class="assistant-message">
-          <!-- Justification / Reasoning Display -->
-          <div v-if="getJustification(msg)" class="justification-content">
-            {{ getJustification(msg) }}
+          <div class="assistant-content-wrapper">
+            <div class="justification-content">
+              {{ (getMessageContent(msg) as RewriteLLMResponse).justification }}
+            </div>
+            <div class="changes-proposal">
+              <div v-for="change in getChangesFromMessage(msg)" :key="change.fieldId" class="change-card">
+                <div class="change-header">
+                  <strong class="change-label">{{ change.label }}</strong>
+                  <div class="spacer"></div>
+                  <Button
+                    icon="fa-code-compare"
+                    variant="ghost"
+                    :title="t('extensionsBuiltin.rewrite.popup.showDiff')"
+                    @click="emit('show-diff', getChangesFromMessage(msg))"
+                  />
+                </div>
+                <div class="change-preview">
+                  <pre>{{ change.newValue }}</pre>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Message Controls -->
           <div class="assistant-controls">
-            <Button
-              v-if="getResponseText(msg)"
-              icon="fa-code-compare"
-              variant="ghost"
-              :title="t('extensionsBuiltin.rewrite.popup.showDiff')"
-              class="control-btn"
-              @click="showDiff(msg, index)"
-            />
             <div class="spacer"></div>
-            <!-- Delete for assistant (deletes from here down) -->
             <Button
               icon="fa-trash"
               variant="ghost"
@@ -328,6 +320,7 @@ async function handleDelete(msgId: string) {
     flex-direction: column;
     width: 100%;
     max-width: 100%;
+    padding: 0;
   }
 
   &.role-system {
@@ -456,6 +449,9 @@ pre {
 }
 
 /* Assistant Styles */
+.assistant-content-wrapper {
+  padding: 10px;
+}
 .justification-content {
   white-space: pre-wrap;
   word-break: break-word;
@@ -464,12 +460,46 @@ pre {
   opacity: 0.9;
 }
 
+.changes-proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.change-card {
+  border: 1px solid var(--theme-border-color);
+  border-radius: var(--base-border-radius);
+  background-color: var(--black-20a);
+  overflow: hidden;
+}
+
+.change-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background-color: var(--white-10a);
+}
+
+.change-label {
+  font-weight: 600;
+}
+
+.change-preview {
+  padding: 10px;
+  max-height: 150px;
+  overflow-y: auto;
+  font-size: 0.9em;
+  background-color: var(--black-10a);
+}
+
 .assistant-controls {
   display: flex;
   gap: 5px;
   align-items: center;
   border-top: 1px solid var(--theme-border-color);
-  padding-top: 5px;
+  padding: 5px;
   margin-top: 5px;
 }
 

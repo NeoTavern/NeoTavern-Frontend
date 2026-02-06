@@ -528,6 +528,7 @@ export interface MessageSchema {
     tokens: string;
     confirm: string;
     delete: string;
+    deleted: string;
     of: string;
     continue: string;
     search: string;
@@ -1395,6 +1396,7 @@ export interface MessageSchema {
         resetToDefault: string;
         sessionPreamble: string;
         sessionPreambleHint: string;
+        deleteAllSessions: string;
       };
       popup: {
         template: string;
@@ -1441,11 +1443,13 @@ export interface MessageSchema {
       buttons: {
         rewriteMessage: string;
         rewriteInput: string;
+        rewriteCharacter: string;
       };
       errors: {
         templateNotFound: string;
         selectProfile: string;
         noConnectionProfile: string;
+        noCharFields: string;
       };
       messages: {
         generationAborted: string;

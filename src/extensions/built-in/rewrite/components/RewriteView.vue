@@ -2,10 +2,12 @@
 import * as Diff from 'diff';
 import { ref, watch } from 'vue';
 import { useStrictI18n } from '../../../../composables/useStrictI18n';
+import type { FieldChange } from '../types';
 
 const props = defineProps<{
-  originalText: string;
-  generatedText: string;
+  changes?: FieldChange[];
+  originalText?: string;
+  generatedText?: string;
   isGenerating?: boolean;
   ignoreInput?: boolean;
 }>();
@@ -17,10 +19,7 @@ const emit = defineEmits<{
 const { t } = useStrictI18n();
 
 // Diff State
-const leftHtml = ref<string>('');
-const rightHtml = ref<string>('');
-const leftPaneRef = ref<HTMLElement | null>(null);
-const rightPaneRef = ref<HTMLElement | null>(null);
+const diffHtmls = ref<Array<{ fieldLabel: string; leftHtml: string; rightHtml: string }>>([]);
 
 function escapeHtml(text: string): string {
   return text
@@ -32,118 +31,150 @@ function escapeHtml(text: string): string {
 }
 
 function updateDiff() {
-  if (!props.generatedText) {
-    leftHtml.value = escapeHtml(props.originalText);
-    rightHtml.value = '';
-    return;
+  let changesToUse: FieldChange[];
+  if (props.changes) {
+    changesToUse = props.changes;
+  } else if (props.originalText !== undefined && props.generatedText !== undefined) {
+    changesToUse = [
+      {
+        fieldId: 'text',
+        label: t('extensionsBuiltin.rewrite.popup.output'),
+        oldValue: props.originalText,
+        newValue: props.generatedText,
+      },
+    ];
+  } else {
+    changesToUse = [];
   }
 
-  if (props.ignoreInput) {
-    rightHtml.value = escapeHtml(props.generatedText);
-    return;
-  }
-
-  const diff = Diff.diffWords(props.originalText, props.generatedText);
-  let lHtml = '';
-  let rHtml = '';
-
-  diff.forEach((part) => {
-    const escapedVal = escapeHtml(part.value);
-    if (part.removed) {
-      lHtml += `<span class="diff-del">${escapedVal}</span>`;
-    } else if (part.added) {
-      rHtml += `<span class="diff-ins">${escapedVal}</span>`;
-    } else {
-      lHtml += escapedVal;
-      rHtml += escapedVal;
+  diffHtmls.value = changesToUse.map((change) => {
+    const { label, oldValue, newValue } = change;
+    if (!newValue) {
+      return {
+        fieldLabel: label,
+        leftHtml: escapeHtml(oldValue),
+        rightHtml: '',
+      };
     }
-  });
 
-  leftHtml.value = lHtml;
-  rightHtml.value = rHtml;
+    if (props.ignoreInput) {
+      return {
+        fieldLabel: label,
+        leftHtml: '',
+        rightHtml: escapeHtml(newValue),
+      };
+    }
+
+    const diff = Diff.diffWords(oldValue, newValue);
+    let lHtml = '';
+    let rHtml = '';
+
+    diff.forEach((part) => {
+      const escapedVal = escapeHtml(part.value);
+      if (part.removed) {
+        lHtml += `<span class="diff-del">${escapedVal}</span>`;
+      } else if (part.added) {
+        rHtml += `<span class="diff-ins">${escapedVal}</span>`;
+      } else {
+        lHtml += escapedVal;
+        rHtml += escapedVal;
+      }
+    });
+
+    return {
+      fieldLabel: label,
+      leftHtml: lHtml,
+      rightHtml: rHtml,
+    };
+  });
 }
 
-watch(() => [props.originalText, props.generatedText], updateDiff, { immediate: true });
+watch(() => [props.changes, props.originalText, props.generatedText], updateDiff, { immediate: true, deep: true });
 
 // Scroll Sync
-let isSyncingLeft = false;
-let isSyncingRight = false;
-
-function onLeftScroll() {
-  if (!leftPaneRef.value || !rightPaneRef.value) return;
-  if (isSyncingLeft) {
-    isSyncingLeft = false;
-    return;
-  }
-  isSyncingRight = true;
-  rightPaneRef.value.scrollTop = leftPaneRef.value.scrollTop;
-  rightPaneRef.value.scrollLeft = leftPaneRef.value.scrollLeft;
-}
-
-function onRightScroll() {
-  if (!leftPaneRef.value || !rightPaneRef.value) return;
-  if (isSyncingRight) {
-    isSyncingRight = false;
-    return;
-  }
-  isSyncingLeft = true;
-  leftPaneRef.value.scrollTop = rightPaneRef.value.scrollTop;
-  leftPaneRef.value.scrollLeft = rightPaneRef.value.scrollLeft;
-}
+// For multiple fields, scroll sync might be complex, skip for now
 </script>
 <template>
-  <div v-if="!ignoreInput" class="split-view">
-    <!-- Original / Left Pane -->
-    <div class="pane">
-      <div class="pane-header">{{ t('extensionsBuiltin.rewrite.popup.original') }}</div>
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <div ref="leftPaneRef" class="pane-content diff-content" @scroll="onLeftScroll" v-html="leftHtml"></div>
-    </div>
+  <div class="multi-diff-view">
+    <div v-for="(diff, index) in diffHtmls" :key="index" class="field-diff">
+      <div class="field-header">{{ diff.fieldLabel }}</div>
+      <div v-if="!ignoreInput" class="split-view">
+        <!-- Original / Left Pane -->
+        <div class="pane">
+          <div class="pane-header">{{ t('extensionsBuiltin.rewrite.popup.original') }}</div>
+          <!-- eslint-disable-next-line vue/no-v-html -->
+          <div class="pane-content diff-content" v-html="diff.leftHtml"></div>
+        </div>
 
-    <!-- Generated / Right Pane -->
-    <div class="pane">
-      <div class="pane-header">
-        <span>
-          {{ t('extensionsBuiltin.rewrite.popup.new') }}
-          <span v-if="isGenerating" class="generating-indicator">
-            <i class="fa-solid fa-circle-notch fa-spin"></i>
-          </span>
-        </span>
-        <button v-if="generatedText" class="copy-btn" :title="t('common.copy')" @click="emit('copy-output')">
-          <i class="fa-solid fa-copy"></i>
-        </button>
+        <!-- Generated / Right Pane -->
+        <div class="pane">
+          <div class="pane-header">
+            <span>
+              {{ t('extensionsBuiltin.rewrite.popup.new') }}
+              <span v-if="isGenerating" class="generating-indicator">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+              </span>
+            </span>
+            <button v-if="diff.rightHtml" class="copy-btn" :title="t('common.copy')" @click="emit('copy-output')">
+              <i class="fa-solid fa-copy"></i>
+            </button>
+          </div>
+          <!-- eslint-disable-next-line vue/no-v-html -->
+          <div class="pane-content diff-content" v-html="diff.rightHtml"></div>
+        </div>
       </div>
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <div ref="rightPaneRef" class="pane-content diff-content" @scroll="onRightScroll" v-html="rightHtml"></div>
-    </div>
-  </div>
 
-  <!-- Single output view for templates that ignore input -->
-  <div v-else class="single-view">
-    <div class="pane">
-      <div class="pane-header">
-        <span>
-          {{ t('extensionsBuiltin.rewrite.popup.output') }}
-          <span v-if="isGenerating" class="generating-indicator">
-            <i class="fa-solid fa-circle-notch fa-spin"></i>
-          </span>
-        </span>
-        <button v-if="generatedText" class="copy-btn" :title="t('common.copy')" @click="emit('copy-output')">
-          <i class="fa-solid fa-copy"></i>
-        </button>
+      <!-- Single output view for templates that ignore input -->
+      <div v-else class="single-view">
+        <div class="pane">
+          <div class="pane-header">
+            <span>
+              {{ t('extensionsBuiltin.rewrite.popup.output') }}
+              <span v-if="isGenerating" class="generating-indicator">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+              </span>
+            </span>
+            <button v-if="diff.rightHtml" class="copy-btn" :title="t('common.copy')" @click="emit('copy-output')">
+              <i class="fa-solid fa-copy"></i>
+            </button>
+          </div>
+          <!-- eslint-disable-next-line vue/no-v-html -->
+          <div class="pane-content" v-html="diff.rightHtml"></div>
+        </div>
       </div>
-      <!-- eslint-disable-next-line vue/no-v-html -->
-      <div ref="rightPaneRef" class="pane-content" v-html="rightHtml"></div>
     </div>
   </div>
 </template>
 <style scoped lang="scss">
+.multi-diff-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+  min-height: 300px;
+  overflow: auto;
+}
+
+.field-diff {
+  border: 1px solid var(--theme-border-color);
+  border-radius: var(--base-border-radius);
+  background-color: var(--black-20a);
+  overflow: hidden;
+}
+
+.field-header {
+  padding: 8px 10px;
+  background-color: var(--white-10a);
+  font-weight: bold;
+  border-bottom: 1px solid var(--theme-border-color);
+}
+
 .split-view,
 .single-view {
   display: flex;
   gap: 10px;
   flex: 1;
-  min-height: 300px;
+  min-height: 200px;
   overflow: hidden;
 }
 

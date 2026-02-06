@@ -1,8 +1,22 @@
 import type { MessageRole, StrictOmitString } from '../../../types';
 
+export interface RewriteField {
+  id: string; // e.g., 'character.description' or 'world_info.entry.content'
+  label: string; // e.g., 'Description'
+  value: string;
+}
+
+export interface FieldChange {
+  fieldId: string;
+  label: string;
+  oldValue: string;
+  newValue: string;
+}
+
 export interface RewriteLLMResponse {
   justification: string;
-  response?: string;
+  response?: string; // For single-field and backwards compatibility
+  changes?: Omit<FieldChange, 'oldValue' | 'label'>[]; // For multi-field proposals from LLM
 }
 
 export interface RewriteSessionMessage {
@@ -18,7 +32,7 @@ export interface RewriteSession {
   identifier: string;
   createdAt: number;
   updatedAt: number;
-  originalText: string;
+  initialFields: RewriteField[];
   messages: RewriteSessionMessage[];
   systemPrompt: string;
 }
@@ -177,6 +191,11 @@ ${INPUT_TEXT_BLOCK}
 [Task]
 {{#if fieldName}}
 Field being edited: "{{fieldName}}"
+{{/if}}
+{{#if availableFields}}
+You are in a multi-field editing session. You can propose changes to one or more of the following fields.
+Available field IDs for your response: {{availableFields}}
+When proposing changes, use the 'changes' array in your response, with each object containing 'fieldId' and 'newValue'.
 {{/if}}`;
 
 const worldInfoRefinerPreamble = `You are an expert world builder and database manager assisting a user. Your task is to refine a World Info entry for clarity, conciseness, and effective key utilization.

@@ -1,6 +1,7 @@
 import localforage from 'localforage';
 import type { ApiChatMessage, Character, ExtensionAPI, Persona, StructuredResponseOptions } from '../../../types';
 import type {
+  RewriteField,
   RewriteLLMResponse,
   RewriteSession,
   RewriteSessionMessage,
@@ -61,10 +62,14 @@ export class RewriteService {
     await this.store.removeItem(id);
   }
 
+  public async clearAllSessions(): Promise<void> {
+    await this.store.clear();
+  }
+
   public async createSession(
     templateId: string,
     identifier: string,
-    originalText: string,
+    initialFields: RewriteField[],
     contextData?: { activeCharacter?: Character; characters?: Character[]; persona?: Persona },
     additionalMacros?: Record<string, unknown>,
     argOverrides?: Record<string, boolean | number | string>,
@@ -85,7 +90,8 @@ export class RewriteService {
     }
 
     const macros = {
-      input: originalText,
+      input: initialFields.length > 0 ? initialFields[0].value : '',
+      availableFields: initialFields.map((f) => f.id).join(', '),
       ...args,
       ...additionalMacros,
     };
@@ -99,7 +105,7 @@ export class RewriteService {
       identifier,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      originalText,
+      initialFields,
       systemPrompt: resolvedSystemPrompt,
       messages: [
         {
@@ -170,16 +176,17 @@ export class RewriteService {
   public async generateSessionResponse(
     messages: RewriteSessionMessage[],
     format: StructuredResponseFormat,
+    availableFields: RewriteField[],
     connectionProfile?: string,
     signal?: AbortSignal,
   ): Promise<RewriteLLMResponse> {
+    if (!connectionProfile) {
+      throw new Error(this.api.i18n.t('extensionsBuiltin.rewrite.errors.noConnectionProfile'));
+    }
+
     let apiMessages: ApiChatMessage[] = messages.map((m) => {
-      if (!connectionProfile) {
-        throw new Error(this.api.i18n.t('extensionsBuiltin.rewrite.errors.noConnectionProfile'));
-      }
       let content = m.content;
       if (typeof content !== 'string') {
-        // TODO: Handle other content types properly (e.g., images, files)
         content = JSON.stringify(content);
       }
       return {
@@ -188,6 +195,8 @@ export class RewriteService {
         name: m.role === 'user' ? 'User' : 'Assistant',
       };
     });
+
+    const isMultiField = availableFields.length > 1;
 
     const schema = {
       name: 'rewrite_response',
@@ -199,10 +208,34 @@ export class RewriteService {
             type: 'string',
             description: 'A brief explanation of the changes made and the reasoning behind them.',
           },
-          response: {
-            type: 'string',
-            description: 'The full, rewritten text.',
-          },
+          ...(isMultiField
+            ? {
+                changes: {
+                  type: 'array',
+                  description: 'An array of proposed changes to one or more fields.',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      fieldId: {
+                        type: 'string',
+                        description: 'The ID of the field to change.',
+                        enum: availableFields.map((f) => f.id),
+                      },
+                      newValue: {
+                        type: 'string',
+                        description: 'The new, rewritten content for the field.',
+                      },
+                    },
+                    required: ['fieldId', 'newValue'],
+                  },
+                },
+              }
+            : {
+                response: {
+                  type: 'string',
+                  description: 'The full, rewritten text for the single field.',
+                },
+              }),
         },
         required: ['justification'],
         additionalProperties: false,
@@ -218,10 +251,15 @@ export class RewriteService {
     }
 
     apiMessages = (
-      await this.api.chat.buildPrompt({ chatHistory: apiMessages, structuredResponse: structuredResponseOptions })
+      await this.api.chat.buildPrompt({
+        chatHistory: apiMessages,
+        structuredResponse: structuredResponseOptions,
+        samplerSettings: {
+          prompts: [{ content: '', enabled: true, identifier: 'chatHistory', marker: true, name: 'Chat History' }],
+        },
+      })
     ).messages;
 
-    // If format is 'text', we skip structured response and return raw text as justification
     if (format === 'text') {
       const response = await this.api.llm.generate(apiMessages, {
         connectionProfile,
@@ -257,7 +295,6 @@ export class RewriteService {
             if (data.structured_content) {
               resolve(data.structured_content as RewriteLLMResponse);
             } else {
-              // Fallback if structured content is missing but text exists (unlikely with strict mode)
               reject(new Error('No structured content received'));
             }
           },
@@ -275,21 +312,18 @@ export class RewriteService {
   }
 
   public extractCodeBlock(text: string): string {
-    // Try complete code block first (opening and closing ```)
     const completeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
     const completeMatch = text.match(completeBlockRegex);
     if (completeMatch && completeMatch[1]) {
       return completeMatch[1].trim();
     }
 
-    // Try incomplete code block (has opening ``` but no closing, e.g., aborted generation)
     const incompleteBlockRegex = /```(?:[\w]*\n)?([\s\S]*)/i;
     const incompleteMatch = text.match(incompleteBlockRegex);
     if (incompleteMatch && incompleteMatch[1]) {
       return incompleteMatch[1].trim();
     }
 
-    // No code blocks found, return full text
     return text.trim();
   }
 }

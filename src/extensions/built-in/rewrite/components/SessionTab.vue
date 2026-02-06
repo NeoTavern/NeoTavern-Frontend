@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { Button } from '../../../../components/UI';
 import { SplitPane } from '../../../../components/common';
 import type { ExtensionAPI } from '../../../../types';
-import type { RewriteSession, RewriteSettings } from '../types';
+import type { FieldChange, RewriteField, RewriteSession, RewriteSettings } from '../types';
 import SessionManager from './SessionManager.vue';
 import SessionView from './SessionView.vue';
 
@@ -12,8 +12,8 @@ const props = defineProps<{
   sessions: RewriteSession[];
   activeSession: RewriteSession | null;
   isGenerating: boolean;
-  originalText: string;
-  latestSessionText: string;
+  initialFields: RewriteField[];
+  latestSessionChanges: FieldChange[];
 }>();
 
 const emit = defineEmits<{
@@ -23,8 +23,8 @@ const emit = defineEmits<{
   send: [text: string];
   deleteFrom: [msgId: string];
   editMessage: [msgId: string, newContent: string];
-  apply: [text: string];
-  showDiff: [previous: string, current: string];
+  applyChanges: [changes: FieldChange[]];
+  showDiff: [changes: FieldChange[]];
   abort: [];
   regenerate: [];
   cancel: [];
@@ -35,6 +35,12 @@ const emit = defineEmits<{
 const isSidebarCollapsed = ref(false);
 
 const t = props.api.i18n.t;
+
+function handleApplyLatest() {
+  if (props.latestSessionChanges.length > 0) {
+    emit('applyChanges', props.latestSessionChanges);
+  }
+}
 </script>
 
 <template>
@@ -57,7 +63,7 @@ const t = props.api.i18n.t;
             <Button
               icon="fa-code-compare"
               :title="t('extensionsBuiltin.rewrite.popup.generalDiff')"
-              :disabled="!latestSessionText"
+              :disabled="latestSessionChanges.length === 0"
               @click="emit('generalDiff')"
             >
               {{ t('extensionsBuiltin.rewrite.popup.diff') }}
@@ -68,13 +74,12 @@ const t = props.api.i18n.t;
             v-if="activeSession"
             :messages="activeSession.messages"
             :is-generating="isGenerating"
-            :current-text="originalText"
+            :initial-fields="initialFields"
             :api="api"
             @send="emit('send', $event)"
             @delete-from="emit('deleteFrom', $event)"
             @edit-message="emit('editMessage', $event, $event)"
-            @apply-text="emit('apply', $event)"
-            @show-diff="emit('showDiff', $event, $event)"
+            @show-diff="emit('showDiff', $event)"
             @abort="emit('abort')"
             @regenerate="emit('regenerate')"
           />
@@ -92,8 +97,8 @@ const t = props.api.i18n.t;
             <Button
               v-if="activeSession"
               variant="confirm"
-              :disabled="!latestSessionText || isGenerating"
-              @click="emit('applyLatest')"
+              :disabled="!latestSessionChanges.length || isGenerating"
+              @click="handleApplyLatest"
             >
               {{ t('extensionsBuiltin.rewrite.popup.apply') }}
             </Button>

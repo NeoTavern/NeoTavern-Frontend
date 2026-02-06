@@ -11,22 +11,47 @@ import { useRewriteContext } from './composables/useRewriteContext';
 import { useRewriteOneShot } from './composables/useRewriteOneShot';
 import { useRewriteSessions } from './composables/useRewriteSessions';
 import { useRewriteSettings } from './composables/useRewriteSettings';
-import type { RewriteSettings, StructuredResponseFormat } from './types';
+import type { FieldChange, RewriteField, RewriteSettings, StructuredResponseFormat } from './types';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function deepToRaw<T extends Record<string, any>>(sourceObj: T): T {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const objectIterator = (input: any): any => {
+    if (Array.isArray(input)) {
+      return input.map((item) => objectIterator(item));
+    }
+    if (input && typeof input === 'object') {
+      return Object.keys(input).reduce((acc, key) => {
+        acc[key as keyof typeof acc] = objectIterator(input[key]);
+        return acc;
+      }, {} as T);
+    }
+    return input;
+  };
+
+  return objectIterator(sourceObj);
+}
 
 const props = defineProps<{
   api: ExtensionAPI<RewriteSettings>;
-  originalText: string;
+  initialFields: RewriteField[];
   identifier: string;
   referenceMessageIndex?: number;
-  onApply: (text: string) => void;
+  onApply: (changes: FieldChange[]) => void;
   onCancel: () => void;
   closePopup?: () => void;
 }>();
 
 const t = props.api.i18n.t;
 
+// Clone reactive props to plain objects
+const safeInitialFields = computed(() => deepToRaw(props.initialFields));
+
 // UI State
-const activeTab = ref<string>('one-shot');
+const isMultiFieldMode = computed(() => safeInitialFields.value.length > 1);
+const activeTab = ref<string>(isMultiFieldMode.value ? 'session' : 'one-shot');
+const primaryField = computed(() => safeInitialFields.value[0] || { id: '', label: '', value: '' });
+const originalText = computed(() => primaryField.value.value);
 
 // Use composables
 const {
@@ -73,7 +98,7 @@ const {
   sessions,
   activeSession,
   isGenerating: sessionIsGenerating,
-  latestSessionText,
+  latestSessionChanges,
   refreshSessions,
   handleNewSession: newSession,
   handleLoadSession: loadSession,
@@ -100,7 +125,7 @@ async function handleGenerateOneShot() {
     ...worldInfoMacros,
   };
   generateOneShot(
-    props.originalText,
+    originalText.value,
     selectedTemplateId.value,
     selectedProfile.value,
     promptOverride.value,
@@ -125,7 +150,7 @@ async function handleNewSession() {
   newSession(
     selectedTemplateId.value,
     props.identifier,
-    props.originalText,
+    safeInitialFields.value,
     getContextData(),
     additionalMacros,
     argOverrides.value,
@@ -138,22 +163,43 @@ function handleDeleteSession(id: string) {
 }
 
 function handleSend(text: string) {
-  sessionSend(text, selectedProfile.value, structuredResponseFormat.value, t as (key: string) => string);
+  sessionSend(
+    text,
+    selectedProfile.value,
+    structuredResponseFormat.value,
+    safeInitialFields.value,
+    t as (key: string) => string,
+  );
 }
 
 function handleRegenerate() {
-  regenerate(selectedProfile.value, structuredResponseFormat.value, t as (key: string) => string);
+  regenerate(
+    selectedProfile.value,
+    structuredResponseFormat.value,
+    safeInitialFields.value,
+    t as (key: string) => string,
+  );
 }
 
-function handleApply(text: string) {
+function handleApply(changes: FieldChange[]) {
   saveState();
-  props.onApply(text);
+  props.onApply(changes);
   props.closePopup?.();
 }
 
+function handleApplyOneShot() {
+  const change: FieldChange = {
+    fieldId: primaryField.value.id,
+    label: primaryField.value.label,
+    oldValue: primaryField.value.value,
+    newValue: oneShotGeneratedText.value,
+  };
+  handleApply([change]);
+}
+
 function handleApplyLatestSession() {
-  if (latestSessionText.value) {
-    handleApply(latestSessionText.value);
+  if (latestSessionChanges.value.length > 0) {
+    handleApply(latestSessionChanges.value);
   }
 }
 
@@ -166,37 +212,20 @@ function handleCopy() {
   handleCopyOutput(t as (key: string) => string);
 }
 
-function openDiffPopup(original: string, modified: string) {
-  props.api.ui
-    .showPopup({
-      title: t('extensionsBuiltin.rewrite.popup.diff'),
-      component: markRaw(RewriteView),
-      componentProps: {
-        originalText: original,
-        generatedText: modified,
-        isGenerating: false,
-        ignoreInput: false,
-      },
-      wide: true,
-      large: true,
-      customButtons: [
-        {
-          text: t('extensionsBuiltin.rewrite.popup.apply'),
-          result: 1, // Positive result
-          classes: ['btn-confirm'],
-        },
-        {
-          text: t('common.close'),
-          result: 0,
-          classes: ['btn-ghost'],
-        },
-      ],
-    })
-    .then(({ result }) => {
-      if (result === 1) {
-        handleApply(modified);
-      }
-    });
+function openDiffPopup(changes: FieldChange[]) {
+  props.api.ui.showPopup({
+    title: t('extensionsBuiltin.rewrite.popup.diff'),
+    component: markRaw(RewriteView),
+    componentProps: {
+      changes,
+      isGenerating: false,
+      ignoreInput: false,
+    },
+    wide: true,
+    large: true,
+    okButton: false,
+    cancelButton: true,
+  });
 }
 
 onMounted(async () => {
@@ -226,14 +255,16 @@ watch(
   { deep: true },
 );
 
-function handleShowDiff(previous: string, current: string) {
-  openDiffPopup(previous, current);
+function handleShowDiff(changes: FieldChange[]) {
+  openDiffPopup(changes);
 }
 
 function handleGeneralDiff() {
   if (!activeSession.value) return;
-  // Diff Original vs Latest
-  openDiffPopup(props.originalText, latestSessionText.value);
+  const changes = latestSessionChanges.value;
+  if (changes.length > 0) {
+    handleShowDiff(changes);
+  }
 }
 </script>
 
@@ -289,7 +320,11 @@ function handleGeneralDiff() {
     <Tabs
       v-model="activeTab"
       :options="[
-        { label: t('extensionsBuiltin.rewrite.popup.oneShot'), value: 'one-shot', icon: 'fa-wand-magic-sparkles' },
+        {
+          label: t('extensionsBuiltin.rewrite.popup.oneShot'),
+          value: 'one-shot',
+          icon: 'fa-wand-magic-sparkles',
+        },
         { label: t('extensionsBuiltin.rewrite.popup.sessions'), value: 'session', icon: 'fa-comments' },
       ]"
     />
@@ -306,7 +341,7 @@ function handleGeneralDiff() {
         @generate="handleGenerateOneShot"
         @abort="handleOneShotAbort"
         @cancel="handleCancel"
-        @apply="handleApply"
+        @apply="handleApplyOneShot"
         @copy-output="handleCopy"
       />
 
@@ -317,15 +352,15 @@ function handleGeneralDiff() {
         :sessions="sessions"
         :active-session="activeSession"
         :is-generating="isGenerating"
-        :original-text="originalText"
-        :latest-session-text="latestSessionText"
+        :initial-fields="safeInitialFields"
+        :latest-session-changes="latestSessionChanges"
         @new-session="handleNewSession"
         @load-session="loadSession"
         @delete-session="handleDeleteSession"
         @send="handleSend"
         @delete-from="sessionDeleteFrom"
         @edit-message="editMessage"
-        @apply="handleApply"
+        @apply-changes="handleApply"
         @show-diff="handleShowDiff"
         @abort="handleSessionAbort"
         @regenerate="handleRegenerate"

@@ -5,7 +5,7 @@ import type { CodeMirrorTarget } from '../../../types/settings';
 import { manifest } from './manifest';
 import RewritePopup from './RewritePopup.vue';
 import SettingsPanel from './SettingsPanel.vue';
-import type { RewriteSettings } from './types';
+import type { FieldChange, RewriteField, RewriteSettings } from './types';
 
 export { manifest };
 
@@ -19,11 +19,8 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
 
   // --- Helper to open Popup ---
   const handleRewrite = async (
-    originalText: string,
-    setValue: (val: string) => void,
+    scope: { fields: RewriteField[]; onApply: (changes: FieldChange[]) => void },
     identifier: string,
-    // Context messages are now calculated inside the popup based on settings,
-    // but we can pass the reference index/context if needed for specific logic.
     referenceMessageIndex?: number,
   ) => {
     await api.ui.showPopup({
@@ -31,11 +28,11 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
       component: markRaw(RewritePopup),
       componentProps: {
         api,
-        originalText,
+        initialFields: scope.fields,
         identifier,
         referenceMessageIndex,
-        onApply: (newText: string) => {
-          setValue(newText);
+        onApply: (changes: FieldChange[]) => {
+          scope.onApply(changes);
           api.ui.showToast(t('extensionsBuiltin.rewrite.messages.textUpdated'), 'success');
         },
         onCancel: () => {},
@@ -48,8 +45,42 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
     });
   };
 
+  // Helper for global character rewrite
+  const handleGlobalCharacterRewrite = () => {
+    const char = api.character.getEditing();
+    if (!char) return;
+
+    const fields: RewriteField[] = [
+      { id: 'description', label: 'Description', value: char.description },
+      { id: 'personality', label: 'Personality', value: char.personality },
+      { id: 'scenario', label: 'Scenario', value: char.scenario },
+      { id: 'first_mes', label: 'First Message', value: char.first_mes },
+      { id: 'mes_example', label: 'Example Messages', value: char.mes_example },
+    ]
+      .filter((f) => f.value)
+      .map((f) => ({ ...f, value: f.value! }));
+
+    if (fields.length === 0) {
+      api.ui.showToast(t('extensionsBuiltin.rewrite.errors.noCharFields'), 'info');
+      return;
+    }
+
+    handleRewrite(
+      {
+        fields,
+        onApply: (changes) => {
+          const updates: Record<string, string> = {};
+          changes.forEach((change) => {
+            updates[change.fieldId] = change.newValue;
+          });
+          api.character.update(char.avatar, updates);
+        },
+      },
+      `character.global.${char.avatar}`,
+    );
+  };
+
   // 1. Register Tools for Textareas
-  // Explicitly keep core field names as requested, to ensure they are covered.
   const coreTargets: (CodeMirrorTarget | string)[] = [
     'character.description',
     'character.first_mes',
@@ -65,41 +96,64 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
     'prompt.content',
   ];
 
-  // Regex pattern to match any extension settings fields automatically.
-  // This allows other extensions to use the rewrite tool without modifying this file.
-  // Matches "extension.<anything>.<anything>"
   const extensionPattern = /^extension\..+/;
-
   const unbinds: Array<() => void> = [];
 
-  const toolDefinition: TextareaToolDefinition = {
+  const singleFieldTool: TextareaToolDefinition = {
     id: 'rewrite-wand',
     icon: 'fa-solid fa-wand-magic-sparkles',
     title: t('extensionsBuiltin.rewrite.popupTitle'),
-    onClick: () => {},
+    onClick: ({ value, setValue }) => {
+      const field: RewriteField = { id: 'extension', label: 'Extension Field', value };
+      handleRewrite(
+        {
+          fields: [field],
+          onApply: (changes) => {
+            if (changes.length > 0) setValue(changes[0].newValue);
+          },
+        },
+        'extension.generic',
+      );
+    },
+  };
+
+  const globalCharacterTool: TextareaToolDefinition = {
+    id: 'rewrite-character-global',
+    icon: 'fa-solid fa-wand-magic',
+    title: t('extensionsBuiltin.rewrite.buttons.rewriteCharacter'),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    onClick: (_e) => handleGlobalCharacterRewrite(),
   };
 
   // Register Core Targets
   coreTargets.forEach((target) => {
-    unbinds.push(
-      api.ui.registerTextareaTool(target as CodeMirrorTarget, {
-        ...toolDefinition,
-        onClick: ({ value, setValue }) => {
-          handleRewrite(value, setValue, target as string);
-        },
-      }),
-    );
+    const tool: TextareaToolDefinition = {
+      id: 'rewrite-wand',
+      icon: 'fa-solid fa-wand-magic-sparkles',
+      title: t('extensionsBuiltin.rewrite.popupTitle'),
+      onClick: ({ value, setValue }) => {
+        const field: RewriteField = { id: target, label: target, value };
+        handleRewrite(
+          {
+            fields: [field],
+            onApply: (changes) => {
+              const change = changes.find((c) => c.fieldId === target);
+              if (change) setValue(change.newValue);
+            },
+          },
+          target,
+        );
+      },
+    };
+    unbinds.push(api.ui.registerTextareaTool(target as CodeMirrorTarget, tool));
   });
 
+  // Register global tool on key character fields
+  unbinds.push(api.ui.registerTextareaTool('character.description', globalCharacterTool));
+  unbinds.push(api.ui.registerTextareaTool('character.personality', globalCharacterTool));
+
   // Register Pattern for Extension settings
-  unbinds.push(
-    api.ui.registerTextareaTool(extensionPattern, {
-      ...toolDefinition,
-      onClick: ({ value, setValue }) => {
-        handleRewrite(value, setValue, 'extension.generic');
-      },
-    }),
-  );
+  unbinds.push(api.ui.registerTextareaTool(extensionPattern, singleFieldTool));
 
   // 2. Chat Message Toolbar Injection
   const injectSingleButton = async (messageElement: HTMLElement, messageIndex: number) => {
@@ -122,10 +176,13 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
         const msg = history[messageIndex];
         if (!msg) return;
 
+        const field: RewriteField = { id: 'chat.message', label: 'Chat Message', value: msg.mes };
         handleRewrite(
-          msg.mes,
-          (newVal) => {
-            api.chat.updateMessage(messageIndex, newVal);
+          {
+            fields: [field],
+            onApply: (changes) => {
+              if (changes.length > 0) api.chat.updateMessage(messageIndex, changes[0].newValue);
+            },
           },
           'chat.message',
           messageIndex,
@@ -150,10 +207,13 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
       const input = api.chat.getChatInput();
       if (!input || !input.value) return;
 
+      const field: RewriteField = { id: 'chat.input', label: 'Chat Input', value: input.value };
       handleRewrite(
-        input.value,
-        (newVal) => {
-          api.chat.setChatInput(newVal);
+        {
+          fields: [field],
+          onApply: (changes) => {
+            if (changes.length > 0) api.chat.setChatInput(changes[0].newValue);
+          },
         },
         'chat.input',
         api.chat.getHistory().length,
@@ -173,6 +233,54 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
     });
   };
 
+  // 4. Character Edit Form Button Injection
+  const injectCharacterButton = () => {
+    const containers = document.querySelectorAll('.character-edit-form-buttons');
+    if (containers.length === 0) return;
+
+    containers.forEach((container) => {
+      if (container.querySelector('.rewrite-character-global-wrapper')) return;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'rewrite-character-global-wrapper';
+      container.appendChild(wrapper);
+
+      api.ui.mountComponent(wrapper, MountableComponent.Button, {
+        icon: 'fa-wand-magic',
+        title: t('extensionsBuiltin.rewrite.buttons.rewriteCharacter'),
+        variant: 'ghost',
+        onClick: handleGlobalCharacterRewrite,
+      });
+    });
+
+    // Disconnect observer once buttons are injected
+    observer.disconnect();
+  };
+  // Use MutationObserver to watch for character edit form buttons appearing
+  const observer = new MutationObserver((mutations) => {
+    let shouldInject = false;
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const element = node as Element;
+          if (
+            element.classList?.contains('character-edit-form-buttons') ||
+            element.querySelector('.character-edit-form-buttons')
+          ) {
+            shouldInject = true;
+          }
+        }
+      });
+    });
+    if (shouldInject) {
+      injectCharacterButton();
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
   // Listeners
   unbinds.push(
     api.events.on('chat:entered', () => {
@@ -193,11 +301,14 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
   // Init
   injectButtons();
   injectInputOption();
+  injectCharacterButton();
 
   return () => {
     unbinds.forEach((u) => u());
     document.querySelectorAll('.rewrite-button-wrapper').forEach((el) => el.remove());
+    document.querySelectorAll('.rewrite-character-global-wrapper').forEach((el) => el.remove());
     api.ui.unregisterChatFormOptionsMenuItem('rewrite-input-option');
     api.ui.unregisterChatQuickAction('core.input-message', 'rewrite-input-option');
+    observer.disconnect();
   };
 }

@@ -1,7 +1,14 @@
 import { computed, ref } from 'vue';
 import type { Character, ExtensionAPI, Persona } from '../../../../types';
 import { RewriteService } from '../RewriteService';
-import type { RewriteLLMResponse, RewriteSession, RewriteSettings, StructuredResponseFormat } from '../types';
+import type {
+  FieldChange,
+  RewriteField,
+  RewriteLLMResponse,
+  RewriteSession,
+  RewriteSettings,
+  StructuredResponseFormat,
+} from '../types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function deepToRaw<T extends Record<string, any>>(sourceObj: T): T {
@@ -30,21 +37,47 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
   const isGenerating = ref<boolean>(false);
   const abortController = ref<AbortController | null>(null);
 
-  const latestSessionText = computed(() => {
-    if (!activeSession.value || activeSession.value.messages.length === 0) return '';
-    // Iterate backwards to find last assistant message with a response
+  const latestSessionChanges = computed((): FieldChange[] => {
+    if (!activeSession.value || activeSession.value.messages.length === 0) return [];
+
     const messages = activeSession.value.messages;
     for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i];
-      if (m.role === 'assistant') {
-        const content = m.content;
-        if (typeof content === 'string') return content;
-        if ((content as RewriteLLMResponse).response) {
-          return (content as RewriteLLMResponse).response as string;
+      const msg = messages[i];
+      if (msg.role !== 'assistant') continue;
+
+      const content = msg.content as RewriteLLMResponse;
+      if (!content) continue;
+
+      const initialFieldsMap = new Map(activeSession.value.initialFields.map((f) => [f.id, f]));
+
+      // Handle multi-field changes
+      if (content.changes && content.changes.length > 0) {
+        return content.changes.map((change) => {
+          const initialField = initialFieldsMap.get(change.fieldId);
+          return {
+            ...change,
+            label: initialField?.label || change.fieldId,
+            oldValue: initialField?.value || '',
+          };
+        });
+      }
+
+      // Handle single-field response (backward compatibility)
+      if (content.response) {
+        const primaryField = activeSession.value.initialFields[0];
+        if (primaryField) {
+          return [
+            {
+              fieldId: primaryField.id,
+              label: primaryField.label,
+              oldValue: primaryField.value,
+              newValue: content.response,
+            },
+          ];
         }
       }
     }
-    return '';
+    return [];
   });
 
   async function refreshSessions(identifier: string) {
@@ -54,7 +87,7 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
   async function handleNewSession(
     selectedTemplateId: string,
     identifier: string,
-    originalText: string,
+    initialFields: RewriteField[],
     contextData: { activeCharacter?: Character; persona?: Persona },
     additionalMacros: Record<string, unknown>,
     argOverrides: Record<string, boolean | number | string>,
@@ -64,9 +97,9 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
       activeSession.value = await service.createSession(
         selectedTemplateId,
         identifier,
-        originalText,
-        contextData,
-        additionalMacros,
+        deepToRaw(initialFields),
+        deepToRaw(contextData),
+        deepToRaw(additionalMacros),
         argOverrides,
       );
       await refreshSessions(identifier);
@@ -89,10 +122,17 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
     await refreshSessions(identifier);
   }
 
+  async function handleClearAllSessions() {
+    await service.clearAllSessions();
+    activeSession.value = null;
+    sessions.value = [];
+  }
+
   async function handleSessionSend(
     text: string,
     selectedProfile: string,
     structuredResponseFormat: StructuredResponseFormat,
+    availableFields: RewriteField[],
     t: (key: string) => string,
   ) {
     if (!activeSession.value || !selectedProfile) return;
@@ -109,12 +149,13 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
     });
     await service.saveSession(deepToRaw(activeSession.value));
 
-    await executeSessionGeneration(selectedProfile, structuredResponseFormat, t);
+    await executeSessionGeneration(selectedProfile, structuredResponseFormat, availableFields, t);
   }
 
   async function executeSessionGeneration(
     selectedProfile: string,
     structuredResponseFormat: StructuredResponseFormat,
+    availableFields: RewriteField[],
     t: (key: string) => string,
   ) {
     if (!activeSession.value || !selectedProfile) return;
@@ -123,6 +164,7 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
       const response = await service.generateSessionResponse(
         activeSession.value.messages,
         structuredResponseFormat,
+        deepToRaw(availableFields),
         selectedProfile || api.settings.getGlobal('api.selectedConnectionProfile'),
         abortController.value?.signal,
       );
@@ -170,6 +212,7 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
   async function handleRegenerate(
     selectedProfile: string,
     structuredResponseFormat: StructuredResponseFormat,
+    availableFields: RewriteField[],
     t: (key: string) => string,
   ) {
     if (!activeSession.value) return;
@@ -186,7 +229,7 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
     // Generate
     isGenerating.value = true;
     abortController.value = new AbortController();
-    await executeSessionGeneration(selectedProfile, structuredResponseFormat, t);
+    await executeSessionGeneration(selectedProfile, structuredResponseFormat, availableFields, t);
   }
 
   function handleAbort() {
@@ -201,11 +244,12 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
     activeSession,
     isGenerating,
     abortController,
-    latestSessionText,
+    latestSessionChanges,
     refreshSessions,
     handleNewSession,
     handleLoadSession,
     handleDeleteSession,
+    handleClearAllSessions,
     handleSessionSend,
     handleSessionDeleteFrom,
     handleEditMessage,

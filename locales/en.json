@@ -525,6 +525,7 @@
     "tokens": "Tokens",
     "confirm": "Confirm",
     "delete": "Delete",
+    "deleted": "Deleted",
     "of": "of",
     "continue": "Continue",
     "search": "Search",
@@ -1391,7 +1392,8 @@
         "selectTemplate": "Select a template to edit",
         "resetToDefault": "Reset to default",
         "sessionPreamble": "Session Preamble",
-        "sessionPreambleHint": "The system prompt used for the chat session context."
+        "sessionPreambleHint": "The system prompt used for the chat session context.",
+        "deleteAllSessions": "Delete All Sessions"
       },
       "popup": {
         "template": "Template",
@@ -1437,12 +1439,14 @@
       },
       "buttons": {
         "rewriteMessage": "Rewrite Message",
-        "rewriteInput": "Rewrite Input"
+        "rewriteInput": "Rewrite Input",
+        "rewriteCharacter": "Rewrite Character"
       },
       "errors": {
         "templateNotFound": "Template not found",
         "selectProfile": "Please select a connection profile",
-        "noConnectionProfile": "No connection profile selected"
+        "noConnectionProfile": "No connection profile selected",
+        "noCharFields": "No character fields have content to rewrite."
       },
       "messages": {
         "generationAborted": "Generation aborted",
