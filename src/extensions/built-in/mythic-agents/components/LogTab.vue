@@ -173,6 +173,10 @@ function formatOutcome(outcome: string) {
   border-radius: var(--base-border-radius);
   padding: var(--spacing-sm);
   margin-top: var(--spacing-xs);
+
+  .action {
+    margin-right: 4px;
+  }
 }
 
 .event-header {
