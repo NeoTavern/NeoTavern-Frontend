@@ -12,12 +12,15 @@ import type {
   ProcessedWorldInfo,
   PromptBuilderOptions,
   SamplerSettings,
+  StructuredResponseOptions,
+  StructuredResponsePrompted,
   Tokenizer,
   WorldInfoBook,
   WorldInfoSettings,
 } from '../types';
 import { countTokens, eventEmitter } from '../utils/extensions';
 import { compressImage, getImageTokenCost, getMediaDurationFromDataURL, isDataURL } from '../utils/media';
+import { buildStructuredResponseSystemPrompt } from '../utils/structured-response';
 import { macroService } from './macro-service';
 import { WorldInfoProcessor } from './world-info';
 
@@ -36,6 +39,22 @@ export class PromptBuilder {
   public generationId: string;
   public mediaTokenCost = 0;
   public mediaContext: MediaHydrationContext;
+  public structuredResponse?: StructuredResponseOptions;
+
+  private static convertApiMessagesToChatMessages(apiMessages: ApiChatMessage[]): ChatMessage[] {
+    return apiMessages.map((m) => ({
+      extra: {},
+      is_user: m.role === 'user',
+      is_system: m.role === 'system',
+      mes: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+      name: m.name,
+      send_date: new Date().toISOString(),
+      swipe_id: 0,
+      swipe_info: [],
+      swipes: [],
+      original_avatar: '',
+    }));
+  }
 
   constructor({
     characters,
@@ -48,11 +67,15 @@ export class PromptBuilder {
     books,
     generationId,
     mediaContext,
+    structuredResponse,
   }: PromptBuilderOptions) {
     this.characters = characters;
     this.character = characters[0];
     this.chatMetadata = chatMetadata;
-    this.chatHistory = chatHistory;
+    this.chatHistory =
+      Array.isArray(chatHistory) && chatHistory.length > 0 && 'role' in chatHistory[0]
+        ? PromptBuilder.convertApiMessagesToChatMessages(chatHistory as ApiChatMessage[])
+        : (chatHistory as ChatMessage[]);
     this.samplerSettings = samplerSettings;
     this.persona = persona;
     this.tokenizer = tokenizer;
@@ -60,6 +83,7 @@ export class PromptBuilder {
     this.books = books;
     this.generationId = generationId;
     this.mediaContext = mediaContext;
+    this.structuredResponse = structuredResponse;
 
     this.maxContext = this.samplerSettings.max_context ?? defaultSamplerSettings.max_context;
   }
@@ -300,6 +324,16 @@ export class PromptBuilder {
           if (content) fixedPrompts.push({ role, content, name });
         }
       }
+    }
+
+    // Add structured response system prompt if needed
+    if (this.structuredResponse && this.structuredResponse.format !== 'native') {
+      const systemPrompt = buildStructuredResponseSystemPrompt(this.structuredResponse as StructuredResponsePrompted);
+      fixedPrompts.push({
+        role: 'system',
+        content: systemPrompt,
+        name: 'System',
+      });
     }
 
     for (const prompt of fixedPrompts) {

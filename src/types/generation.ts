@@ -306,19 +306,21 @@ export type GenerationContext = {
   };
   // Other relevant data available to the interceptor for read-only purposes or modification
   playerName: string;
+  structuredResponse?: StructuredResponseOptions;
 } & { controller: AbortController };
 
 export type PromptBuilderOptions = {
   generationId: string;
   characters: Character[];
   chatMetadata: ChatMetadata;
-  chatHistory: ChatMessage[];
+  chatHistory: ChatMessage[] | ApiChatMessage[];
   worldInfo: WorldInfoSettings;
   books: WorldInfoBook[];
   samplerSettings: SamplerSettings;
   persona: Persona;
   tokenizer: Tokenizer;
   mediaContext: MediaHydrationContext;
+  structuredResponse?: StructuredResponseOptions;
 };
 
 export interface MediaHydrationContext {

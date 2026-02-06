@@ -3,6 +3,7 @@ import { ReasoningEffort } from '../src/constants';
 import { PromptBuilder } from '../src/services/prompt-engine';
 import { WorldInfoProcessor } from '../src/services/world-info';
 import type {
+  ApiChatContentPart,
   Character,
   ChatMessage,
   ChatMetadata,
@@ -25,9 +26,9 @@ vi.mock('../src/utils/extensions', () => ({
       return await tokenizer.getTokenCount(content);
     }
     if (Array.isArray(content)) {
-      const textContent = content
-        .filter((part: never) => part.type === 'text')
-        .map((part: never) => part.text || '')
+      const textContent = (content as ApiChatContentPart[])
+        .filter((part) => part.type === 'text')
+        .map((part) => part.text || '')
         .join('');
       return await tokenizer.getTokenCount(textContent);
     }
@@ -107,6 +108,20 @@ const mockWorldInfoSettings: WorldInfoSettings = {
   maxRecursionSteps: 0,
 };
 
+const mockMediaContext = {
+  apiSettings: {
+    sendMedia: false,
+    imageQuality: 'low' as const,
+    forbidExternalMedia: false,
+  },
+  modelCapabilities: {
+    vision: false,
+    video: false,
+    audio: false,
+  },
+  formatter: 'chat' as const,
+};
+
 const mockSamplerSettings: SamplerSettings = {
   temperature: 1,
   frequency_penalty: 0,
@@ -160,6 +175,8 @@ describe('PromptBuilder', () => {
       worldInfo: mockWorldInfoSettings,
       books: [],
       generationId: 'gen1',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
     });
 
     const messages = await builder.build();
@@ -216,6 +233,8 @@ describe('PromptBuilder', () => {
       worldInfo: mockWorldInfoSettings,
       books: [],
       generationId: 'gen2',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
     });
 
     const messages = await builder.build();
@@ -266,6 +285,8 @@ describe('PromptBuilder', () => {
       worldInfo: mockWorldInfoSettings,
       books: [],
       generationId: 'gen3',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
     });
 
     const messages = await builder.build();
@@ -299,6 +320,8 @@ describe('PromptBuilder', () => {
       worldInfo: mockWorldInfoSettings,
       books: [],
       generationId: 'gen4',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
     });
 
     const messages = await builder.build();
@@ -324,6 +347,8 @@ describe('PromptBuilder', () => {
       worldInfo: mockWorldInfoSettings,
       books: [],
       generationId: 'gen5',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
     });
 
     const messages = await builder.build();
@@ -344,6 +369,8 @@ describe('PromptBuilder', () => {
       worldInfo: mockWorldInfoSettings,
       books: [],
       generationId: 'gen1',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
     });
 
     const messages = await builder.build();
@@ -377,6 +404,8 @@ describe('PromptBuilder', () => {
       worldInfo: mockWorldInfoSettings,
       books: [],
       generationId: 'gen2',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
     });
 
     const messages = await builder.build();
@@ -396,6 +425,8 @@ describe('PromptBuilder', () => {
       worldInfo: mockWorldInfoSettings,
       books: [],
       generationId: 'gen3',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
     });
 
     const messages = await builder.build();
@@ -433,6 +464,8 @@ describe('PromptBuilder', () => {
       worldInfo: mockWorldInfoSettings,
       books: [],
       generationId: 'gen_depth',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
     });
 
     const messages = await builder.build();
@@ -501,6 +534,8 @@ describe('PromptBuilder', () => {
       worldInfo: mockWorldInfoSettings,
       books: [],
       generationId: 'gen_em',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
     });
 
     const messages = await builder.build();

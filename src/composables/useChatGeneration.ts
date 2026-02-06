@@ -530,6 +530,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         modelCapabilities: modelCapabilities,
         formatter: effectiveFormatter,
       },
+      structuredResponse: context.structuredResponse,
     });
 
     if (deps.activeChat.value !== chatContext) throw new Error('Context switched');
@@ -671,6 +672,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         includeRegisteredTools: true,
       },
       mode: mode,
+      structuredResponse: context.structuredResponse,
     };
 
     const payloadController = new AbortController();

@@ -109,7 +109,7 @@ Combine all the above elements into a fluid and immersive narrative. Follow thes
     - An **Exceptional Yes** means the outcome is the best possible version of "Yes." Something extra good happens.
     - An **Exceptional No** means the outcome is the worst possible version of "No." It might even be the opposite of what was intended, or introduce a new complication.
 4.  **Integrate Random Events:** If a random event occurred, seamlessly weave it into the narration. It can happen before, during, or after the main action's resolution.
-5.  **Be a Storyteller:** Do NOT repeat the summary text above. Only output the final, engaging story segment.
+5.  **Be a Storyteller:** Do NOT repeat the summary text above. Only output the final, engaging story segment. Respect existing chat history format like asterisks, quotes, or other stylistic choices. Make the story vivid and immersive.
 6.  **CRITICAL: Avoid Meta-Commentary:** Your entire response must be in-character as the narrator and written in {{language_name}}. Do NOT mention game mechanics like "Fate Roll," "Chaos Rank," "Random Event," or scenes. The output should be pure, immersive story.
 {{#if narrationRules}}
 
@@ -121,7 +121,7 @@ Begin the narration now.
 {{#if includeSceneUpdate}}
 
 ### Additional Task: Update Scene State
-After narrating the scene, provide the updated scene state as JSON:
+After narrating the scene, provide the updated scene state:
 - Update characters and threads based on the narrated events.
 - Determine scene_outcome as 'player_in_control' or 'chaotic'.
 - Include a justification.

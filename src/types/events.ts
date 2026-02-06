@@ -9,6 +9,7 @@ import type {
   GenerationResponse,
   PromptBuilderOptions,
   StreamedChunk,
+  StructuredResponseOptions,
   ToolGenerationConfig,
 } from './generation';
 import type { InstructTemplate } from './instruct';
@@ -33,6 +34,7 @@ export interface GenerationPayloadBuilderConfig {
   activeCharacter?: Character;
   toolConfig?: ToolGenerationConfig;
   mode: GenerationMode;
+  structuredResponse?: StructuredResponseOptions;
 }
 
 export interface LlmUsageData {

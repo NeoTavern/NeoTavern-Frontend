@@ -1,3 +1,4 @@
+import type { StructuredResponseOptions } from '../../../types';
 import { uuidv4 } from '../../../utils/commons';
 import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT } from './prompts';
 import type { AnalysisOutput, MythicCharacter, MythicExtensionAPI, Scene, SceneUpdate } from './types';
@@ -16,7 +17,11 @@ export async function analyzeUserAction(
     scene,
     language_name: settings?.language || 'English',
   });
-  const itemizedPrompt = await api.chat.buildPrompt();
+  const structuredResponse: StructuredResponseOptions = {
+    schema: { name: 'analysis_output', strict: true, value: AnalysisOutputSchema.toJSONSchema() },
+    format: 'json',
+  };
+  const itemizedPrompt = await api.chat.buildPrompt({ structuredResponse });
   const messages = itemizedPrompt.messages;
   messages.push({ role: 'user', name: 'User', content: processedPrompt });
 
@@ -27,10 +32,7 @@ export async function analyzeUserAction(
       samplerOverrides: {
         stream: false,
       },
-      structuredResponse: {
-        schema: { name: 'analysis_output', strict: true, value: AnalysisOutputSchema.toJSONSchema() },
-        format: 'json',
-      },
+      structuredResponse,
       onCompletion: ({ structured_content, parse_error }) => {
         if (structured_content) {
           resolve(structured_content as AnalysisOutput);
@@ -56,7 +58,11 @@ export async function genInitialScene(api: MythicExtensionAPI, signal?: AbortSig
   const processedPrompt = api.macro.process(settings.prompts.initialScene || INITIAL_SCENE_PROMPT, undefined, {
     language_name: settings?.language || 'English',
   });
-  const itemizedPrompt = await api.chat.buildPrompt();
+  const structuredResponse: StructuredResponseOptions = {
+    schema: { name: 'initial_scene', strict: true, value: SceneSchema.toJSONSchema() },
+    format: 'json',
+  };
+  const itemizedPrompt = await api.chat.buildPrompt({ structuredResponse });
   const messages = itemizedPrompt.messages;
   messages.push({ role: 'user', name: 'User', content: processedPrompt });
 
@@ -67,10 +73,7 @@ export async function genInitialScene(api: MythicExtensionAPI, signal?: AbortSig
       samplerOverrides: {
         stream: false,
       },
-      structuredResponse: {
-        schema: { name: 'initial_scene', strict: true, value: SceneSchema.toJSONSchema() },
-        format: 'json',
-      },
+      structuredResponse,
       onCompletion: ({ structured_content, parse_error }) => {
         if (structured_content) {
           const scene = structured_content as Scene;
@@ -101,6 +104,8 @@ export async function generateNarration(
   analysis: AnalysisOutput,
   fateRollResult: { roll: number; chaosDie: number; outcome: string; exceptional: boolean } | undefined,
   randomEvent: { focus: string; action: string; subject: string; new_npcs?: MythicCharacter[] } | undefined,
+  messageIndex: number,
+  swipeId: number = 0,
   signal?: AbortSignal,
 ): Promise<string> {
   const settings = api.settings.get();
@@ -116,11 +121,9 @@ export async function generateNarration(
     includeSceneUpdate: false,
   });
 
-  const chatInfo = api.chat.getChatInfo();
-  const messageIndex = chatInfo?.chat_items ?? 0;
   const generationId = uuidv4();
 
-  const itemizedPrompt = await api.chat.buildPrompt({ generationId, messageIndex });
+  const itemizedPrompt = await api.chat.buildPrompt({ generationId, messageIndex, swipeId });
   const messages = [...itemizedPrompt.messages];
   messages.push({ role: 'user', name: 'User', content: processedPrompt });
   itemizedPrompt.messages = messages;
@@ -146,6 +149,8 @@ export async function generateNarrationAndSceneUpdate(
   analysis: AnalysisOutput,
   fateRollResult: { roll: number; chaosDie: number; outcome: string; exceptional: boolean } | undefined,
   randomEvent: { focus: string; action: string; subject: string; new_npcs?: MythicCharacter[] } | undefined,
+  messageIndex: number,
+  swipeId: number = 0,
   signal?: AbortSignal,
 ): Promise<{ narration: string; sceneUpdate: SceneUpdate }> {
   const settings = api.settings.get();
@@ -161,14 +166,28 @@ export async function generateNarrationAndSceneUpdate(
     includeSceneUpdate: true,
   });
 
-  const chatInfo = api.chat.getChatInfo();
-  const messageIndex = chatInfo?.chat_items ?? 0;
   const generationId = uuidv4();
+  const structuredResponse: StructuredResponseOptions = {
+    schema: {
+      name: 'narration_and_scene_update',
+      strict: true,
+      value: {
+        type: 'object',
+        properties: {
+          narration: { type: 'string' },
+          sceneUpdate: SceneUpdateSchema.toJSONSchema(),
+        },
+        required: ['narration', 'sceneUpdate'],
+      },
+    },
+    format: 'json',
+  };
 
-  const itemizedPrompt = await api.chat.buildPrompt({ generationId, messageIndex });
+  const itemizedPrompt = await api.chat.buildPrompt({ generationId, messageIndex, swipeId, structuredResponse });
   const messages = [...itemizedPrompt.messages];
   messages.push({ role: 'user', name: 'User', content: processedPrompt });
   itemizedPrompt.messages = messages;
+  api.chat.addItemizedPrompt(itemizedPrompt);
 
   return new Promise(async (resolve, reject) => {
     const response = await api.llm.generate(messages, {
@@ -177,21 +196,7 @@ export async function generateNarrationAndSceneUpdate(
       samplerOverrides: {
         stream: false,
       },
-      structuredResponse: {
-        schema: {
-          name: 'narration_and_scene_update',
-          strict: true,
-          value: {
-            type: 'object',
-            properties: {
-              narration: { type: 'string' },
-              sceneUpdate: SceneUpdateSchema.toJSONSchema(),
-            },
-            required: ['narration', 'sceneUpdate'],
-          },
-        },
-        format: 'json',
-      },
+      structuredResponse,
       onCompletion: ({ structured_content, parse_error }) => {
         if (structured_content) {
           resolve(structured_content as { narration: string; sceneUpdate: SceneUpdate });

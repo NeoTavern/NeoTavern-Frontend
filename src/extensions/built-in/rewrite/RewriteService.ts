@@ -173,7 +173,7 @@ export class RewriteService {
     connectionProfile?: string,
     signal?: AbortSignal,
   ): Promise<RewriteLLMResponse> {
-    const apiMessages: ApiChatMessage[] = messages.map((m) => {
+    let apiMessages: ApiChatMessage[] = messages.map((m) => {
       if (!connectionProfile) {
         throw new Error(this.api.i18n.t('extensionsBuiltin.rewrite.errors.noConnectionProfile'));
       }
@@ -188,6 +188,38 @@ export class RewriteService {
         name: m.role === 'user' ? 'User' : 'Assistant',
       };
     });
+
+    const schema = {
+      name: 'rewrite_response',
+      strict: true,
+      value: {
+        type: 'object',
+        properties: {
+          justification: {
+            type: 'string',
+            description: 'A brief explanation of the changes made and the reasoning behind them.',
+          },
+          response: {
+            type: 'string',
+            description: 'The full, rewritten text.',
+          },
+        },
+        required: ['justification'],
+        additionalProperties: false,
+      },
+    };
+
+    let structuredResponseOptions: StructuredResponseOptions | undefined;
+    if (format !== 'text') {
+      structuredResponseOptions =
+        format === 'native'
+          ? { schema, format: 'native' }
+          : { schema, format, exampleResponse: true, jsonPrompt: undefined, xmlPrompt: undefined };
+    }
+
+    apiMessages = (
+      await this.api.chat.buildPrompt({ chatHistory: apiMessages, structuredResponse: structuredResponseOptions })
+    ).messages;
 
     // If format is 'text', we skip structured response and return raw text as justification
     if (format === 'text') {
@@ -210,32 +242,6 @@ export class RewriteService {
         response: undefined,
       };
     }
-
-    // Otherwise, use structured response
-    const schema = {
-      name: 'rewrite_response',
-      strict: true,
-      value: {
-        type: 'object',
-        properties: {
-          justification: {
-            type: 'string',
-            description: 'A brief explanation of the changes made and the reasoning behind them.',
-          },
-          response: {
-            type: 'string',
-            description: 'The full, rewritten text.',
-          },
-        },
-        required: ['justification'],
-        additionalProperties: false,
-      },
-    };
-
-    const structuredResponseOptions: StructuredResponseOptions =
-      format === 'native'
-        ? { schema, format: 'native' }
-        : { schema, format, exampleResponse: true, jsonPrompt: undefined, xmlPrompt: undefined };
 
     return new Promise(async (resolve, reject) => {
       try {

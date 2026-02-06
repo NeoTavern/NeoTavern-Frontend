@@ -22,7 +22,7 @@ import type { ApiFormatter, ReasoningTemplate, SamplerSettings, Settings, Settin
 import { getRequestHeaders } from '../utils/client';
 import { eventEmitter } from '../utils/extensions';
 import { convertMessagesToInstructString } from '../utils/instruct';
-import { buildStructuredResponseSystemPrompt, parseResponse } from '../utils/structured-response';
+import { parseResponse } from '../utils/structured-response';
 import {
   extractMessageGeneric,
   getProviderHandler,
@@ -273,14 +273,6 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
     const { format = 'native' } = structuredResponse;
     if (format === 'native' && formatter === 'chat') {
       payload.json_schema = structuredResponse.schema;
-    } else {
-      // @ts-expect-error yeah yeah
-      const systemPrompt = buildStructuredResponseSystemPrompt(structuredResponse);
-      finalMessages.unshift({
-        role: 'system',
-        content: systemPrompt,
-        name: 'System',
-      });
     }
   }
 

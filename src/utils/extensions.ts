@@ -460,6 +460,7 @@ const baseExtensionAPI: ExtensionAPI = {
         books,
         worldInfo: mergeWithUndefinedMulti({}, settingsStore.settings.worldInfo, options?.worldInfo),
         mediaContext,
+        structuredResponse: options?.structuredResponse,
       });
 
       const messages = await builder.build();

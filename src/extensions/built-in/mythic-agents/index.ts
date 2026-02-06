@@ -167,6 +167,16 @@ export function activate(api: MythicExtensionAPI) {
           updatedScene.characters = [...updatedScene.characters, ...randomEvent.new_npcs];
         }
 
+        const history = api.chat.getHistory();
+        let messageIndex: number;
+        let swipeId: number = 0;
+        if (isSwipe) {
+          messageIndex = history.length - 1;
+          swipeId = lastMessage.swipes.length;
+        } else {
+          messageIndex = history.length;
+        }
+
         let narration: string;
         // Generate narration and optionally update scene
         if (settings.autoSceneUpdate) {
@@ -176,6 +186,8 @@ export function activate(api: MythicExtensionAPI) {
             anal,
             fateRollResult,
             randomEvent,
+            messageIndex,
+            swipeId,
             context?.controller.signal,
           );
           if (context?.controller.signal.aborted) return;
@@ -218,6 +230,8 @@ export function activate(api: MythicExtensionAPI) {
             anal,
             fateRollResult,
             randomEvent,
+            messageIndex,
+            swipeId,
             context?.controller.signal,
           );
           if (context?.controller.signal.aborted) return;

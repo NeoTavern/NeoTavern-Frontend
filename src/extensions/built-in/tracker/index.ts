@@ -69,8 +69,6 @@ class TrackerManager {
     this.pendingRequests.add(index);
 
     try {
-      const contextMessages = await this.buildTrackerContext(chat, index);
-
       const tasks = chatSchemaNames.map((schemaName) => async () => {
         const preset = settings.schemaPresets.find((p) => p.name === schemaName);
         if (!preset) {
@@ -100,14 +98,18 @@ class TrackerManager {
 
         try {
           const systemPrompt = this.api.macro.process(preset.prompt);
-          const messagesForLlm: ApiChatMessage[] = [
-            ...contextMessages,
-            { role: 'system' as const, name: 'System', content: systemPrompt },
-          ];
           const structuredResponse: StructuredResponseOptions = {
             schema: { name: 'tracker_data_extraction', strict: true, value: schemaObject },
             format: settings.promptEngineering,
           };
+
+          // Build context messages with structured response for this specific preset
+          const contextMessages = await this.buildTrackerContext(chat, index, structuredResponse);
+
+          const messagesForLlm: ApiChatMessage[] = [
+            ...contextMessages,
+            { role: 'system' as const, name: 'System', content: systemPrompt },
+          ];
 
           // eslint-disable-next-line @typescript-eslint/no-this-alias
           const thus = this;
@@ -215,7 +217,11 @@ class TrackerManager {
     });
   }
 
-  private async buildTrackerContext(chat: ChatMessage[], currentIndex: number): Promise<ApiChatMessage[]> {
+  private async buildTrackerContext(
+    chat: ChatMessage[],
+    currentIndex: number,
+    structuredResponse?: StructuredResponseOptions,
+  ): Promise<ApiChatMessage[]> {
     const settings = this.getSettings();
     const messagesToConsider = chat.slice(0, currentIndex + 1); // Include the current message
 
@@ -225,7 +231,11 @@ class TrackerManager {
         : messagesToConsider.slice(-settings.includeLastXMessages);
 
     const generationId = `tracker-${currentIndex}-${Date.now()}`;
-    const itemizedPrompt = await this.api.chat.buildPrompt({ chatHistory: messageHistory, generationId });
+    const itemizedPrompt = await this.api.chat.buildPrompt({
+      chatHistory: messageHistory,
+      generationId,
+      structuredResponse,
+    });
     const apiMessages: ApiChatMessage[] = [...itemizedPrompt.messages];
 
     return apiMessages;
