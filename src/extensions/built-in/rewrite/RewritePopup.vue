@@ -114,7 +114,7 @@ const isGenerating = computed(() => oneShotIsGenerating.value || sessionIsGenera
 
 const IGNORE_INPUT = computed(() => currentTemplate.value?.ignoreInput === true);
 
-async function handleGenerateOneShot() {
+async function handleGenerateOneShot(lastAssistantMessage?: string) {
   const contextMessagesStr = getContextMessagesString(contextMessageCount.value, props.referenceMessageIndex);
   const otherCharactersStr = getAdditionalCharactersContext(selectedContextCharacters.value);
   const worldInfoMacros = await getWorldInfoContext(selectedContextLorebooks.value, selectedContextEntries.value);
@@ -134,6 +134,7 @@ async function handleGenerateOneShot() {
     argOverrides.value,
     escapeMacros.value,
     t as (key: string) => string,
+    lastAssistantMessage,
   );
 }
 
@@ -195,6 +196,11 @@ function handleApplyOneShot() {
     newValue: oneShotGeneratedText.value,
   };
   handleApply([change]);
+}
+
+async function handleContinue() {
+  if (!oneShotGeneratedText.value) return;
+  await handleGenerateOneShot(oneShotGeneratedText.value);
 }
 
 function handleApplyLatestSession() {
@@ -343,6 +349,7 @@ function handleGeneralDiff() {
         @cancel="handleCancel"
         @apply="handleApplyOneShot"
         @copy-output="handleCopy"
+        @continue="handleContinue"
       />
 
       <!-- Session View -->

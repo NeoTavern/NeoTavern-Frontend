@@ -141,6 +141,7 @@ export class RewriteService {
     additionalMacros?: Record<string, unknown>,
     argOverrides?: Record<string, boolean | number | string>,
     signal?: AbortSignal,
+    lastAssistantMessage?: string,
   ) {
     if (!connectionProfile) {
       throw new Error(this.api.i18n.t('extensionsBuiltin.rewrite.errors.noConnectionProfile'));
@@ -172,7 +173,11 @@ export class RewriteService {
     // Process the template string using the core macro processor
     const processedContent = this.api.macro.process(macroTemplate, contextData, macros);
 
-    const messages: ApiChatMessage[] = [{ role: 'user', content: processedContent, name: 'User' }];
+    const messages: ApiChatMessage[] = [];
+    messages.push({ role: 'user', content: processedContent, name: 'User' });
+    if (lastAssistantMessage) {
+      messages.push({ role: 'assistant', content: lastAssistantMessage, name: 'Assistant' });
+    }
 
     const response = await this.api.llm.generate(messages, {
       connectionProfile,
@@ -339,15 +344,15 @@ export class RewriteService {
     const completeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
     const completeMatch = text.match(completeBlockRegex);
     if (completeMatch && completeMatch[1]) {
-      return completeMatch[1].trim();
+      return completeMatch[1];
     }
 
     const incompleteBlockRegex = /```(?:[\w]*\n)?([\s\S]*)/i;
     const incompleteMatch = text.match(incompleteBlockRegex);
     if (incompleteMatch && incompleteMatch[1]) {
-      return incompleteMatch[1].trim();
+      return incompleteMatch[1];
     }
 
-    return text.trim();
+    return text;
   }
 }

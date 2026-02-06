@@ -18,6 +18,7 @@ const emit = defineEmits<{
   cancel: [];
   apply: [text: string];
   copyOutput: [];
+  continue: [];
 }>();
 
 const t = props.api.i18n.t;
@@ -48,6 +49,9 @@ const t = props.api.i18n.t;
         @click="emit('apply', oneShotGeneratedText)"
       >
         {{ t('extensionsBuiltin.rewrite.popup.apply') }}
+      </Button>
+      <Button variant="default" :disabled="!oneShotGeneratedText || isGenerating" @click="emit('continue')">
+        {{ t('extensionsBuiltin.rewrite.popup.continue') }}
       </Button>
     </div>
   </div>

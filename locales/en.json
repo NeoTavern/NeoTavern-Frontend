@@ -1409,6 +1409,7 @@
         "generate": "Generate",
         "abort": "Abort",
         "apply": "Apply",
+        "continue": "Continue",
         "generating": "Generating...",
         "oneShot": "One-Shot",
         "sessions": "Sessions",

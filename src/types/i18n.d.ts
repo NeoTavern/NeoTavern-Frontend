@@ -1412,6 +1412,7 @@ export interface MessageSchema {
         generate: string;
         abort: string;
         apply: string;
+        continue: string;
         generating: string;
         oneShot: string;
         sessions: string;

@@ -46,6 +46,7 @@ export function useRewriteOneShot(api: ExtensionAPI<RewriteSettings>) {
     argOverrides: Record<string, boolean | number | string>,
     escapeMacros: boolean,
     t: (key: string) => string,
+    lastAssistantMessage?: string,
   ) {
     if (!selectedProfile) {
       api.ui.showToast(t('extensionsBuiltin.rewrite.errors.selectProfile'), 'error');
@@ -53,7 +54,7 @@ export function useRewriteOneShot(api: ExtensionAPI<RewriteSettings>) {
     }
     isGenerating.value = true;
     abortController.value = new AbortController();
-    oneShotGeneratedText.value = '';
+    oneShotGeneratedText.value = lastAssistantMessage || '';
 
     try {
       let inputToProcess = originalText;
@@ -72,10 +73,11 @@ export function useRewriteOneShot(api: ExtensionAPI<RewriteSettings>) {
         deepToRaw(additionalMacros),
         argOverrides,
         abortController.value?.signal,
+        lastAssistantMessage,
       );
 
       if (Symbol.asyncIterator in response) {
-        let rawAcc = '';
+        let rawAcc = lastAssistantMessage || '';
         for await (const chunk of response) {
           rawAcc += chunk.delta;
           oneShotGeneratedText.value = service.extractCodeBlock(rawAcc);
