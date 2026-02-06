@@ -117,14 +117,6 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
     },
   };
 
-  const globalCharacterTool: TextareaToolDefinition = {
-    id: 'rewrite-character-global',
-    icon: 'fa-solid fa-wand-magic',
-    title: t('extensionsBuiltin.rewrite.buttons.rewriteCharacter'),
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    onClick: (_e) => handleGlobalCharacterRewrite(),
-  };
-
   // Register Core Targets
   coreTargets.forEach((target) => {
     const tool: TextareaToolDefinition = {
@@ -147,10 +139,6 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
     };
     unbinds.push(api.ui.registerTextareaTool(target as CodeMirrorTarget, tool));
   });
-
-  // Register global tool on key character fields
-  unbinds.push(api.ui.registerTextareaTool('character.description', globalCharacterTool));
-  unbinds.push(api.ui.registerTextareaTool('character.personality', globalCharacterTool));
 
   // Register Pattern for Extension settings
   unbinds.push(api.ui.registerTextareaTool(extensionPattern, singleFieldTool));
