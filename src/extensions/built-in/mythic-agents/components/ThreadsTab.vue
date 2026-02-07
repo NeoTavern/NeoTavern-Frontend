@@ -12,23 +12,24 @@ const props = defineProps<Props>();
 
 const newThread = ref('');
 
-const extra = useMythicState(props.api);
+const { state: extra, getLatestMythicMessageIndex } = useMythicState(props.api);
 const scene = computed(() => extra.value?.scene);
 const resolvedThreads = computed(() => props.api.chat.metadata.get()?.extra?.resolved_threads ?? []);
 
 function updateLatestExtra(update: Record<string, unknown>) {
+  const mythicIndex = getLatestMythicMessageIndex();
+  if (mythicIndex === null) return;
   const history = props.api.chat.getHistory();
-  if (history.length === 0) return;
-  const lastMsg = history[history.length - 1];
-  const currentExtra = lastMsg.extra?.['core.mythic-agents'];
+  const msg = history[mythicIndex];
+  const currentExtra = msg.extra?.['core.mythic-agents'];
   if (!currentExtra) return;
   const newExtra = { ...currentExtra, ...update };
-  lastMsg.extra = {
-    ...lastMsg.extra,
+  msg.extra = {
+    ...msg.extra,
     'core.mythic-agents': newExtra,
   };
-  props.api.chat.updateMessageObject(history.length - 1, {
-    extra: lastMsg.extra,
+  props.api.chat.updateMessageObject(mythicIndex, {
+    extra: msg.extra,
   });
 }
 

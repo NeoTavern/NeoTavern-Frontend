@@ -18,6 +18,17 @@ import type {
 } from './types';
 import { genUNENpc } from './une';
 
+function getCurrentMythicData(api: MythicExtensionAPI): MythicMessageExtraData | undefined {
+  const history = api.chat.getHistory();
+  for (let i = history.length - 1; i >= 0; i--) {
+    const msg = history[i];
+    if (msg.extra?.['core.mythic-agents']) {
+      return msg.extra['core.mythic-agents'] as MythicMessageExtraData;
+    }
+  }
+  return undefined;
+}
+
 const DEFAULT_SETTINGS: MythicSettings = { ...DEFAULT_BASE_SETTINGS };
 
 export function activate(api: MythicExtensionAPI) {
@@ -52,15 +63,7 @@ export function activate(api: MythicExtensionAPI) {
       throw new Error('Mythic Agents extension only supports NEW, REGENERATE, and ADD_SWIPE generation modes');
     }
 
-    const history = api.chat.getHistory();
-    let currentMythicData: MythicMessageExtraData | undefined;
-    for (let i = history.length - 1; i >= 0; i--) {
-      const msg = history[i];
-      if (msg.extra?.['core.mythic-agents']) {
-        currentMythicData = msg.extra['core.mythic-agents'] as MythicMessageExtraData;
-        break;
-      }
-    }
+    let currentMythicData: MythicMessageExtraData | undefined = getCurrentMythicData(api);
 
     payload.handled = true;
     const lastMessage = api.chat.getLastMessage();

@@ -11,7 +11,7 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const extra = useMythicState(props.api);
+const { state: extra, getLatestMythicMessageIndex } = useMythicState(props.api);
 const scene = computed(() => extra.value?.scene);
 const activeNpcCount = computed(() => scene.value?.characters.length || 0);
 
@@ -36,20 +36,37 @@ async function generateInitialScene() {
     );
     const history = props.api.chat.getHistory();
     if (history.length === 0) return;
-    const lastMsg = history[history.length - 1];
-    const currentExtra = lastMsg.extra?.['core.mythic-agents'];
-    const newExtra = {
-      ...currentExtra,
-      scene: newScene,
-      chaos: newScene.chaos_rank,
-    };
-    lastMsg.extra = {
-      ...lastMsg.extra,
-      'core.mythic-agents': newExtra,
-    };
-    props.api.chat.updateMessageObject(history.length - 1, {
-      extra: lastMsg.extra,
-    });
+    const mythicIndex = getLatestMythicMessageIndex();
+    if (mythicIndex === null) {
+      // If no mythic data, add to last message
+      const lastMsg = history[history.length - 1];
+      const newExtra = {
+        scene: newScene,
+        chaos: newScene.chaos_rank,
+      };
+      lastMsg.extra = {
+        ...lastMsg.extra,
+        'core.mythic-agents': newExtra,
+      };
+      props.api.chat.updateMessageObject(history.length - 1, {
+        extra: lastMsg.extra,
+      });
+    } else {
+      const msg = history[mythicIndex];
+      const currentExtra = msg.extra?.['core.mythic-agents'];
+      const newExtra = {
+        ...currentExtra,
+        scene: newScene,
+        chaos: newScene.chaos_rank,
+      };
+      msg.extra = {
+        ...msg.extra,
+        'core.mythic-agents': newExtra,
+      };
+      props.api.chat.updateMessageObject(mythicIndex, {
+        extra: msg.extra,
+      });
+    }
   } catch (error) {
     if (!(error instanceof Error) || error.name !== 'AbortError') {
       console.error('Failed to generate initial scene:', error);

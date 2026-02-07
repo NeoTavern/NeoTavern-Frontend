@@ -11,17 +11,18 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const extra = useMythicState(props.api);
+const { state: extra, getLatestMythicMessageIndex } = useMythicState(props.api);
 const chaos = computed(() => extra.value?.chaos ?? 5);
 const scene = computed(() => extra.value?.scene);
 const actionHistory = computed(() => props.api.chat.metadata.get()?.extra?.actionHistory ?? []);
 const npcCount = computed(() => scene.value?.characters.length);
 
 function adjustChaos(delta: number) {
+  const mythicIndex = getLatestMythicMessageIndex();
+  if (mythicIndex === null) return;
   const history = props.api.chat.getHistory();
-  if (history.length === 0) return;
-  const lastMsg = history[history.length - 1];
-  const currentExtra = lastMsg.extra?.['core.mythic-agents'];
+  const msg = history[mythicIndex];
+  const currentExtra = msg.extra?.['core.mythic-agents'];
   if (!currentExtra) return;
   const newChaos = Math.max(1, Math.min(9, (currentExtra.chaos ?? 5) + delta));
   const newScene = currentExtra.scene ? { ...currentExtra.scene, chaos_rank: newChaos } : undefined;
@@ -30,12 +31,12 @@ function adjustChaos(delta: number) {
     chaos: newChaos,
     scene: newScene,
   };
-  lastMsg.extra = {
-    ...lastMsg.extra,
+  msg.extra = {
+    ...msg.extra,
     'core.mythic-agents': newExtra,
   };
-  props.api.chat.updateMessageObject(history.length - 1, {
-    extra: lastMsg.extra,
+  props.api.chat.updateMessageObject(mythicIndex, {
+    extra: msg.extra,
   });
 }
 
@@ -48,9 +49,10 @@ function resetAll() {
     })
     .then((result) => {
       if (result.result === POPUP_RESULT.AFFIRMATIVE) {
+        const mythicIndex = getLatestMythicMessageIndex();
+        if (mythicIndex === null) return;
         const history = props.api.chat.getHistory();
-        if (history.length === 0) return;
-        const lastMsg = history[history.length - 1];
+        const msg = history[mythicIndex];
         const resetExtra = {
           actionHistory: [],
           chaos: 5,
@@ -60,12 +62,12 @@ function resetAll() {
             threads: [],
           },
         };
-        lastMsg.extra = {
-          ...lastMsg.extra,
+        msg.extra = {
+          ...msg.extra,
           'core.mythic-agents': resetExtra,
         };
-        props.api.chat.updateMessageObject(history.length - 1, {
-          extra: lastMsg.extra,
+        props.api.chat.updateMessageObject(mythicIndex, {
+          extra: msg.extra,
         });
         // Clear mythic extras from other messages
         for (let i = 0; i < history.length - 1; i++) {
