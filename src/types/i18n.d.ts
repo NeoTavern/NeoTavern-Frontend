@@ -1459,7 +1459,6 @@ export interface MessageSchema {
         templateNotFound: string;
         selectProfile: string;
         noConnectionProfile: string;
-        noCharFields: string;
       };
       messages: {
         generationAborted: string;

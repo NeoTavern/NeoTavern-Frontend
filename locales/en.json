@@ -1455,8 +1455,7 @@
       "errors": {
         "templateNotFound": "Template not found",
         "selectProfile": "Please select a connection profile",
-        "noConnectionProfile": "No connection profile selected",
-        "noCharFields": "No character fields have content to rewrite."
+        "noConnectionProfile": "No connection profile selected"
       },
       "messages": {
         "generationAborted": "Generation aborted",

@@ -74,25 +74,19 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
     if (!char) return;
 
     const fields: RewriteField[] = [
-      { id: 'description', label: 'Description', value: char.description },
-      { id: 'personality', label: 'Personality', value: char.personality },
-      { id: 'scenario', label: 'Scenario', value: char.scenario },
-      { id: 'first_mes', label: 'First Message', value: char.first_mes },
-      { id: 'mes_example', label: 'Example Messages', value: char.mes_example },
+      { id: 'description', label: 'Description', value: char.description || '' },
+      { id: 'personality', label: 'Personality', value: char.personality || '' },
+      { id: 'scenario', label: 'Scenario', value: char.scenario || '' },
+      { id: 'first_mes', label: 'First Message', value: char.first_mes || '' },
+      { id: 'mes_example', label: 'Example Messages', value: char.mes_example || '' },
     ]
-      .filter((f) => f.value)
-      .map((f) => ({ ...f, value: f.value! }));
-
-    if (fields.length === 0) {
-      api.ui.showToast(t('extensionsBuiltin.rewrite.errors.noCharFields'), 'info');
-      return;
-    }
 
     handleRewrite(
       {
         fields,
         onApply: (changes) => {
-          const updates: Record<string, string> = {};
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const updates: Record<string, any> = {};
           changes.forEach((change) => {
             updates[change.fieldId] = change.newValue;
           });

@@ -97,10 +97,10 @@ const localCharacter = ref<Character | null>(null);
 watch(
   () => characterUiStore.editFormCharacter,
   (newVal) => {
-    if (newVal && (!localCharacter.value || localCharacter.value.avatar !== newVal.avatar)) {
+    if (newVal) {
       localCharacter.value = cloneDeep(newVal);
       characterStore.calculateAllTokens(localCharacter.value);
-    } else if (!newVal) {
+    } else {
       localCharacter.value = null;
     }
   },

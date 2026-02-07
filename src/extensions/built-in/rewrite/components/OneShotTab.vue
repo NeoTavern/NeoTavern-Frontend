@@ -43,15 +43,15 @@ const t = props.api.i18n.t;
       </Button>
       <div class="spacer"></div>
       <Button variant="ghost" @click="emit('cancel')">{{ t('common.cancel') }}</Button>
+      <Button variant="default" :disabled="!oneShotGeneratedText || isGenerating" @click="emit('continue')">
+        {{ t('extensionsBuiltin.rewrite.popup.continue') }}
+      </Button>
       <Button
         variant="confirm"
         :disabled="!oneShotGeneratedText || isGenerating"
         @click="emit('apply', oneShotGeneratedText)"
       >
         {{ t('extensionsBuiltin.rewrite.popup.apply') }}
-      </Button>
-      <Button variant="default" :disabled="!oneShotGeneratedText || isGenerating" @click="emit('continue')">
-        {{ t('extensionsBuiltin.rewrite.popup.continue') }}
       </Button>
     </div>
   </div>
