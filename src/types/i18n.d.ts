@@ -554,6 +554,8 @@ export interface MessageSchema {
     text: string;
     import: string;
     export: string;
+    exportActive: string;
+    importSingle: string;
     edit: string;
     create: string;
     rename: string;

@@ -1,10 +1,17 @@
 import type { StructuredResponseOptions } from '../../../types';
 import type { ChatMessage } from '../../../types/chat';
 import { uuidv4 } from '../../../utils/commons';
+import { DEFAULT_UNE_SETTINGS } from './defaults';
 import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT } from './prompts';
 import type { AnalysisOutput, MythicCharacter, MythicExtensionAPI, Scene, SceneUpdate } from './types';
 import { AnalysisOutputSchema, SceneSchema, SceneUpdateSchema } from './types';
 import { genUNENpc } from './une';
+
+function getCurrentUNE(api: MythicExtensionAPI) {
+  const settings = api.settings.get();
+  const currentPreset = settings.presets.find((p) => p.name === settings.selectedPreset) || settings.presets[0];
+  return currentPreset?.data?.une || DEFAULT_UNE_SETTINGS;
+}
 
 export async function analyzeUserAction(
   api: MythicExtensionAPI,
@@ -82,7 +89,10 @@ export async function genInitialScene(api: MythicExtensionAPI, signal?: AbortSig
           scene.characters = scene.characters.map((char) => ({
             ...char,
             id: uuidv4(),
-            une_profile: genUNENpc(),
+            une_profile: (() => {
+              const une = getCurrentUNE(api);
+              return genUNENpc(une.modifiers, une.nouns, une.motivation_verbs, une.motivation_nouns);
+            })(),
           }));
           resolve(scene);
         } else if (parse_error) {

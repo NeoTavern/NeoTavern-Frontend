@@ -71,7 +71,7 @@ describe('Mythic Agents Oracle', () => {
     expect(result.action).toBe('action1');
     expect(result.subject).toBe('subject1');
     expect(result.new_npcs).toHaveLength(1);
-    expect(result.new_npcs![0].type).toBe('WARRIOR');
+    expect(result.new_npcs![0].type).toBe('warrior');
     expect(result.new_npcs![0].name).toBe('Brave Warrior');
   });
 

@@ -32,6 +32,7 @@ const activeTab = ref('general');
 const activePromptTab = ref('initialScene');
 const selectedPreset = ref('');
 const fileInputRef = ref<HTMLInputElement>();
+const importMode = ref<'array' | 'single'>('array');
 
 const currentPreset = computed(() => {
   return settings.value.presets.find((p) => p.name === selectedPreset.value) || settings.value.presets[0];
@@ -82,10 +83,13 @@ function validateFateChart(data: FateChartData): string[] {
     return ['Root must be an object.'];
   }
 
-  const requiredRanks = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
-  let requiredOdds: string[] | null = null;
+  const presentRanks = Object.keys(data).filter((key) => /^\d+$/.test(key));
+  if (presentRanks.length === 0) {
+    return ['No valid Chaos Ranks found.'];
+  }
 
-  for (const rank of requiredRanks) {
+  let requiredOdds: string[] | null = null;
+  for (const rank of presentRanks) {
     if (data[rank] && typeof data[rank] === 'object' && data[rank] !== null) {
       requiredOdds = Object.keys(data[rank]);
       break;
@@ -96,11 +100,7 @@ function validateFateChart(data: FateChartData): string[] {
     return ['No valid Chaos Ranks found to establish a baseline for odds.'];
   }
 
-  for (const rank of requiredRanks) {
-    if (!data[rank]) {
-      errors.push(`Missing Chaos Rank: "${rank}"`);
-      continue;
-    }
+  for (const rank of presentRanks) {
     if (typeof data[rank] !== 'object' || data[rank] === null) {
       errors.push(`Chaos Rank "${rank}" must be an object.`);
       continue;
@@ -141,6 +141,10 @@ function validateFocuses(focuses: EventFocus[]): string[] {
   const characterTypes = currentPreset.value.data.characterTypes || ['NPC'];
   const validActions = [
     'random_thread',
+    'random_npc',
+    'new_npc',
+    'random_pc',
+    'new_pc',
     ...characterTypes.map(normalizeTypeToAction),
     ...characterTypes.map(normalizeTypeToNewAction),
   ];
@@ -211,9 +215,14 @@ function validateFocuses(focuses: EventFocus[]): string[] {
   return errors;
 }
 
-// Preset Management
-
-// Handlers for Save/Reset
+function validateCurrentPreset(): string[] {
+  const errors: string[] = [];
+  const fateErrors = validateFateChart(currentPreset.value.data.fateChart);
+  errors.push(...fateErrors.map((e) => `Fate Chart: ${e}`));
+  const focusErrors = validateFocuses(currentPreset.value.data.eventGeneration.focuses);
+  errors.push(...focusErrors.map((e) => `Event Focuses: ${e}`));
+  return errors;
+}
 
 async function saveFateChart() {
   try {
@@ -398,6 +407,12 @@ async function handleDeletePreset() {
 }
 
 function handleImportPreset() {
+  importMode.value = 'array';
+  fileInputRef.value?.click();
+}
+
+function handleImportSinglePreset() {
+  importMode.value = 'single';
   fileInputRef.value?.click();
 }
 
@@ -414,22 +429,49 @@ function handleExportPreset() {
   URL.revokeObjectURL(url);
 }
 
+function handleExportActivePreset() {
+  const dataStr = JSON.stringify(currentPreset.value, null, 2);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(dataBlob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${currentPreset.value.name}-preset.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 function handleFileImport(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
-      const importedPresets: MythicPreset[] = JSON.parse(e.target?.result as string);
-      if (Array.isArray(importedPresets)) {
-        for (const preset of importedPresets) {
-          if (!settings.value.presets.some((p) => p.name === preset.name)) {
-            settings.value.presets.push(preset);
+      if (importMode.value === 'single') {
+        const importedPreset: MythicPreset = JSON.parse(e.target?.result as string);
+        if (typeof importedPreset === 'object' && importedPreset.name) {
+          if (!settings.value.presets.some((p) => p.name === importedPreset.name)) {
+            settings.value.presets.push(importedPreset);
+            props.api.ui.showToast('Preset imported', 'success');
+          } else {
+            props.api.ui.showToast('Preset name already exists', 'error');
           }
+        } else {
+          props.api.ui.showToast('Invalid preset format', 'error');
         }
-        props.api.ui.showToast('Presets imported', 'success');
       } else {
-        props.api.ui.showToast('Invalid file format', 'error');
+        const importedPresets: MythicPreset[] = JSON.parse(e.target?.result as string);
+        if (Array.isArray(importedPresets)) {
+          for (const preset of importedPresets) {
+            if (!settings.value.presets.some((p) => p.name === preset.name)) {
+              settings.value.presets.push(preset);
+            }
+          }
+          props.api.ui.showToast('Presets imported', 'success');
+        } else {
+          props.api.ui.showToast('Invalid file format', 'error');
+        }
       }
     } catch {
       props.api.ui.showToast('Invalid JSON', 'error');
@@ -464,6 +506,11 @@ onMounted(async () => {
   selectedPreset.value = settings.value.selectedPreset;
   try {
     loadJsonFromSettings();
+    const errors = validateCurrentPreset();
+    if (errors.length > 0) {
+      props.api.ui.showToast(`Preset "${selectedPreset.value}" has validation errors. Please fix or reset.`, 'error');
+      console.error('Preset validation errors:', errors);
+    }
   } catch (error) {
     console.error('Failed to load preset data:', error);
     props.api.ui.showToast('Failed to load preset data. See console for details.', 'error');
@@ -476,6 +523,11 @@ watch(selectedPreset, async (newPreset) => {
     try {
       settings.value.selectedPreset = newPreset;
       loadJsonFromSettings();
+      const errors = validateCurrentPreset();
+      if (errors.length > 0) {
+        props.api.ui.showToast(`Preset "${newPreset}" has validation errors. Please fix or reset.`, 'error');
+        console.error('Preset validation errors:', errors);
+      }
     } catch (error) {
       console.error('Failed to load preset data:', error);
       props.api.ui.showToast('Failed to load preset data. See console for details.', 'error');
@@ -609,6 +661,20 @@ const characterTypesTools = [
 
 const customActions: CustomAction[] = [
   {
+    key: 'exportActive',
+    icon: 'fa-file-export',
+    title: 'common.exportActive',
+    event: 'exportActive',
+    variant: 'ghost',
+  },
+  {
+    key: 'importSingle',
+    icon: 'fa-file-import',
+    title: 'common.importSingle',
+    event: 'importSingle',
+    variant: 'ghost',
+  },
+  {
     key: 'resetAll',
     icon: 'fa-undo',
     title: 'common.reset',
@@ -631,12 +697,24 @@ const customActions: CustomAction[] = [
         :allow-export="true"
         :allow-save="false"
         :custom-actions="customActions"
-        :action-order="['save', 'create', 'edit', 'delete', 'import', 'export', 'resetAll']"
+        :action-order="[
+          'save',
+          'create',
+          'edit',
+          'delete',
+          'import',
+          'export',
+          'exportActive',
+          'importSingle',
+          'resetAll',
+        ]"
         @create="handleCreatePreset"
         @edit="handleEditPreset"
         @delete="handleDeletePreset"
         @import="handleImportPreset"
         @export="handleExportPreset"
+        @export-active="handleExportActivePreset"
+        @import-single="handleImportSinglePreset"
         @reset-all="handleResetAllPresets"
       />
     </div>

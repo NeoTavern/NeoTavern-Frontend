@@ -211,7 +211,12 @@ export function activate(api: MythicExtensionAPI) {
                 id: uuidv4(),
                 name: char.name,
                 type: char.type,
-                une_profile: genUNENpc(),
+                une_profile: genUNENpc(
+                  currentPreset.data.une.modifiers,
+                  currentPreset.data.une.nouns,
+                  currentPreset.data.une.motivation_verbs,
+                  currentPreset.data.une.motivation_nouns,
+                ),
               });
             }
           }

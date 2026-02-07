@@ -551,6 +551,8 @@
     "text": "Text",
     "import": "Import",
     "export": "Export",
+    "exportActive": "Export Active",
+    "importSingle": "Import Single",
     "edit": "Edit",
     "create": "Create",
     "rename": "Rename",

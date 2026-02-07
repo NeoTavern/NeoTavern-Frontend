@@ -79,7 +79,7 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
       { id: 'scenario', label: 'Scenario', value: char.scenario || '' },
       { id: 'first_mes', label: 'First Message', value: char.first_mes || '' },
       { id: 'mes_example', label: 'Example Messages', value: char.mes_example || '' },
-    ]
+    ];
 
     handleRewrite(
       {

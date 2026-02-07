@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { Button, Input } from '../../../../components/UI';
 import { useMythicState } from '../composables/useMythicState';
+import { DEFAULT_UNE_SETTINGS } from '../defaults';
 import type { MythicExtensionAPI } from '../types';
 import { genUNENpc } from '../une';
 
@@ -13,6 +14,12 @@ const props = defineProps<Props>();
 
 const extra = useMythicState(props.api);
 const scene = computed(() => extra.value?.scene);
+
+function getCurrentUNE() {
+  const settings = props.api.settings.get();
+  const currentPreset = settings.presets.find((p) => p.name === settings.selectedPreset) || settings.presets[0];
+  return currentPreset?.data?.une || DEFAULT_UNE_SETTINGS;
+}
 
 function updateLatestExtra(update: Record<string, unknown>) {
   const history = props.api.chat.getHistory();
@@ -62,7 +69,8 @@ function saveEdit() {
 }
 
 function regenerateUNE(id: string) {
-  const newUNE = genUNENpc();
+  const une = getCurrentUNE();
+  const newUNE = genUNENpc(une.modifiers, une.nouns, une.motivation_verbs, une.motivation_nouns);
   const updatedScene = {
     ...scene.value,
     characters:
@@ -74,7 +82,8 @@ function regenerateUNE(id: string) {
 }
 
 function addNpc() {
-  const une_profile = genUNENpc();
+  const une = getCurrentUNE();
+  const une_profile = genUNENpc(une.modifiers, une.nouns, une.motivation_verbs, une.motivation_nouns);
   const newNpc = {
     id: Date.now().toString(),
     name: `${une_profile.modifier} ${une_profile.noun}`,

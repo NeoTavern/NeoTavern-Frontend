@@ -128,7 +128,7 @@ export function generateFullRandomEvent(
         result.new_npcs!.push({
           id: uuidv4(),
           name: `${une_profile.modifier} ${une_profile.noun}`, // Placeholder name
-          type: characterType.toUpperCase(),
+          type: characterType.toLowerCase(),
           une_profile,
         });
       } else if (action === 'random_thread') {
@@ -138,7 +138,7 @@ export function generateFullRandomEvent(
           availableThreads.splice(randomIndex, 1); // Ensure it's not picked again
         }
       } else if (action.startsWith('random_')) {
-        const typeToFind = action.substring('random_'.length).replace(/_/g, ' ');
+        const typeToFind = action.substring('random_'.length).replace(/_/g, ' ').toLowerCase();
         let matchingCharacters: MythicCharacter[];
 
         if (typeToFind === 'npc') {
