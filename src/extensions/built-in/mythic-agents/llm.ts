@@ -66,7 +66,11 @@ export async function analyzeUserAction(
   });
 }
 
-export async function genInitialScene(api: MythicExtensionAPI, signal?: AbortSignal): Promise<Scene> {
+export async function genInitialScene(
+  api: MythicExtensionAPI,
+  signal?: AbortSignal,
+  generateUNEProfiles = false,
+): Promise<Scene> {
   const settings = api.settings.get();
   const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
 
@@ -74,6 +78,7 @@ export async function genInitialScene(api: MythicExtensionAPI, signal?: AbortSig
   const processedPrompt = api.macro.process(settings.prompts.initialScene || INITIAL_SCENE_PROMPT, undefined, {
     language_name: settings?.language || 'English',
     character_types: characterTypes.join(', '),
+    generate_une_profiles: generateUNEProfiles,
   });
   const structuredResponse: StructuredResponseOptions = {
     schema: { name: 'initial_scene', strict: true, value: SceneSchema.toJSONSchema() },
@@ -97,10 +102,12 @@ export async function genInitialScene(api: MythicExtensionAPI, signal?: AbortSig
           scene.characters = scene.characters.map((char) => ({
             ...char,
             id: uuidv4(),
-            une_profile: (() => {
-              const une = getCurrentUNE(api);
-              return genUNENpc(une.modifiers, une.nouns, une.motivation_verbs, une.motivation_nouns);
-            })(),
+            ...(!generateUNEProfiles && {
+              une_profile: (() => {
+                const une = getCurrentUNE(api);
+                return genUNENpc(une.modifiers, une.nouns, une.motivation_verbs, une.motivation_nouns);
+              })(),
+            }),
           }));
           resolve(scene);
         } else if (parse_error) {
@@ -132,12 +139,14 @@ export async function generateNarration(
   const settings = api.settings.get();
   const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
 
+  const characterTypes = getCurrentCharacterTypes(api);
   const processedPrompt = api.macro.process(settings.prompts.narration || NARRATION_PROMPT, undefined, {
     scene,
     analysis,
     fateRollResult,
     randomEvent,
     language_name: settings?.language || 'English',
+    character_types: characterTypes.join(', '),
     narrationRules: '',
     includeSceneUpdate: false,
   });
@@ -178,12 +187,14 @@ export async function generateNarrationAndSceneUpdate(
   const settings = api.settings.get();
   const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
 
+  const characterTypes = getCurrentCharacterTypes(api);
   const processedPrompt = api.macro.process(settings.prompts.narration || NARRATION_PROMPT, undefined, {
     scene,
     analysis,
     fateRollResult,
     randomEvent,
     language_name: settings?.language || 'English',
+    character_types: characterTypes.join(', '),
     narrationRules: '',
     includeSceneUpdate: true,
   });

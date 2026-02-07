@@ -25,9 +25,20 @@ export function rollFate(
   const chaosDie = d10();
   const chaosKey = chaos.toString();
 
-  const rankData = fateChart[chaosKey];
+  let rankData = fateChart[chaosKey];
   if (!rankData) {
-    throw new Error(`Invalid chaos rank in Fate Chart: ${chaos}`);
+    // Find the closest available rank
+    const availableRanks = Object.keys(fateChart)
+      .filter((key) => /^\d+$/.test(key))
+      .map(Number)
+      .sort((a, b) => a - b);
+    const closestRank = availableRanks.reduce((prev, curr) =>
+      Math.abs(curr - chaos) < Math.abs(prev - chaos) ? curr : prev,
+    );
+    rankData = fateChart[closestRank.toString()];
+    if (!rankData) {
+      throw new Error(`No valid chaos ranks found in Fate Chart`);
+    }
   }
 
   let chartEntry = rankData[odds];

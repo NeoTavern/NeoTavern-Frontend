@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Button } from '../../../../components/UI';
+import { Button, Checkbox } from '../../../../components/UI';
 import { useMythicState } from '../composables/useMythicState';
 import { generateInitialScene as sceneManagerGenerateInitialScene } from '../scene-manager';
 import type { MythicExtensionAPI } from '../types';
@@ -17,6 +17,7 @@ const activeNpcCount = computed(() => scene.value?.characters.length || 0);
 
 const loading = ref(false);
 const abortController = ref<AbortController | null>(null);
+const generateIdentities = ref(true);
 
 async function generateInitialScene() {
   if (loading.value) {
@@ -28,7 +29,11 @@ async function generateInitialScene() {
   abortController.value = new AbortController();
 
   try {
-    const newScene = await sceneManagerGenerateInitialScene(props.api, abortController.value.signal);
+    const newScene = await sceneManagerGenerateInitialScene(
+      props.api,
+      abortController.value.signal,
+      generateIdentities.value,
+    );
     const history = props.api.chat.getHistory();
     if (history.length === 0) return;
     const lastMsg = history[history.length - 1];
@@ -59,6 +64,7 @@ async function generateInitialScene() {
 <template>
   <div class="scene">
     <div class="controls">
+      <Checkbox v-model="generateIdentities" label="Let LLM generate character identities" />
       <Button block class="action-btn" @click="generateInitialScene">
         <i :class="loading ? 'fas fa-stop' : 'fas fa-film'"></i>{{ loading ? 'Abort' : 'Reinitialize Scene' }}</Button
       >

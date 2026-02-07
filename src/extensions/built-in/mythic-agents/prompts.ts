@@ -5,6 +5,13 @@ Based ONLY on the provided chat history, identify the key elements of the curren
 
 - **Chaos Rank:** A number from 1 to 9 indicating the current level of chaos in the story. 1 is very predictable, 9 is extremely chaotic and unpredictable. Base this on the tone and complexity of the chat history.
 - **Characters:** List all characters who are currently present, have been recently mentioned, or are important to the immediate context. Each character must be an object with a \`name\` and a \`type\`. Possible types are: {{character_types}}. Do NOT invent new characters. The character names must be in {{language_name}}.
+{{#if generate_une_profiles}}
+  For each character, include an \`une_profile\` object with the following properties:
+  - \`modifier\`: A descriptive adjective in {{language_name}}
+  - \`noun\`: A personality trait noun in {{language_name}}
+  - \`motivation_verb\`: A verb describing their motivation in {{language_name}}
+  - \`motivation_noun\`: A noun for their motivation in {{language_name}}
+{{/if}}
 - **Threads:** List any open plot points, active goals, immediate problems, or unresolved questions that the characters are dealing with. Do NOT invent new threads. The threads must be in {{language_name}}.
 
 Provide a brief justification for your choices. Your goal is to create a starting point for the Mythic GME system to take over by summarizing what is ALREADY happening.`;
@@ -150,7 +157,7 @@ Begin the narration now.
 
 ### Additional Task: Update Scene State
 After narrating the scene, provide the updated scene state:
-- Update characters and threads based on the narrated events.
+- Update characters and threads based on the narrated events. When adding new characters, use types from: {{character_types}}.
 - Determine scene_outcome as 'player_in_control' or 'chaotic'.
 - Include a justification.
 {{/if}}`;
