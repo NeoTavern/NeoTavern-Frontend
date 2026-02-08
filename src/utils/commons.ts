@@ -103,6 +103,13 @@ export function getBase64Async(file: Blob): Promise<string> {
   });
 }
 
+export function base64EncodeUTF8(str: string): string {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(str);
+  const binaryString = Array.from(data, (byte) => String.fromCharCode(byte)).join('');
+  return btoa(binaryString);
+}
+
 export function readFileAsText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

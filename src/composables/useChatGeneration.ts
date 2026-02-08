@@ -185,7 +185,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     const currentChatContext = deps.activeChat.value;
     let historyForGen = [...currentChatContext.messages];
 
-    // Handle Regenerate Logic
+    // Handle Regenerate Logic (part 1: determine mode and speaker)
     if (mode === GenerationMode.REGENERATE) {
       const lastMsg = historyForGen[historyForGen.length - 1];
       if (lastMsg) {
@@ -193,15 +193,6 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           mode = GenerationMode.NEW;
         } else {
           forceSpeakerAvatar = forceSpeakerAvatar ?? lastMsg.original_avatar;
-
-          // Find the start of the tool chain (if merged tool messages is enabled)
-          const lastIndex = historyForGen.length - 1;
-          const chainStartIndex = deps.findToolChainStart(lastIndex);
-          const deleteCount = lastIndex - chainStartIndex + 1;
-
-          // Remove the entire tool chain from history
-          historyForGen.splice(chainStartIndex, deleteCount);
-          currentChatContext.messages.splice(chainStartIndex, deleteCount);
         }
       }
     } else if (mode === GenerationMode.ADD_SWIPE || mode === GenerationMode.CONTINUE) {
@@ -217,9 +208,42 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     const overallController = new AbortController();
     generationController.value = overallController;
 
+    let handledByExtension = false;
+
+    const generationPayload = {
+      mode: initialMode,
+      generationId: finalGenerationId,
+      handled: false,
+    };
+    await eventEmitter.emit('chat:generation-requested', generationPayload, { controller: overallController });
+
+    if (overallController.signal.aborted) {
+      return;
+    }
+
+    if (generationPayload.handled) {
+      // Extension handled the generation request
+      handledByExtension = true;
+      return;
+    }
+
+    // Handle Regenerate Logic (part 2: delete messages if not handled)
+    if (initialMode === GenerationMode.REGENERATE) {
+      const lastMsg = historyForGen[historyForGen.length - 1];
+      if (lastMsg && !lastMsg.is_user) {
+        // Find the start of the tool chain (if merged tool messages is enabled)
+        const lastIndex = historyForGen.length - 1;
+        const chainStartIndex = deps.findToolChainStart(lastIndex);
+        const deleteCount = lastIndex - chainStartIndex + 1;
+
+        // Remove the entire tool chain from history
+        historyForGen.splice(chainStartIndex, deleteCount);
+        currentChatContext.messages.splice(chainStartIndex, deleteCount);
+      }
+    }
+
     let finalMessage: ChatMessage | null = null;
     let generationError: Error | undefined;
-    let handledByExtension = false;
 
     try {
       let activeCharacter: Character | undefined;
@@ -231,27 +255,6 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         isPreparing.value = true;
 
         try {
-          // Ask extensions if they want to handle it (e.g. Group Chat Queue / LLM Decision)
-          const payload = {
-            mode,
-            generationId: finalGenerationId,
-            handled: false,
-          };
-
-          await eventEmitter.emit('chat:generation-requested', payload, { controller: overallController });
-
-          if (overallController.signal.aborted) {
-            // If aborted during prep
-            return;
-          }
-
-          if (payload.handled) {
-            // Extension handled it (e.g. scheduled the queue).
-            // We exit here. The extension is responsible for calling generateResponse again with a forced speaker.
-            handledByExtension = true;
-            return;
-          }
-
           // If no force speaker and not handled by extension, we assume single chat (first char)
           activeCharacter = characterStore.activeCharacters[0];
         } finally {
@@ -527,6 +530,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         modelCapabilities: modelCapabilities,
         formatter: effectiveFormatter,
       },
+      structuredResponse: context.structuredResponse,
     });
 
     if (deps.activeChat.value !== chatContext) throw new Error('Context switched');
@@ -632,7 +636,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       model: context.settings.model,
       api: context.settings.provider,
       tokenizer: settings.api.tokenizer,
-      presetName: chatMetadata.connection_profile || settings.api.selectedSampler || 'Default',
+      presetName: chatMetadata.connection_profile || settings.api.selectedSampler || 'Default', // FIXME: Instead of "chatMetadata.connection_profile", we should get the sampler name from the resolved connection profile
       messages: messages,
       breakdown: breakdown,
       timestamp: Date.now(),
@@ -668,6 +672,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         includeRegisteredTools: true,
       },
       mode: mode,
+      structuredResponse: context.structuredResponse,
     };
 
     const payloadController = new AbortController();
@@ -1106,5 +1111,8 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     generateResponse,
     sendMessage,
     abortGeneration,
+    setGeneratingState: (generating: boolean) => {
+      _isGenerating.value = generating;
+    },
   };
 }

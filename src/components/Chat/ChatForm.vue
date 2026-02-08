@@ -341,6 +341,21 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
+function getMediaIcon(type: string): string {
+  switch (type) {
+    case 'image':
+      return 'fa-solid fa-image';
+    case 'video':
+      return 'fa-solid fa-video';
+    case 'audio':
+      return 'fa-solid fa-music';
+    case 'text':
+      return 'fa-solid fa-file-alt';
+    default:
+      return 'fa-solid fa-file';
+  }
+}
+
 // --- Quick Action Registration ---
 const quickActionGroups = computed(() => [
   {
@@ -453,7 +468,13 @@ defineExpose({
   <div id="chat-form" ref="chatFormContainerRef" class="chat-form">
     <div v-if="attachedMedia.length > 0" class="chat-form-media-previews">
       <div v-for="(media, index) in attachedMedia" :key="index" class="media-preview-item">
-        <img :src="media.url" :alt="media.title" />
+        <div v-if="media.type === 'image'" class="media-preview-content">
+          <img :src="media.url" :alt="media.title" />
+        </div>
+        <div v-else class="media-preview-content">
+          <i :class="getMediaIcon(media.type)" class="media-icon"></i>
+          <span class="media-title">{{ media.title }}</span>
+        </div>
         <button class="remove-media-btn" :aria-label="`Remove ${media.title}`" @click="removeAttachedMedia(index)">
           <i class="fa-solid fa-xmark"></i>
         </button>

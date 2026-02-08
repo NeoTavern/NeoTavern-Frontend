@@ -8,8 +8,10 @@ export async function fetchHtml(url: string, proxy?: string): Promise<string> {
     targetUrl = `${proxy}${url}`;
   }
 
+  const proxyUrl = `/api/plugins/neo/proxy?url=${encodeURIComponent(targetUrl)}`;
+
   try {
-    const response = await fetch(targetUrl, {
+    const response = await fetch(proxyUrl, {
       method: 'GET',
       headers: {
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

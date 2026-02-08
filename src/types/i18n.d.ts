@@ -528,6 +528,7 @@ export interface MessageSchema {
     tokens: string;
     confirm: string;
     delete: string;
+    deleted: string;
     of: string;
     continue: string;
     search: string;
@@ -553,6 +554,8 @@ export interface MessageSchema {
     text: string;
     import: string;
     export: string;
+    exportActive: string;
+    importSingle: string;
     edit: string;
     create: string;
     rename: string;
@@ -568,6 +571,7 @@ export interface MessageSchema {
     default: string;
     welcome: string;
     back: string;
+    preview: string;
     login: string;
     copy: string;
     regenerate: string;
@@ -791,6 +795,7 @@ export interface MessageSchema {
       placeholderButton: string;
     };
     tags: {
+      tagName: string;
       manage: string;
       managerTitle: string;
       existing: string;
@@ -1377,6 +1382,11 @@ export interface MessageSchema {
     };
     rewrite: {
       popupTitle: string;
+      popupTitleCharacter: string;
+      popupTitleField: string;
+      popupTitleMessage: string;
+      popupTitleInput: string;
+      popupTitleExtension: string;
       settings: {
         defaultConnectionProfile: string;
         templates: string;
@@ -1395,6 +1405,7 @@ export interface MessageSchema {
         resetToDefault: string;
         sessionPreamble: string;
         sessionPreambleHint: string;
+        deleteAllSessions: string;
       };
       popup: {
         template: string;
@@ -1410,6 +1421,7 @@ export interface MessageSchema {
         generate: string;
         abort: string;
         apply: string;
+        continue: string;
         generating: string;
         oneShot: string;
         sessions: string;
@@ -1436,11 +1448,14 @@ export interface MessageSchema {
         selectSession: string;
         newSession: string;
         systemInstruction: string;
+        toolResult: string;
+        toolCalls: string;
         deleteConfirm: string;
       };
       buttons: {
         rewriteMessage: string;
         rewriteInput: string;
+        rewriteCharacter: string;
       };
       errors: {
         templateNotFound: string;

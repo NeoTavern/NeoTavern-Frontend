@@ -12,19 +12,22 @@ import type {
   ProcessedWorldInfo,
   PromptBuilderOptions,
   SamplerSettings,
+  StructuredResponseOptions,
+  StructuredResponsePrompted,
   Tokenizer,
   WorldInfoBook,
   WorldInfoSettings,
 } from '../types';
 import { countTokens, eventEmitter } from '../utils/extensions';
 import { compressImage, getImageTokenCost, getMediaDurationFromDataURL, isDataURL } from '../utils/media';
+import { buildStructuredResponseSystemPrompt } from '../utils/structured-response';
 import { macroService } from './macro-service';
 import { WorldInfoProcessor } from './world-info';
 
 export class PromptBuilder {
   public characters: Character[];
-  public character: Character;
-  public chatMetadata: ChatMetadata;
+  public character?: Character;
+  public chatMetadata?: ChatMetadata;
   public chatHistory: ChatMessage[];
   public samplerSettings: SamplerSettings;
   public persona: Persona;
@@ -36,6 +39,22 @@ export class PromptBuilder {
   public generationId: string;
   public mediaTokenCost = 0;
   public mediaContext: MediaHydrationContext;
+  public structuredResponse?: StructuredResponseOptions;
+
+  private static convertApiMessagesToChatMessages(apiMessages: ApiChatMessage[]): ChatMessage[] {
+    return apiMessages.map((m) => ({
+      extra: {},
+      is_user: m.role === 'user',
+      is_system: false,
+      mes: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+      name: m.name,
+      send_date: new Date().toISOString(),
+      swipe_id: 0,
+      swipe_info: [],
+      swipes: [],
+      original_avatar: '',
+    }));
+  }
 
   constructor({
     characters,
@@ -48,11 +67,15 @@ export class PromptBuilder {
     books,
     generationId,
     mediaContext,
+    structuredResponse,
   }: PromptBuilderOptions) {
     this.characters = characters;
-    this.character = characters[0];
+    this.character = characters.length > 0 ? characters[0] : undefined;
     this.chatMetadata = chatMetadata;
-    this.chatHistory = chatHistory;
+    this.chatHistory =
+      Array.isArray(chatHistory) && chatHistory.length > 0 && 'role' in chatHistory[0]
+        ? PromptBuilder.convertApiMessagesToChatMessages(chatHistory as ApiChatMessage[])
+        : (chatHistory as ChatMessage[]);
     this.samplerSettings = samplerSettings;
     this.persona = persona;
     this.tokenizer = tokenizer;
@@ -60,6 +83,7 @@ export class PromptBuilder {
     this.books = books;
     this.generationId = generationId;
     this.mediaContext = mediaContext;
+    this.structuredResponse = structuredResponse;
 
     this.maxContext = this.samplerSettings.max_context ?? defaultSamplerSettings.max_context;
   }
@@ -68,7 +92,7 @@ export class PromptBuilder {
    * Helper to process a specific field for all characters in the context.
    * Replaces macros using each character as the specific 'activeCharacter' context.
    */
-  private getProcessedContent(fieldGetter: (char: Character) => string | undefined): string {
+  private getProcessedContent(fieldGetter: (char?: Character) => string | undefined): string {
     // If multiple characters are in context, process all of them
     if (this.characters.length > 1) {
       return this.characters
@@ -158,6 +182,17 @@ export class PromptBuilder {
             contentParts.push({ type: 'audio_url', audio_url: { url: dataUrl } });
             mediaTokens += 32 * Math.ceil(await getMediaDurationFromDataURL(dataUrl, 'audio'));
           }
+        } else if (mediaItem.type === 'text') {
+          try {
+            const response = await fetch(dataUrl);
+            if (response.ok) {
+              const textContent = await response.text();
+              contentParts.push({ type: 'text', text: textContent });
+              mediaTokens += await countTokens(textContent, this.tokenizer);
+            }
+          } catch (e) {
+            console.error('Failed to fetch text file:', e);
+          }
         }
       } catch (e) {
         console.error('Failed to process media item:', e);
@@ -211,7 +246,7 @@ export class PromptBuilder {
       name: 'system',
     };
 
-    const isGroupContext = (this.chatMetadata.members?.length ?? 0) > 1;
+    const isGroupContext = (this.chatMetadata?.members?.length ?? 0) > 1;
 
     for (const promptDefinition of enabledPrompts) {
       const role = promptDefinition.role ?? 'system';
@@ -219,7 +254,7 @@ export class PromptBuilder {
         role === 'user'
           ? this.persona.name || 'User'
           : role === 'assistant'
-            ? this.character.name || 'Character'
+            ? this.character?.name || 'Character'
             : 'System';
       if (promptDefinition.marker) {
         switch (promptDefinition.identifier) {
@@ -228,24 +263,24 @@ export class PromptBuilder {
             break;
           }
           case 'charDescription': {
-            const content = this.getProcessedContent((c) => c.description);
+            const content = this.getProcessedContent((c) => c?.description);
             if (content) fixedPrompts.push({ role, content, name });
             break;
           }
           case 'charPersonality': {
-            const content = this.getProcessedContent((c) => c.personality);
+            const content = this.getProcessedContent((c) => c?.personality);
             if (content) fixedPrompts.push({ role, content, name });
             break;
           }
           case 'scenario': {
             let content = '';
-            if (this.chatMetadata.promptOverrides?.scenario) {
+            if (this.chatMetadata?.promptOverrides?.scenario) {
               content = macroService.process(this.chatMetadata.promptOverrides.scenario, {
                 characters: this.characters,
                 persona: this.persona,
               });
             } else {
-              content = this.getProcessedContent((c) => c.scenario);
+              content = this.getProcessedContent((c) => c?.scenario);
             }
             if (content) fixedPrompts.push({ role, content, name });
             break;
@@ -257,7 +292,7 @@ export class PromptBuilder {
               }
             }
 
-            const content = this.getProcessedContent((c) => c.mes_example);
+            const content = this.getProcessedContent((c) => c?.mes_example);
             const formattedContent = content.split('\n').join('\n\n');
             if (content) fixedPrompts.push({ role, content: formattedContent, name });
 
@@ -286,7 +321,7 @@ export class PromptBuilder {
             break;
           }
           case 'jailbreak': {
-            const content = this.getProcessedContent((c) => c.data?.post_history_instructions);
+            const content = this.getProcessedContent((c) => c?.data?.post_history_instructions);
             if (content) fixedPrompts.push({ role, content, name });
             break;
           }
@@ -300,6 +335,16 @@ export class PromptBuilder {
           if (content) fixedPrompts.push({ role, content, name });
         }
       }
+    }
+
+    // Add structured response system prompt if needed
+    if (this.structuredResponse && this.structuredResponse.format !== 'native') {
+      const systemPrompt = buildStructuredResponseSystemPrompt(this.structuredResponse as StructuredResponsePrompted);
+      fixedPrompts.push({
+        role: 'system',
+        content: systemPrompt,
+        name: 'System',
+      });
     }
 
     for (const prompt of fixedPrompts) {

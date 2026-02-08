@@ -90,12 +90,6 @@ class RoadwayManager {
 
       const chatHistory = this.api.chat.getHistory().slice(0, index + 1);
       const generationId = `roadway-choices-${index}-${Date.now()}`;
-      const contextMessages = await this.api.chat.buildPrompt({ chatHistory, generationId });
-
-      const choicePrompt = this.api.macro.process(settings.choiceGenPrompt, undefined, {
-        choiceCount: settings.choiceCount,
-      });
-      contextMessages.push({ role: 'system', name: 'System', content: choicePrompt });
 
       const structuredResponse: StructuredResponseOptions = {
         format: settings.structuredRequestFormat,
@@ -115,6 +109,14 @@ class RoadwayManager {
           },
         },
       };
+
+      const itemizedPrompt = await this.api.chat.buildPrompt({ chatHistory, generationId, structuredResponse });
+      const contextMessages = itemizedPrompt.messages;
+
+      const choicePrompt = this.api.macro.process(settings.choiceGenPrompt, undefined, {
+        choiceCount: settings.choiceCount,
+      });
+      contextMessages.push({ role: 'system', name: 'System', content: choicePrompt });
 
       // eslint-disable-next-line @typescript-eslint/no-this-alias
       const thus = this;

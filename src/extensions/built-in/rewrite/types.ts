@@ -1,15 +1,35 @@
-import type { MessageRole, StrictOmitString } from '../../../types';
+import type { MessageRole } from '../../../types';
+
+export interface RewriteField {
+  id: string; // e.g., 'character.description' or 'world_info.entry.content'
+  label: string; // e.g., 'Description'
+  value: string;
+}
+
+export interface FieldChange {
+  fieldId: string;
+  label: string;
+  oldValue: string;
+  newValue: string;
+}
 
 export interface RewriteLLMResponse {
-  justification: string;
-  response?: string;
+  justification?: string;
+  response?: string; // For single-field and backwards compatibility
+  changes?: Omit<FieldChange, 'oldValue' | 'label'>[]; // For multi-field proposals from LLM
+  toolCalls?: {
+    name: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    arguments: Record<string, any>;
+  }[];
 }
 
 export interface RewriteSessionMessage {
   id: string;
-  role: StrictOmitString<MessageRole, 'tool'>;
+  role: MessageRole;
   content: string | RewriteLLMResponse;
   timestamp: number;
+  isToolResult?: boolean;
 }
 
 export interface RewriteSession {
@@ -18,7 +38,7 @@ export interface RewriteSession {
   identifier: string;
   createdAt: number;
   updatedAt: number;
-  originalText: string;
+  initialFields: RewriteField[];
   messages: RewriteSessionMessage[];
   systemPrompt: string;
 }
@@ -65,6 +85,9 @@ export interface RewriteSettings {
 
   // Map of Template ID -> Override settings
   templateOverrides: Record<string, RewriteTemplateOverride>;
+
+  // Disabled tools for rewrite sessions
+  disabledTools: string[];
 }
 
 // --- Default Templates Definition ---
@@ -113,6 +136,8 @@ ${INPUT_TEXT_BLOCK}`;
 const characterPolisherPreamble = `You are an expert character writer assisting a user. Your task is to refine specific fields of a Character Card (V2 spec) to be more evocative, show-don't-tell, and consistent with the character definition.
 
 Your justification should be friendly and conversational. Be direct and focus on the enhancements you've made. Vary your responses and do not start every message the same way. Do not repeat the user's request back to them.
+
+Use common everyday words. Avoid technical vocabulary and rare words. Under no circumstances, even logical ones, should {{char}} use ANY scientific, clinical, overly professional, official, academic, robotic or bureaucratic speech. It makes characters sound like robots, ruining immersion. Examples of BAD speech: "the protocol dictates..."; "Fascinating! Cardiovascular systems elongated!"; "Section twelve-point-four requires your signature...", etc.
 
 Initial character state is provided in the context.
 
@@ -177,6 +202,11 @@ ${INPUT_TEXT_BLOCK}
 [Task]
 {{#if fieldName}}
 Field being edited: "{{fieldName}}"
+{{/if}}
+{{#if availableFields}}
+You are in a multi-field editing session. You can propose changes to one or more of the following fields.
+Available field IDs for your response: {{availableFields}}
+When proposing changes, use the 'changes' array in your response, with each object containing 'fieldId' and 'newValue'.
 {{/if}}`;
 
 const worldInfoRefinerPreamble = `You are an expert world builder and database manager assisting a user. Your task is to refine a World Info entry for clarity, conciseness, and effective key utilization.

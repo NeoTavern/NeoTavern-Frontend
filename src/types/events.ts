@@ -9,6 +9,7 @@ import type {
   GenerationResponse,
   PromptBuilderOptions,
   StreamedChunk,
+  StructuredResponseOptions,
   ToolGenerationConfig,
 } from './generation';
 import type { InstructTemplate } from './instruct';
@@ -33,6 +34,7 @@ export interface GenerationPayloadBuilderConfig {
   activeCharacter?: Character;
   toolConfig?: ToolGenerationConfig;
   mode: GenerationMode;
+  structuredResponse?: StructuredResponseOptions;
 }
 
 export interface LlmUsageData {
@@ -70,6 +72,7 @@ export interface ExtensionEventMap {
   'message:updated': [index: number, message: ChatMessage];
   'message:deleted': [indices: number[]];
   'message:swipe-deleted': [{ messageIndex: number; swipeIndex: number; newSwipeId: number }];
+  'message:swipe-changed': [messageIndex: number, newSwipeId: number];
 
   // Character Events
   'character:created': [character: Character];

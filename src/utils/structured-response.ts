@@ -256,6 +256,10 @@ export function parseResponse(content: string, format: 'xml' | 'json', options: 
     }
 
     if (options.schema) {
+      const schemaUrl = options.schema.$schema;
+      if (schemaUrl && schemaUrl.startsWith('https://json-schema.org')) {
+        delete options.schema.$schema;
+      }
       const validate = ajv.compile(options.schema);
       const valid = validate(parsedData);
 

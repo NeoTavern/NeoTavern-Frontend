@@ -71,11 +71,17 @@ const { floatingStyles } = useFloating(triggerRef, dropdownRef, {
   middleware: [
     offset(4),
     flip({ padding: 10 }),
-    shift({}),
+    shift({ padding: 8 }),
     size({
-      apply({ rects, elements }) {
+      apply({ rects, elements, availableWidth }) {
+        const minWidth = 200;
+        const referenceWidth = rects.reference.width;
+        const constrainedWidth = Math.min(referenceWidth, availableWidth - 16);
+        const finalWidth = Math.max(minWidth, constrainedWidth);
+
         Object.assign(elements.floating.style, {
-          width: `${rects.reference.width}px`,
+          width: `${finalWidth}px`,
+          maxWidth: `${availableWidth - 16}px`,
         });
       },
     }),

@@ -193,12 +193,13 @@ export class ToolService {
     provider: ApiProvider,
     model: string,
     customPromptPostProcessing: CustomPromptPostProcessing,
+    bypassGlobalCheck: boolean = false,
   ): boolean {
     const apiStore = useApiStore();
     const settingsStore = useSettingsStore();
 
-    // 1. Check if globally enabled in settings
-    if (!settingsStore.settings.api.toolsEnabled) {
+    // 1. Check if globally enabled in settings (unless bypassed)
+    if (!bypassGlobalCheck && !settingsStore.settings.api.toolsEnabled) {
       return false;
     }
 

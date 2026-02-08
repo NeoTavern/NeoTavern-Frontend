@@ -525,6 +525,7 @@
     "tokens": "Tokens",
     "confirm": "Confirm",
     "delete": "Delete",
+    "deleted": "Deleted",
     "of": "of",
     "continue": "Continue",
     "search": "Search",
@@ -550,6 +551,8 @@
     "text": "Text",
     "import": "Import",
     "export": "Export",
+    "exportActive": "Export Active",
+    "importSingle": "Import Single",
     "edit": "Edit",
     "create": "Create",
     "rename": "Rename",
@@ -565,6 +568,7 @@
     "default": "Default",
     "welcome": "Welcome",
     "back": "Back",
+    "preview": "Preview",
     "login": "Login",
     "copy": "Copy",
     "regenerate": "Regenerate",
@@ -788,6 +792,7 @@
       "placeholderButton": "Create New Character"
     },
     "tags": {
+      "tagName": "Name",
       "manage": "Manage Tags",
       "managerTitle": "Custom Tag Manager",
       "existing": "Existing Tags",
@@ -1374,6 +1379,11 @@
     },
     "rewrite": {
       "popupTitle": "Magic Rewrite",
+      "popupTitleCharacter": "Rewrite Character: {name}",
+      "popupTitleField": "Rewrite {field}",
+      "popupTitleMessage": "Rewrite Message",
+      "popupTitleInput": "Rewrite Input",
+      "popupTitleExtension": "Rewrite Extension Field",
       "settings": {
         "defaultConnectionProfile": "Default Connection Profile",
         "templates": "Templates",
@@ -1391,7 +1401,8 @@
         "selectTemplate": "Select a template to edit",
         "resetToDefault": "Reset to default",
         "sessionPreamble": "Session Preamble",
-        "sessionPreambleHint": "The system prompt used for the chat session context."
+        "sessionPreambleHint": "The system prompt used for the chat session context.",
+        "deleteAllSessions": "Delete All Sessions"
       },
       "popup": {
         "template": "Template",
@@ -1407,6 +1418,7 @@
         "generate": "Generate",
         "abort": "Abort",
         "apply": "Apply",
+        "continue": "Continue",
         "generating": "Generating...",
         "oneShot": "One-Shot",
         "sessions": "Sessions",
@@ -1433,11 +1445,14 @@
         "selectSession": "Select or create a session to start.",
         "newSession": "New Session",
         "systemInstruction": "System Instruction",
+        "toolResult": "Tool Result",
+        "toolCalls": "Tool Calls",
         "deleteConfirm": "Are you sure you want to delete this message? This will also delete all subsequent messages in this session."
       },
       "buttons": {
         "rewriteMessage": "Rewrite Message",
-        "rewriteInput": "Rewrite Input"
+        "rewriteInput": "Rewrite Input",
+        "rewriteCharacter": "Rewrite Character"
       },
       "errors": {
         "templateNotFound": "Template not found",

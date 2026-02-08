@@ -1,6 +1,15 @@
 import localforage from 'localforage';
-import type { ApiChatMessage, Character, ExtensionAPI, Persona, StructuredResponseOptions } from '../../../types';
+import { ToolService } from '../../../services/tool.service';
 import type {
+  ApiChatMessage,
+  Character,
+  ExtensionAPI,
+  GenerationResponse,
+  Persona,
+  StructuredResponseOptions,
+} from '../../../types';
+import type {
+  RewriteField,
   RewriteLLMResponse,
   RewriteSession,
   RewriteSessionMessage,
@@ -25,6 +34,7 @@ export class RewriteService {
       lastUsedTemplates: {},
       templateOverrides: {},
       defaultConnectionProfile: '',
+      disabledTools: [],
     };
     const current = this.api.settings.get() || defaults;
     return current;
@@ -61,10 +71,14 @@ export class RewriteService {
     await this.store.removeItem(id);
   }
 
+  public async clearAllSessions(): Promise<void> {
+    await this.store.clear();
+  }
+
   public async createSession(
     templateId: string,
     identifier: string,
-    originalText: string,
+    initialFields: RewriteField[],
     contextData?: { activeCharacter?: Character; characters?: Character[]; persona?: Persona },
     additionalMacros?: Record<string, unknown>,
     argOverrides?: Record<string, boolean | number | string>,
@@ -85,7 +99,8 @@ export class RewriteService {
     }
 
     const macros = {
-      input: originalText,
+      input: initialFields.length > 0 ? initialFields[0].value : '',
+      availableFields: initialFields.map((f) => f.id).join(', '),
       ...args,
       ...additionalMacros,
     };
@@ -99,7 +114,7 @@ export class RewriteService {
       identifier,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      originalText,
+      initialFields,
       systemPrompt: resolvedSystemPrompt,
       messages: [
         {
@@ -126,6 +141,7 @@ export class RewriteService {
     additionalMacros?: Record<string, unknown>,
     argOverrides?: Record<string, boolean | number | string>,
     signal?: AbortSignal,
+    lastAssistantMessage?: string,
   ) {
     if (!connectionProfile) {
       throw new Error(this.api.i18n.t('extensionsBuiltin.rewrite.errors.noConnectionProfile'));
@@ -157,7 +173,11 @@ export class RewriteService {
     // Process the template string using the core macro processor
     const processedContent = this.api.macro.process(macroTemplate, contextData, macros);
 
-    const messages: ApiChatMessage[] = [{ role: 'user', content: processedContent, name: 'User' }];
+    const messages: ApiChatMessage[] = [];
+    messages.push({ role: 'user', content: processedContent, name: 'User' });
+    if (lastAssistantMessage) {
+      messages.push({ role: 'assistant', content: lastAssistantMessage, name: 'Assistant' });
+    }
 
     const response = await this.api.llm.generate(messages, {
       connectionProfile,
@@ -170,26 +190,119 @@ export class RewriteService {
   public async generateSessionResponse(
     messages: RewriteSessionMessage[],
     format: StructuredResponseFormat,
+    availableFields: RewriteField[],
     connectionProfile?: string,
     signal?: AbortSignal,
   ): Promise<RewriteLLMResponse> {
-    const apiMessages: ApiChatMessage[] = messages.map((m) => {
-      if (!connectionProfile) {
-        throw new Error(this.api.i18n.t('extensionsBuiltin.rewrite.errors.noConnectionProfile'));
-      }
+    if (!connectionProfile) {
+      throw new Error(this.api.i18n.t('extensionsBuiltin.rewrite.errors.noConnectionProfile'));
+    }
+
+    let apiMessages: ApiChatMessage[] = messages.map((m) => {
       let content = m.content;
       if (typeof content !== 'string') {
-        // TODO: Handle other content types properly (e.g., images, files)
         content = JSON.stringify(content);
       }
       return {
-        role: m.role,
+        role: m.role === 'tool' ? 'user' : m.role,
         content: content as string,
         name: m.role === 'user' ? 'User' : 'Assistant',
       };
     });
 
-    // If format is 'text', we skip structured response and return raw text as justification
+    const isMultiField = availableFields.length > 1;
+
+    const schema = {
+      name: 'rewrite_response',
+      strict: true,
+      value: {
+        type: 'object',
+        properties: {
+          justification: {
+            type: 'string',
+            description: 'A brief explanation of the changes made and the reasoning behind them.',
+          },
+          ...(isMultiField
+            ? {
+                changes: {
+                  type: 'array',
+                  description: 'An array of proposed changes to one or more fields.',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      fieldId: {
+                        type: 'string',
+                        description: 'The ID of the field to change.',
+                        enum: availableFields.map((f) => f.id),
+                      },
+                      newValue: {
+                        type: 'string',
+                        description: 'The new, rewritten content for the field.',
+                      },
+                    },
+                    required: ['fieldId', 'newValue'],
+                  },
+                },
+              }
+            : {
+                response: {
+                  type: 'string',
+                  description: 'The full, rewritten text for the single field.',
+                },
+              }),
+          toolCalls: {
+            type: 'array',
+            description: 'Optional tool calls to execute before providing the final response.',
+            items: {
+              type: 'object',
+              properties: {
+                name: {
+                  type: 'string',
+                  description: 'The name of the tool function to call.',
+                },
+                arguments: {
+                  type: 'object',
+                  description: 'The arguments to pass to the tool function.',
+                },
+              },
+              required: ['name', 'arguments'],
+            },
+          },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+    };
+
+    let structuredResponseOptions: StructuredResponseOptions | undefined;
+    if (format !== 'text') {
+      structuredResponseOptions =
+        format === 'native'
+          ? { schema, format: 'native' }
+          : { schema, format, exampleResponse: true, jsonPrompt: undefined, xmlPrompt: undefined };
+    }
+
+    // Inject active tools into the prompt
+    const disabledTools = this.getSettings().disabledTools || [];
+    const tools = ToolService.getTools().filter((tool) => !disabledTools.includes(tool.function.name));
+    if (tools.length > 0) {
+      apiMessages.unshift({
+        role: 'system',
+        content: `Available tools:\n${JSON.stringify(tools, null, 2)}`,
+        name: 'Tool Definitions',
+      });
+    }
+
+    apiMessages = (
+      await this.api.chat.buildPrompt({
+        chatHistory: apiMessages,
+        structuredResponse: structuredResponseOptions,
+        samplerSettings: {
+          prompts: [{ content: '', enabled: true, identifier: 'chatHistory', marker: true, name: 'Chat History' }],
+        },
+      })
+    ).messages;
+
     if (format === 'text') {
       const response = await this.api.llm.generate(apiMessages, {
         connectionProfile,
@@ -211,79 +324,35 @@ export class RewriteService {
       };
     }
 
-    // Otherwise, use structured response
-    const schema = {
-      name: 'rewrite_response',
-      strict: true,
-      value: {
-        type: 'object',
-        properties: {
-          justification: {
-            type: 'string',
-            description: 'A brief explanation of the changes made and the reasoning behind them.',
-          },
-          response: {
-            type: 'string',
-            description: 'The full, rewritten text.',
-          },
-        },
-        required: ['justification'],
-        additionalProperties: false,
+    const response = (await this.api.llm.generate(apiMessages, {
+      connectionProfile,
+      signal,
+      samplerOverrides: {
+        stream: false,
       },
-    };
+      structuredResponse: structuredResponseOptions,
+    })) as GenerationResponse;
 
-    const structuredResponseOptions: StructuredResponseOptions =
-      format === 'native'
-        ? { schema, format: 'native' }
-        : { schema, format, exampleResponse: true, jsonPrompt: undefined, xmlPrompt: undefined };
-
-    return new Promise(async (resolve, reject) => {
-      try {
-        const response = await this.api.llm.generate(apiMessages, {
-          connectionProfile,
-          signal,
-          structuredResponse: structuredResponseOptions,
-          onCompletion: (data) => {
-            if (data.parse_error) {
-              reject(data.parse_error);
-              return;
-            }
-            if (data.structured_content) {
-              resolve(data.structured_content as RewriteLLMResponse);
-            } else {
-              // Fallback if structured content is missing but text exists (unlikely with strict mode)
-              reject(new Error('No structured content received'));
-            }
-          },
-        });
-
-        if (Symbol.asyncIterator in response) {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          for await (const _ of response) {
-          }
-        }
-      } catch (err) {
-        reject(err);
-      }
-    });
+    if (response.structured_content) {
+      return response.structured_content as RewriteLLMResponse;
+    } else {
+      throw new Error('No structured content received');
+    }
   }
 
   public extractCodeBlock(text: string): string {
-    // Try complete code block first (opening and closing ```)
     const completeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
     const completeMatch = text.match(completeBlockRegex);
     if (completeMatch && completeMatch[1]) {
-      return completeMatch[1].trim();
+      return completeMatch[1];
     }
 
-    // Try incomplete code block (has opening ``` but no closing, e.g., aborted generation)
     const incompleteBlockRegex = /```(?:[\w]*\n)?([\s\S]*)/i;
     const incompleteMatch = text.match(incompleteBlockRegex);
     if (incompleteMatch && incompleteMatch[1]) {
-      return incompleteMatch[1].trim();
+      return incompleteMatch[1];
     }
 
-    // No code blocks found, return full text
-    return text.trim();
+    return text;
   }
 }

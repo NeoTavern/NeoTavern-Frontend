@@ -40,19 +40,6 @@ const sortedTags = computed(() => {
   return [...tagStore.customTags].sort((a, b) => a.name.localeCompare(b.name));
 });
 
-const tagsForDisplay = computed(() => {
-  return sortedTags.value.map((tag) => {
-    const isCurrentlyEditing = isEditing.value && selectedTag.value?.name === tag.name;
-
-    return {
-      originalName: tag.name,
-      name: isCurrentlyEditing ? formState.value.name : tag.name,
-      backgroundColor: isCurrentlyEditing ? formState.value.backgroundColor : tag.backgroundColor,
-      foregroundColor: isCurrentlyEditing ? formState.value.foregroundColor : tag.foregroundColor,
-    };
-  });
-});
-
 watch(selectedTag, (newTag) => {
   if (newTag) {
     formState.value = {
@@ -65,10 +52,12 @@ watch(selectedTag, (newTag) => {
   }
 });
 
-function handleSelectTag(tagName: string) {
-  const originalTag = sortedTags.value.find((t) => t.name === tagName);
-  if (originalTag) {
-    selectedTag.value = originalTag;
+function handleSelectTag(tag: CustomTag) {
+  // If the same tag is clicked again, deselect it to go back to "add new" mode.
+  if (selectedTag.value?.name === tag.name) {
+    selectedTag.value = null;
+  } else {
+    selectedTag.value = tag;
   }
 }
 
@@ -93,7 +82,13 @@ function handleSaveTag() {
   }
 
   if (success) {
-    handleClearSelection();
+    // If we were editing, we clear selection to go back to "add new" mode.
+    if (isEditing.value) {
+      handleClearSelection();
+    } else {
+      // Small improvement: after adding a tag, reset form name but keep colors.
+      formState.value.name = '';
+    }
   }
 }
 
@@ -106,6 +101,66 @@ function handleDeleteTag() {
 
 <template>
   <div class="custom-tag-manager">
+    <div class="tag-form-section">
+      <div class="tag-form" :class="{ 'editing-form': isEditing }">
+        <h3>{{ isEditing ? t('characterPanel.tags.editTitle') : t('characterPanel.tags.addTitle') }}</h3>
+
+        <div class="form-content">
+          <div class="form-inputs">
+            <FormItem :label="t('common.name')">
+              <Input v-model="formState.name" />
+            </FormItem>
+            <div class="color-pickers">
+              <div class="color-picker-group">
+                <ColorPicker v-model="backgroundColorProxy" :label="t('characterPanel.tags.background')" />
+                <Button
+                  variant="ghost"
+                  icon="fa-solid fa-xmark"
+                  :title="t('characterPanel.tags.removeColor')"
+                  @click="formState.backgroundColor = null"
+                />
+              </div>
+              <div class="color-picker-group">
+                <ColorPicker v-model="foregroundColorProxy" :label="t('characterPanel.tags.foreground')" />
+                <Button
+                  variant="ghost"
+                  icon="fa-solid fa-xmark"
+                  :title="t('characterPanel.tags.removeColor')"
+                  @click="formState.foregroundColor = null"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="form-preview">
+            <FormItem :label="t('common.preview')">
+              <div class="tag-preview-wrapper">
+                <span
+                  class="ui-tag"
+                  :class="{ 'no-color': !formState.backgroundColor }"
+                  :style="{
+                    backgroundColor: formState.backgroundColor ?? undefined,
+                    color: formState.foregroundColor ?? undefined,
+                  }"
+                >
+                  {{ formState.name || t('characterPanel.tags.tagName') }}
+                </span>
+              </div>
+            </FormItem>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <Button v-if="isEditing" variant="danger" @click="handleDeleteTag">
+            {{ t('common.delete') }}
+          </Button>
+          <div style="flex-grow: 1"></div>
+          <Button @click="handleClearSelection">{{ isEditing ? t('common.cancel') : t('common.clear') }}</Button>
+          <Button variant="confirm" :disabled="!formState.name.trim()" @click="handleSaveTag">
+            {{ isEditing ? t('common.save') : t('characterPanel.tags.add') }}
+          </Button>
+        </div>
+      </div>
+    </div>
     <div class="tag-list-section">
       <h3>{{ t('characterPanel.tags.existing') }}</h3>
       <div class="tag-list">
@@ -113,11 +168,11 @@ function handleDeleteTag() {
           {{ t('characterPanel.tags.noTags') }}
         </div>
         <ListItem
-          v-for="tag in tagsForDisplay"
-          :key="tag.originalName"
+          v-for="tag in sortedTags"
+          :key="tag.name"
           class="tag-item"
-          :active="selectedTag?.name === tag.originalName"
-          @click="handleSelectTag(tag.originalName)"
+          :active="selectedTag?.name === tag.name"
+          @click="handleSelectTag(tag)"
         >
           <template #start>
             <div class="tag-preview-wrapper">
@@ -134,45 +189,6 @@ function handleDeleteTag() {
             </div>
           </template>
         </ListItem>
-      </div>
-    </div>
-
-    <div class="tag-form-section">
-      <div class="tag-form" :class="{ 'editing-form': isEditing }">
-        <h3>{{ isEditing ? t('characterPanel.tags.editTitle') : t('characterPanel.tags.addTitle') }}</h3>
-        <FormItem :label="t('common.name')">
-          <Input v-model="formState.name" />
-        </FormItem>
-        <div class="color-pickers">
-          <div class="color-picker-group">
-            <ColorPicker v-model="backgroundColorProxy" :label="t('characterPanel.tags.background')" />
-            <Button
-              variant="ghost"
-              icon="fa-solid fa-xmark"
-              :title="t('characterPanel.tags.removeColor')"
-              @click="formState.backgroundColor = null"
-            />
-          </div>
-          <div class="color-picker-group">
-            <ColorPicker v-model="foregroundColorProxy" :label="t('characterPanel.tags.foreground')" />
-            <Button
-              variant="ghost"
-              icon="fa-solid fa-xmark"
-              :title="t('characterPanel.tags.removeColor')"
-              @click="formState.foregroundColor = null"
-            />
-          </div>
-        </div>
-        <div class="form-actions">
-          <Button v-if="isEditing" variant="danger" @click="handleDeleteTag">
-            {{ t('common.delete') }}
-          </Button>
-          <div style="flex-grow: 1"></div>
-          <Button @click="handleClearSelection">{{ isEditing ? t('common.cancel') : t('common.clear') }}</Button>
-          <Button variant="confirm" :disabled="!formState.name.trim()" @click="handleSaveTag">
-            {{ isEditing ? t('common.save') : t('characterPanel.tags.add') }}
-          </Button>
-        </div>
       </div>
     </div>
   </div>

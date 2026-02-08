@@ -11,16 +11,18 @@ import type {
   ApiChatMessage,
   ChatCompletionPayload,
   GenerationResponse,
+  ItemizedPrompt,
   MediaHydrationContext,
   PromptBuilderOptions,
   StreamedChunk,
   StructuredResponseOptions,
+  ToolGenerationConfig,
 } from './generation';
 import type { Persona, PersonaDescription } from './persona';
 import type { PopupShowOptions } from './popup';
 import type { ApiFormatter, CodeMirrorTarget, SamplerSettings, Settings, SettingsPath } from './settings';
 import type { ToolDefinition } from './tools';
-import type { Path, ValueForPath } from './utils';
+import type { DeepPartial, Path, ValueForPath } from './utils';
 import type { WorldInfoBook, WorldInfoEntry, WorldInfoHeader, WorldInfoSettings } from './world-info';
 
 export interface ChatInputDetail {
@@ -46,6 +48,10 @@ export interface LlmGenerationOptions {
    * Configuration for structured response generation.
    */
   structuredResponse?: StructuredResponseOptions;
+  /**
+   * Configuration for tool calling.
+   */
+  toolConfig?: ToolGenerationConfig;
   isContinuation?: boolean;
   onCompletion?: (data: {
     outputTokens: number;
@@ -362,14 +368,6 @@ export interface ExtensionMetadata {
   containerId: string;
 }
 
-export type TypedChatMetadata<T = Record<string, unknown>> = Omit<ChatMetadata, 'extra'> & {
-  /**
-   * Extension specific data storage.
-   * Merges the standard loosely-typed extra with the strictly-typed generic T.
-   */
-  extra?: ChatMetadata['extra'] & Record<string, unknown> & T;
-};
-
 export type TypedChatMessage<T = Record<string, unknown>> = Omit<ChatMessage, 'extra'> & {
   /**
    * Extension specific message data.
@@ -404,15 +402,16 @@ export interface ExtensionAPI<
      * Retrieves the current active chat filename (without extension).
      * Returns null if no chat is loaded.
      */
-    getChatInfo: () => ChatInfo | null;
-    getAllChatInfos: () => Array<ChatInfo>;
+    getChatInfo: () => ChatInfo<TChatExtra> | null;
+    getAllChatInfos: () => Array<ChatInfo<TChatExtra>>;
     getLastMessage: () => TypedChatMessage<TMessageExtra> | null;
+    createMessage: (message: ApiChatMessage) => Promise<TypedChatMessage<TMessageExtra>>;
     insertMessage: (
       message: Omit<TypedChatMessage<TMessageExtra>, 'send_date'> & { send_date?: string },
       index?: number,
-    ) => void;
+    ) => Promise<void>;
     updateMessage: (index: number, newContent: string, newReasoning?: string) => Promise<void>;
-    updateMessageObject: (index: number, updates: Partial<TypedChatMessage<TMessageExtra>>) => Promise<void>;
+    updateMessageObject: (index: number, updates: DeepPartial<TypedChatMessage<TMessageExtra>>) => Promise<void>;
     deleteMessage: (index: number) => Promise<void>;
     generateResponse: (
       initialMode: GenerationMode,
@@ -420,6 +419,7 @@ export interface ExtensionAPI<
     ) => Promise<void>;
     clear: () => Promise<void>;
     abortGeneration: () => void;
+    setGeneratingState: (generating: boolean) => void;
     getChatInput: () => ChatInputDetail | null;
     setChatInput: (value: string) => void;
     /**
@@ -446,8 +446,11 @@ export interface ExtensionAPI<
         samplerSettings?: Partial<SamplerSettings>;
         worldInfo?: Partial<WorldInfoSettings>;
         mediaContext?: Partial<MediaHydrationContext>;
+        generationId?: string;
+        messageIndex?: number;
+        swipeId?: number;
       },
-    ) => Promise<ApiChatMessage[]>;
+    ) => Promise<ItemizedPrompt>;
 
     /**
      * Creates a new chat file with the provided content.
@@ -455,7 +458,7 @@ export interface ExtensionAPI<
      * @param filename Optional filename (without extension). If not provided, a UUID will be generated.
      * @returns The filename of the created chat.
      */
-    create: (chat: FullChat, filename?: string) => Promise<string>;
+    create: (chat: FullChat<TChatExtra>, filename?: string) => Promise<string>;
 
     /**
      * Loads a chat by its filename.
@@ -463,10 +466,16 @@ export interface ExtensionAPI<
      */
     load: (filename: string) => Promise<void>;
 
+    /**
+     * Adds an itemized prompt to the prompt store for tracking and analysis.
+     * @param prompt The itemized prompt to add.
+     */
+    addItemizedPrompt: (prompt: ItemizedPrompt) => void;
+
     metadata: {
-      get: () => TypedChatMetadata<TChatExtra> | null;
-      set: (metadata: TypedChatMetadata<TChatExtra>) => void;
-      update: (updates: Partial<TypedChatMetadata<TChatExtra>>) => void;
+      get: () => ChatMetadata<TChatExtra> | null;
+      set: (metadata: ChatMetadata<TChatExtra>) => void;
+      update: (updates: DeepPartial<ChatMetadata<TChatExtra>>) => void;
     };
 
     PromptBuilder: typeof PromptBuilder;

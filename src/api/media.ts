@@ -25,3 +25,27 @@ export async function uploadMedia(data: UploadMediaRequest): Promise<UploadMedia
 
   return await response.json();
 }
+
+export interface UploadFileRequest {
+  name: string; // Filename
+  data: string; // Base64 data
+}
+
+export interface UploadFileResponse {
+  path: string;
+}
+
+export async function uploadFile(data: UploadFileRequest): Promise<UploadFileResponse> {
+  const response = await fetch('/api/files/upload', {
+    method: 'POST',
+    headers: getRequestHeaders(),
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Failed to upload file');
+  }
+
+  return await response.json();
+}

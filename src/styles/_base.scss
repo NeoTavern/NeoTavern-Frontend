@@ -140,7 +140,7 @@ select option:not(:checked) {
   color: var(--white-70a);
 }
 
-select option[disabled]:not(:checked) {
+select option[disabled]:not([disabled='false']):not(:checked) {
   color: var(--white-30a);
 }
 
@@ -174,7 +174,7 @@ select.text-pole {
   text-align: center;
   filter: grayscale(0.5);
 
-  &:not(.disabled):not([disabled]):hover {
+  &:not(.disabled):not([disabled]):not([disabled='false']):hover {
     background-color: var(--white-30a);
   }
 
@@ -186,7 +186,7 @@ select.text-pole {
   }
 
   &.disabled,
-  &[disabled] {
+  &[disabled]:not([disabled='false']) {
     opacity: 0.5;
     cursor: not-allowed !important;
     filter: grayscale(1);
@@ -195,13 +195,13 @@ select.text-pole {
 
   &--danger {
     color: var(--color-warning);
-    &:hover:not(.disabled):not([disabled]) {
+    &:hover:not(.disabled):not([disabled]):not([disabled='false']) {
       background-color: var(--color-accent-crimson-hover);
     }
   }
 
   &--confirm {
-    &:hover:not(.disabled):not([disabled]) {
+    &:hover:not(.disabled):not([disabled]):not([disabled='false']) {
       filter: brightness(120%);
     }
   }

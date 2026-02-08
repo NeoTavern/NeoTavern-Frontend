@@ -46,7 +46,8 @@ ESLint/Prettier: Run `npm run lint --fix`.
 - Run: `npm test` / `npm vitest <file>`.
 - After significance of changes, run these commands. However please avoid running them for each change. Run them once after all changes are done.
   1. `npm run format`
-  2. `npm run lint:fix`
-  3. `npm test`
+  2. `npm run i18n` (this is going to regenerate i18n types, if `locales/en.json` is changed)
+  3. `npm run lint:fix`
+  4. `npm test`
 - Fix TS errors, add/update tests for changes.
 - Search TODO/FIXME: `rg 'TODO|FIXME' src/`.
