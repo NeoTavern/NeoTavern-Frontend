@@ -245,6 +245,48 @@ function setDeep(obj: any, path: string, value: any) {
   current[keys[keys.length - 1]] = value;
 }
 
+/**
+ * Recursively adds `additionalProperties: false` to all object types in a JSON schema.
+ * This ensures strict validation for providers like Gemini that require it.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function ensureAdditionalPropertiesFalse(schema: any): any {
+  if (!schema || typeof schema !== 'object') {
+    return schema;
+  }
+
+  // Clone to avoid mutating the original
+  const cloned = Array.isArray(schema) ? [...schema] : { ...schema };
+
+  // If this is an object type schema, add additionalProperties: false
+  if (cloned.type === 'object' && cloned.properties) {
+    cloned.additionalProperties = false;
+
+    // Recursively process properties
+    for (const key in cloned.properties) {
+      cloned.properties[key] = ensureAdditionalPropertiesFalse(cloned.properties[key]);
+    }
+  }
+
+  // Handle array items
+  if (cloned.type === 'array' && cloned.items) {
+    cloned.items = ensureAdditionalPropertiesFalse(cloned.items);
+  }
+
+  // Handle anyOf, oneOf, allOf
+  if (cloned.anyOf) {
+    cloned.anyOf = cloned.anyOf.map(ensureAdditionalPropertiesFalse);
+  }
+  if (cloned.oneOf) {
+    cloned.oneOf = cloned.oneOf.map(ensureAdditionalPropertiesFalse);
+  }
+  if (cloned.allOf) {
+    cloned.allOf = cloned.allOf.map(ensureAdditionalPropertiesFalse);
+  }
+
+  return cloned;
+}
+
 export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOptions): ChatCompletionPayload {
   const {
     samplerSettings,
@@ -272,7 +314,12 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
   if (structuredResponse) {
     const { format = 'native' } = structuredResponse;
     if (format === 'native' && formatter === 'chat') {
-      payload.json_schema = structuredResponse.schema;
+      // Ensure all object schemas have additionalProperties: false for strict validation
+      const processedSchema = {
+        ...structuredResponse.schema,
+        value: ensureAdditionalPropertiesFalse(structuredResponse.schema.value),
+      };
+      payload.json_schema = processedSchema;
     }
   }
 
