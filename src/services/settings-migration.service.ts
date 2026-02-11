@@ -311,6 +311,7 @@ export function createDefaultSettings(): Settings {
         name: 'landscape autumn great tree.jpg',
         thumbnailColumns: 2,
         url: 'url("/backgrounds/landscape%20autumn%20great%20tree.jpg")',
+        useCharacterAvatar: false,
       },
       avatars: {
         neverResize: false,

@@ -351,6 +351,7 @@ export interface Settings {
       url: string;
       fitting: BackgroundFitting;
       thumbnailColumns: number;
+      useCharacterAvatar: boolean;
     };
     avatars: {
       neverResize: boolean;
