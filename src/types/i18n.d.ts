@@ -1650,6 +1650,53 @@ export interface MessageSchema {
         manageSchemas: string;
       };
     };
+    modelRandomizer: {
+      enabled: string;
+      profile: string;
+      selectProfile: string;
+      profileEnabled: string;
+      setActive: string;
+      connectionProfiles: string;
+      selectConnectionProfiles: string;
+      modelGroups: string;
+      addGroup: string;
+      groupName: string;
+      provider: string;
+      models: string;
+      selectModels: string;
+      noModels: string;
+      noModelsLocal: string;
+      enterModelId: string;
+      manualModelHelp: string;
+      randomizeTemperature: string;
+      minTemperature: string;
+      maxTemperature: string;
+      noGroups: string;
+      noProfiles: string;
+      types: {
+        connectionProfiles: string;
+        modelGroups: string;
+      };
+      groups: {
+        newGroup: string;
+      };
+      popups: {
+        createProfileTitle: string;
+        newProfileName: string;
+        selectTypeTitle: string;
+        selectTypeContent: string;
+        renameProfileTitle: string;
+        deleteProfileTitle: string;
+        deleteProfileContent: string;
+      };
+      toasts: {
+        profileExists: string;
+        profileCreated: string;
+        profileRenamed: string;
+        profileDeleted: string;
+        profileActivated: string;
+      };
+    };
   };
   login: {
     authenticating: string;

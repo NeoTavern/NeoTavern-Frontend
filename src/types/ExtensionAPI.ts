@@ -3,6 +3,7 @@ import type { StrictT } from '../composables/useStrictI18n';
 import type { EventPriority, GenerationMode } from '../constants';
 import type { PromptBuilder } from '../services/prompt-engine';
 import type { WorldInfoProcessor } from '../services/world-info';
+import type { ApiModel, ApiProvider, ConnectionProfile } from './api';
 import type { Character } from './character';
 import type { ChatInfo, ChatMessage, ChatMetadata, FullChat } from './chat';
 import type { DrawerType } from './common';
@@ -768,5 +769,24 @@ export interface ExtensionAPI<
 
   i18n: {
     t: StrictT;
+  };
+  api: {
+    /**
+     * Gets all registered connection profiles.
+     */
+    getConnectionProfiles: () => ConnectionProfile[];
+    /**
+     * Gets a specific connection profile by ID.
+     */
+    getConnectionProfile: (id: string) => ConnectionProfile | null;
+    /**
+     * Gets all available models for a specific provider.
+     * Uses caching to avoid repeated API calls.
+     */
+    getModelsForProvider: (provider: ApiProvider) => Promise<ApiModel[]>;
+    /**
+     * Gets all available providers.
+     */
+    getProviders: () => Record<string, ApiProvider>;
   };
 }

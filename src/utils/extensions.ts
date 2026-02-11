@@ -18,6 +18,7 @@ import type {
   Tokenizer,
   WorldInfoBook,
 } from '../types';
+import { api_providers, type ApiProvider } from '../types';
 import { isDeviceMobile, isViewportMobile, sanitizeSelector } from './client';
 import { formatFileSize, getMessageTimeStamp, uuidv4 } from './commons';
 
@@ -939,6 +940,22 @@ const baseExtensionAPI: ExtensionAPI = {
   i18n: {
     // @ts-expect-error 'i18n.global' is of type 'unknown'
     t: i18n.global.t as StrictT,
+  },
+  api: {
+    getConnectionProfiles: () => {
+      return deepClone(useApiStore().connectionProfiles);
+    },
+    getConnectionProfile: (id: string) => {
+      const profile = useApiStore().connectionProfiles.find((p) => p.id === id);
+      return profile ? deepClone(profile) : null;
+    },
+    getModelsForProvider: async (provider: ApiProvider) => {
+      const models = await useApiStore().getModelsForProvider(provider);
+      return deepClone(models);
+    },
+    getProviders: () => {
+      return deepClone(api_providers);
+    },
   },
 };
 
