@@ -398,12 +398,14 @@ export interface ExtensionAPI<
       options?: { triggerGeneration?: boolean; generationId?: string },
     ) => Promise<void>;
     getHistory: () => TypedChatMessage<TMessageExtra>[];
+    getHistoryLength: () => number;
     /**
      * Retrieves the current active chat filename (without extension).
      * Returns null if no chat is loaded.
      */
     getChatInfo: () => ChatInfo<TChatExtra> | null;
     getAllChatInfos: () => Array<ChatInfo<TChatExtra>>;
+    getMessage: (index: number) => TypedChatMessage<TMessageExtra> | null;
     getLastMessage: () => TypedChatMessage<TMessageExtra> | null;
     createMessage: (message: ApiChatMessage) => Promise<TypedChatMessage<TMessageExtra>>;
     insertMessage: (
