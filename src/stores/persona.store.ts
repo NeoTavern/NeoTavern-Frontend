@@ -1,3 +1,4 @@
+import { cloneDeep } from 'lodash-es';
 import { defineStore } from 'pinia';
 import { computed, nextTick, ref, toRaw } from 'vue';
 import {
@@ -216,7 +217,7 @@ export const usePersonaStore = defineStore('persona', () => {
       await uploadPersonaAvatar(newAvatarId, file);
 
       const newPersona: Persona = {
-        ...JSON.parse(JSON.stringify(persona)),
+        ...cloneDeep(persona),
         avatarId: newAvatarId,
         name: newName,
       };

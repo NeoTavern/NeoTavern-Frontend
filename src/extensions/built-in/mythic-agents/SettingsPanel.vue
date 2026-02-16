@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Expression } from 'jsep';
 import jsep from 'jsep';
+import { cloneDeep } from 'lodash-es';
 import { computed, onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
 import type { CustomAction } from '../../../components/common/PresetControl.vue';
@@ -26,7 +27,7 @@ const props = defineProps<{
 
 const initial: MythicSettings = { ...DEFAULT_BASE_SETTINGS };
 
-const settings = ref<MythicSettings>(JSON.parse(JSON.stringify(initial)));
+const settings = ref<MythicSettings>(cloneDeep(initial));
 const popupStore = usePopupStore();
 const activeTab = ref('general');
 const activePromptTab = ref('initialScene');
@@ -350,9 +351,9 @@ async function handleCreatePreset() {
     const newPreset: MythicPreset = {
       name: presetName,
       data: {
-        fateChart: JSON.parse(JSON.stringify(currentPreset.value.data.fateChart)),
-        eventGeneration: JSON.parse(JSON.stringify(currentPreset.value.data.eventGeneration)),
-        une: JSON.parse(JSON.stringify(currentPreset.value.data.une)),
+        fateChart: cloneDeep(currentPreset.value.data.fateChart),
+        eventGeneration: cloneDeep(currentPreset.value.data.eventGeneration),
+        une: cloneDeep(currentPreset.value.data.une),
         characterTypes: [...currentPreset.value.data.characterTypes],
       },
     };
@@ -488,7 +489,7 @@ async function handleResetAllPresets() {
     cancelButton: true,
   });
   if (confirm) {
-    settings.value.presets = JSON.parse(JSON.stringify(initial.presets));
+    settings.value.presets = cloneDeep(initial.presets);
     selectedPreset.value = 'Default';
     settings.value.selectedPreset = 'Default';
     loadJsonFromSettings();

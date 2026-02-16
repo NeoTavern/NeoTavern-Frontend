@@ -1,3 +1,4 @@
+import { cloneDeep } from 'lodash-es';
 import { aiConfigDefinition } from '../ai-config-definition';
 import { CustomPromptPostProcessing } from '../constants';
 import { ToolService } from '../services/tool.service';
@@ -689,7 +690,7 @@ class ToolCallAccumulator {
    * @returns A fresh array of the complete tool calls.
    */
   public getCalls(): ApiChatToolCall[] {
-    return JSON.parse(JSON.stringify(this.tools));
+    return cloneDeep(this.tools);
   }
 }
 

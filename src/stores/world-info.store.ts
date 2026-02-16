@@ -1,4 +1,4 @@
-import { debounce } from 'lodash-es';
+import { cloneDeep, debounce } from 'lodash-es';
 import { defineStore } from 'pinia';
 import { computed, nextTick, ref } from 'vue';
 import * as api from '../api/world-info';
@@ -85,7 +85,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     if (book) {
       try {
         await api.saveWorldInfoBook(book.name, book);
-        worldInfoCache.value[book.name] = JSON.parse(JSON.stringify(book));
+        worldInfoCache.value[book.name] = cloneDeep(book);
         await nextTick();
         await eventEmitter.emit('world-info:book-updated', book);
       } catch (error) {
@@ -197,7 +197,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     const book = worldInfoCache.value[filename];
     if (!book) return;
 
-    const entryToCopy = JSON.parse(JSON.stringify(entry));
+    const entryToCopy = cloneDeep(entry);
     const newEntry = {
       ...entryToCopy,
       uid: getNewUid(book),

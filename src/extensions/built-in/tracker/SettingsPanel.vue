@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { cloneDeep } from 'lodash-es';
 import { computed, onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector, PresetControl } from '../../../components/common';
 import { Button, FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
@@ -84,8 +85,8 @@ async function handlePresetCreate() {
       return;
     }
     const newPreset: TrackerSchemaPreset = activePreset.value
-      ? JSON.parse(JSON.stringify(activePreset.value)) // Deep copy current
-      : JSON.parse(JSON.stringify(DEFAULT_PRESETS[0])); // Or copy default
+      ? cloneDeep(activePreset.value) // Deep copy current
+      : cloneDeep(DEFAULT_PRESETS[0]); // Or copy default
 
     newPreset.name = value;
     settings.value.schemaPresets.push(newPreset);
@@ -153,7 +154,7 @@ async function handleResetAll() {
   });
 
   if (result === POPUP_RESULT.AFFIRMATIVE) {
-    settings.value.schemaPresets = JSON.parse(JSON.stringify(DEFAULT_PRESETS));
+    settings.value.schemaPresets = cloneDeep(DEFAULT_PRESETS);
     settings.value.activeSchemaPresetName = DEFAULT_PRESETS[0].name;
     props.api.ui.showToast('Tracker presets have been reset.', 'success');
   }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { cloneDeep } from 'lodash-es';
 import { computed, onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector, SplitPane } from '../../../components/common';
 import { Button, Checkbox, FormItem, Input, Select, Textarea } from '../../../components/UI';
@@ -77,7 +78,7 @@ function duplicateTemplate(id: string) {
     ...original,
     id: uuidv4(),
     name: `${original.name} (Copy)`,
-    args: original.args ? JSON.parse(JSON.stringify(original.args)) : [],
+    args: original.args ? cloneDeep(original.args) : [],
   };
   settings.value.templates.push(newTemplate);
   editingTemplateId.value = newTemplate.id;
@@ -128,7 +129,7 @@ async function resetTemplates() {
       if (isDefaultTemplate(template.id)) {
         const defaultTemplate = DEFAULT_TEMPLATES.find((dt) => dt.id === template.id);
         if (defaultTemplate) {
-          const resetTemplate = JSON.parse(JSON.stringify(defaultTemplate));
+          const resetTemplate = cloneDeep(defaultTemplate);
           resetTemplate.id = template.id;
           Object.assign(template, resetTemplate);
         }
@@ -138,7 +139,7 @@ async function resetTemplates() {
     DEFAULT_TEMPLATES.forEach((defaultTemplate) => {
       const exists = settings.value.templates.some((t) => t.id === defaultTemplate.id);
       if (!exists) {
-        const newTemplate = JSON.parse(JSON.stringify(defaultTemplate));
+        const newTemplate = cloneDeep(defaultTemplate);
         settings.value.templates.push(newTemplate);
       }
     });

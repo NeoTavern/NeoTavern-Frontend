@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { cloneDeep } from 'lodash-es';
 import { computed, ref } from 'vue';
 import { apiConnectionDefinition } from '../../api-connection-definition';
 import { buildChatCompletionPayload, ChatCompletionService } from '../../api/generation';
@@ -188,7 +189,7 @@ async function testMessage() {
       model: apiStore.activeModel || '',
       provider: settingsStore.settings.api.provider,
       samplerSettings: {
-        ...JSON.parse(JSON.stringify(settingsStore.settings.api.samplers)),
+        ...cloneDeep(settingsStore.settings.api.samplers),
         max_tokens: 50,
         max_context: 200,
         stream: false,

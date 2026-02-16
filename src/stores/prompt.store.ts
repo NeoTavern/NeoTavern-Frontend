@@ -1,4 +1,5 @@
 import localforage from 'localforage';
+import { cloneDeep } from 'lodash-es';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import type { ExtensionPrompt, ItemizedPrompt } from '../types';
@@ -15,7 +16,7 @@ export const usePromptStore = defineStore('prompt', () => {
       if (!chatId) {
         return;
       }
-      await promptStorage.setItem(chatId, JSON.parse(JSON.stringify(itemizedPrompts.value)));
+      await promptStorage.setItem(chatId, cloneDeep(itemizedPrompts.value));
     } catch {
       console.log('Error saving itemized prompts for chat', chatId);
     }
