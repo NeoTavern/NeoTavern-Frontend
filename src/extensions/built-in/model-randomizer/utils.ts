@@ -39,15 +39,22 @@ export function selectRandomModelFromGroups(
 ): { model: { id: string; name: string }; group: ModelGroup } | null {
   if (groups.length === 0) return null;
 
-  const group = getRandomElement(groups);
-  if (!group || group.modelIds.length === 0) return null;
+  // Collect all models from all groups
+  const allModels: { modelId: string; group: ModelGroup }[] = [];
+  for (const group of groups) {
+    for (const modelId of group.modelIds) {
+      allModels.push({ modelId, group });
+    }
+  }
 
-  const modelId = getRandomElement(group.modelIds);
-  if (!modelId) return null;
+  if (allModels.length === 0) return null;
+
+  const selected = getRandomElement(allModels);
+  if (!selected) return null;
 
   return {
-    model: { id: modelId, name: modelId },
-    group,
+    model: { id: selected.modelId, name: selected.modelId },
+    group: selected.group,
   };
 }
 
