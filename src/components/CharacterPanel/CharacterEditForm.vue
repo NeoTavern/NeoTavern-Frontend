@@ -112,11 +112,7 @@ watch(
   async (newVal) => {
     if (!newVal) return;
 
-    if (isCreating.value) {
-      // Update draft state in UI store
-      characterUiStore.draftCharacter = newVal;
-      characterStore.calculateAllTokens(newVal);
-    } else {
+    if (!isCreating.value) {
       const original = characterStore.characters.find((c) => c.avatar === newVal.avatar);
       if (original) {
         try {
