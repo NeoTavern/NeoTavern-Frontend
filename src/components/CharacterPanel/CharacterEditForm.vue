@@ -110,21 +110,15 @@ watch(
 watch(
   localCharacter,
   async (newVal) => {
-    if (!newVal) return;
+    if (!newVal || isCreating.value) return;
 
-    if (isCreating.value) {
-      // Update draft state in UI store
-      characterUiStore.draftCharacter = newVal;
-      characterStore.calculateAllTokens(newVal);
-    } else {
-      const original = characterStore.characters.find((c) => c.avatar === newVal.avatar);
-      if (original) {
-        try {
-          await characterStore.saveCharacter(newVal, original);
-          characterStore.calculateAllTokens(newVal);
-        } catch {
-          toast.error(t('character.save.error'));
-        }
+    const original = characterStore.characters.find((c) => c.avatar === newVal.avatar);
+    if (original) {
+      try {
+        await characterStore.saveCharacter(newVal, original);
+        characterStore.calculateAllTokens(newVal);
+      } catch {
+        toast.error(t('character.save.error'));
       }
     }
   },
@@ -235,7 +229,7 @@ async function handleAvatarFileChange(event: Event) {
 }
 
 async function handleCreate() {
-  if (!characterUiStore.editFormCharacter?.name) {
+  if (!localCharacter.value?.name) {
     toast.error(t('characterEditor.validation.nameRequired'));
     return;
   }
@@ -258,8 +252,9 @@ async function handleCreate() {
 
   isSubmitting.value = true;
   try {
+    // Use localCharacter directly to avoid reactive loop
     const newAvatar = await characterStore.createNewCharacter(
-      characterUiStore.editFormCharacter as Character,
+      localCharacter.value,
       selectedAvatarFile.value,
       cropDataForCreate.value,
     );

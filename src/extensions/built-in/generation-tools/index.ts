@@ -212,8 +212,6 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       return;
     }
 
-    const lastMessage = api.chat.getLastMessage();
-    const mode = lastMessage?.is_user ? GenerationMode.NEW : GenerationMode.ADD_SWIPE;
     const generationId = api.uuid();
 
     generateInputs.set(generationId, input);
@@ -225,7 +223,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
       5 * 60 * 1000,
     );
     generateTimeouts.set(generationId, timeout as unknown as number);
-    api.chat.generateResponse(mode, { generationId });
+    api.chat.generateResponse(GenerationMode.NEW, { generationId });
   };
 
   // 4. Reroll Action

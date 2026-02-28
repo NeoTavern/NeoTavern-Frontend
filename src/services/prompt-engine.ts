@@ -252,9 +252,9 @@ export class PromptBuilder {
       const role = promptDefinition.role ?? 'system';
       const name =
         role === 'user'
-          ? this.persona.name || 'User'
+          ? this.persona.name || '{{#raw}}{{user}}{{/raw}}'
           : role === 'assistant'
-            ? this.character?.name || 'Character'
+            ? this.character?.name || '{{#raw}}{{char}}{{/raw}}'
             : 'System';
       if (promptDefinition.marker) {
         switch (promptDefinition.identifier) {

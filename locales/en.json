@@ -1646,6 +1646,53 @@
       "chatForm": {
         "manageSchemas": "Manage Tracker Schemas"
       }
+    },
+    "modelRandomizer": {
+      "enabled": "Enable Model Randomizer",
+      "profile": "Randomizer Profile",
+      "selectProfile": "Select a profile...",
+      "profileEnabled": "Profile Enabled",
+      "setActive": "Set as Active",
+      "connectionProfiles": "Connection Profiles",
+      "selectConnectionProfiles": "Select connection profiles...",
+      "modelGroups": "Model Groups",
+      "addGroup": "Add Group",
+      "groupName": "Group Name",
+      "provider": "Provider",
+      "models": "Models",
+      "selectModels": "Select models...",
+      "noModels": "No models available. Connect to API first.",
+      "noModelsLocal": "No models found. Start the local server first.",
+      "enterModelId": "Enter model ID...",
+      "manualModelHelp": "No models available from API. Enter model IDs manually.",
+      "randomizeTemperature": "Randomize Temperature",
+      "minTemperature": "Minimum Temperature",
+      "maxTemperature": "Maximum Temperature",
+      "noGroups": "No model groups configured. Click 'Add Group' to create one.",
+      "noProfiles": "No profiles configured. Click the + button to create one.",
+      "types": {
+        "connectionProfiles": "Connection Profiles",
+        "modelGroups": "Model Groups"
+      },
+      "groups": {
+        "newGroup": "New Model Group"
+      },
+      "popups": {
+        "createProfileTitle": "Create Randomizer Profile",
+        "newProfileName": "New Profile",
+        "selectTypeTitle": "Select Profile Type",
+        "selectTypeContent": "Choose how you want to randomize model settings:",
+        "renameProfileTitle": "Rename Profile",
+        "deleteProfileTitle": "Delete Profile",
+        "deleteProfileContent": "Are you sure you want to delete the profile '{name}'? This cannot be undone."
+      },
+      "toasts": {
+        "profileExists": "A profile with that name already exists.",
+        "profileCreated": "Profile created successfully.",
+        "profileRenamed": "Profile renamed successfully.",
+        "profileDeleted": "Profile deleted successfully.",
+        "profileActivated": "Profile activated successfully."
+      }
     }
   },
   "login": {

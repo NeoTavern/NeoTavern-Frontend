@@ -37,6 +37,7 @@ $base-border-radius-rounded: 8px;
   --transparent: rgba(0, 0, 0, 0);
 
   // Black with alpha
+  --black-20a: #{rgba($black, 0.2)};
   --black-30a: #{rgba($black, 0.3)};
   --black-50a: #{rgba($black, 0.5)};
   --black-60a: #{rgba($black, 0.6)};

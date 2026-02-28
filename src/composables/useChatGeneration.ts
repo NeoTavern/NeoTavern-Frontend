@@ -627,23 +627,6 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       swipeId = lastMsg?.swipe_id ?? 0;
     }
 
-    const itemizedPrompt: ItemizedPrompt = {
-      generationId,
-      messageIndex: [GenerationMode.CONTINUE, GenerationMode.ADD_SWIPE].includes(mode)
-        ? activeChatMessages.length - 1
-        : activeChatMessages.length,
-      swipeId,
-      model: context.settings.model,
-      api: context.settings.provider,
-      tokenizer: settings.api.tokenizer,
-      presetName: chatMetadata.connection_profile || settings.api.selectedSampler || 'Default', // FIXME: Instead of "chatMetadata.connection_profile", we should get the sampler name from the resolved connection profile
-      messages: messages,
-      breakdown: breakdown,
-      timestamp: Date.now(),
-      worldInfoEntries: promptBuilder.processedWorldInfo?.triggeredEntries ?? {},
-    };
-    promptStore.addItemizedPrompt(itemizedPrompt);
-
     let effectiveMessages = [...messages];
     if (postProcessing !== CustomPromptPostProcessing.NONE) {
       try {
@@ -681,6 +664,23 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       generationId,
     });
     if (payloadController.signal.aborted) return null;
+
+    const itemizedPrompt: ItemizedPrompt = {
+      generationId,
+      messageIndex: [GenerationMode.CONTINUE, GenerationMode.ADD_SWIPE].includes(mode)
+        ? activeChatMessages.length - 1
+        : activeChatMessages.length,
+      swipeId,
+      model: payloadRaw.model,
+      api: payloadRaw.provider,
+      tokenizer: settings.api.tokenizer,
+      presetName: chatMetadata.connection_profile || settings.api.selectedSampler || 'Default', // FIXME: Instead of "chatMetadata.connection_profile", we should get the sampler name from the resolved connection profile
+      messages: messages,
+      breakdown: breakdown,
+      timestamp: Date.now(),
+      worldInfoEntries: promptBuilder.processedWorldInfo?.triggeredEntries ?? {},
+    };
+    promptStore.addItemizedPrompt(itemizedPrompt);
 
     const payload = buildChatCompletionPayload(payloadRaw);
 

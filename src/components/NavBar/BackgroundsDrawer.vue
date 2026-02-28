@@ -156,39 +156,44 @@ onMounted(() => {
       <div class="backgrounds-drawer-grid" role="list" :aria-label="t('a11y.backgrounds.images')">
         <div
           v-for="bg in backgroundStore.filteredSystemBackgrounds"
-          :key="bg"
+          :key="bg.filename"
           class="background-item"
           :class="{
             'is-selected':
-              backgroundStore.currentBackgroundUrl === `url(&quot;/backgrounds/${encodeURIComponent(bg)}&quot;)`,
+              backgroundStore.currentBackgroundUrl ===
+              `url(&quot;/backgrounds/${encodeURIComponent(bg.filename)}&quot;)`,
             'is-locked':
               backgroundStore.isLocked &&
-              backgroundStore.currentBackgroundUrl === `url(&quot;/backgrounds/${encodeURIComponent(bg)}&quot;)`,
+              backgroundStore.currentBackgroundUrl ===
+                `url(&quot;/backgrounds/${encodeURIComponent(bg.filename)}&quot;)`,
           }"
-          :title="bg"
+          :title="bg.filename"
           role="button"
           tabindex="0"
-          :aria-label="getBgFileName(bg)"
-          :aria-pressed="backgroundStore.currentBackgroundUrl.includes(encodeURIComponent(bg))"
-          @click="backgroundStore.selectBackground(bg)"
-          @keydown.enter.prevent="backgroundStore.selectBackground(bg)"
-          @keydown.space.prevent="backgroundStore.selectBackground(bg)"
+          :aria-label="getBgFileName(bg.filename)"
+          :aria-pressed="backgroundStore.currentBackgroundUrl.includes(encodeURIComponent(bg.filename))"
+          @click="backgroundStore.selectBackground(bg.filename)"
+          @keydown.enter.prevent="backgroundStore.selectBackground(bg.filename)"
+          @keydown.space.prevent="backgroundStore.selectBackground(bg.filename)"
         >
-          <div class="background-item-thumbnail" :style="{ backgroundImage: `url(${getThumbnailUrl('bg', bg)})` }">
-            <div class="background-item-title">{{ getBgFileName(bg) }}</div>
+          <div
+            class="background-item-thumbnail"
+            :style="{ backgroundImage: `url(${getThumbnailUrl('bg', bg.filename)})` }"
+          >
+            <div class="background-item-title">{{ getBgFileName(bg.filename) }}</div>
           </div>
           <div class="background-item-menu">
             <Button
               variant="ghost"
               icon="fa-pen-to-square"
               :title="t('backgrounds.actions.rename')"
-              @click.stop="handleRename(bg)"
+              @click.stop="handleRename(bg.filename)"
             />
             <Button
               variant="danger"
               icon="fa-trash-can"
               :title="t('backgrounds.actions.delete')"
-              @click.stop="handleDelete(bg, false)"
+              @click.stop="handleDelete(bg.filename, false)"
             />
           </div>
         </div>

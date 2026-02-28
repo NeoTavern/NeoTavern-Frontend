@@ -1,7 +1,12 @@
 import { getRequestHeaders } from '../utils/client';
 
+export interface Background {
+  filename: string;
+  isAnimated: boolean;
+}
+
 export interface BackgroundListResponse {
-  images: string[];
+  images: Background[];
   config: {
     width: number;
     height: number;

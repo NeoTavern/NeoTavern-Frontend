@@ -57,10 +57,10 @@ export class MacroService {
     const primaryChar = data.activeCharacter || data.characters[0];
 
     const baseContext = {
-      user: data.persona?.name,
+      user: data.persona?.name || `{{#raw}}{{user}}{{/raw}}`,
       persona: data.persona?.description,
 
-      char: primaryChar?.name || 'Character',
+      char: primaryChar?.name || `{{#raw}}{{char}}{{/raw}}`,
       description: primaryChar?.description || '',
       personality: primaryChar?.personality || '',
       scenario: primaryChar?.scenario || '',

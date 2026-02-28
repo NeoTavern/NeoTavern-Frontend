@@ -1,6 +1,12 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { deleteBackground, fetchAllBackgrounds, renameBackground, uploadBackground } from '../api/backgrounds';
+import {
+  deleteBackground,
+  fetchAllBackgrounds,
+  renameBackground,
+  uploadBackground,
+  type Background,
+} from '../api/backgrounds';
 import { useStrictI18n } from '../composables/useStrictI18n';
 import { toast } from '../composables/useToast';
 import type { BackgroundFitting } from '../types';
@@ -12,8 +18,8 @@ export const useBackgroundStore = defineStore('background', () => {
   const settingsStore = useSettingsStore();
   const chatStore = useChatStore();
 
-  const systemBackgrounds = ref<string[]>([]);
-  const chatBackgrounds = ref<string[]>([]);
+  const systemBackgrounds = ref<Background[]>([]);
+  const chatBackgrounds = ref<Background[]>([]);
   const searchTerm = ref('');
 
   const thumbnailColumns = computed({
@@ -36,11 +42,11 @@ export const useBackgroundStore = defineStore('background', () => {
   });
 
   const filteredSystemBackgrounds = computed(() =>
-    systemBackgrounds.value.filter((bg) => bg.toLowerCase().includes(searchTerm.value.toLowerCase())),
+    systemBackgrounds.value.filter((bg) => bg.filename.toLowerCase().includes(searchTerm.value.toLowerCase())),
   );
 
   const filteredChatBackgrounds = computed(() =>
-    chatBackgrounds.value.filter((bg) => bg.toLowerCase().includes(searchTerm.value.toLowerCase())),
+    chatBackgrounds.value.filter((bg) => bg.filename.toLowerCase().includes(searchTerm.value.toLowerCase())),
   );
 
   async function initialize() {

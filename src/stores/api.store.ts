@@ -41,8 +41,13 @@ export const useApiStore = defineStore('api', () => {
 
   const onlineStatus = ref(t('api.status.notConnected'));
   const isConnecting = ref(false);
-  const modelList = ref<ApiModel[]>([]);
   const presets = ref<Preset<SamplerSettings>[]>([]);
+  const modelsByProvider = ref<Map<ApiProvider, ApiModel[]>>(new Map());
+
+  const modelList = computed(() => {
+    const currentProvider = settingsStore.settings.api.provider;
+    return modelsByProvider.value.get(currentProvider) ?? [];
+  });
 
   const instructTemplates = ref<InstructTemplate[]>([]);
   const reasoningTemplates = ref<ReasoningTemplate[]>([]);
@@ -250,10 +255,11 @@ export const useApiStore = defineStore('api', () => {
     isConnecting.value = true;
     onlineStatus.value = t('api.status.connecting');
 
+    const apiSettings = settingsStore.settings.api;
+
     try {
       await processPendingSecrets();
 
-      const apiSettings = settingsStore.settings.api;
       let response;
 
       if (apiSettings.provider === api_providers.KOBOLDCPP) {
@@ -282,19 +288,16 @@ export const useApiStore = defineStore('api', () => {
         throw new Error(response.error);
       }
 
-      if (response.data && Array.isArray(response.data)) {
-        modelList.value = response.data;
-      } else {
-        modelList.value = [];
-      }
+      const models = response.data && Array.isArray(response.data) ? response.data : [];
+      modelsByProvider.value.set(apiSettings.provider, models);
 
       if (
         (apiSettings.provider === api_providers.KOBOLDCPP || apiSettings.provider === api_providers.OLLAMA) &&
-        modelList.value.length > 0
+        models.length > 0
       ) {
         const currentModel = apiSettings.selectedProviderModels[apiSettings.provider];
         if (!currentModel) {
-          apiSettings.selectedProviderModels[apiSettings.provider] = modelList.value[0].id;
+          apiSettings.selectedProviderModels[apiSettings.provider] = models[0].id;
         }
       }
 
@@ -306,7 +309,7 @@ export const useApiStore = defineStore('api', () => {
       onlineStatus.value = t('api.status.noConnection');
       toast.error(msg);
       console.error(error);
-      modelList.value = [];
+      modelsByProvider.value.set(apiSettings.provider, []);
     } finally {
       isConnecting.value = false;
     }
@@ -821,6 +824,53 @@ export const useApiStore = defineStore('api', () => {
     }
   }
 
+  async function getModelsForProvider(provider: ApiProvider): Promise<ApiModel[]> {
+    const shouldSkipCache = provider === api_providers.KOBOLDCPP || provider === api_providers.OLLAMA;
+
+    if (!shouldSkipCache && modelsByProvider.value.has(provider)) {
+      return modelsByProvider.value.get(provider)!;
+    }
+
+    try {
+      let response;
+
+      if (provider === api_providers.KOBOLDCPP) {
+        const baseUrl = settingsStore.settings.api.providerSpecific.koboldcpp.url.replace(/\/v1(?:.*)?$/, '');
+        response = await fetchTextCompletionStatus({
+          api_type: 'koboldcpp',
+          api_server: baseUrl,
+        });
+      } else if (provider === api_providers.OLLAMA) {
+        response = await fetchChatCompletionStatus({
+          chat_completion_source: 'custom',
+          custom_url: settingsStore.settings.api.providerSpecific.ollama.url,
+        });
+      } else {
+        response = await fetchChatCompletionStatus({
+          chat_completion_source: provider,
+          reverse_proxy: settingsStore.settings.api.proxy?.url,
+          proxy_password: settingsStore.settings.api.proxy?.password,
+          custom_url:
+            provider === api_providers.CUSTOM ? settingsStore.settings.api.providerSpecific.custom.url : undefined,
+        });
+      }
+
+      if (response.error) {
+        console.error(`Failed to fetch models for ${provider}:`, response.error);
+        return [];
+      }
+
+      const models = response.data && Array.isArray(response.data) ? response.data : [];
+      if (!shouldSkipCache) {
+        modelsByProvider.value.set(provider, models);
+      }
+      return models;
+    } catch (error) {
+      console.error(`Failed to fetch models for ${provider}:`, error);
+      return [];
+    }
+  }
+
   return {
     initialize,
     onlineStatus,
@@ -862,5 +912,6 @@ export const useApiStore = defineStore('api', () => {
     deleteReasoningTemplate,
     importReasoningTemplate,
     exportReasoningTemplate,
+    getModelsForProvider,
   };
 });
