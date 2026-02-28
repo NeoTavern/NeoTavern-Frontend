@@ -224,6 +224,9 @@ const baseExtensionAPI: ExtensionAPI = {
       if (!store.activeChat) throw new Error('No active chat.');
       return deepClone(store.activeChat.messages);
     },
+    getHistoryLength: () => {
+      return useChatStore().activeChat?.messages.length ?? 0;
+    },
     getChatInfo: () => {
       const store = useChatStore();
       return deepClone(
@@ -232,6 +235,10 @@ const baseExtensionAPI: ExtensionAPI = {
     },
     getAllChatInfos: () => {
       return deepClone(useChatStore().chatInfos);
+    },
+    getMessage: (index: number) => {
+      const messages = useChatStore().activeChat?.messages ?? [];
+      return deepClone(messages[index]);
     },
     getLastMessage: () => {
       const messages = useChatStore().activeChat?.messages ?? [];
