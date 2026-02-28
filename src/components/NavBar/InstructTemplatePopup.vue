@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { cloneDeep } from 'lodash-es';
 import { ref, watch } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useApiStore } from '../../stores/api.store';
@@ -30,7 +31,7 @@ watch(
       if (props.templateId) {
         const found = apiStore.instructTemplates.find((t) => t.id === props.templateId || t.name === props.templateId);
         if (found) {
-          activeTemplate.value = JSON.parse(JSON.stringify(found));
+          activeTemplate.value = cloneDeep(found);
         }
       } else {
         activeTemplate.value = createDefaultInstructTemplate();

@@ -86,6 +86,7 @@ export async function countTokens(
 
 // --- Event Emitter ---
 
+import { cloneDeep } from 'lodash-es';
 import { getModelCapabilities } from '../api/provider-definitions';
 import { getThumbnailUrl } from './character';
 import { mergeWithUndefinedMulti } from './commons';
@@ -158,12 +159,6 @@ export function unloadStyle(name: string) {
 
 // --- API Implementation ---
 
-function deepClone<T>(obj: T): T {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj !== 'object') return obj;
-  return JSON.parse(JSON.stringify(obj)) as T;
-}
-
 const mountableComponents: Record<MountableComponent, () => Promise<{ default: Vue.Component }>> = {
   ConnectionProfileSelector: () => import('../components/common/ConnectionProfileSelector.vue'),
   Button: () => import('../components/UI/Button.vue'),
@@ -222,20 +217,20 @@ const baseExtensionAPI: ExtensionAPI = {
     getHistory: () => {
       const store = useChatStore();
       if (!store.activeChat) throw new Error('No active chat.');
-      return deepClone(store.activeChat.messages);
+      return cloneDeep(store.activeChat.messages);
     },
     getChatInfo: () => {
       const store = useChatStore();
-      return deepClone(
+      return cloneDeep(
         store.activeChatFile ? store.chatInfos.find((info) => info.file_id === store.activeChatFile) || null : null,
       );
     },
     getAllChatInfos: () => {
-      return deepClone(useChatStore().chatInfos);
+      return cloneDeep(useChatStore().chatInfos);
     },
     getLastMessage: () => {
       const messages = useChatStore().activeChat?.messages ?? [];
-      return messages.length > 0 ? deepClone(messages[messages.length - 1]) : null;
+      return messages.length > 0 ? cloneDeep(messages[messages.length - 1]) : null;
     },
     createMessage: async (message: ApiChatMessage) => {
       if (!message.content) {
@@ -299,7 +294,7 @@ const baseExtensionAPI: ExtensionAPI = {
       chatStore.activeChat.messages.push(fullMessage);
       await nextTick();
       await eventEmitter.emit('message:created', fullMessage);
-      return deepClone(fullMessage);
+      return cloneDeep(fullMessage);
     },
     insertMessage: async (message, index) => {
       const store = useChatStore();
@@ -566,7 +561,7 @@ const baseExtensionAPI: ExtensionAPI = {
       await useChatStore().setActiveChatFile(filename);
     },
     metadata: {
-      get: () => deepClone(useChatStore().activeChat?.metadata ?? null),
+      get: () => cloneDeep(useChatStore().activeChat?.metadata ?? null),
       set: (metadata) => {
         const store = useChatStore();
         if (store.activeChat) {
@@ -599,19 +594,19 @@ const baseExtensionAPI: ExtensionAPI = {
   settings: {
     // @ts-expect-error it should return T
     get: () => console.warn('[ExtensionAPI] Scoped settings.get called via base API.'),
-    getGlobal: (path) => deepClone(useSettingsStore().getSetting(path)),
+    getGlobal: (path) => cloneDeep(useSettingsStore().getSetting(path)),
     set: () => console.warn('[ExtensionAPI] Scoped settings.set called via base API.'),
     setGlobal: (path, value) => useSettingsStore().setSetting(path, value),
     save: () => useSettingsStore().saveSettingsDebounced(),
   },
   character: {
-    getActives: () => deepClone(useCharacterStore().activeCharacters),
-    getAll: () => deepClone(useCharacterStore().characters),
+    getActives: () => cloneDeep(useCharacterStore().activeCharacters),
+    getAll: () => cloneDeep(useCharacterStore().characters),
     get: (avatar) => {
       const char = useCharacterStore().characters.find((c) => c.avatar === avatar);
-      return char ? deepClone(char) : null;
+      return char ? cloneDeep(char) : null;
     },
-    getEditing: () => deepClone(useCharacterUiStore().editFormCharacter),
+    getEditing: () => cloneDeep(useCharacterUiStore().editFormCharacter),
     create: async (character, avatarImage) => {
       const store = useCharacterStore();
       if (!avatarImage) {
@@ -625,8 +620,8 @@ const baseExtensionAPI: ExtensionAPI = {
     update: async (avatar, data) => useCharacterStore().updateAndSaveCharacter(avatar, data),
   },
   persona: {
-    getActive: () => deepClone(usePersonaStore().activePersona),
-    getAll: () => deepClone(usePersonaStore().personas),
+    getActive: () => cloneDeep(usePersonaStore().activePersona),
+    getAll: () => cloneDeep(usePersonaStore().personas),
     setActive: (avatarId) => usePersonaStore().setActivePersona(avatarId),
     updateActiveField: async (field, value) => usePersonaStore().updateActivePersonaField(field, value),
     delete: async (avatarId) => usePersonaStore().deletePersona(avatarId),
@@ -638,17 +633,17 @@ const baseExtensionAPI: ExtensionAPI = {
     getNewUid(book) {
       return useWorldInfoStore().getNewUid(book);
     },
-    getSettings: () => deepClone(useSettingsStore().settings.worldInfo),
+    getSettings: () => cloneDeep(useSettingsStore().settings.worldInfo),
     updateSettings: (settings) => {
       const store = useSettingsStore();
       store.settings.worldInfo = { ...store.settings.worldInfo, ...settings };
     },
-    getAllBookNames: () => deepClone(useWorldInfoStore().bookInfos),
+    getAllBookNames: () => cloneDeep(useWorldInfoStore().bookInfos),
     getBook: async (name) => {
       const book = await useWorldInfoStore().getBookFromCache(name, true);
-      return book ? deepClone(book) : null;
+      return book ? cloneDeep(book) : null;
     },
-    getActiveBookNames: () => deepClone(useWorldInfoStore().activeBookNames),
+    getActiveBookNames: () => cloneDeep(useWorldInfoStore().activeBookNames),
     setGlobalBookNames: (names) => {
       useWorldInfoStore().globalBookNames = names;
     },
@@ -712,13 +707,13 @@ const baseExtensionAPI: ExtensionAPI = {
       await useToolStore().unregisterTool(name);
     },
     get: (name) => {
-      return deepClone(useToolStore().getTool(name));
+      return cloneDeep(useToolStore().getTool(name));
     },
     getAll: () => {
-      return deepClone(useToolStore().toolList);
+      return cloneDeep(useToolStore().toolList);
     },
     getEnabled: () => {
-      return deepClone(useToolStore().enabledTools);
+      return cloneDeep(useToolStore().enabledTools);
     },
     isDisabled: (name) => {
       return useToolStore().isToolDisabled(name);
@@ -967,7 +962,7 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     get: (path?: string): any => {
       const fullPath = path ? `extensionSettings.${extensionId}.${path}` : `extensionSettings.${extensionId}`;
-      return deepClone(settingsStore.getSetting(fullPath as SettingsPath));
+      return cloneDeep(settingsStore.getSetting(fullPath as SettingsPath));
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     set: (path: string | undefined, value: any): void => {

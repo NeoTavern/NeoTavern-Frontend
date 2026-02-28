@@ -1,4 +1,4 @@
-import { escapeRegExp } from 'lodash-es';
+import { cloneDeep, escapeRegExp } from 'lodash-es';
 import { computed, nextTick, ref, type Ref } from 'vue';
 import {
   buildChatCompletionPayload,
@@ -430,7 +430,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     const tokenizer = new ApiTokenizer({ tokenizerType: settings.api.tokenizer, model: effectiveModel });
 
     // Event-driven Context Resolution
-    const contextCharactersWrapper = { characters: [JSON.parse(JSON.stringify(activeCharacter))] as Character[] };
+    const contextCharactersWrapper = { characters: [cloneDeep(activeCharacter)] as Character[] };
     await eventEmitter.emit('generation:resolve-context', contextCharactersWrapper, { generationId });
     const charactersForContext = contextCharactersWrapper.characters;
 

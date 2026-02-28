@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { cloneDeep } from 'lodash-es';
 import { computed, ref } from 'vue';
 import { Checkbox, CollapsibleSection, FormItem, Input, RangeControl, Search, Select } from '../../components/UI';
 import { useMobile } from '../../composables/useMobile';
@@ -15,7 +16,7 @@ const searchTerm = ref('');
 const { isDeviceMobile } = useMobile();
 
 const filteredDefinitions = computed(() => {
-  let deepCopy = JSON.parse(JSON.stringify(settingsStore.definitions)) as SettingDefinition[];
+  let deepCopy = cloneDeep(settingsStore.definitions) as SettingDefinition[];
   deepCopy.filter((def) => {
     if (def.showOn === 'mobileDevice') {
       return isDeviceMobile.value;
