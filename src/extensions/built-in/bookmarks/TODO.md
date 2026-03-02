@@ -13,7 +13,6 @@
 
 - [ ] Bookmarks are visible as part of a chat's overview information in Chat Management UI.
 
-
 ## New Bookmark Features
 
 (Beyond what Aiko's Bookmarks currently offer.)

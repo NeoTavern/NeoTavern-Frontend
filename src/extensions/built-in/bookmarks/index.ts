@@ -1,9 +1,9 @@
-import type { ExtensionAPI } from '../../../types';
-import { manifest } from './manifest';
-import type { Bookmark, BookmarkMetadata } from './types';
-import { getBookmarksAndMigrateIfNecessary } from './storage';
-import CurrentBookmarks from './CurrentBookmarks.vue';
 import { reactive } from 'vue';
+import type { ExtensionAPI } from '../../../types';
+import CurrentBookmarks from './CurrentBookmarks.vue';
+import { manifest } from './manifest';
+import { getBookmarksAndMigrateIfNecessary } from './storage';
+import type { Bookmark, BookmarkMetadata } from './types';
 
 export { manifest };
 
@@ -29,18 +29,22 @@ export function activate(api: ExtensionAPI<unknown, BookmarkMetadata, unknown>) 
   */
   const currentBookmarks: Bookmark[] = reactive([]);
 
-  unbinds.push(api.events.on('chat:entered', (_chatFile) => {
-    const bookmarks: Bookmark[] = getBookmarksAndMigrateIfNecessary(api);
+  unbinds.push(
+    api.events.on('chat:entered', () => {
+      const bookmarks: Bookmark[] = getBookmarksAndMigrateIfNecessary(api);
 
-    for (const bookmark of bookmarks) {
-      console.log('Bookmark:', bookmark.messageNum, bookmark.title);
-    }
-    currentBookmarks.splice(0, Infinity, ...bookmarks);
-  }));
+      for (const bookmark of bookmarks) {
+        console.log('Bookmark:', bookmark.messageNum, bookmark.title);
+      }
+      currentBookmarks.splice(0, Infinity, ...bookmarks);
+    }),
+  );
 
-  unbinds.push(api.events.on('chat:cleared', () => {
-    currentBookmarks.splice(0, Infinity);
-  }));
+  unbinds.push(
+    api.events.on('chat:cleared', () => {
+      currentBookmarks.splice(0, Infinity);
+    }),
+  );
 
   // Only works on the right, not the left?
   api.ui.registerSidebar('bookmarks-sidebar', CurrentBookmarks, 'right', {
@@ -48,21 +52,10 @@ export function activate(api: ExtensionAPI<unknown, BookmarkMetadata, unknown>) 
     icon: 'fa-solid fa-bookmark',
     props: { api, bookmarks: currentBookmarks },
   });
-  
-  api.ui.registerNavBarItem('bookmarks-nav', {
-    icon: 'fa-solid fa-bookmark',
-    title: 'Bookmarks',
-    onClick: () => {
-      api.ui.openSidebar('bookmarks-sidebar');
-    },
-    layout: 'default',
-  });
 
   return () => {
     unbinds.forEach((u) => u());
     currentBookmarks.splice(0, Infinity);
     api.ui.unregisterSidebar('bookmarks-sidebar', 'right');
-    api.ui.unregisterNavBarItem('bookmarks-nav');
   };
 }
-

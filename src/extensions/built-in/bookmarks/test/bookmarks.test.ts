@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { ChatMetadata } from '../../../../types';
-import { getBookmarksWithMigrationUpdate } from '../storage';
 import { BOOKMARKS_KEY } from '../manifest';
+import { _getBookmarksWithMigrationUpdate } from '../storage';
 import type { Bookmark, BookmarkMetadata } from '../types';
 
-function metadata(overrides: Partial<ChatMetadata<BookmarkMetadata>> & { integrity?: string }): ChatMetadata<BookmarkMetadata> {
+function metadata(
+  overrides: Partial<ChatMetadata<BookmarkMetadata>> & { integrity?: string },
+): ChatMetadata<BookmarkMetadata> {
   return {
     integrity: '0123456789',
     ...overrides,
@@ -14,7 +16,7 @@ function metadata(overrides: Partial<ChatMetadata<BookmarkMetadata>> & { integri
 describe('getBookmarksWithMigrationUpdate', () => {
   it('returns empty bookmarks and null metadataUpdate when metadata has no bookmarks', () => {
     const meta = metadata({});
-    const { bookmarks, metadataUpdate } = getBookmarksWithMigrationUpdate(meta);
+    const { bookmarks, metadataUpdate } = _getBookmarksWithMigrationUpdate(meta);
     expect(bookmarks).toEqual([]);
     expect(metadataUpdate).toBeNull();
   });
@@ -27,7 +29,7 @@ describe('getBookmarksWithMigrationUpdate', () => {
     const meta = metadata({
       extra: { [BOOKMARKS_KEY]: { bookmarks: b } },
     });
-    const { bookmarks, metadataUpdate } = getBookmarksWithMigrationUpdate(meta);
+    const { bookmarks, metadataUpdate } = _getBookmarksWithMigrationUpdate(meta);
     expect(bookmarks).toEqual(b);
     expect(metadataUpdate).toBeNull();
   });
@@ -40,7 +42,7 @@ describe('getBookmarksWithMigrationUpdate', () => {
     const meta = metadata({
       ...({ bookmarks: legacy } as unknown as Record<string, unknown>),
     });
-    const { bookmarks, metadataUpdate } = getBookmarksWithMigrationUpdate(meta);
+    const { bookmarks, metadataUpdate } = _getBookmarksWithMigrationUpdate(meta);
     expect(bookmarks).toHaveLength(2);
     expect(bookmarks).toEqual([
       { messageNum: 1, title: 'A' },
@@ -64,7 +66,7 @@ describe('getBookmarksWithMigrationUpdate', () => {
       extra: { [BOOKMARKS_KEY]: { bookmarks: extraBookmarks } },
       ...({ bookmarks: legacyBookmarks } as unknown as Record<string, unknown>),
     });
-    const { bookmarks, metadataUpdate } = getBookmarksWithMigrationUpdate(meta);
+    const { bookmarks, metadataUpdate } = _getBookmarksWithMigrationUpdate(meta);
     expect(bookmarks).toHaveLength(3);
     expect(bookmarks).toEqual([
       { messageNum: 1, title: 'First' },
@@ -84,7 +86,7 @@ describe('getBookmarksWithMigrationUpdate', () => {
     const meta = metadata({
       ...({ bookmarks: legacy } as unknown as Record<string, unknown>),
     });
-    const { bookmarks } = getBookmarksWithMigrationUpdate(meta);
+    const { bookmarks } = _getBookmarksWithMigrationUpdate(meta);
     expect(bookmarks).toEqual([
       { messageNum: 1, title: 'M' },
       { messageNum: 2, title: 'A' },
@@ -96,7 +98,7 @@ describe('getBookmarksWithMigrationUpdate', () => {
     const meta = metadata({
       extra: { [BOOKMARKS_KEY]: {} } as Record<string, unknown> & BookmarkMetadata,
     });
-    const { bookmarks, metadataUpdate } = getBookmarksWithMigrationUpdate(meta);
+    const { bookmarks, metadataUpdate } = _getBookmarksWithMigrationUpdate(meta);
     expect(bookmarks).toEqual([]);
     expect(metadataUpdate).toBeNull();
   });
