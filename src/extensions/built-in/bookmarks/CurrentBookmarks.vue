@@ -111,9 +111,6 @@ function getMessage(bookmark: Bookmark): ChatMessage {
   flex: 1 1 auto;
   font-weight: bold;
 }
-.bookmark-message {
-  margin-left: var(--spacing-lg);
-}
 input[name='messageNum'] {
   width: 6ch;
 }

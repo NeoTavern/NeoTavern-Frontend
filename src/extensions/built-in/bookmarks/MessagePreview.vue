@@ -1,23 +1,32 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import type { ChatMessage } from '../../../types/chat';
 
 const props = defineProps<{
   message: ChatMessage;
 }>();
+
+const isOpen = ref(false);
 </script>
 
 <template>
-  <details class="message-preview" :class="{ 'is-user': message.is_user, 'is-bot': !message.is_user }">
-    <summary>
-      <span class="first-line">
-        <span class="message-name">{{ message.name }}:</span>
-        <span class="message-begins">{{ message.mes }}</span>
-        <span class="message-timestamp">{{ message.send_date }}</span>
-      </span>
-      <span class="message-ends" v-if="message.mes.length > 100">{{ message.mes }}</span>
-    </summary>
-    <article class="message-content">{{ message.mes }}</article>
-  </details>
+  <div class="message-preview-container">
+    <label class="message-preview-toggle">
+      <input type="checkbox" v-model="isOpen" />
+      <div class="message-preview-toggle-bar"></div>
+    </label>
+    <details class="message-preview" :class="{ 'is-user': message.is_user, 'is-bot': !message.is_user }" :open="isOpen">
+      <summary>
+        <span class="first-line">
+          <span class="message-name">{{ message.name }}:</span>
+          <span class="message-begins">{{ message.mes }}</span>
+          <span class="message-timestamp">{{ message.send_date }}</span>
+        </span>
+        <span class="message-ends" v-if="message.mes.length > 100">{{ message.mes }}</span>
+      </summary>
+      <article class="message-content">{{ message.mes }}</article>
+    </details>
+  </div>
 </template>
 
 <style lang="css" scoped>
@@ -44,6 +53,7 @@ const props = defineProps<{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* unicode-bidi: bidi-override; */
   direction: rtl; /* hack to get text-overflow to show us the end of the message. */
 }
 .first-line {
@@ -55,6 +65,29 @@ const props = defineProps<{
 .message-preview summary {
   display: block;
   cursor: pointer;
+}
+.message-preview-container {
+  display: block flex;
+  align-items: stretch;
+  width: 100%;
+}
+.message-preview-toggle {
+  flex: 0 0 auto;
+}
+.message-preview-toggle-bar {
+  display: block;
+  height: 100%;
+  width: var(--spacing-xs);
+  margin: var(--spacing-xs) var(--spacing-md) var(--spacing-xs) var(--spacing-xs);
+  background: var(--theme-quote-color);
+}
+.message-preview-toggle input {
+  visibility: hidden;
+  position: absolute;
+}
+.message-preview {
+  flex: 1 1 0;
+  width: 0; /* start small and grow to container size */
 }
 .message-preview[open] .message-begins,
 .message-preview[open] .message-ends {
