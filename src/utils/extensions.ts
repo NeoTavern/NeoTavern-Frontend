@@ -1,11 +1,12 @@
 import * as Vue from 'vue';
-import { createVNode, nextTick, render, type App } from 'vue';
+import { createVNode, nextTick, readonly, render, type App } from 'vue';
 import { CustomPromptPostProcessing, default_avatar, default_user_avatar } from '../constants';
 import type {
   ApiChatContentPart,
   ApiChatMessage,
   Character,
   ChatInfo,
+  ChatMetadata,
   ChatMessage,
   ExtensionAPI,
   ExtensionEventMap,
@@ -218,6 +219,9 @@ const baseExtensionAPI: ExtensionAPI = {
         triggerGeneration: options?.triggerGeneration ?? true,
         generationId: options?.generationId,
       });
+    },
+    isActive(): boolean {
+      return useChatStore().activeChat !== null;
     },
     getHistory: () => {
       const store = useChatStore();
@@ -574,6 +578,12 @@ const baseExtensionAPI: ExtensionAPI = {
     },
     metadata: {
       get: () => deepClone(useChatStore().activeChat?.metadata ?? null),
+      getReactive: () => {
+        const activeChat = useChatStore().activeChat;
+        if (activeChat?.metadata == null) return null;
+        // readonly forces changes to go through set/update methods so their triggers are called.
+        return readonly(activeChat.metadata) as Readonly<ChatMetadata>;
+      },
       set: (metadata) => {
         const store = useChatStore();
         if (store.activeChat) {

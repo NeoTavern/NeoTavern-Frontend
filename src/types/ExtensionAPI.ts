@@ -398,6 +398,7 @@ export interface ExtensionAPI<
       messageText: string,
       options?: { triggerGeneration?: boolean; generationId?: string },
     ) => Promise<void>;
+    isActive: () => boolean;
     getHistory: () => TypedChatMessage<TMessageExtra>[];
     getHistoryLength: () => number;
     /**
@@ -477,6 +478,7 @@ export interface ExtensionAPI<
 
     metadata: {
       get: () => ChatMetadata<TChatExtra> | null;
+      getReactive: () => Readonly<ChatMetadata<TChatExtra>> | null;
       set: (metadata: ChatMetadata<TChatExtra>) => void;
       update: (updates: DeepPartial<ChatMetadata<TChatExtra>>) => void;
     };
