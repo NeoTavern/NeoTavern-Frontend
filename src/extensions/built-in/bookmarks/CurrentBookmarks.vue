@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { ExtensionAPI } from '../../../public-api';
-import { addBookmark, removeBookmark } from './storage';
-import type { Bookmark, BookmarkMetadata } from './types';
+import type { BookmarkMetadata } from './types';
+import type { BookmarkManager } from './storage';
 
 // onRenderTracked((event) => {
 //   console.debug('onRenderTracked', event);
@@ -18,22 +18,21 @@ const newBookmarkMessageNum = ref(0);
 
 const props = defineProps<{
   api: ExtensionAPI<unknown, BookmarkMetadata, unknown>;
-  bookmarks: Bookmark[];
+  bookmarkManager: BookmarkManager;
 }>();
 
 function createBookmark(messageNum: number, title: string) {
-  addBookmark(props.api, { messageNum, title });
+  props.bookmarkManager.addBookmark({ messageNum, title });
   newBookmarkTitle.value = '';
   newBookmarkMessageNum.value = 0;
 }
 
 function deleteBookmark(messageNum: number, title: string) {
-  removeBookmark(props.api, { messageNum, title });
+  props.bookmarkManager.removeBookmark({ messageNum, title });
 }
 
 function isChatLoaded() {
-  // FIXME: Another place where the API does a deep clone when we just want a boolean result.
-  return props.api.chat.getChatInfo() !== null;
+  return props.api.chat.isActive();
 }
 </script>
 
@@ -41,9 +40,9 @@ function isChatLoaded() {
   <div>
     <h3 class="sidebar-header-main">Current Bookmarks</h3>
     <p v-if="!isChatLoaded()">No chat loaded.</p>
-    <p v-else-if="bookmarks.length === 0">No bookmarks yet.</p>
+    <p v-else-if="bookmarkManager.length === 0">No bookmarks yet.</p>
     <ul v-else class="bookmark-list">
-      <li v-for="bookmark in bookmarks" :key="bookmark.messageNum + bookmark.title">
+      <li v-for="bookmark in bookmarkManager.getBookmarks()" :key="bookmark.messageNum + bookmark.title">
         <span class="bookmark-item">
           <span class="bookmark-message-num">#{{ bookmark.messageNum }}:</span>
           <span class="bookmark-title">{{ bookmark.title }}</span>

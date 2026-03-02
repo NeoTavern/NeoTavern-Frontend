@@ -1,8 +1,8 @@
-import { reactive } from 'vue';
+import { markRaw } from 'vue';
 import type { ExtensionAPI } from '../../../types';
 import CurrentBookmarks from './CurrentBookmarks.vue';
 import { manifest } from './manifest';
-import { getBookmarksAndMigrateIfNecessary } from './storage';
+import { BookmarkManager } from './storage';
 import type { Bookmark, BookmarkMetadata } from './types';
 
 export { manifest };
@@ -27,35 +27,34 @@ export function activate(api: ExtensionAPI<unknown, BookmarkMetadata, unknown>) 
         - That creates the possibility they get out of sync if anything else is writing to
           chat metadata. There is currently no event emitted on metadata change.
   */
-  const currentBookmarks: Bookmark[] = reactive([]);
+
+  const bookmarkManager = new BookmarkManager(api);
 
   unbinds.push(
     api.events.on('chat:entered', () => {
-      const bookmarks: Bookmark[] = getBookmarksAndMigrateIfNecessary(api);
+      const bookmarks: Bookmark[] = bookmarkManager.getBookmarksAndMigrateIfNecessary();
 
       for (const bookmark of bookmarks) {
         console.log('Bookmark:', bookmark.messageNum, bookmark.title);
       }
-      currentBookmarks.splice(0, Infinity, ...bookmarks);
     }),
   );
 
-  unbinds.push(
-    api.events.on('chat:cleared', () => {
-      currentBookmarks.splice(0, Infinity);
-    }),
-  );
+  // unbinds.push(
+  //   api.events.on('chat:cleared', () => {
+  //     currentBookmarks.splice(0, Infinity);
+  //   }),
+  // );
 
   // Only works on the right, not the left?
   api.ui.registerSidebar('bookmarks-sidebar', CurrentBookmarks, 'right', {
     title: 'Bookmarks',
     icon: 'fa-solid fa-bookmark',
-    props: { api, bookmarks: currentBookmarks },
+    props: { api: markRaw(api), bookmarkManager },
   });
 
   return () => {
     unbinds.forEach((u) => u());
-    currentBookmarks.splice(0, Infinity);
     api.ui.unregisterSidebar('bookmarks-sidebar', 'right');
   };
 }

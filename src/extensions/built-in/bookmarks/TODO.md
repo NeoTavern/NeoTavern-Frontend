@@ -1,8 +1,9 @@
 ## Basic Bookmark Management
 
-- [ ] Can add new bookmarks with the bookmark manager.
-- [ ] Can remove bookmarks with the bookmark manager.
+- [x] Can add new bookmarks with the bookmark manager.
+- [x] Can remove bookmarks with the bookmark manager.
 - [ ] Can change the title of existing bookmarks in the bookmark manager.
+- [ ] Undo for remove and change.
 - [ ] Message content and associated character are visible in the bookmark manager.
 - [ ] A bookmarked message in chat has a visible indicator and title.
 - [ ] A message in chat can be bookmarked from its context menu.

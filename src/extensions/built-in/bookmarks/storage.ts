@@ -4,6 +4,60 @@ import type { DeepPartial } from '../../../types/utils';
 import { BOOKMARKS_KEY } from './manifest';
 import type { Bookmark, BookmarkMetadata } from './types';
 
+export class BookmarkManager {
+
+  private api: ExtensionAPI<unknown, BookmarkMetadata, unknown>;
+
+  constructor(api: ExtensionAPI<unknown, BookmarkMetadata, unknown>) {
+    this.api = api;
+  }
+
+  get length(): number {
+    return this.getBookmarks().length;
+  }
+  
+  getBookmarks(): Bookmark[] {
+    return this.api.chat.metadata.getReactive()?.extra?.[BOOKMARKS_KEY]?.bookmarks ?? [];
+  }
+
+  getBookmarksAndMigrateIfNecessary(): Bookmark[] {
+    const metadata = this.api.chat.metadata.getReactive();
+    if (!metadata) {
+      return [];
+    }
+    const { bookmarks, metadataUpdate } = _getBookmarksWithMigrationUpdate(metadata);
+    if (metadataUpdate) {
+      this.api.chat.metadata.update(metadataUpdate);
+    }
+    return bookmarks;
+  }
+
+  addBookmark(bookmark: Bookmark) {
+    const bookmarks = [...this.getBookmarks()];  // mutable copy
+    bookmarks.push(bookmark);
+    this._updateBookmarks(bookmarks);
+  }
+  
+  removeBookmark(bookmark: Bookmark) {
+    const bookmarks = [...this.getBookmarks()];  // mutable copy
+    const bookmarkIndex = bookmarks.findIndex((b) => b.messageNum === bookmark.messageNum && b.title === bookmark.title);
+    if (bookmarkIndex > -1) {
+      bookmarks.splice(bookmarkIndex, 1);
+      this._updateBookmarks(bookmarks);
+    } else {
+      throw new Error('Bookmark not found: ' + JSON.stringify(bookmark));
+    }
+  }
+  
+  _updateBookmarks(bookmarks: Bookmark[]) {
+    this.api.chat.metadata.update({
+      extra: {
+        [BOOKMARKS_KEY]: { bookmarks: bookmarks },
+      },
+    });
+  }
+}
+
 export function _getBookmarksWithMigrationUpdate(metadata: ChatMetadata<BookmarkMetadata>) {
   const bookmarksMetadata = metadata.extra?.[BOOKMARKS_KEY];
   const bookmarks: Bookmark[] = [...(bookmarksMetadata?.bookmarks ?? [])];
@@ -23,45 +77,4 @@ export function _getBookmarksWithMigrationUpdate(metadata: ChatMetadata<Bookmark
     } as DeepPartial<ChatMetadata<BookmarkMetadata>>;
   }
   return { bookmarks, metadataUpdate };
-}
-
-export function getBookmarksAndMigrateIfNecessary(api: ExtensionAPI<unknown, BookmarkMetadata, unknown>) {
-  const metadata = api.chat.metadata.get();
-  if (!metadata) {
-    return [];
-  }
-  const { bookmarks, metadataUpdate } = _getBookmarksWithMigrationUpdate(metadata);
-  if (metadataUpdate) {
-    api.chat.metadata.update(metadataUpdate);
-  }
-  return bookmarks;
-}
-
-export function getBookmarksWithoutSideEffects(api: ExtensionAPI<unknown, BookmarkMetadata, unknown>) {
-  return api.chat.metadata.get()?.extra?.[BOOKMARKS_KEY]?.bookmarks ?? [];
-}
-
-function _updateBookmarks(api: ExtensionAPI<unknown, BookmarkMetadata, unknown>, bookmarks: Bookmark[]) {
-  api.chat.metadata.update({
-    extra: {
-      [BOOKMARKS_KEY]: { bookmarks: bookmarks },
-    },
-  });
-}
-
-export function addBookmark(api: ExtensionAPI<unknown, BookmarkMetadata, unknown>, bookmark: Bookmark) {
-  const bookmarks = getBookmarksWithoutSideEffects(api);
-  bookmarks.push(bookmark);
-  _updateBookmarks(api, bookmarks);
-}
-
-export function removeBookmark(api: ExtensionAPI<unknown, BookmarkMetadata, unknown>, bookmark: Bookmark) {
-  const bookmarks = getBookmarksWithoutSideEffects(api);
-  const bookmarkIndex = bookmarks.findIndex((b) => b.messageNum === bookmark.messageNum && b.title === bookmark.title);
-  if (bookmarkIndex > -1) {
-    bookmarks.splice(bookmarkIndex, 1);
-    _updateBookmarks(api, bookmarks);
-  } else {
-    throw new Error('Bookmark not found: ' + JSON.stringify(bookmark));
-  }
 }
