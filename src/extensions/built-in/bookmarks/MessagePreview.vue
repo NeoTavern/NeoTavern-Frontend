@@ -7,22 +7,24 @@ const props = defineProps<{
 }>();
 
 const isOpen = ref(false);
+
+const MULTILINE_MESSAGE_LENGTH = 120;
 </script>
 
 <template>
-  <div class="message-preview-container">
-    <label class="message-preview-toggle">
+  <div class="message-preview-container" :class="{ 'is-user': message.is_user, 'is-bot': !message.is_user }">
+    <label class="open-preview-toggle">
       <input type="checkbox" v-model="isOpen" />
-      <div class="message-preview-toggle-bar"></div>
+      <div class="open-preview-toggle-gutter"></div>
     </label>
-    <details class="message-preview" :class="{ 'is-user': message.is_user, 'is-bot': !message.is_user }" :open="isOpen">
+    <details class="message-preview" :open="isOpen">
       <summary>
-        <span class="first-line">
+        <span class="summary-first-line">
           <span class="message-name">{{ message.name }}:</span>
           <span class="message-begins">{{ message.mes }}</span>
           <span class="message-timestamp">{{ message.send_date }}</span>
         </span>
-        <span class="message-ends" v-if="message.mes.length > 100">{{ message.mes }}</span>
+        <span class="message-ends" v-if="message.mes.length > MULTILINE_MESSAGE_LENGTH">{{ message.mes }}</span>
       </summary>
       <article class="message-content">{{ message.mes }}</article>
     </details>
@@ -53,10 +55,9 @@ const isOpen = ref(false);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  /* unicode-bidi: bidi-override; */
   direction: rtl; /* hack to get text-overflow to show us the end of the message. */
 }
-.first-line {
+.summary-first-line {
   display: block flex;
   gap: 1ch;
   max-width: 100%;
@@ -64,24 +65,30 @@ const isOpen = ref(false);
 }
 .message-preview summary {
   display: block;
-  cursor: pointer;
+  cursor: default; /* so it looks more like button than text */
 }
 .message-preview-container {
   display: block flex;
   align-items: stretch;
   width: 100%;
 }
-.message-preview-toggle {
+.open-preview-toggle {
   flex: 0 0 auto;
 }
-.message-preview-toggle-bar {
+.open-preview-toggle-gutter {
   display: block;
   height: 100%;
   width: var(--spacing-xs);
   margin: var(--spacing-xs) var(--spacing-md) var(--spacing-xs) var(--spacing-xs);
-  background: var(--theme-quote-color);
+
+  .is-user & {
+    background: var(--theme-quote-color-user);
+  }
+  .is-bot & {
+    background: var(--theme-quote-color);
+  }
 }
-.message-preview-toggle input {
+.open-preview-toggle input {
   visibility: hidden;
   position: absolute;
 }
