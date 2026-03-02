@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { ExtensionAPI } from '../../../public-api';
-import type { BookmarkMetadata } from './types';
+import type { ChatMessage, ExtensionAPI } from '../../../public-api';
+import MessagePreview from './MessagePreview.vue';
 import type { BookmarkManager } from './storage';
+import type { Bookmark, BookmarkMetadata } from './types';
 
 // onRenderTracked((event) => {
 //   console.debug('onRenderTracked', event);
@@ -12,7 +13,6 @@ import type { BookmarkManager } from './storage';
 //   console.debug('onRenderTriggered', event);
 // })
 
-// const counter = ref(0);
 const newBookmarkTitle = ref('');
 const newBookmarkMessageNum = ref(0);
 
@@ -34,6 +34,18 @@ function deleteBookmark(messageNum: number, title: string) {
 function isChatLoaded() {
   return props.api.chat.isActive();
 }
+
+function isWithinHistory(bookmark: Bookmark): boolean {
+  return bookmark.messageNum >= 0 && bookmark.messageNum < props.api.chat.getHistoryLength();
+}
+
+function getMessage(bookmark: Bookmark): ChatMessage {
+  const message = props.api.chat.getMessage(bookmark.messageNum);
+  if (!message) {
+    throw new Error(`Message ${bookmark.messageNum} not found.`);
+  }
+  return message;
+}
 </script>
 
 <template>
@@ -42,9 +54,13 @@ function isChatLoaded() {
     <p v-if="!isChatLoaded()">No chat loaded.</p>
     <p v-else-if="bookmarkManager.length === 0">No bookmarks yet.</p>
     <ul v-else class="bookmark-list">
-      <li v-for="bookmark in bookmarkManager.getBookmarks()" :key="bookmark.messageNum + bookmark.title">
-        <span class="bookmark-item">
-          <span class="bookmark-message-num">#{{ bookmark.messageNum }}:</span>
+      <li
+        v-for="bookmark in bookmarkManager.getBookmarks()"
+        :key="bookmark.messageNum + bookmark.title"
+        class="bookmark-item"
+      >
+        <div class="bookmark-header">
+          <span class="message-id">#{{ bookmark.messageNum }}:</span>
           <span class="bookmark-title">{{ bookmark.title }}</span>
           <button
             type="button"
@@ -55,7 +71,9 @@ function isChatLoaded() {
           >
             <i class="fa-solid fa-trash-can"></i>
           </button>
-        </span>
+        </div>
+        <MessagePreview v-if="isWithinHistory(bookmark)" :message="getMessage(bookmark)" class="bookmark-message" />
+        <p v-else>Message #{{ bookmark.messageNum }} not found.</p>
       </li>
     </ul>
     <form
@@ -67,25 +85,41 @@ function isChatLoaded() {
       <input v-model.trim="newBookmarkTitle" type="text" name="title" placeholder="Title" required />
       <button type="submit" name="addBookmark">Add Bookmark</button>
     </form>
-    <!-- <p>{{ counter }}</p>
-    <button @click="counter++">Increment</button> -->
   </div>
 </template>
 
 <style scoped lang="scss">
+.bookmark-list {
+  list-style: none;
+  padding-inline-start: 0;
+}
 .bookmark-item {
+  display: block;
+  padding: var(--spacing-sm);
+  border-radius: var(--base-border-radius);
+}
+.bookmark-item:hover {
+  background-color: color-mix(in srgb, var(--theme-background-tint) 80%, var(--theme-text-color));
+}
+.bookmark-header {
   display: flex;
   justify-content: stretch;
+  align-items: baseline;
+  gap: var(--spacing-sm);
 }
 .bookmark-title {
   flex: 1 1 auto;
+  font-weight: bold;
+}
+.bookmark-message {
+  margin-left: var(--spacing-lg);
 }
 input[name='messageNum'] {
   width: 6ch;
 }
 input,
 button {
-  // Is there a way to reduce this boilerplate?
+  /* Is there a way to reduce this boilerplate? */
   color: var(--theme-text-color);
   background-color: var(--theme-background-tint);
 }

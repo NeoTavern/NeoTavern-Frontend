@@ -5,7 +5,6 @@ import { BOOKMARKS_KEY } from './manifest';
 import type { Bookmark, BookmarkMetadata } from './types';
 
 export class BookmarkManager {
-
   private api: ExtensionAPI<unknown, BookmarkMetadata, unknown>;
 
   constructor(api: ExtensionAPI<unknown, BookmarkMetadata, unknown>) {
@@ -15,7 +14,7 @@ export class BookmarkManager {
   get length(): number {
     return this.getBookmarks().length;
   }
-  
+
   getBookmarks(): Bookmark[] {
     return this.api.chat.metadata.getReactive()?.extra?.[BOOKMARKS_KEY]?.bookmarks ?? [];
   }
@@ -33,14 +32,16 @@ export class BookmarkManager {
   }
 
   addBookmark(bookmark: Bookmark) {
-    const bookmarks = [...this.getBookmarks()];  // mutable copy
+    const bookmarks = [...this.getBookmarks()]; // mutable copy
     bookmarks.push(bookmark);
     this._updateBookmarks(bookmarks);
   }
-  
+
   removeBookmark(bookmark: Bookmark) {
-    const bookmarks = [...this.getBookmarks()];  // mutable copy
-    const bookmarkIndex = bookmarks.findIndex((b) => b.messageNum === bookmark.messageNum && b.title === bookmark.title);
+    const bookmarks = [...this.getBookmarks()]; // mutable copy
+    const bookmarkIndex = bookmarks.findIndex(
+      (b) => b.messageNum === bookmark.messageNum && b.title === bookmark.title,
+    );
     if (bookmarkIndex > -1) {
       bookmarks.splice(bookmarkIndex, 1);
       this._updateBookmarks(bookmarks);
@@ -48,7 +49,7 @@ export class BookmarkManager {
       throw new Error('Bookmark not found: ' + JSON.stringify(bookmark));
     }
   }
-  
+
   _updateBookmarks(bookmarks: Bookmark[]) {
     this.api.chat.metadata.update({
       extra: {
