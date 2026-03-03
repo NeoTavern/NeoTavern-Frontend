@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import type { Connect, ViteDevServer } from 'vite';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import type { DevOverrides } from './vite-dev-overrides';
@@ -39,53 +40,43 @@ async function loadDevOverrides(): Promise<DevOverrides> {
   }
 }
 
-function createBasicAuthMiddleware(overrides: DevOverrides) {
-  if (!overrides.auth)
-    return (server: {
-      middlewares: { use: (fn: (req: unknown, res: unknown, next: () => void) => void) => void };
-    }) => {
-      void server;
-    };
+function createBasicAuthMiddleware(overrides: DevOverrides): (server: ViteDevServer) => void {
+  if (!overrides.auth) return (server) => void server;
+
   const { user: authUser, pass: authPass } = overrides.auth;
   const checkCredentials = (user: string, pass: string) => user === authUser && pass === authPass;
 
-  return (server: { middlewares: { use: (fn: (req: unknown, res: unknown, next: () => void) => void) => void } }) => {
-    server.middlewares.use(
-      (
-        req: { url?: string; headers?: { authorization?: string } },
-        res: { statusCode: number; setHeader: (k: string, v: string) => void; end: (s: string) => void },
-        next: () => void,
-      ) => {
-        const isAsset =
-          req.url?.includes('/assets/') ||
-          req.url?.includes('/img/') ||
-          req.url?.includes('/node_modules/') ||
-          req.url?.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json)(\?.*)?$/);
-        if (isAsset) {
-          next();
-          return;
-        }
-        const header = req.headers?.authorization ?? '';
-        if (!header) {
-          res.statusCode = 401;
-          res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
-          res.end('Unauthorized');
-          return;
-        }
-        const [type, credentials] = header.split(' ');
-        const [user, pass] = Buffer.from(credentials ?? '', 'base64')
-          .toString()
-          .split(':');
-        if (type !== 'Basic' || !checkCredentials(user, pass)) {
-          res.statusCode = 401;
-          res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
-          res.end('Access denied');
-          return;
-        }
-        next();
-      },
-    );
+  const middleware: Connect.NextHandleFunction = (req, res, next) => {
+    const isAsset =
+      req.url?.includes('/assets/') ||
+      req.url?.includes('/img/') ||
+      req.url?.includes('/node_modules/') ||
+      req.url?.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json)(\?.*)?$/);
+    if (isAsset) {
+      next();
+      return;
+    }
+    const header = req.headers?.authorization ?? '';
+    if (!header) {
+      res.statusCode = 401;
+      res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
+      res.end('Unauthorized');
+      return;
+    }
+    const [type, credentials] = header.split(' ');
+    const [user, pass] = Buffer.from(credentials ?? '', 'base64')
+      .toString()
+      .split(':');
+    if (type !== 'Basic' || !checkCredentials(user, pass)) {
+      res.statusCode = 401;
+      res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
+      res.end('Access denied');
+      return;
+    }
+    next();
   };
+
+  return (server) => server.middlewares.use(middleware);
 }
 
 const PROXY_PATHS = ['/backgrounds', '/characters', '/personas', '/api', '/csrf-token', '/thumbnail', '/user'] as const;
