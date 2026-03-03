@@ -58,7 +58,10 @@ const titleInputId = useId();
 const validateMessageNum = additionalConstraint(messageNumInput, (value: number) => {
   const historyLength = props.api.chat.getHistoryLength();
   if (value >= historyLength) {
-    return { valid: false, message: t('extensionsBuiltin.bookmarks.validationMessageCountMax', { count: historyLength }) };
+    return {
+      valid: false,
+      message: t('extensionsBuiltin.bookmarks.validationMessageCountMax', { count: historyLength }),
+    };
   }
   return { valid: true };
 });
@@ -91,7 +94,9 @@ watch<number>(newBookmarkMessageNum, validateMessageNum);
           </button>
         </div>
         <MessagePreview v-if="isWithinHistory(bookmark)" :message="getMessage(bookmark)" class="bookmark-message" />
-        <p v-else class="bookmark-message-not-found">{{ t('extensionsBuiltin.bookmarks.messageNotFound', { num: bookmark.messageNum }) }}</p>
+        <p v-else class="bookmark-message-not-found">
+          {{ t('extensionsBuiltin.bookmarks.messageNotFound', { num: bookmark.messageNum }) }}
+        </p>
       </li>
     </ul>
     <form
