@@ -1332,7 +1332,6 @@ export interface MessageSchema {
       deleteBookmark: string;
       messageNotFound: string;
       messageNumberLabel: string;
-      messageNumberPlaceholder: string;
       titleLabel: string;
       titlePlaceholder: string;
       addBookmark: string;

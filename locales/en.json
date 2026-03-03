@@ -1329,7 +1329,6 @@
       "deleteBookmark": "Delete Bookmark",
       "messageNotFound": "Message #{num} not found.",
       "messageNumberLabel": "Message Number",
-      "messageNumberPlaceholder": "0",
       "titleLabel": "Bookmark Title",
       "titlePlaceholder": "Title",
       "addBookmark": "Add Bookmark",

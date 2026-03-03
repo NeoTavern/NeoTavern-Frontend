@@ -116,7 +116,7 @@ watch<number>(newBookmarkMessageNum, validateMessageNum);
             :title="t('extensionsBuiltin.bookmarks.messageNumberLabel')"
             type="text"
             name="messageNum"
-            :placeholder="t('extensionsBuiltin.bookmarks.messageNumberPlaceholder')"
+            placeholder="0"
             size="3"
             inputmode="numeric"
             pattern="[0-9]+"
