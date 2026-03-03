@@ -40,53 +40,56 @@ async function loadDevOverrides(): Promise<DevOverrides> {
 }
 
 function createBasicAuthMiddleware(overrides: DevOverrides) {
-  if (!overrides.auth) return (server: { middlewares: { use: (fn: (req: unknown, res: unknown, next: () => void) => void) => void } }) => {};
+  if (!overrides.auth)
+    return (server: {
+      middlewares: { use: (fn: (req: unknown, res: unknown, next: () => void) => void) => void };
+    }) => {
+      void server;
+    };
   const auth = overrides.auth;
   const checkCredentials =
-    auth === true
-      ? () => true
-      : (user: string, pass: string) => user === auth.user && pass === auth.pass;
+    auth === true ? () => true : (user: string, pass: string) => user === auth.user && pass === auth.pass;
 
   return (server: { middlewares: { use: (fn: (req: unknown, res: unknown, next: () => void) => void) => void } }) => {
-    server.middlewares.use((req: { url?: string; headers?: { authorization?: string } }, res: { statusCode: number; setHeader: (k: string, v: string) => void; end: (s: string) => void }, next: () => void) => {
-      const isAsset =
-        req.url?.includes('/assets/') ||
-        req.url?.includes('/img/') ||
-        req.url?.includes('/node_modules/') ||
-        req.url?.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json)(\?.*)?$/);
-      if (isAsset) {
+    server.middlewares.use(
+      (
+        req: { url?: string; headers?: { authorization?: string } },
+        res: { statusCode: number; setHeader: (k: string, v: string) => void; end: (s: string) => void },
+        next: () => void,
+      ) => {
+        const isAsset =
+          req.url?.includes('/assets/') ||
+          req.url?.includes('/img/') ||
+          req.url?.includes('/node_modules/') ||
+          req.url?.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json)(\?.*)?$/);
+        if (isAsset) {
+          next();
+          return;
+        }
+        const header = req.headers?.authorization ?? '';
+        if (!header) {
+          res.statusCode = 401;
+          res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
+          res.end('Unauthorized');
+          return;
+        }
+        const [type, credentials] = header.split(' ');
+        const [user, pass] = Buffer.from(credentials ?? '', 'base64')
+          .toString()
+          .split(':');
+        if (type !== 'Basic' || !checkCredentials(user, pass)) {
+          res.statusCode = 401;
+          res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
+          res.end('Access denied');
+          return;
+        }
         next();
-        return;
-      }
-      const header = req.headers?.authorization ?? '';
-      if (!header) {
-        res.statusCode = 401;
-        res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
-        res.end('Unauthorized');
-        return;
-      }
-      const [type, credentials] = header.split(' ');
-      const [user, pass] = Buffer.from(credentials ?? '', 'base64').toString().split(':');
-      if (type !== 'Basic' || !checkCredentials(user, pass)) {
-        res.statusCode = 401;
-        res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
-        res.end('Access denied');
-        return;
-      }
-      next();
-    });
+      },
+    );
   };
 }
 
-const PROXY_PATHS = [
-  '/backgrounds',
-  '/characters',
-  '/personas',
-  '/api',
-  '/csrf-token',
-  '/thumbnail',
-  '/user',
-] as const;
+const PROXY_PATHS = ['/backgrounds', '/characters', '/personas', '/api', '/csrf-token', '/thumbnail', '/user'] as const;
 
 function buildProxyRules(proxyTarget: string) {
   const rules: Record<string, { target: string; changeOrigin: boolean; rewrite?: (path: string) => string }> = {};
