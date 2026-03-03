@@ -1,5 +1,6 @@
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 import vue from '@vitejs/plugin-vue';
+import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -38,8 +39,44 @@ async function loadDevOverrides(): Promise<DevOverrides> {
   }
 }
 
-// const AUTH_USER = 'test';
-// const AUTH_PASS = 'test';
+function createBasicAuthMiddleware(overrides: DevOverrides) {
+  if (!overrides.auth) return (server: { middlewares: { use: (fn: (req: unknown, res: unknown, next: () => void) => void) => void } }) => {};
+  const auth = overrides.auth;
+  const checkCredentials =
+    auth === true
+      ? () => true
+      : (user: string, pass: string) => user === auth.user && pass === auth.pass;
+
+  return (server: { middlewares: { use: (fn: (req: unknown, res: unknown, next: () => void) => void) => void } }) => {
+    server.middlewares.use((req: { url?: string; headers?: { authorization?: string } }, res: { statusCode: number; setHeader: (k: string, v: string) => void; end: (s: string) => void }, next: () => void) => {
+      const isAsset =
+        req.url?.includes('/assets/') ||
+        req.url?.includes('/img/') ||
+        req.url?.includes('/node_modules/') ||
+        req.url?.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json)(\?.*)?$/);
+      if (isAsset) {
+        next();
+        return;
+      }
+      const header = req.headers?.authorization ?? '';
+      if (!header) {
+        res.statusCode = 401;
+        res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
+        res.end('Unauthorized');
+        return;
+      }
+      const [type, credentials] = header.split(' ');
+      const [user, pass] = Buffer.from(credentials ?? '', 'base64').toString().split(':');
+      if (type !== 'Basic' || !checkCredentials(user, pass)) {
+        res.statusCode = 401;
+        res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
+        res.end('Access denied');
+        return;
+      }
+      next();
+    });
+  };
+}
 
 const PROXY_PATHS = [
   '/backgrounds',
@@ -64,101 +101,81 @@ function buildProxyRules(proxyTarget: string) {
   return rules;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const setupAuth = (_server) => {
-  // server.middlewares.use((req, res, next) => {
-  //   const isAsset =
-  //     req.url?.includes('/assets/') ||
-  //     req.url?.includes('/img/') ||
-  //     req.url?.includes('/node_modules/') ||
-  //     req.url?.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json)(\?.*)?$/);
-  //   if (isAsset) {
-  //     next();
-  //     return;
-  //   }
-  //   const header = req.headers.authorization || '';
-  //   if (!header) {
-  //     res.statusCode = 401;
-  //     res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
-  //     res.end('Unauthorized');
-  //     return;
-  //   }
-  //   const [type, credentials] = header.split(' ');
-  //   const [user, pass] = Buffer.from(credentials, 'base64').toString().split(':');
-  //   if (type !== 'Basic' || user !== AUTH_USER || pass !== AUTH_PASS) {
-  //     res.statusCode = 401;
-  //     res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
-  //     res.end('Access denied');
-  //     return;
-  //   }
-  //   next();
-  // });
-};
-
 export default defineConfig(async ({ mode }) => {
   const overrides = await loadDevOverrides();
   const isDevBuild = mode !== 'production';
   const proxyTarget = overrides.proxyTarget ?? defaultDevOverrides.proxyTarget!;
   const proxyRules = buildProxyRules(proxyTarget);
+  const httpsOptions = overrides.https
+    ? {
+        cert: readFileSync(overrides.https.certPath),
+        key: readFileSync(overrides.https.keyPath),
+      }
+    : undefined;
+  const setupAuth = createBasicAuthMiddleware(overrides);
+
+  const plugins = [
+    vue(),
+    VueI18nPlugin({
+      include: resolve(__dirname, './locales/**'),
+      strictMessage: false,
+    }),
+    VitePWA({
+      registerType: 'prompt',
+      minify: false,
+      includeAssets: ['favicon.ico', 'img/*.svg'],
+      manifest: {
+        name: 'NeoTavern',
+        short_name: 'NeoTavern',
+        description: 'A modern, experimental frontend for SillyTavern',
+        theme_color: '#171717',
+        background_color: '#171717',
+        display: 'standalone',
+        orientation: 'any',
+        icons: [
+          {
+            src: 'pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+        ],
+      },
+      workbox: {
+        skipWaiting: false,
+        clientsClaim: false,
+        navigateFallbackDenylist: [
+          /^\/api/,
+          /^\/characters/,
+          /^\/backgrounds/,
+          /^\/personas/,
+          /^\/login-check/,
+          /^\/user/,
+        ],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
+        cleanupOutdatedCaches: true,
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+      },
+    }),
+  ];
+  if (overrides.auth) {
+    plugins.push({
+      name: 'basic-auth',
+      configureServer(server) {
+        setupAuth(server);
+      },
+      configurePreviewServer(server) {
+        setupAuth(server);
+      },
+    });
+  }
 
   return {
-    plugins: [
-      vue(),
-      VueI18nPlugin({
-        include: resolve(__dirname, './locales/**'),
-        strictMessage: false,
-      }),
-      VitePWA({
-        registerType: 'prompt',
-        minify: false,
-        includeAssets: ['favicon.ico', 'img/*.svg'],
-        manifest: {
-          name: 'NeoTavern',
-          short_name: 'NeoTavern',
-          description: 'A modern, experimental frontend for SillyTavern',
-          theme_color: '#171717',
-          background_color: '#171717',
-          display: 'standalone',
-          orientation: 'any',
-          icons: [
-            {
-              src: 'pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png',
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-            },
-          ],
-        },
-        workbox: {
-          skipWaiting: false,
-          clientsClaim: false,
-          navigateFallbackDenylist: [
-            /^\/api/,
-            /^\/characters/,
-            /^\/backgrounds/,
-            /^\/personas/,
-            /^\/login-check/,
-            /^\/user/,
-          ],
-          maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
-          cleanupOutdatedCaches: true,
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        },
-      }),
-      {
-        name: 'basic-auth',
-        configureServer(server) {
-          setupAuth(server);
-        },
-        configurePreviewServer(server) {
-          setupAuth(server);
-        },
-      },
-    ],
+    plugins,
     resolve: {
       alias: {
         vue: 'vue/dist/vue.esm-bundler.js',
@@ -169,12 +186,14 @@ export default defineConfig(async ({ mode }) => {
       host: overrides.server?.host ?? defaultDevOverrides.server?.host ?? false,
       allowedHosts: true,
       proxy: proxyRules,
+      ...(httpsOptions && { https: httpsOptions }),
     },
     preview: {
       port: overrides.preview?.port ?? defaultDevOverrides.preview?.port ?? 4173,
       host: overrides.preview?.host ?? defaultDevOverrides.preview?.host ?? true,
       allowedHosts: true,
       proxy: proxyRules,
+      ...(httpsOptions && { https: httpsOptions }),
     },
     build: {
       minify: isDevBuild ? false : 'esbuild',
