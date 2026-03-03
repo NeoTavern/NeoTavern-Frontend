@@ -1324,6 +1324,20 @@ export interface MessageSchema {
       promptTemplate: string;
       promptHint: string;
     };
+    bookmarks: {
+      sidebarTitle: string;
+      header: string;
+      noChatLoaded: string;
+      noBookmarksYet: string;
+      deleteBookmark: string;
+      messageNotFound: string;
+      messageNumberLabel: string;
+      messageNumberPlaceholder: string;
+      titleLabel: string;
+      titlePlaceholder: string;
+      addBookmark: string;
+      validationMessageCountMax: string;
+    };
     generationTools: {
       rerollButtonLabel: string;
       deleteContinueButtonLabel: string;
