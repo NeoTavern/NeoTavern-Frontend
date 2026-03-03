@@ -2,9 +2,11 @@ import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 import vue from '@vitejs/plugin-vue';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import type { DevOverrides } from './vite-dev-overrides';
+import { defaultDevOverrides } from './vite-dev-overrides';
 
 // Android 14+ blocks /proc/stat, causing os.cpus() to return empty.
 // This crashes Terser/Rollup. We fake a single CPU core to fix it.
@@ -24,6 +26,17 @@ try {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+async function loadDevOverrides(): Promise<DevOverrides> {
+  const localPath = resolve(__dirname, 'vite.config.local.ts');
+  try {
+    const mod = await import(pathToFileURL(localPath).href);
+    const o = mod.devOverrides ?? mod.default;
+    return { ...defaultDevOverrides, ...o };
+  } catch {
+    return defaultDevOverrides;
+  }
+}
 
 // const AUTH_USER = 'test';
 // const AUTH_PASS = 'test';
