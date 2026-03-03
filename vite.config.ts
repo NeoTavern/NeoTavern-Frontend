@@ -41,20 +41,28 @@ async function loadDevOverrides(): Promise<DevOverrides> {
 // const AUTH_USER = 'test';
 // const AUTH_PASS = 'test';
 
-const proxyRules = {
-  '/backgrounds': { target: 'http://localhost:8000', changeOrigin: true },
-  '/characters': { target: 'http://localhost:8000', changeOrigin: true },
-  '/personas': { target: 'http://localhost:8000', changeOrigin: true },
-  '/api': { target: 'http://localhost:8000', changeOrigin: true },
-  '/csrf-token': { target: 'http://localhost:8000', changeOrigin: true },
-  '/thumbnail': { target: 'http://localhost:8000', changeOrigin: true },
-  '/user': { target: 'http://localhost:8000', changeOrigin: true },
-  '/login-check': {
-    target: 'http://localhost:8000',
+const PROXY_PATHS = [
+  '/backgrounds',
+  '/characters',
+  '/personas',
+  '/api',
+  '/csrf-token',
+  '/thumbnail',
+  '/user',
+] as const;
+
+function buildProxyRules(proxyTarget: string) {
+  const rules: Record<string, { target: string; changeOrigin: boolean; rewrite?: (path: string) => string }> = {};
+  for (const p of PROXY_PATHS) {
+    rules[p] = { target: proxyTarget, changeOrigin: true };
+  }
+  rules['/login-check'] = {
+    target: proxyTarget,
     changeOrigin: true,
     rewrite: (path) => path.replace(/^\/login-check/, '/'),
-  },
-};
+  };
+  return rules;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const setupAuth = (_server) => {
@@ -87,8 +95,11 @@ const setupAuth = (_server) => {
   // });
 };
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }) => {
+  const overrides = await loadDevOverrides();
   const isDevBuild = mode !== 'production';
+  const proxyTarget = overrides.proxyTarget ?? defaultDevOverrides.proxyTarget!;
+  const proxyRules = buildProxyRules(proxyTarget);
 
   return {
     plugins: [
@@ -154,14 +165,14 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      port: 3000,
-      host: false,
+      port: overrides.server?.port ?? defaultDevOverrides.server?.port ?? 3000,
+      host: overrides.server?.host ?? defaultDevOverrides.server?.host ?? false,
       allowedHosts: true,
       proxy: proxyRules,
     },
     preview: {
-      port: 4173,
-      host: true,
+      port: overrides.preview?.port ?? defaultDevOverrides.preview?.port ?? 4173,
+      host: overrides.preview?.host ?? defaultDevOverrides.preview?.host ?? true,
       allowedHosts: true,
       proxy: proxyRules,
     },
