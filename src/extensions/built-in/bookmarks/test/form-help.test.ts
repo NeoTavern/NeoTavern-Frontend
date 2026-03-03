@@ -33,7 +33,7 @@ describe('additionalConstraint', () => {
     expect(() => validate(1)).not.toThrow();
   });
 
-  it('does not call validator when input is natively invalid and stays invalid after reset', ({ input, ref }) => {
+  it('does not call validator when input is natively invalid', ({ input, ref }) => {
     input.required = true;
     input.value = '';
     let validatorCalled = false;
@@ -84,6 +84,9 @@ describe('additionalConstraint', () => {
     validate(Number(input.value));
     expect(input.validity.valid).toBe(false);
     expect(input.validationMessage).toBe(validationMessage);
+
+    // Odd number was invalidated by our custom validator. Now we set an even number that is below
+    // the native min attribute.
     input.value = '2';
     validate(Number(input.value));
     expect(input.validity.valid).toBe(false);

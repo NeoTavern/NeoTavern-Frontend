@@ -32,8 +32,9 @@ export class BookmarkManager {
   }
 
   addBookmark(bookmark: Bookmark) {
-    const bookmarks = [...this.getBookmarks()]; // mutable copy
+    let bookmarks = [...this.getBookmarks()]; // mutable copy
     bookmarks.push(bookmark);
+    bookmarks = orderBy(bookmarks, ['messageNum', 'title']);
     this._updateBookmarks(bookmarks);
   }
 
