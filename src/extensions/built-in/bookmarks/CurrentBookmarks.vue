@@ -22,6 +22,8 @@ const props = defineProps<{
   bookmarkManager: BookmarkManager;
 }>();
 
+const t = props.api.i18n.t;
+
 function createBookmark(messageNum: number, title: string) {
   props.bookmarkManager.addBookmark({ messageNum, title });
   newBookmarkTitle.value = '';
@@ -56,7 +58,7 @@ const titleInputId = useId();
 const validateMessageNum = additionalConstraint(messageNumInput, (value: number) => {
   const historyLength = props.api.chat.getHistoryLength();
   if (value >= historyLength) {
-    return { valid: false, message: `This chat has only ${historyLength} messages.` };
+    return { valid: false, message: t('extensionsBuiltin.bookmarks.validationMessageCountMax', { count: historyLength }) };
   }
   return { valid: true };
 });
@@ -66,9 +68,9 @@ watch<number>(newBookmarkMessageNum, validateMessageNum);
 
 <template>
   <div>
-    <h3 class="sidebar-header-main">Current Bookmarks</h3>
-    <p v-if="!isChatLoaded()">No chat loaded.</p>
-    <p v-else-if="bookmarkManager.length === 0">No bookmarks yet.</p>
+    <h3 class="sidebar-header-main">{{ t('extensionsBuiltin.bookmarks.header') }}</h3>
+    <p v-if="!isChatLoaded()">{{ t('extensionsBuiltin.bookmarks.noChatLoaded') }}</p>
+    <p v-else-if="bookmarkManager.length === 0">{{ t('extensionsBuiltin.bookmarks.noBookmarksYet') }}</p>
     <ul v-else class="bookmark-list">
       <li
         v-for="bookmark in bookmarkManager.getBookmarks()"
@@ -82,14 +84,14 @@ watch<number>(newBookmarkMessageNum, validateMessageNum);
             type="button"
             name="deleteBookmark"
             class="bookmark-delete-button"
-            title="Delete Bookmark"
+            :title="t('extensionsBuiltin.bookmarks.deleteBookmark')"
             @click="deleteBookmark(bookmark.messageNum, bookmark.title)"
           >
             <i class="fa-solid fa-trash-can"></i>
           </button>
         </div>
         <MessagePreview v-if="isWithinHistory(bookmark)" :message="getMessage(bookmark)" class="bookmark-message" />
-        <p v-else class="bookmark-message-not-found">Message #{{ bookmark.messageNum }} not found.</p>
+        <p v-else class="bookmark-message-not-found">{{ t('extensionsBuiltin.bookmarks.messageNotFound', { num: bookmark.messageNum }) }}</p>
       </li>
     </ul>
     <form
@@ -106,10 +108,10 @@ watch<number>(newBookmarkMessageNum, validateMessageNum);
             :id="messageNumInputId"
             ref="messageNumInput"
             v-model.number="newBookmarkMessageNum"
-            title="Message Number"
+            :title="t('extensionsBuiltin.bookmarks.messageNumberLabel')"
             type="text"
             name="messageNum"
-            placeholder="0"
+            :placeholder="t('extensionsBuiltin.bookmarks.messageNumberPlaceholder')"
             size="3"
             inputmode="numeric"
             pattern="[0-9]+"
@@ -118,23 +120,23 @@ watch<number>(newBookmarkMessageNum, validateMessageNum);
             class="text-pole"
           />
         </span>
-        <label :for="messageNumInputId">Message Number</label>
+        <label :for="messageNumInputId">{{ t('extensionsBuiltin.bookmarks.messageNumberLabel') }}</label>
       </div>
       <div class="label-input-group">
         <input
           :id="titleInputId"
           v-model.trim="newBookmarkTitle"
-          title="Bookmark Title"
+          :title="t('extensionsBuiltin.bookmarks.titleLabel')"
           type="text"
           name="title"
-          placeholder="Title"
+          :placeholder="t('extensionsBuiltin.bookmarks.titlePlaceholder')"
           required
           class="text-pole"
         />
-        <label :for="titleInputId">Bookmark Title</label>
+        <label :for="titleInputId">{{ t('extensionsBuiltin.bookmarks.titleLabel') }}</label>
       </div>
       <button type="submit" name="addBookmark" class="menu-button">
-        <span><i class="fa-solid fa-plus"></i> Add Bookmark</span>
+        <span><i class="fa-solid fa-plus"></i> {{ t('extensionsBuiltin.bookmarks.addBookmark') }}</span>
       </button>
     </form>
   </div>
