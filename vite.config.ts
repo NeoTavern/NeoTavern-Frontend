@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { Connect, ViteDevServer } from 'vite';
+import type { Connect, ProxyOptions, ViteDevServer } from 'vite';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import type { DevOverrides } from './vite-dev-overrides';
@@ -82,16 +82,16 @@ function createBasicAuthMiddleware(overrides: DevOverrides): (server: ViteDevSer
 
 const PROXY_PATHS = ['/backgrounds', '/characters', '/personas', '/api', '/csrf-token', '/thumbnail', '/user'] as const;
 
-function buildProxyRules(proxyTarget: string) {
-  const rules: Record<string, { target: string; changeOrigin: boolean; rewrite?: (path: string) => string }> = {};
+function buildProxyRules(proxyTarget: string, extraOptions?: Partial<ProxyOptions>): Record<string, ProxyOptions> {
+  const base: Partial<ProxyOptions> = { target: proxyTarget, changeOrigin: true, ...extraOptions };
+  const rules: Record<string, ProxyOptions> = {};
   for (const p of PROXY_PATHS) {
-    rules[p] = { target: proxyTarget, changeOrigin: true };
+    rules[p] = { ...base } as ProxyOptions;
   }
   rules['/login-check'] = {
-    target: proxyTarget,
-    changeOrigin: true,
+    ...base,
     rewrite: (path) => path.replace(/^\/login-check/, '/'),
-  };
+  } as ProxyOptions;
   return rules;
 }
 
@@ -99,7 +99,7 @@ export default defineConfig(async ({ mode }) => {
   const overrides = await loadDevOverrides();
   const isDevBuild = mode !== 'production';
   const proxyTarget = overrides.proxyTarget ?? 'http://localhost:8000';
-  const proxyRules = buildProxyRules(proxyTarget);
+  const proxyRules = buildProxyRules(proxyTarget, overrides.proxyOptions);
   const httpsOptions = overrides.https
     ? {
         cert: readFileSync(overrides.https.certPath),

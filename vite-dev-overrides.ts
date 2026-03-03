@@ -3,9 +3,13 @@
  * Local file exports DevOverrides (or default); all logic lives in vite.config.ts.
  */
 
+import type { ProxyOptions } from 'vite';
+
 export interface DevOverrides {
   /** Proxy target for dev/preview (default: http://localhost:8000) */
   proxyTarget?: string;
+  /** Extra options merged into every proxy rule (e.g. `ca` for self-signed backend certs). */
+  proxyOptions?: Partial<ProxyOptions>;
   server?: { host?: boolean; port?: number };
   preview?: { host?: boolean; port?: number };
   /** When set, main config reads cert/key and sets server.https / preview.https */

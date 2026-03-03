@@ -10,6 +10,8 @@ import type { DevOverrides } from './vite-dev-overrides';
 export const devOverrides: DevOverrides = {
   // Proxy target for dev/preview (default: http://localhost:8000)
   proxyTarget: 'http://localhost:8000',
+  // Optional: trust a CA for backend TLS (self-signed or internal). Pass PEM content, e.g. readFileSync('/path/to/ca.pem', 'utf-8').
+  // proxyOptions: { ca: '<PEM string>' },
 
   server: { port: 3000, host: false },
   preview: { port: 4173, host: true },
