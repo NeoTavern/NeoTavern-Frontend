@@ -1,5 +1,6 @@
 import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite';
 import vue from '@vitejs/plugin-vue';
+import { merge } from 'lodash-es';
 import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
@@ -34,7 +35,7 @@ async function loadDevOverrides(): Promise<DevOverrides> {
   try {
     const mod = await import(pathToFileURL(localPath).href);
     const o = mod.devOverrides ?? mod.default;
-    return { ...defaultDevOverrides, ...o };
+    return merge({}, defaultDevOverrides, o) as DevOverrides;
   } catch {
     return defaultDevOverrides;
   }
@@ -97,7 +98,7 @@ function buildProxyRules(proxyTarget: string) {
 export default defineConfig(async ({ mode }) => {
   const overrides = await loadDevOverrides();
   const isDevBuild = mode !== 'production';
-  const proxyTarget = overrides.proxyTarget ?? defaultDevOverrides.proxyTarget!;
+  const proxyTarget = overrides.proxyTarget ?? 'http://localhost:8000';
   const proxyRules = buildProxyRules(proxyTarget);
   const httpsOptions = overrides.https
     ? {
@@ -175,15 +176,15 @@ export default defineConfig(async ({ mode }) => {
       },
     },
     server: {
-      port: overrides.server?.port ?? defaultDevOverrides.server?.port ?? 3000,
-      host: overrides.server?.host ?? defaultDevOverrides.server?.host ?? false,
+      port: overrides.server?.port ?? 3000,
+      host: overrides.server?.host ?? false,
       allowedHosts: true,
       proxy: proxyRules,
       ...(httpsOptions && { https: httpsOptions }),
     },
     preview: {
-      port: overrides.preview?.port ?? defaultDevOverrides.preview?.port ?? 4173,
-      host: overrides.preview?.host ?? defaultDevOverrides.preview?.host ?? true,
+      port: overrides.preview?.port ?? 4173,
+      host: overrides.preview?.host ?? true,
       allowedHosts: true,
       proxy: proxyRules,
       ...(httpsOptions && { https: httpsOptions }),
