@@ -67,8 +67,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
   // --- Message Summarization Logic ---
 
   const summarizeMessage = async (messageIndex: number) => {
-    const history = api.chat.getHistory();
-    const message = history[messageIndex];
+    const message = api.chat.getMessage(messageIndex);
     if (!message) return;
 
     const settings = api.settings.get();
@@ -173,8 +172,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
   };
 
   const processMessageElement = (element: HTMLElement, index: number) => {
-    const history = api.chat.getHistory();
-    const message = history[index];
+    const message = api.chat.getMessage(index);
     if (!message) return;
 
     const settings = api.settings.get();
@@ -278,8 +276,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
 
   unbinds.push(
     api.events.on('message:created', (message: ChatMessage) => {
-      const history = api.chat.getHistory();
-      const messageIndex = history.length - 1;
+      const messageIndex = api.chat.getHistoryLength() - 1;
 
       const el = document.querySelector(`.message[data-message-index="${messageIndex}"]`);
       if (el) processMessageElement(el as HTMLElement, messageIndex);

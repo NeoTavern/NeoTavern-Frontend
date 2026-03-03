@@ -1,5 +1,5 @@
 import * as Vue from 'vue';
-import { createVNode, nextTick, render, type App } from 'vue';
+import { createVNode, nextTick, readonly, render, type App } from 'vue';
 import { CustomPromptPostProcessing, default_avatar, default_user_avatar } from '../constants';
 import type {
   ApiChatContentPart,
@@ -7,6 +7,7 @@ import type {
   Character,
   ChatInfo,
   ChatMessage,
+  ChatMetadata,
   ExtensionAPI,
   ExtensionEventMap,
   ExtensionMetadata,
@@ -219,10 +220,16 @@ const baseExtensionAPI: ExtensionAPI = {
         generationId: options?.generationId,
       });
     },
+    isActive(): boolean {
+      return useChatStore().activeChat !== null;
+    },
     getHistory: () => {
       const store = useChatStore();
       if (!store.activeChat) throw new Error('No active chat.');
       return deepClone(store.activeChat.messages);
+    },
+    getHistoryLength: () => {
+      return useChatStore().activeChat?.messages.length ?? 0;
     },
     getChatInfo: () => {
       const store = useChatStore();
@@ -232,6 +239,10 @@ const baseExtensionAPI: ExtensionAPI = {
     },
     getAllChatInfos: () => {
       return deepClone(useChatStore().chatInfos);
+    },
+    getMessage: (index: number) => {
+      const messages = useChatStore().activeChat?.messages ?? [];
+      return deepClone(messages[index]);
     },
     getLastMessage: () => {
       const messages = useChatStore().activeChat?.messages ?? [];
@@ -567,6 +578,12 @@ const baseExtensionAPI: ExtensionAPI = {
     },
     metadata: {
       get: () => deepClone(useChatStore().activeChat?.metadata ?? null),
+      getReactive: () => {
+        const activeChat = useChatStore().activeChat;
+        if (activeChat?.metadata == null) return null;
+        // readonly forces changes to go through set/update methods so their triggers are called.
+        return readonly(activeChat.metadata) as Readonly<ChatMetadata>;
+      },
       set: (metadata) => {
         const store = useChatStore();
         if (store.activeChat) {

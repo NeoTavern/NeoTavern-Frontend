@@ -151,11 +151,9 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
   // 1. Capture Snapshot Logic for Reroll continue
   const onGenerationContext = (context: GenerationContext) => {
     if (context.mode === GenerationMode.CONTINUE) {
-      const history = api.chat.getHistory();
-      if (history.length === 0) return;
-
-      const index = history.length - 1;
-      const lastMessage = history[index];
+      const lastMessage = api.chat.getLastMessage();
+      if (!lastMessage) return;
+      const index = api.chat.getHistoryLength() - 1;
 
       if (!snapshot || snapshot.messageIndex !== index) {
         snapshot = {

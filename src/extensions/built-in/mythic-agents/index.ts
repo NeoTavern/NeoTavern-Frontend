@@ -75,8 +75,7 @@ export function activate(api: MythicExtensionAPI) {
     if (payload.mode === GenerationMode.REGENERATE) {
       if (lastMessage.is_user || lastMessage.is_system) return; // can't regenerate
       // Delete the last message
-      const history = api.chat.getHistory();
-      await api.chat.deleteMessage(history.length - 1);
+      await api.chat.deleteMessage(api.chat.getHistoryLength() - 1);
       // Now last message should be user
       userMessage = api.chat.getLastMessage();
       if (!userMessage || !userMessage.is_user) return;
@@ -172,14 +171,13 @@ export function activate(api: MythicExtensionAPI) {
           updatedScene.characters = [...updatedScene.characters, ...randomEvent.new_npcs];
         }
 
-        const history = api.chat.getHistory();
         let messageIndex: number;
         let swipeId: number = 0;
         if (isSwipe) {
-          messageIndex = history.length - 1;
+          messageIndex = api.chat.getHistoryLength() - 1;
           swipeId = lastMessage.swipes.length;
         } else {
-          messageIndex = history.length;
+          messageIndex = api.chat.getHistoryLength();
         }
 
         let narration: string;
@@ -331,8 +329,7 @@ export function activate(api: MythicExtensionAPI) {
             };
           }
 
-          const history = api.chat.getHistory();
-          await api.chat.updateMessageObject(history.length - 1, { extra: assistantMsg.extra });
+          await api.chat.updateMessageObject(api.chat.getHistoryLength() - 1, { extra: assistantMsg.extra });
         }
       } catch (error) {
         console.error('Mythic Agents error:', error);

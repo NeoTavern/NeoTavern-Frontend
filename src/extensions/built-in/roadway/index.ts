@@ -174,7 +174,7 @@ class RoadwayManager {
   }
 
   private async updateMessageExtra(index: number, data: Partial<RoadwayMessageExtraData>) {
-    const message = this.api.chat.getHistory()[index];
+    const message = this.api.chat.getMessage(index);
     if (!message) return;
 
     const existingExtra = message.extra['core.roadway'] ?? {};
@@ -204,7 +204,7 @@ class RoadwayManager {
       settings.autoMode &&
       relevantModes.includes(context.mode)
     ) {
-      const index = this.api.chat.getHistory().length - 1;
+      const index = this.api.chat.getHistoryLength() - 1;
       this.generateChoicesForMessage(result.message, index);
     }
   }
@@ -217,7 +217,7 @@ class RoadwayManager {
   }
 
   public injectUiForMessage(index: number): void {
-    const message = this.api.chat.getHistory()[index];
+    const message = this.api.chat.getMessage(index);
     if (!message || message.is_user) return;
 
     const roadwayExtra = message.extra['core.roadway'];

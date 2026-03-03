@@ -242,7 +242,7 @@ class TrackerManager {
   }
 
   private async updateTrackerData(index: number, schemaName: string, partialData: Partial<TrackerData>) {
-    const message = this.api.chat.getHistory()[index];
+    const message = this.api.chat.getMessage(index);
     if (!message) return;
 
     const existingExtra = message.extra['core.tracker'] || {};
@@ -266,7 +266,7 @@ class TrackerManager {
     const settings = this.getSettings();
     if (!settings.enabled || settings.autoMode === 'none') return;
 
-    const index = this.api.chat.getHistory().length - 1;
+    const index = this.api.chat.getHistoryLength() - 1;
     const shouldTrackUser = settings.autoMode === 'inputs' || settings.autoMode === 'both';
     const shouldTrackBot = settings.autoMode === 'responses' || settings.autoMode === 'both';
 
@@ -326,7 +326,7 @@ class TrackerManager {
   }
 
   public injectUiForMessage(index: number): void {
-    const message = this.api.chat.getHistory()[index];
+    const message = this.api.chat.getMessage(index);
     if (!message) return;
 
     const messageEl = document.querySelector(`[data-message-index="${index}"]`);
@@ -423,7 +423,7 @@ export function activate(api: TrackerExtensionAPI) {
 
   const onChatEntered = () => manager.injectAllUi();
   const onMessageCreated = (msg: ChatMessage) => {
-    manager.injectUiForMessage(api.chat.getHistory().length - 1);
+    manager.injectUiForMessage(api.chat.getHistoryLength() - 1);
     manager.handleAutoTrack(msg);
   };
   const onMessageUpdated = (index: number) => {

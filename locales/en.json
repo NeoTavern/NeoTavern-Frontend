@@ -1321,6 +1321,19 @@
       "promptTemplate": "Translation Prompt Template",
       "promptHint": "Customize how the LLM translates text. Supports Handlebars variables: {'{{prompt}}'}, {'{{sourceLang}}'}, {'{{targetLang}}'}, {'{{name}}'}."
     },
+    "bookmarks": {
+      "sidebarTitle": "Bookmarks",
+      "header": "Current Bookmarks",
+      "noChatLoaded": "No chat loaded.",
+      "noBookmarksYet": "No bookmarks yet.",
+      "deleteBookmark": "Delete Bookmark",
+      "messageNotFound": "Message #{num} not found.",
+      "messageNumberLabel": "Message Number",
+      "titleLabel": "Bookmark Title",
+      "titlePlaceholder": "Title",
+      "addBookmark": "Add Bookmark",
+      "validationMessageCountMax": "This chat has only {count} messages."
+    },
     "generationTools": {
       "rerollButtonLabel": "Reroll continue",
       "deleteContinueButtonLabel": "Delete continue",

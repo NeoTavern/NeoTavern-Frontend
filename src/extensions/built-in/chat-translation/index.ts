@@ -103,7 +103,7 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
   // Listen for new messages for Injection AND Auto-Translation
   unbinds.push(
     api.events.on('message:created', (message: ChatMessage) => {
-      const messageIndex = api.chat.getHistory().length - 1;
+      const messageIndex = api.chat.getHistoryLength() - 1;
       const messageElements = document.querySelector(`.message[data-message-index="${messageIndex}"]`);
       if (messageElements) {
         injectSingleButton(messageElements as HTMLElement, messageIndex);

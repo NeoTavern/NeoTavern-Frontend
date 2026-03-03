@@ -80,7 +80,7 @@ export function activate(api: ExtensionAPI<LiveCommentarySettings>) {
 
     for (let i = messageElements.length - 1; i >= 0; i--) {
       const el = messageElements[i] as HTMLElement;
-      const char = api.chat.getHistory()[parseInt(el.dataset.messageIndex ?? '-1', 10)];
+      const char = api.chat.getMessage(parseInt(el.dataset.messageIndex ?? '-1', 10));
       if (char && !char.is_user && char.original_avatar === characterAvatar) {
         targetAvatarElement = el.querySelector('.message-avatar');
         break;

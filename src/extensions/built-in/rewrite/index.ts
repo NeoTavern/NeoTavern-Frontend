@@ -177,8 +177,7 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
       variant: 'ghost',
       onClick: (e: MouseEvent) => {
         e.stopPropagation();
-        const history = api.chat.getHistory();
-        const msg = history[messageIndex];
+        const msg = api.chat.getMessage(messageIndex);
         if (!msg) return;
 
         const field: RewriteField = { id: 'chat.message', label: 'Chat Message', value: msg.mes };
@@ -221,7 +220,7 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
           },
         },
         'chat.input',
-        api.chat.getHistory().length,
+        api.chat.getHistoryLength(),
       );
     };
     api.ui.registerChatFormOptionsMenuItem({
@@ -297,7 +296,7 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
   unbinds.push(
     api.events.on('message:created', (message) => {
       let messageIndex = api.chat.getHistory().indexOf(message);
-      messageIndex = messageIndex >= 0 ? messageIndex : api.chat.getHistory().length - 1;
+      messageIndex = messageIndex >= 0 ? messageIndex : api.chat.getHistoryLength() - 1;
       const messageElement = document.querySelector(`.message[data-message-index="${messageIndex}"]`);
       if (messageElement) injectSingleButton(messageElement as HTMLElement, messageIndex);
     }),
