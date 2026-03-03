@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
-import { describe, expect, it as baseIt } from 'vitest';
+import { it as baseIt, describe, expect } from 'vitest';
 import type { Ref } from 'vue';
 import { additionalConstraint } from '../form-help';
 
-function makeRef(
-  el: HTMLInputElement | null,
-): Ref<HTMLInputElement | null> {
+function makeRef(el: HTMLInputElement | null): Ref<HTMLInputElement | null> {
   return { value: el } as Ref<HTMLInputElement | null>;
 }
 
@@ -77,9 +75,7 @@ describe('additionalConstraint', () => {
     expect(input.validity.valid).toBe(true);
     const validationMessage = 'Must be even';
     const validate = additionalConstraint(ref, (value: number) =>
-      value % 2 !== 0
-        ? ({ valid: false as const, message: validationMessage })
-        : ({ valid: true as const }),
+      value % 2 !== 0 ? { valid: false as const, message: validationMessage } : { valid: true as const },
     );
     validate(Number(input.value));
     expect(input.validity.valid).toBe(false);

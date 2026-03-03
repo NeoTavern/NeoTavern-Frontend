@@ -14,7 +14,7 @@ const MULTILINE_MESSAGE_LENGTH = 120;
 <template>
   <div class="message-preview-container" :class="{ 'is-user': message.is_user, 'is-bot': !message.is_user }">
     <label class="open-preview-toggle">
-      <input type="checkbox" v-model="isOpen" />
+      <input v-model="isOpen" type="checkbox" />
       <div class="open-preview-toggle-gutter"></div>
     </label>
     <details class="message-preview" :open="isOpen">
@@ -24,7 +24,7 @@ const MULTILINE_MESSAGE_LENGTH = 120;
           <span class="message-begins">{{ message.mes }}</span>
           <span class="message-timestamp">{{ message.send_date }}</span>
         </span>
-        <span class="message-ends" v-if="message.mes.length > MULTILINE_MESSAGE_LENGTH">{{ message.mes }}</span>
+        <span v-if="message.mes.length > MULTILINE_MESSAGE_LENGTH" class="message-ends">{{ message.mes }}</span>
       </summary>
       <article class="message-content">{{ message.mes }}</article>
     </details>
