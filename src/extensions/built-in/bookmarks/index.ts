@@ -9,6 +9,7 @@ export { manifest };
 
 export function activate(api: ExtensionAPI<unknown, BookmarkMetadata, unknown>) {
   const unbinds: Array<() => void> = [];
+  const t = api.i18n.t;
   /** TODO: Figure out how we're supposed to handle a reactive view of bookmarks.
       api.chat.metadata.get() returns a clone, and it's not obvious to me what impact that has on
       change tracking.
@@ -48,7 +49,7 @@ export function activate(api: ExtensionAPI<unknown, BookmarkMetadata, unknown>) 
 
   // Only works on the right, not the left?
   api.ui.registerSidebar('bookmarks-sidebar', CurrentBookmarks, 'right', {
-    title: 'Bookmarks',
+    title: t('extensionsBuiltin.bookmarks.sidebarTitle'),
     icon: 'fa-solid fa-bookmark',
     props: { api: markRaw(api), bookmarkManager },
   });
