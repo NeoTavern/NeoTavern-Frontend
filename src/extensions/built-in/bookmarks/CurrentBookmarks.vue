@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, useTemplateRef, watch, type Ref } from 'vue';
 import type { ChatMessage, ExtensionAPI } from '../../../public-api';
 import MessagePreview from './MessagePreview.vue';
 import type { BookmarkManager } from './storage';
 import type { Bookmark, BookmarkMetadata } from './types';
+import { additionalConstraint } from './form-help';
 
 // onRenderTracked((event) => {
 //   console.debug('onRenderTracked', event);
@@ -46,6 +47,20 @@ function getMessage(bookmark: Bookmark): ChatMessage {
   }
   return message;
 }
+
+const messageNumInput = useTemplateRef('messageNumInput');
+
+
+/** Validate the number is within range, after the native validation has passed. */
+const validateMessageNum = additionalConstraint(messageNumInput, (value: number) => {
+  const historyLength = props.api.chat.getHistoryLength();
+  if (value >= historyLength) {
+    return { valid: false, message: `This chat has only ${historyLength} messages.` };
+  }
+  return { valid: true };
+});
+
+watch<number>(newBookmarkMessageNum, validateMessageNum);
 </script>
 
 <template>
@@ -73,7 +88,7 @@ function getMessage(bookmark: Bookmark): ChatMessage {
           </button>
         </div>
         <MessagePreview v-if="isWithinHistory(bookmark)" :message="getMessage(bookmark)" class="bookmark-message" />
-        <p v-else>Message #{{ bookmark.messageNum }} not found.</p>
+        <p v-else class="bookmark-message-not-found">Message #{{ bookmark.messageNum }} not found.</p>
       </li>
     </ul>
     <form
@@ -81,8 +96,29 @@ function getMessage(bookmark: Bookmark): ChatMessage {
       class="bookmark-form"
       @submit.prevent="createBookmark(newBookmarkMessageNum, newBookmarkTitle)"
     >
-      <input v-model.number="newBookmarkMessageNum" type="text" name="messageNum" placeholder="0" required />
-      <input v-model.trim="newBookmarkTitle" type="text" name="title" placeholder="Title" required />
+      <!-- messageNum input type text instead of number because it doesn't really make sense to have
+       step increment controls. -->
+      <input
+        v-model.number="newBookmarkMessageNum"
+        ref="messageNumInput"
+        title="Message Number"
+        type="text"
+        name="messageNum"
+        placeholder="0"
+        size="4"
+        inputmode="numeric"
+        pattern="[0-9]+"
+        autocomplete="off"
+        required
+      />
+      <input
+        v-model.trim="newBookmarkTitle"
+        title="Bookmark Title"
+        type="text"
+        name="title"
+        placeholder="Title"
+        required
+      />
       <button type="submit" name="addBookmark">Add Bookmark</button>
     </form>
   </div>
@@ -111,18 +147,41 @@ function getMessage(bookmark: Bookmark): ChatMessage {
   flex: 1 1 auto;
   font-weight: bold;
 }
-input[name='messageNum'] {
-  width: 6ch;
+.bookmark-message-not-found {
+  color: var(--color-warning-amber);
+  font-style: italic;
+  margin-left: var(--spacing-lg);
+}
+
+.bookmark-delete-button {
+  background: color(from var(--color-warning) srgb r g b / 0.2);
+  border: thin solid var(--color-warning);
+  border-radius: var(--base-border-radius);
+}
+
+/* Add Bookmark Form */
+.bookmark-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs);
+  margin: var(--spacing-sm);
+
+  input[name='messageNum'] {
+    flex: 0 1 auto;
+    text-align: right;
+  }
+  input[name='title'] {
+    flex: auto;
+  }
+  button[name='addBookmark'] {
+    flex: initial;
+  }
 }
 input,
 button {
   /* Is there a way to reduce this boilerplate? */
   color: var(--theme-text-color);
   background-color: var(--theme-background-tint);
-}
-.bookmark-delete-button {
-  background: color(from var(--color-warning) srgb r g b / 0.2);
-  border: thin solid var(--color-warning);
-  border-radius: var(--base-border-radius);
 }
 </style>
