@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, useTemplateRef, watch, type Ref } from 'vue';
+import { ref, useId, useTemplateRef, watch } from 'vue';
 import type { ChatMessage, ExtensionAPI } from '../../../public-api';
+import { additionalConstraint } from './form-help';
 import MessagePreview from './MessagePreview.vue';
 import type { BookmarkManager } from './storage';
 import type { Bookmark, BookmarkMetadata } from './types';
-import { additionalConstraint } from './form-help';
 
 // onRenderTracked((event) => {
 //   console.debug('onRenderTracked', event);
@@ -49,7 +49,8 @@ function getMessage(bookmark: Bookmark): ChatMessage {
 }
 
 const messageNumInput = useTemplateRef('messageNumInput');
-
+const messageNumInputId = useId();
+const titleInputId = useId();
 
 /** Validate the number is within range, after the native validation has passed. */
 const validateMessageNum = additionalConstraint(messageNumInput, (value: number) => {
@@ -96,30 +97,45 @@ watch<number>(newBookmarkMessageNum, validateMessageNum);
       class="bookmark-form"
       @submit.prevent="createBookmark(newBookmarkMessageNum, newBookmarkTitle)"
     >
-      <!-- messageNum input type text instead of number because it doesn't really make sense to have
-       step increment controls. -->
-      <input
-        v-model.number="newBookmarkMessageNum"
-        ref="messageNumInput"
-        title="Message Number"
-        type="text"
-        name="messageNum"
-        placeholder="0"
-        size="4"
-        inputmode="numeric"
-        pattern="[0-9]+"
-        autocomplete="off"
-        required
-      />
-      <input
-        v-model.trim="newBookmarkTitle"
-        title="Bookmark Title"
-        type="text"
-        name="title"
-        placeholder="Title"
-        required
-      />
-      <button type="submit" name="addBookmark">Add Bookmark</button>
+      <div class="label-input-group">
+        <span style="text-wrap: nowrap">
+          <!-- Prepend the # character to the input -->
+          <span style="margin-right: -1.5ch; pointer-events: none; position: relative; z-index: 2">#</span
+          ><!-- messageNum input type text instead of number because it doesn't really make sense to have
+       step increment controls. --><input
+            :id="messageNumInputId"
+            ref="messageNumInput"
+            v-model.number="newBookmarkMessageNum"
+            title="Message Number"
+            type="text"
+            name="messageNum"
+            placeholder="0"
+            size="3"
+            inputmode="numeric"
+            pattern="[0-9]+"
+            autocomplete="off"
+            required
+            class="text-pole"
+          />
+        </span>
+        <label :for="messageNumInputId">Message Number</label>
+      </div>
+      <div class="label-input-group">
+        <input
+          :id="titleInputId"
+          v-model.trim="newBookmarkTitle"
+          title="Bookmark Title"
+          type="text"
+          name="title"
+          placeholder="Title"
+          required
+          class="text-pole"
+        />
+        <label :for="titleInputId">Bookmark Title</label>
+      </div>
+      <button type="submit" name="addBookmark" class="menu-button">
+        <span><i class="fa-solid fa-plus"></i> Add Bookmark</span>
+      </button>
     </form>
   </div>
 </template>
@@ -167,21 +183,31 @@ watch<number>(newBookmarkMessageNum, validateMessageNum);
   padding: var(--spacing-xs);
   margin: var(--spacing-sm);
 
-  input[name='messageNum'] {
-    flex: 0 1 auto;
-    text-align: right;
+  .label-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+
+    label {
+      font-size: 0.9em;
+    }
   }
-  input[name='title'] {
+
+  .label-input-group:has(input[name='messageNum']) {
+    flex: 0 1 auto;
+
+    input[name='messageNum'] {
+      text-align: right;
+      width: unset; /* undo .text-pole's width 100% */
+    }
+
+    width: min-content;
+  }
+  .label-input-group:has(input[name='title']) {
     flex: auto;
   }
   button[name='addBookmark'] {
-    flex: initial;
+    flex: 0 1 min-content;
   }
-}
-input,
-button {
-  /* Is there a way to reduce this boilerplate? */
-  color: var(--theme-text-color);
-  background-color: var(--theme-background-tint);
 }
 </style>
