@@ -17,7 +17,6 @@ export const devOverrides: DevOverrides = {
   // Uncomment to enable HTTPS (paths to PEM cert and key)
   // https: { certPath: '/path/to/cert.pem', keyPath: '/path/to/key.pem' },
 
-  // Uncomment for Basic auth: true = any credentials, or { user, pass } to validate
-  // auth: true,
+  // Uncomment for Basic auth (validates against user/pass)
   // auth: { user: 'your-user', pass: 'your-pass' },
 };

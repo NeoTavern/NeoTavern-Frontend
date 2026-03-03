@@ -46,9 +46,8 @@ function createBasicAuthMiddleware(overrides: DevOverrides) {
     }) => {
       void server;
     };
-  const auth = overrides.auth;
-  const checkCredentials =
-    auth === true ? () => true : (user: string, pass: string) => user === auth.user && pass === auth.pass;
+  const { user: authUser, pass: authPass } = overrides.auth;
+  const checkCredentials = (user: string, pass: string) => user === authUser && pass === authPass;
 
   return (server: { middlewares: { use: (fn: (req: unknown, res: unknown, next: () => void) => void) => void } }) => {
     server.middlewares.use(

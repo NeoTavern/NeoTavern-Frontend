@@ -10,8 +10,8 @@ export interface DevOverrides {
   preview?: { host?: boolean; port?: number };
   /** When set, main config reads cert/key and sets server.https / preview.https */
   https?: { certPath: string; keyPath: string };
-  /** true = Basic auth, any credentials; { user, pass } = validate; omitted/false = no auth */
-  auth?: boolean | { user: string; pass: string };
+  /** When set, Basic auth is required; validate against this user/pass. Omit for no auth. */
+  auth?: { user: string; pass: string };
 }
 
 export const defaultDevOverrides: DevOverrides = {
