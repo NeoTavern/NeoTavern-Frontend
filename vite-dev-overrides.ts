@@ -4,6 +4,25 @@
  */
 
 import type { ProxyOptions } from 'vite';
+import { z } from 'zod';
+
+/** Zod schema for launcher-config.json (used by launcher.js). */
+export const launcherConfigSchema = z.object({
+  appPort: z.number().int().min(1).max(65535),
+  appHost: z.string(),
+  useInternalBackend: z.boolean(),
+  internalBackendPort: z.number().int().min(1).max(65535),
+  externalBackendUrl: z.string().url(),
+  autoUpdateBackend: z.boolean(),
+  exposeInternalBackend: z.boolean(),
+  basicAuth: z.object({
+    enabled: z.boolean(),
+    username: z.string(),
+    password: z.string(),
+  }),
+});
+
+export type LauncherConfig = z.infer<typeof launcherConfigSchema>;
 
 export interface DevOverrides {
   /** Proxy target for dev/preview (default: http://localhost:8000) */
