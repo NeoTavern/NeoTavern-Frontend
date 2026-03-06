@@ -2,10 +2,10 @@
  * Example local dev overrides. Copy to vite.config.local.ts and customize.
  * vite.config.local.ts is gitignored; never commit real secrets or paths.
  *
- * @see vite-dev-overrides.ts for the full DevOverrides shape.
+ * @see server/vite-dev-overrides.ts for the full DevOverrides shape.
  */
 
-import type { DevOverrides } from './vite-dev-overrides';
+import type { DevOverrides } from './server/vite-dev-overrides.ts';
 
 export const devOverrides: DevOverrides = {
   // Proxy target for dev/preview (default: http://localhost:8000)

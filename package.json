@@ -13,6 +13,8 @@
     "build": "npm run i18n && vue-tsc --noEmit && vite build",
     "build:deploy": "vite build",
     "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "typecheck-server": "tsc --noEmit --project tsconfig.server.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -25,6 +27,9 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@intlify/unplugin-vue-i18n": "^11.0.7",
+    "@tsconfig/node-ts": "^23.6.4",
+    "@tsconfig/node24": "^24.0.4",
     "@types/glob": "^8.1.0",
     "@types/jsdom": "^27.0.0",
     "@types/lodash-es": "^4.17.12",
@@ -54,7 +59,6 @@
     "@codemirror/view": "^6.39.2",
     "@floating-ui/vue": "^1.1.9",
     "@fortawesome/fontawesome-free": "^7.1.0",
-    "@intlify/unplugin-vue-i18n": "^11.0.1",
     "@tiptap/extension-image": "^3.15.3",
     "@tiptap/pm": "^3.15.3",
     "@tiptap/starter-kit": "^3.15.3",

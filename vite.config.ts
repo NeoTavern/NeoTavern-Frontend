@@ -6,17 +6,17 @@ import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { ProxyOptions, UserConfig } from 'vite';
-import { defineConfig, Plugin } from 'vite';
+import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import type { DevOverrides } from './vite-dev-overrides';
+import { isErrnoException } from './server/typeguards.ts';
+import type { DevOverrides } from './server/vite-dev-overrides.ts';
 import {
   ConfigNotFoundError,
   defaultDevOverrides,
-  isErrnoException,
   launcherConfigAsDevOverrides,
   loadLauncherConfig,
-} from './vite-dev-overrides';
-import { basicAuthSingleUser } from './web-middleware';
+} from './server/vite-dev-overrides.ts';
+import { BasicAuthPlugin } from './server/vite-plugins.ts';
 
 // Android 14+ blocks /proc/stat, causing os.cpus() to return empty.
 // This crashes Terser/Rollup. We fake a single CPU core to fix it.
@@ -87,25 +87,6 @@ function buildProxyRules(proxyTarget: string, extraOptions?: Partial<ProxyOption
   return rules;
 }
 
-class BasicAuthPlugin implements Plugin {
-  name = 'basic-auth';
-
-  constructor(
-    private readonly username: string,
-    private readonly password: string,
-  ) {
-    this.middleware = basicAuthSingleUser(this.username, this.password);
-  }
-
-  configureServer(server: ViteDevServer) {
-    server.middlewares.use(this.middleware);
-  }
-
-  configurePreviewServer(server: PreviewServer) {
-    server.middlewares.use(this.middleware);
-  }
-}
-
 export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   const isDevBuild = mode !== 'production';
   const overrides = await loadMergedOverrides();
@@ -166,7 +147,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
     }),
   ];
   if (overrides.auth) {
-    plugins.push(new BasicAuthPlugin(overrides.auth.username, overrides.auth.password));
+    plugins.push(new BasicAuthPlugin(overrides.auth.user, overrides.auth.pass));
   }
 
   return {

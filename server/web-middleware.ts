@@ -3,7 +3,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Middleware = (req: IncomingMessage, res: ServerResponse, next: (err?: any) => void) => void;
+export type Middleware = (req: IncomingMessage, res: ServerResponse, next: (err?: any) => void) => void;
 
 // credentials are one token68 word encoded in base64
 const AUTH_HEADER_RE = /^ *(?i:Basic) +(?<credentials>[A-Za-z0-9._~+/-]+=*) *$/;

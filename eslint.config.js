@@ -18,7 +18,7 @@ export default [
   ...tseslint.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
   {
-    files: ['src/**/*.vue', 'src/**/*.ts', 'src/**/*.js'],
+    files: ['src/**/*.vue', 'src/**/*.ts', 'src/**/*.js', './*.js', './*.ts', 'server/**/*.ts'],
     languageOptions: {
       parserOptions: {
         parser: tseslint.parser,
