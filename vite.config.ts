@@ -11,11 +11,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { isErrnoException } from './server/typeguards.ts';
 import type { DevOverrides } from './server/vite-dev-overrides.ts';
 import {
-  ConfigNotFoundError,
   defaultDevOverrides,
   launcherConfigAsDevOverrides,
-  loadLauncherConfig,
 } from './server/vite-dev-overrides.ts';
+import { ConfigNotFoundError, loadLauncherConfig } from './server/laucher-config.ts';
 import { BasicAuthPlugin } from './server/vite-plugins.ts';
 
 // Android 14+ blocks /proc/stat, causing os.cpus() to return empty.
