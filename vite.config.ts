@@ -5,11 +5,18 @@ import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { Connect, ProxyOptions, UserConfig, ViteDevServer, PreviewServer } from 'vite';
-import { defineConfig } from 'vite';
+import type { ProxyOptions, UserConfig } from 'vite';
+import { defineConfig, Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import type { DevOverrides } from './vite-dev-overrides';
-import { ConfigNotFoundError, defaultDevOverrides, isErrnoException, launcherConfigAsDevOverrides, loadLauncherConfig } from './vite-dev-overrides';
+import {
+  ConfigNotFoundError,
+  defaultDevOverrides,
+  isErrnoException,
+  launcherConfigAsDevOverrides,
+  loadLauncherConfig,
+} from './vite-dev-overrides';
+import { basicAuthSingleUser } from './web-middleware';
 
 // Android 14+ blocks /proc/stat, causing os.cpus() to return empty.
 // This crashes Terser/Rollup. We fake a single CPU core to fix it.
@@ -62,47 +69,7 @@ async function loadMergedOverrides(): Promise<DevOverrides> {
     }
   }
   overrideSources.push(await loadConfigLocal());
-  console.log("override sources", overrideSources);
   return merge({}, ...overrideSources) as DevOverrides;
-}
-
-function createBasicAuthMiddleware<R extends ViteDevServer | PreviewServer>(overrides: DevOverrides): (server: R) => void {
-  if (!overrides.auth) return (server) => void server;
-
-  const { user: authUser, pass: authPass } = overrides.auth;
-  const checkCredentials = (user: string, pass: string) => user === authUser && pass === authPass;
-
-  const middleware: Connect.NextHandleFunction = (req, res, next) => {
-    const isAsset =
-      req.url?.includes('/assets/') ||
-      req.url?.includes('/img/') ||
-      req.url?.includes('/node_modules/') ||
-      req.url?.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json)(\?.*)?$/);
-    if (isAsset) {
-      next();
-      return;
-    }
-    const header = req.headers?.authorization ?? '';
-    if (!header) {
-      res.statusCode = 401;
-      res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
-      res.end('Unauthorized');
-      return;
-    }
-    const [type, credentials] = header.split(' ');
-    const [user, pass] = Buffer.from(credentials ?? '', 'base64')
-      .toString()
-      .split(':');
-    if (type !== 'Basic' || !checkCredentials(user, pass)) {
-      res.statusCode = 401;
-      res.setHeader('WWW-Authenticate', 'Basic realm="Secure Area"');
-      res.end('Access denied');
-      return;
-    }
-    next();
-  };
-
-  return (server) => server.middlewares.use(middleware);
 }
 
 const PROXY_PATHS = ['/backgrounds', '/characters', '/personas', '/api', '/csrf-token', '/thumbnail', '/user'] as const;
@@ -120,18 +87,35 @@ function buildProxyRules(proxyTarget: string, extraOptions?: Partial<ProxyOption
   return rules;
 }
 
+class BasicAuthPlugin implements Plugin {
+  name = 'basic-auth';
+
+  constructor(
+    private readonly username: string,
+    private readonly password: string,
+  ) {
+    this.middleware = basicAuthSingleUser(this.username, this.password);
+  }
+
+  configureServer(server: ViteDevServer) {
+    server.middlewares.use(this.middleware);
+  }
+
+  configurePreviewServer(server: PreviewServer) {
+    server.middlewares.use(this.middleware);
+  }
+}
+
 export default defineConfig(async ({ mode }): Promise<UserConfig> => {
-  const overrides = await loadMergedOverrides();
   const isDevBuild = mode !== 'production';
-  const proxyTarget = overrides.proxyTarget ?? 'http://localhost:8000';
-  const proxyRules = buildProxyRules(proxyTarget, overrides.proxyOptions);
+  const overrides = await loadMergedOverrides();
+  const proxyRules = buildProxyRules(overrides.proxyTarget ?? 'http://localhost:8000', overrides.proxyOptions);
   const httpsOptions = overrides.https
     ? {
         cert: readFileSync(overrides.https.certPath),
         key: readFileSync(overrides.https.keyPath),
       }
     : undefined;
-  const setupAuth = createBasicAuthMiddleware(overrides);
 
   const plugins = [
     vue(),
@@ -182,15 +166,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
     }),
   ];
   if (overrides.auth) {
-    plugins.push({
-      name: 'basic-auth',
-      configureServer(server) {
-        setupAuth(server);
-      },
-      configurePreviewServer(server) {
-        setupAuth(server);
-      },
-    });
+    plugins.push(new BasicAuthPlugin(overrides.auth.username, overrides.auth.password));
   }
 
   return {

@@ -81,7 +81,6 @@ export function loadLauncherConfig(configPath: string = CONFIG_PATH): LauncherCo
   return launcherConfigSchema.parse(data);
 }
 
-
 export class ConfigNotFoundError extends Error {
   code: string;
   path: string;
@@ -92,7 +91,6 @@ export class ConfigNotFoundError extends Error {
     this.path = configPath;
   }
 }
-
 
 export function launcherConfigAsDevOverrides(config: LauncherConfig): DevOverrides {
   return {
@@ -129,7 +127,6 @@ export const defaultDevOverrides: DevOverrides = {
   server: { port: 3000, host: false },
   preview: { port: 4173, host: true },
 };
-
 
 // wtf TypeScript. https://stackoverflow.com/a/70887388
 export function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
