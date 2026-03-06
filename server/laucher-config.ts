@@ -1,9 +1,9 @@
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
+import { isEqual } from 'lodash-es';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { z } from 'zod';
 import { isErrnoException } from './typeguards.ts';
-
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONFIG_PATH = path.join(__dirname, '..', 'launcher-config.json');
@@ -20,7 +20,7 @@ const launcherConfigSchemaWithoutBackend = z.object({
   basicAuth: z
     .discriminatedUnion('enabled', [
       z.looseObject({
-        enabled: z.literal(false).default(false), // default should be the first in the union
+        enabled: z.literal([false, undefined]).default(false),
       }),
       z.object({
         enabled: z.literal(true),
@@ -28,6 +28,7 @@ const launcherConfigSchemaWithoutBackend = z.object({
         password: z.string(),
       }),
     ])
+    .default({ enabled: false })
     .meta({ description: 'Use HTTP Basic Auth' }),
 });
 
@@ -35,7 +36,10 @@ const launcherConfigSchemaWithoutBackend = z.object({
 export const LauncherConfig = z.discriminatedUnion('useInternalBackend', [
   z.looseObject({
     ...launcherConfigSchemaWithoutBackend.shape,
-    useInternalBackend: z.literal(true).default(true).meta({ description: 'Use bundled SillyTavern backend' }),
+    useInternalBackend: z
+      .literal([true, undefined])
+      .default(true)
+      .meta({ description: 'Use bundled SillyTavern backend' }),
     internalBackendPort: port.default(8001).meta({ description: 'Internal SillyTavern backend port' }),
     autoUpdateBackend: z.boolean().default(true).meta({ description: 'Auto-update internal SillyTavern backend' }),
     exposeInternalBackend: z
@@ -76,10 +80,61 @@ export function loadLauncherConfig(configPath: string = CONFIG_PATH): LauncherCo
   return LauncherConfig.parse(data);
 }
 
+/**
+ * Loads the configuration from the default path and saves it if it is missing any keys from the default config.
+ * Then applies the environment variables to the config.
+ * @returns Validated config with defaults and environment variables applied
+ */
+export function loadConfigAndSaveIfNeeded(
+  path: string = CONFIG_PATH,
+  { applyEnvironment }: { applyEnvironment: boolean } = { applyEnvironment: true },
+): LauncherConfig {
+  let loadedAsString: string;
+  try {
+    loadedAsString = readFileSync(path, 'utf8');
+  } catch (e) {
+    if (isErrnoException(e) && e.code === 'ENOENT') {
+      loadedAsString = '{}';
+    } else {
+      throw e;
+    }
+  }
+  const unvalidatedConfig = JSON.parse(loadedAsString);
+  let config = LauncherConfig.parse(unvalidatedConfig);
+
+  if (!isEqual(unvalidatedConfig, config)) {
+    writeFileSync(path, JSON.stringify(config, null, 2));
+  }
+
+  if (applyEnvironment) {
+    config = applyEnvironmentVariables(config);
+  }
+  return config;
+}
+
+function applyEnvironmentVariables(config: LauncherConfig): LauncherConfig {
+  if (process.env.NEO_APP_PORT) config.appPort = parseInt(process.env.NEO_APP_PORT, 10);
+  if (process.env.NEO_APP_HOST) config.appHost = process.env.NEO_APP_HOST;
+  if (process.env.NEO_BACKEND_PORT) config.internalBackendPort = parseInt(process.env.NEO_BACKEND_PORT, 10);
+  if (process.env.NEO_USE_INTERNAL_BACKEND)
+    config.useInternalBackend = process.env.NEO_USE_INTERNAL_BACKEND.toLowerCase() === 'true';
+  if (process.env.NEO_EXTERNAL_BACKEND_URL) config.externalBackendUrl = process.env.NEO_EXTERNAL_BACKEND_URL;
+  if (process.env.NEO_AUTO_UPDATE_BACKEND)
+    config.autoUpdateBackend = process.env.NEO_AUTO_UPDATE_BACKEND.toLowerCase() === 'true';
+  if (process.env.NEO_EXPOSE_INTERNAL_BACKEND)
+    config.exposeInternalBackend = process.env.NEO_EXPOSE_INTERNAL_BACKEND.toLowerCase() === 'true';
+  if (process.env.NEO_BASIC_AUTH_ENABLED)
+    config.basicAuth.enabled = process.env.NEO_BASIC_AUTH_ENABLED.toLowerCase() === 'true';
+  if (process.env.NEO_BASIC_AUTH_USERNAME) config.basicAuth.username = process.env.NEO_BASIC_AUTH_USERNAME;
+  if (process.env.NEO_BASIC_AUTH_PASSWORD) config.basicAuth.password = process.env.NEO_BASIC_AUTH_PASSWORD;
+
+  return config;
+}
+
 export class ConfigNotFoundError extends Error {
   code: string;
   path: string;
-  constructor(configPath: string, options?: { cause?: NodeJS.ErrnoException | Error; }) {
+  constructor(configPath: string, options?: { cause?: NodeJS.ErrnoException | Error }) {
     super(`Config file not found: ${configPath}`, options);
     this.name = 'ConfigNotFoundError';
     this.code = 'ENOENT';

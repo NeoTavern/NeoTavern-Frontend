@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadConfigAndSaveIfNeeded } from './server/laucher-config.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,88 +26,7 @@ const REPO_URLS = {
   PLUGIN: 'https://github.com/NeoTavern/NeoTavern-Server-Plugin',
 };
 
-// Default Config
-const DEFAULT_CONFIG = {
-  appPort: 8000,
-  appHost: '0.0.0.0',
-  useInternalBackend: true,
-  internalBackendPort: 8001,
-  externalBackendUrl: 'http://127.0.0.1:8000',
-  autoUpdateBackend: true,
-  exposeInternalBackend: false,
-  basicAuth: {
-    enabled: false,
-    username: 'user',
-    password: 'password',
-  },
-};
-
-function loadConfig() {
-  let config;
-  if (!fs.existsSync(PATHS.CONFIG)) {
-    fs.writeFileSync(PATHS.CONFIG, JSON.stringify(DEFAULT_CONFIG, null, 2));
-    config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-  } else {
-    try {
-      const loaded = JSON.parse(fs.readFileSync(PATHS.CONFIG, 'utf8'));
-      config = {
-        ...DEFAULT_CONFIG,
-        ...loaded,
-        basicAuth: { ...DEFAULT_CONFIG.basicAuth, ...(loaded.basicAuth || {}) },
-      };
-
-      let needsSave = false;
-      const checkNeedsSave = (defaultObj, loadedObj) => {
-        for (const key of Object.keys(defaultObj)) {
-          if (!Object.prototype.hasOwnProperty.call(loadedObj, key)) {
-            return true;
-          }
-          const defaultValue = defaultObj[key];
-          const loadedValue = loadedObj[key];
-          if (typeof defaultValue === 'object' && defaultValue !== null && !Array.isArray(defaultValue)) {
-            if (typeof loadedValue !== 'object' || loadedValue === null || Array.isArray(loadedValue)) {
-              return true;
-            }
-            if (checkNeedsSave(defaultValue, loadedValue)) {
-              return true;
-            }
-          }
-        }
-        return false;
-      };
-
-      if (checkNeedsSave(DEFAULT_CONFIG, loaded)) {
-        needsSave = true;
-      }
-
-      if (needsSave) {
-        fs.writeFileSync(PATHS.CONFIG, JSON.stringify(config, null, 2));
-      }
-    } catch {
-      config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
-    }
-  }
-
-  // Override with environment variables
-  if (process.env.NEO_APP_PORT) config.appPort = parseInt(process.env.NEO_APP_PORT, 10);
-  if (process.env.NEO_APP_HOST) config.appHost = process.env.NEO_APP_HOST;
-  if (process.env.NEO_BACKEND_PORT) config.internalBackendPort = parseInt(process.env.NEO_BACKEND_PORT, 10);
-  if (process.env.NEO_USE_INTERNAL_BACKEND)
-    config.useInternalBackend = process.env.NEO_USE_INTERNAL_BACKEND.toLowerCase() === 'true';
-  if (process.env.NEO_EXTERNAL_BACKEND_URL) config.externalBackendUrl = process.env.NEO_EXTERNAL_BACKEND_URL;
-  if (process.env.NEO_AUTO_UPDATE_BACKEND)
-    config.autoUpdateBackend = process.env.NEO_AUTO_UPDATE_BACKEND.toLowerCase() === 'true';
-  if (process.env.NEO_EXPOSE_INTERNAL_BACKEND)
-    config.exposeInternalBackend = process.env.NEO_EXPOSE_INTERNAL_BACKEND.toLowerCase() === 'true';
-  if (process.env.NEO_BASIC_AUTH_ENABLED)
-    config.basicAuth.enabled = process.env.NEO_BASIC_AUTH_ENABLED.toLowerCase() === 'true';
-  if (process.env.NEO_BASIC_AUTH_USERNAME) config.basicAuth.username = process.env.NEO_BASIC_AUTH_USERNAME;
-  if (process.env.NEO_BASIC_AUTH_PASSWORD) config.basicAuth.password = process.env.NEO_BASIC_AUTH_PASSWORD;
-
-  return config;
-}
-
-const config = loadConfig();
+const config = loadConfigAndSaveIfNeeded(PATHS.CONFIG);
 
 // --- Utils ---
 
@@ -313,9 +233,12 @@ async function start() {
   try {
     process.env.NEO_APP_PORT = config.appPort.toString();
     process.env.NEO_APP_HOST = config.appHost;
-    process.env.NEO_BACKEND_PORT = config.internalBackendPort.toString();
     process.env.NEO_USE_INTERNAL_BACKEND = config.useInternalBackend.toString();
-    process.env.NEO_EXTERNAL_BACKEND_URL = config.externalBackendUrl;
+    if (config.useInternalBackend) {
+      process.env.NEO_BACKEND_PORT = config.internalBackendPort.toString();
+    } else {
+      process.env.NEO_EXTERNAL_BACKEND_URL = config.externalBackendUrl;
+    }
 
     // 1. Backend
     if (config.useInternalBackend) {
