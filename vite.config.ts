@@ -5,11 +5,11 @@ import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import type { Connect, ProxyOptions, ViteDevServer } from 'vite';
+import type { Connect, ProxyOptions, UserConfig, ViteDevServer, PreviewServer } from 'vite';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import type { DevOverrides } from './vite-dev-overrides';
-import { defaultDevOverrides } from './vite-dev-overrides';
+import { ConfigNotFoundError, defaultDevOverrides, isErrnoException, launcherConfigAsDevOverrides, loadLauncherConfig } from './vite-dev-overrides';
 
 // Android 14+ blocks /proc/stat, causing os.cpus() to return empty.
 // This crashes Terser/Rollup. We fake a single CPU core to fix it.
@@ -30,18 +30,43 @@ try {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-async function loadDevOverrides(): Promise<DevOverrides> {
-  const localPath = resolve(__dirname, 'vite.config.local.ts');
+const CONFIG_LOCAL_FILE = 'vite.config.local.ts';
+
+async function loadConfigLocal(): Promise<DevOverrides> {
   try {
-    const mod = await import(pathToFileURL(localPath).href);
-    const o = mod.devOverrides ?? mod.default;
-    return merge({}, defaultDevOverrides, o) as DevOverrides;
-  } catch {
-    return defaultDevOverrides;
+    const localPath = resolve(__dirname, CONFIG_LOCAL_FILE);
+    const configLocal = await import(pathToFileURL(localPath).href);
+    console.log('Applying local config from', CONFIG_LOCAL_FILE);
+    return configLocal.devOverrides ?? configLocal.default;
+  } catch (error) {
+    if (isErrnoException(error) && error.code === 'ENOENT') {
+      // No local config file, this is normal.
+      return {};
+    } else {
+      throw error;
+    }
   }
 }
 
-function createBasicAuthMiddleware(overrides: DevOverrides): (server: ViteDevServer) => void {
+async function loadMergedOverrides(): Promise<DevOverrides> {
+  const overrideSources: DevOverrides[] = [defaultDevOverrides];
+  try {
+    const launcherConfig = loadLauncherConfig();
+    console.log('Applying launcher config.');
+    overrideSources.push(launcherConfigAsDevOverrides(launcherConfig));
+  } catch (error) {
+    if (error instanceof ConfigNotFoundError) {
+      // No launcher config file, that's okay.
+    } else {
+      throw error;
+    }
+  }
+  overrideSources.push(await loadConfigLocal());
+  console.log("override sources", overrideSources);
+  return merge({}, ...overrideSources) as DevOverrides;
+}
+
+function createBasicAuthMiddleware<R extends ViteDevServer | PreviewServer>(overrides: DevOverrides): (server: R) => void {
   if (!overrides.auth) return (server) => void server;
 
   const { user: authUser, pass: authPass } = overrides.auth;
@@ -95,8 +120,8 @@ function buildProxyRules(proxyTarget: string, extraOptions?: Partial<ProxyOption
   return rules;
 }
 
-export default defineConfig(async ({ mode }) => {
-  const overrides = await loadDevOverrides();
+export default defineConfig(async ({ mode }): Promise<UserConfig> => {
+  const overrides = await loadMergedOverrides();
   const isDevBuild = mode !== 'production';
   const proxyTarget = overrides.proxyTarget ?? 'http://localhost:8000';
   const proxyRules = buildProxyRules(proxyTarget, overrides.proxyOptions);
