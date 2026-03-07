@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'fs';
+import { COPYFILE_EXCL } from 'constants';
+import { copyFileSync, readFileSync, writeFileSync } from 'fs';
 import { isEqual } from 'lodash-es';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -103,6 +104,7 @@ export function loadConfigAndSaveIfNeeded(
   let config = LauncherConfig.parse(unvalidatedConfig);
 
   if (!isEqual(unvalidatedConfig, config)) {
+    backupFile(path, { ignoreAbsent: true });
     writeFileSync(path, JSON.stringify(config, null, 2));
   }
 
@@ -139,5 +141,17 @@ export class ConfigNotFoundError extends Error {
     this.name = 'ConfigNotFoundError';
     this.code = 'ENOENT';
     this.path = configPath;
+  }
+}
+
+function backupFile(path: string, { ignoreAbsent }: { ignoreAbsent: boolean } = { ignoreAbsent: false }) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  try {
+    copyFileSync(path, `${path}.${timestamp}.bak`, COPYFILE_EXCL);
+  } catch (e) {
+    if (ignoreAbsent && isErrnoException(e) && e.code === 'ENOENT') {
+      return;
+    }
+    throw e;
   }
 }
