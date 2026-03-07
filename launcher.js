@@ -284,7 +284,6 @@ async function start() {
       target: proxyTarget,
       changeOrigin: true,
       ws: true,
-      logLevel: 'error',
       pathFilter: routes,
     });
 
