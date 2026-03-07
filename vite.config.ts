@@ -74,6 +74,16 @@ async function loadMergedOverrides(): Promise<DevOverrides> {
 const PROXY_PATHS = ['/backgrounds', '/characters', '/personas', '/api', '/csrf-token', '/thumbnail', '/user'] as const;
 
 function buildProxyRules(proxyTarget: string, extraOptions?: Partial<ProxyOptions>): Record<string, ProxyOptions> {
+  /* Note proxy configuration code is currently not shared with launcher.js because its
+     http-proxy-middleware uses legacy http-proxy library, whereas vite uses http-proxy-3.
+     This may change in the near future:
+       - using http-proxy-3: https://github.com/chimurai/http-proxy-middleware/pull/1159
+       - using httpxy: https://github.com/chimurai/http-proxy-middleware/pull/1160
+
+     Practically speaking, the feature gap is that http-proxy does not give easy access to
+     CA customization, which is one of the use cases for proxy option overrides. 
+  */
+
   const base: Partial<ProxyOptions> = { target: proxyTarget, changeOrigin: true, ...extraOptions };
   const rules: Record<string, ProxyOptions> = {};
   for (const p of PROXY_PATHS) {
