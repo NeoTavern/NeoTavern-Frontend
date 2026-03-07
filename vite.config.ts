@@ -14,7 +14,7 @@ import {
   defaultDevOverrides,
   launcherConfigAsDevOverrides,
 } from './server/vite-dev-overrides.ts';
-import { ConfigNotFoundError, loadLauncherConfig } from './server/laucher-config.ts';
+import { applyEnvironmentVariables, ConfigNotFoundError, loadLauncherConfig } from './server/laucher-config.ts';
 import { BasicAuthPlugin } from './server/vite-plugins.ts';
 
 // Android 14+ blocks /proc/stat, causing os.cpus() to return empty.
@@ -58,6 +58,7 @@ async function loadMergedOverrides(): Promise<DevOverrides> {
   const overrideSources: DevOverrides[] = [defaultDevOverrides];
   try {
     const launcherConfig = loadLauncherConfig();
+    applyEnvironmentVariables(launcherConfig);
     console.log('Applying launcher config.');
     overrideSources.push(launcherConfigAsDevOverrides(launcherConfig));
   } catch (error) {
