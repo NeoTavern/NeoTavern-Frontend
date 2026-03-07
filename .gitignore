@@ -19,3 +19,6 @@ repomix.config.json
 
 launcher-config.json
 backend
+
+vite.config.local.ts
+vite.config.local.js
