@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfigAndSaveIfNeeded } from './server/laucher-config.ts';
+import { basicAuthSingleUser } from './server/web-middleware.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -265,24 +266,7 @@ async function start() {
       : config.externalBackendUrl;
 
     if (config.basicAuth.enabled) {
-      app.use((req, res, next) => {
-        const authHeader = req.headers.authorization;
-        if (!authHeader) {
-          res.setHeader('WWW-Authenticate', 'Basic realm="Restricted Area"');
-          return res.status(401).send('Authentication required.');
-        }
-
-        const auth = Buffer.from(authHeader.split(' ')[1], 'base64').toString().split(':');
-        const user = auth[0];
-        const pass = auth[1];
-
-        if (user === config.basicAuth.username && pass === config.basicAuth.password) {
-          return next();
-        } else {
-          res.setHeader('WWW-Authenticate', 'Basic realm="Restricted Area"');
-          return res.status(401).send('Authentication required.');
-        }
-      });
+      app.use(basicAuthSingleUser(config.basicAuth.username, config.basicAuth.password));
     }
 
     const routes = [
