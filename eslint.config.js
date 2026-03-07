@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 
 export default [
   {
-    ignores: ['dist/**', 'coverage/**', '*.log', 'repomix-output.xml', 'src/types/i18n.d.ts', 'backend', 'launcher.js'],
+    ignores: ['dist/**', 'coverage/**', '*.log', 'repomix-output.xml', 'src/types/i18n.d.ts', 'backend'],
   },
   {
     languageOptions: {

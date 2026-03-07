@@ -75,7 +75,7 @@ async function setupInternalBackend() {
   } else if (config.autoUpdateBackend) {
     try {
       await runCommand('git', ['pull'], PATHS.BACKEND);
-    } catch (e) {
+    } catch {
       log('Backend update failed (potentially local changes). Continuing...', 'WARN');
     }
   }
@@ -101,7 +101,7 @@ async function setupInternalBackend() {
   } else if (config.autoUpdateBackend) {
     try {
       await runCommand('git', ['pull'], pluginPath);
-    } catch (e) {
+    } catch {
       log('Plugin update failed. Continuing...', 'WARN');
     }
   }
@@ -218,7 +218,7 @@ async function start() {
     if (backendProcess) {
       try {
         backendProcess.kill();
-      } catch (e) {
+      } catch {
         // ignore
       }
       backendProcess = null;
