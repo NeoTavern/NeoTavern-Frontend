@@ -12,6 +12,7 @@ const CONFIG_PATH = path.join(__dirname, '..', 'launcher-config.json');
 /** TCP/UDP port number (1–65535) */
 const port = z.int().min(1).max(65535);
 
+// the parts of the schema that aren't dependent on .useInternalBackend
 const launcherConfigSchemaWithoutBackend = z.object({
   appPort: port.default(8000).meta({ description: 'NeoTavern UI port' }),
   appHost: z
@@ -33,7 +34,7 @@ const launcherConfigSchemaWithoutBackend = z.object({
     .meta({ description: 'Use HTTP Basic Auth' }),
 });
 
-/** Zod schema for launcher-config.json (used by launcher.js). */
+/** Zod schema for launcher-config.json */
 export const LauncherConfig = z.discriminatedUnion('useInternalBackend', [
   z.looseObject({
     ...launcherConfigSchemaWithoutBackend.shape,
@@ -59,12 +60,12 @@ export const LauncherConfig = z.discriminatedUnion('useInternalBackend', [
 ]);
 
 export type LauncherConfig = z.infer<typeof LauncherConfig>;
+
 /**
  * Load and parse launcher-config.json from CONFIG_PATH.
  * @returns Validated config with defaults applied
  * @throws If the file is missing, invalid JSON, or does not match launcherConfigSchema
  */
-
 export function loadLauncherConfig(configPath: string = CONFIG_PATH): LauncherConfig {
   let raw: string;
   try {
