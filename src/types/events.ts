@@ -59,6 +59,7 @@ export interface ExtensionEventMap {
   // Chat Input Events
   'chat:input-changed': [value: string];
   'chat:input-focused': [];
+  'chat:messages-loaded-more': [renderedCount: number];
 
   // Layout Events
   'layout:left-sidebar-changed': [isOpen: boolean, view: string | null];

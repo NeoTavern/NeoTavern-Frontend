@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import type { Settings } from '../types';
 import { useSettingsStore } from './settings.store';
+import { eventEmitter } from '../utils/extensions';
 
 export type QuickActionsLayout = Settings['chat']['quickActions']['layout'];
 
@@ -98,6 +99,9 @@ export const useChatUiStore = defineStore('chat-ui', () => {
 
   function loadMoreMessages(count: number) {
     renderedMessagesCount.value += count;
+    nextTick(() => {
+      eventEmitter.emit('chat:messages-loaded-more', renderedMessagesCount.value);
+    });
   }
 
   function setChatInputElement(el: HTMLTextAreaElement | null) {

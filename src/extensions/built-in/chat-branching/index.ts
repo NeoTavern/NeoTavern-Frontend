@@ -252,6 +252,12 @@ export function activate(api: ChatBranchingAPI) {
     }),
   );
 
+  unbinds.push(
+    events.on('chat:messages-loaded-more', () => {
+      processMessages();
+    }),
+  );
+
   // Initial injection
   processMessages();
 

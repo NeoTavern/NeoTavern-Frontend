@@ -125,28 +125,54 @@ Your justification should be friendly and conversational. Be direct and focus on
 
 Initial text is provided in the context.
 
+{{#if includeChar}}
+[Character Context]
+{{#if char}}Name: {{char}}{{/if}}
+{{#if description}}Description: {{description}}{{/if}}
+{{#if personality}}Personality: {{personality}}{{/if}}
+{{#if scenario}}Scenario: {{scenario}}{{/if}}
+{{/if}}
+
+{{#if includePersona}}
+[User Context]
+{{#if user}}Name: {{user}}{{/if}}
+{{#if persona}}Description: {{persona}}{{/if}}
+{{/if}}
+
+{{#if includeSelectedCharacters}}
+{{#if otherCharacters}}
+[Other Characters Context]
+{{otherCharacters}}
+{{/if}}
+{{/if}}
+
+{{#if includeSelectedBookContext}}
+{{#if otherWorldInfo}}
+[World Info Context]
+{{otherWorldInfo}}
+{{/if}}
+{{/if}}
+
 {{#if contextMessages}}
-[Context Info]
+[Chat Context]
 {{contextMessages}}
 {{/if}}
 
 ${INPUT_TEXT_BLOCK}`;
 
-const characterPolisherPreamble = `You are an expert character writer assisting a user. Your task is to refine specific fields of a Character Card (V2 spec) to be more evocative, show-don't-tell, and consistent with the character definition.
+const characterPolisherPreamble = `You are a seasoned storyteller helping a writer breathe life into a character. Your goal is to take these basic traits and turn them into "friction"—the messy, human reasons why a character acts the way they do. 
 
-Your justification should be friendly and conversational. Be direct and focus on the enhancements you've made. Vary your responses and do not start every message the same way. Do not repeat the user's request back to them.
-
-Use common everyday words. Avoid technical vocabulary and rare words. Under no circumstances, even logical ones, should {{char}} use ANY scientific, clinical, overly professional, official, academic, robotic or bureaucratic speech. It makes characters sound like robots, ruining immersion. Examples of BAD speech: "the protocol dictates..."; "Fascinating! Cardiovascular systems elongated!"; "Section twelve-point-four requires your signature...", etc.
+Focus on causality. If they’re shy, show the fear of being seen that drives it. If they’re mean, show the old wounds they’re protecting. Give them a mask they wear for the world and a truth they hide. Use everyday language and keep things grounded. No "robospeak," no clinical breakdowns, and no corporate-sounding lists. We want grit, texture, and a sense of history.
 
 Initial character state is provided in the context.
 
 [Context: What is a Character Card?]
-A Character Card defines a virtual persona. Key fields include:
-- Description: Physical appearance, background, and summary.
-- Personality: Psychological traits, mannerisms, likes/dislikes.
-- First Message: The opening line that sets the scene.
-- Scenario: The immediate setting or plot hook.
-- Dialogue Examples: Patterns of speech (key to voice).
+A Character Card is a blueprint for a person. It covers:
+- Description: Their look and the life they’ve lived.
+- Personality: Their hang-ups, their habits, and the "why" behind their behavior.
+- First Message: The hook that shows us who they are right now.
+- Scenario: The trouble they’re currently in.
+- Dialogue Examples: How they actually sound when they open their mouth.
 
 [Current Character Data]
 {{#if char}}
@@ -329,6 +355,22 @@ export const DEFAULT_TEMPLATES: RewriteTemplate[] = [
     prompt: 'Correct grammar, spelling, and punctuation while maintaining the original tone.',
     sessionPreamble: fixGrammarPreamble,
     template: `${fixGrammarPreamble}${ONE_SHOT_SUFFIX}`,
+    args: [
+      { key: 'includeChar', label: 'Include Active Character', type: 'boolean', defaultValue: true },
+      { key: 'includePersona', label: 'Include Active Persona', type: 'boolean', defaultValue: true },
+      {
+        key: 'includeSelectedBookContext',
+        label: 'Include Selected Lorebooks',
+        type: 'boolean',
+        defaultValue: true,
+      },
+      {
+        key: 'includeSelectedCharacters',
+        label: 'Include Selected Characters',
+        type: 'boolean',
+        defaultValue: true,
+      },
+    ],
   },
   {
     id: 'character-polisher',
