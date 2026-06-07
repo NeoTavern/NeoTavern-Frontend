@@ -42,11 +42,28 @@ function handleInput(event: Event) {
   let val: string | number = target.value;
 
   if (target.type === 'number') {
-    val = Number.isNaN(target.valueAsNumber) ? target.value : target.valueAsNumber;
+    if (props.min !== undefined && props.min >= 0 && target.value.trim().startsWith('-')) {
+      target.value = '';
+      val = '';
+    } else if (Number.isNaN(target.valueAsNumber)) {
+      val = target.value;
+    } else {
+      val = target.valueAsNumber;
+      if (props.min !== undefined && val < props.min) val = props.min;
+      if (props.max !== undefined && val > props.max) val = props.max;
+      target.value = String(val);
+    }
   }
 
   emit('update:modelValue', val);
   emit('input', event);
+}
+
+function handleKeydown(event: KeyboardEvent) {
+  if (props.type !== 'number') return;
+  if (props.min !== undefined && props.min >= 0 && event.key === '-') {
+    event.preventDefault();
+  }
 }
 
 function handleToolClick(tool: TextareaToolDefinition) {
@@ -91,6 +108,7 @@ function handleToolClick(tool: TextareaToolDefinition) {
       :step="step"
       :aria-label="!label ? placeholder : undefined"
       @input="handleInput"
+      @keydown="handleKeydown"
       @change="$emit('change', $event)"
     />
   </div>
