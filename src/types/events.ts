@@ -61,6 +61,9 @@ export interface ExtensionEventMap {
   'chat:input-focused': [];
   'chat:messages-loaded-more': [renderedCount: number];
 
+  // Built-in extension coordination
+  'world-map:updated': [];
+
   // Layout Events
   'layout:left-sidebar-changed': [isOpen: boolean, view: string | null];
   'layout:right-sidebar-changed': [isOpen: boolean, view: string | null];
@@ -71,7 +74,7 @@ export interface ExtensionEventMap {
   'chat:before-message-create': [message: ChatMessage, controller: AbortController];
   'message:created': [message: ChatMessage];
   'message:updated': [index: number, message: ChatMessage];
-  'message:deleted': [indices: number[]];
+  'message:deleted': [indices: number[], deletedMessages: ChatMessage[]];
   'message:swipe-deleted': [{ messageIndex: number; swipeIndex: number; newSwipeId: number }];
   'message:swipe-changed': [messageIndex: number, newSwipeId: number];
 

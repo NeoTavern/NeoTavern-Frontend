@@ -558,6 +558,7 @@ export const useChatStore = defineStore('chat', () => {
     const startIndex = findToolChainStart(index);
     const endIndex = index;
     const deleteCount = endIndex - startIndex + 1;
+    const deletedMessages = activeChat.value.messages.slice(startIndex, endIndex + 1);
 
     // Delete the entire chain
     activeChat.value.messages.splice(startIndex, deleteCount);
@@ -573,7 +574,7 @@ export const useChatStore = defineStore('chat', () => {
 
     await nextTick();
     const deletedIndices = Array.from({ length: deleteCount }, (_, i) => startIndex + i);
-    await eventEmitter.emit('message:deleted', deletedIndices);
+    await eventEmitter.emit('message:deleted', deletedIndices, deletedMessages);
     triggerSave();
   }
 
@@ -596,6 +597,9 @@ export const useChatStore = defineStore('chat', () => {
     });
 
     if (result === POPUP_RESULT.AFFIRMATIVE) {
+      const deletedMessages = indicesToDelete
+        .map((idx) => activeChat.value?.messages[idx])
+        .filter((message): message is ChatMessage => Boolean(message));
       for (const idx of indicesToDelete) {
         if (idx >= 0 && idx < activeChat.value.messages.length) {
           activeChat.value.messages.splice(idx, 1);
@@ -607,7 +611,7 @@ export const useChatStore = defineStore('chat', () => {
       cancelEditing();
 
       await nextTick();
-      await eventEmitter.emit('message:deleted', indicesToDelete);
+      await eventEmitter.emit('message:deleted', indicesToDelete, deletedMessages);
       triggerSave();
     }
   }
