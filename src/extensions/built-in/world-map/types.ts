@@ -81,6 +81,7 @@ export interface WorldMapConnection {
   label?: string;
   bidirectional?: boolean;
   points?: WorldMapPoint[];
+  smoothPath?: boolean;
   visual?: WorldMapConnectionVisualRef;
 }
 
@@ -238,7 +239,7 @@ Rules:
 - Use node.areas for stable non-location shapes such as island landmass, woods, cliffs, beach, parks, courtyards, fields, gardens, walls, or large interior zones.
 - area.kind must be one of the schema values. Do not use "room" as an area kind; create a room node when the room needs its own identity.
 - Use the view background for the broad surrounding material such as ocean, sky, void, ground, or wall color. Do not create multiple full-view overlapping areas. Areas should be smaller or irregular polygons that sit inside the view. For island/coastal maps, use an ocean/water background and draw the landmass as an irregular terrain polygon inside it; do not draw a full-view water area over land. Beaches are terrain areas, not water areas.
-- Use connection.points with at least two points for curved or routed roads/paths/corridors. Omit points if no route is known; do not send an empty points array.
+- Use connection.points with at least two points for routed roads/paths/corridors. Set smoothPath true only when a road/path should render as a smooth natural curve; leave it false/omitted for doors, corridors, stairs, elevators, and crisp interior routes. Omit points if no route is known; do not send an empty points array.
 - Stairs and elevators between floors should connect floor nodes or explicit stair/elevator nodes, not unrelated rooms on different floors.
 - Sibling nodes in the same parent view should not share identical bounds or heavily overlap. Buildings, landmarks, districts, regions, floors, and rooms all need distinct renderable footprints. Floor nodes under the same building can use stacked strips; rooms should use a floor-plan layout.
 - Keep room parentage consistent. If a room is on a specific floor, create that floor node and parent the room to it.

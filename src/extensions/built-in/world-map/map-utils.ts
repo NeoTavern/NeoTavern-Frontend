@@ -273,6 +273,7 @@ function sanitizeConnection(connection: WorldMapConnection): WorldMapConnection 
   };
   if (connection.label) next.label = connection.label.slice(0, 120);
   if (typeof connection.bidirectional === 'boolean') next.bidirectional = connection.bidirectional;
+  if (typeof connection.smoothPath === 'boolean') next.smoothPath = connection.smoothPath;
   if (Array.isArray(connection.points) && connection.points.length >= 2) {
     next.points = connection.points.slice(0, 12).map((point) => ({
       x: clampNumber(point.x, 0, -100000, 100000),
@@ -474,7 +475,10 @@ export function mergeWorldMapDelta(
     }
   }
 
-  const removeNodeIds = collectNodeIdsWithDescendants(map.nodes, new Set((delta.removeNodeIds ?? []).filter(validateId)));
+  const removeNodeIds = collectNodeIdsWithDescendants(
+    map.nodes,
+    new Set((delta.removeNodeIds ?? []).filter(validateId)),
+  );
   for (const nodeId of removeNodeIds) delete map.nodes[nodeId];
   map.connections = map.connections.filter(
     (connection) => !removeNodeIds.has(connection.fromNodeId) && !removeNodeIds.has(connection.toNodeId),

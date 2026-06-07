@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { Button, Checkbox } from '../../../components/UI';
 import { getMapFromMetadata } from './map-utils';
+import type { WorldMapShuffleMode } from './smart-shuffle';
 import type {
   WorldMapAreaStyleDefinition,
   WorldMapConnection,
@@ -16,6 +17,7 @@ import { WORLD_MAP_UPDATED_EVENT } from './types';
 const props = defineProps<{
   api: WorldMapExtensionAPI;
   runMapUpdate: (instructions?: string, includeLorebookEntries?: boolean) => Promise<void>;
+  smartShuffleMap: (mode: WorldMapShuffleMode) => Promise<void>;
   removeMap: () => Promise<void>;
 }>();
 
@@ -27,6 +29,7 @@ const viewport = reactive({ width: 1, height: 1 });
 const camera = reactive({ x: 0, y: 0, scale: 1 });
 const isUpdating = ref(false);
 const isCopying = ref(false);
+const isShuffling = ref(false);
 const isDragging = ref(false);
 const dragStart = ref<{ x: number; y: number; camera: { x: number; y: number; scale: number } } | null>(null);
 const animationFrame = ref<number | null>(null);
@@ -755,6 +758,18 @@ async function handleRemoveMap(): Promise<void> {
   resetTransitionOpacity();
 }
 
+async function handleSmartShuffle(mode: WorldMapShuffleMode): Promise<void> {
+  if (!hasMap.value || isShuffling.value) return;
+  isShuffling.value = true;
+  try {
+    await props.smartShuffleMap(mode);
+    refreshMap();
+    nextTick(() => fitActiveView(true));
+  } finally {
+    isShuffling.value = false;
+  }
+}
+
 function copyTextFallback(text: string): boolean {
   const textarea = document.createElement('textarea');
   textarea.value = text;
@@ -798,6 +813,20 @@ function connectionPoints(connection: WorldMapConnection): Array<{ x: number; y:
 
 function connectionPath(connection: WorldMapConnection): string {
   const points = connectionPoints(connection);
+  if (connection.smoothPath && points.length > 2) {
+    const commands = [`M ${points[0].x} ${points[0].y}`];
+    for (let index = 1; index < points.length - 2; index += 1) {
+      const midpoint = {
+        x: (points[index].x + points[index + 1].x) / 2,
+        y: (points[index].y + points[index + 1].y) / 2,
+      };
+      commands.push(`Q ${points[index].x} ${points[index].y} ${midpoint.x} ${midpoint.y}`);
+    }
+    const control = points[points.length - 2];
+    const end = points[points.length - 1];
+    commands.push(`Q ${control.x} ${control.y} ${end.x} ${end.y}`);
+    return commands.join(' ');
+  }
   return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
 }
 
@@ -1021,24 +1050,61 @@ onBeforeUnmount(() => {
           @click="fitActiveView(true)"
         />
         <Button
+          icon="fa-solid fa-shuffle"
+          title="Smart shuffle"
+          variant="ghost"
+          :loading="isShuffling"
+          :disabled="!hasMap || isUpdating || isTransitioning"
+          @click="handleSmartShuffle('all')"
+        />
+        <Button
+          icon="fa-solid fa-object-ungroup"
+          title="Shuffle positions"
+          variant="ghost"
+          :disabled="!hasMap || isUpdating || isShuffling || isTransitioning"
+          @click="handleSmartShuffle('positions')"
+        />
+        <Button
+          icon="fa-solid fa-route"
+          title="Shuffle paths"
+          variant="ghost"
+          :disabled="!hasMap || isUpdating || isShuffling || isTransitioning"
+          @click="handleSmartShuffle('paths')"
+        />
+        <Button
+          icon="fa-solid fa-draw-polygon"
+          title="Shuffle areas"
+          variant="ghost"
+          :disabled="!hasMap || isUpdating || isShuffling || isTransitioning"
+          @click="handleSmartShuffle('areas')"
+        />
+        <Button
+          icon="fa-solid fa-palette"
+          title="Shuffle style"
+          variant="ghost"
+          :disabled="!hasMap || isUpdating || isShuffling || isTransitioning"
+          @click="handleSmartShuffle('style')"
+        />
+        <Button
           icon="fa-solid fa-copy"
           title="Copy map JSON"
           variant="ghost"
           :loading="isCopying"
-          :disabled="!hasMap || isUpdating || isTransitioning"
+          :disabled="!hasMap || isUpdating || isShuffling || isTransitioning"
           @click="copyMap"
         />
         <Button
           icon="fa-solid fa-wand-magic-sparkles"
           title="Create or update map"
           :loading="isUpdating"
+          :disabled="isShuffling || isTransitioning"
           @click="updateMap"
         />
         <Button
           icon="fa-solid fa-trash"
           title="Remove map"
           variant="danger"
-          :disabled="!hasMap || isUpdating || isTransitioning"
+          :disabled="!hasMap || isUpdating || isShuffling || isTransitioning"
           @click="handleRemoveMap"
         />
       </div>
@@ -1049,14 +1115,14 @@ onBeforeUnmount(() => {
         v-model="includeLorebookEntries"
         label="Send whole lorebook entries"
         description="Include all enabled entries from active lorebooks in this map request."
-        :disabled="isUpdating || isTransitioning"
+        :disabled="isUpdating || isShuffling || isTransitioning"
       />
       <textarea
         v-model="updateInstructions"
         class="world-map-panel__instructions-input"
         rows="3"
         placeholder="Optional map instructions for this update"
-        :disabled="isUpdating || isTransitioning"
+        :disabled="isUpdating || isShuffling || isTransitioning"
       ></textarea>
     </div>
 

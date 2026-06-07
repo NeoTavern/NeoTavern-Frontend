@@ -6,6 +6,7 @@ import { manifest } from './manifest';
 import { getMapFromMetadata, mergeWorldMapDelta, serializeWorldMapForPrompt } from './map-utils';
 import MapMessageButton from './MapMessageButton.vue';
 import SettingsPanel from './SettingsPanel.vue';
+import { smartShuffleWorldMap, type WorldMapShuffleMode } from './smart-shuffle';
 import {
   DEFAULT_SETTINGS,
   WORLD_MAP_UPDATED_EVENT,
@@ -1587,6 +1588,20 @@ class WorldMapManager {
     }
   }
 
+  public async smartShuffleMap(mode: WorldMapShuffleMode): Promise<void> {
+    const map = this.getMap();
+    if (!map) {
+      this.api.ui.showToast('No world map exists for this chat yet.', 'info');
+      return;
+    }
+    const shuffledMap = smartShuffleWorldMap(map, mode, `${Date.now()}-${Math.random()}`);
+    await this.setMap(shuffledMap);
+    this.api.ui.showToast(
+      mode === 'all' ? 'World map shuffled.' : `World map ${mode === 'positions' ? 'positions' : mode} shuffled.`,
+      'success',
+    );
+  }
+
   public async showMap(): Promise<void> {
     await this.api.ui.showPopup({
       title: 'World Map',
@@ -1595,6 +1610,7 @@ class WorldMapManager {
         api: this.api,
         runMapUpdate: (instructions?: string, includeLorebookEntries?: boolean) =>
           this.runMapUpdate(undefined, instructions, includeLorebookEntries),
+        smartShuffleMap: (mode: WorldMapShuffleMode) => this.smartShuffleMap(mode),
         removeMap: async () => {
           const { result } = await this.api.ui.showPopup({
             title: 'Remove World Map',
