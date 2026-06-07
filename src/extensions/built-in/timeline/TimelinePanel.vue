@@ -85,6 +85,13 @@ async function updateStatus(event: TimelineEvent, status: TimelineEvent['status'
   await setEvents(next);
 }
 
+async function toggleInject(event: TimelineEvent): Promise<void> {
+  const next = events.value.map((item) =>
+    item.id === event.id ? { ...item, inject: item.inject === false, updatedAt: new Date().toISOString() } : item,
+  );
+  await setEvents(next);
+}
+
 async function removeEvent(event: TimelineEvent): Promise<void> {
   await setEvents(events.value.filter((item) => item.id !== event.id));
 }
@@ -169,11 +176,14 @@ onBeforeUnmount(() => {
           <p>{{ event.description }}</p>
           <div class="timeline-item__meta">
             <span>{{ event.dueAt?.display }}</span>
-            <span>{{ event.importance }}</span>
+            <span>{{ event.importance }} · {{ event.inject === false ? 'muted' : 'injects' }}</span>
           </div>
           <div class="timeline-item__actions">
             <Button variant="confirm" icon="fa-check" @click="updateStatus(event, 'resolved')">Resolve</Button>
             <Button variant="ghost" icon="fa-ban" @click="updateStatus(event, 'cancelled')">Cancel</Button>
+            <Button variant="ghost" icon="fa-bullhorn" @click="toggleInject(event)">
+              {{ event.inject === false ? 'Inject' : 'Mute' }}
+            </Button>
             <Button variant="danger" icon="fa-trash" @click="removeEvent(event)">Remove</Button>
           </div>
         </article>
@@ -189,11 +199,14 @@ onBeforeUnmount(() => {
           <p>{{ event.description }}</p>
           <div class="timeline-item__meta">
             <span>{{ event.type }}</span>
-            <span>{{ event.tags.join(', ') }}</span>
+            <span>{{ event.inject === false ? 'muted' : 'injects' }} · {{ event.tags.join(', ') }}</span>
           </div>
           <div class="timeline-item__actions">
             <Button variant="confirm" icon="fa-check" @click="updateStatus(event, 'resolved')">Resolve</Button>
             <Button variant="ghost" icon="fa-ban" @click="updateStatus(event, 'cancelled')">Cancel</Button>
+            <Button variant="ghost" icon="fa-bullhorn" @click="toggleInject(event)">
+              {{ event.inject === false ? 'Inject' : 'Mute' }}
+            </Button>
             <Button variant="danger" icon="fa-trash" @click="removeEvent(event)">Remove</Button>
           </div>
         </article>
@@ -209,11 +222,14 @@ onBeforeUnmount(() => {
           <p>{{ event.description }}</p>
           <div class="timeline-item__meta">
             <span>{{ event.dueAt?.display ?? 'No due time' }}</span>
-            <span>{{ event.tags.join(', ') }}</span>
+            <span>{{ event.inject === false ? 'muted' : 'injects' }} · {{ event.tags.join(', ') }}</span>
           </div>
           <div class="timeline-item__actions">
             <Button variant="confirm" icon="fa-check" @click="updateStatus(event, 'resolved')">Resolve</Button>
             <Button variant="ghost" icon="fa-ban" @click="updateStatus(event, 'cancelled')">Cancel</Button>
+            <Button variant="ghost" icon="fa-bullhorn" @click="toggleInject(event)">
+              {{ event.inject === false ? 'Inject' : 'Mute' }}
+            </Button>
             <Button variant="danger" icon="fa-trash" @click="removeEvent(event)">Remove</Button>
           </div>
         </article>
@@ -228,6 +244,9 @@ onBeforeUnmount(() => {
           </div>
           <p>{{ event.description }}</p>
           <div class="timeline-item__actions">
+            <Button variant="ghost" icon="fa-bullhorn" @click="toggleInject(event)">
+              {{ event.inject === false ? 'Inject' : 'Mute' }}
+            </Button>
             <Button variant="danger" icon="fa-trash" @click="removeEvent(event)">Remove</Button>
           </div>
         </article>

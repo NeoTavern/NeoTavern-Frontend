@@ -26,6 +26,7 @@ export interface TimelineEvent {
   dueAt?: TimelineTimeRef;
   recurrence?: TimelineRecurrence;
   status: TimelineEventStatus;
+  inject: boolean;
   importance: TimelineImportance;
   relatedCharacters: string[];
   tags: string[];
@@ -64,6 +65,7 @@ export interface TimelineOperation {
   };
   dueAtDatetime?: string;
   recurrence?: TimelineRecurrence;
+  inject: boolean;
   importance: TimelineImportance;
   relatedCharacters: string[];
   tags: string[];
@@ -102,6 +104,7 @@ Return only strict structured operations.
 
 Rules:
 - id must be a stable lowercase slug like "scheduled-follow-up".
+- inject decides whether this event should be inserted into narrator/AI prompt context when due/upcoming. Set inject true only if the event should affect the story, narration, character decisions, available options, consequences, or scene state when its time arrives. Set inject false for reference notes, bookkeeping, low-impact reminders, uncertain usefulness, or anything that is helpful to track but does not need to shape the AI response. If unsure, set inject false.
 - Do not output computed comparable timestamps.
 - Use dueIn for clear relative times such as "in 7 days".
 - Use dueAtDatetime when a concrete in-world datetime can be derived without guessing. Use the same story calendar as Tracker time. Format: YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss.

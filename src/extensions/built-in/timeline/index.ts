@@ -93,13 +93,17 @@ async function setEvents(api: TimelineExtensionAPI, events: TimelineEvent[]): Pr
 
 function getDueEvents(events: TimelineEvent[], nowComparable: number): TimelineEvent[] {
   return events
-    .filter((event) => event.status === 'pending' && event.dueAt && event.dueAt.comparable <= nowComparable)
+    .filter(
+      (event) => event.inject !== false && event.status === 'pending' && event.dueAt && event.dueAt.comparable <= nowComparable,
+    )
     .sort((a, b) => (a.dueAt?.comparable ?? 0) - (b.dueAt?.comparable ?? 0));
 }
 
 function getUpcomingEvents(events: TimelineEvent[], nowComparable: number): TimelineEvent[] {
   return events
-    .filter((event) => event.status === 'pending' && event.dueAt && event.dueAt.comparable > nowComparable)
+    .filter(
+      (event) => event.inject !== false && event.status === 'pending' && event.dueAt && event.dueAt.comparable > nowComparable,
+    )
     .sort((a, b) => (a.dueAt?.comparable ?? 0) - (b.dueAt?.comparable ?? 0));
 }
 
@@ -165,6 +169,7 @@ function mergeOperations(
       dueAt,
       recurrence: operation.recurrence ?? existing?.recurrence,
       status: existing?.status === 'resolved' || existing?.status === 'cancelled' ? existing.status : 'pending',
+      inject: operation.inject,
       importance: operation.importance,
       relatedCharacters: operation.relatedCharacters,
       tags: operation.tags,
@@ -196,7 +201,17 @@ function getTimelineStructuredResponse(format: TimelineSettings['structuredReque
             type: 'array',
             items: {
               type: 'object',
-              required: ['operation', 'id', 'type', 'title', 'description', 'importance', 'relatedCharacters', 'tags'],
+              required: [
+                'operation',
+                'id',
+                'type',
+                'title',
+                'description',
+                'inject',
+                'importance',
+                'relatedCharacters',
+                'tags',
+              ],
               additionalProperties: false,
               properties: {
                 operation: { type: 'string', enum: ['create', 'update', 'resolve', 'cancel'] },
@@ -231,6 +246,11 @@ function getTimelineStructuredResponse(format: TimelineSettings['structuredReque
                     unit: { type: 'string', enum: ['minute', 'hour', 'day', 'week', 'month'] },
                     limit: { type: 'integer', minimum: 1 },
                   },
+                },
+                inject: {
+                  type: 'boolean',
+                  description:
+                    'Whether this event should be injected into narrator/AI prompt context when due/upcoming. Use true only if it should affect story, narration, character decisions, available options, consequences, or scene state when its time arrives. Use false for reference notes, bookkeeping, low-impact reminders, uncertain usefulness, or anything helpful to track but not needed for the AI response. If unsure, use false.',
                 },
                 importance: { type: 'string', enum: ['low', 'normal', 'high'] },
                 relatedCharacters: { type: 'array', items: { type: 'string' } },
