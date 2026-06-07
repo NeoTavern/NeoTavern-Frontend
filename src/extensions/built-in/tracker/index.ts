@@ -4,6 +4,7 @@ import type { ApiChatMessage, StructuredResponseOptions } from '../../../types/g
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
+import { getLatestTrackerStoryTime } from './story-time';
 import TrackerDisplay from './TrackerDisplay.vue';
 import TrackerIcon from './TrackerIcon.vue';
 import {
@@ -11,6 +12,7 @@ import {
   type TrackerChatExtra,
   type TrackerData,
   type TrackerMessageExtra,
+  type TrackerService,
   type TrackerSettings,
 } from './types';
 
@@ -32,13 +34,27 @@ class TrackerManager {
 
   constructor(private api: TrackerExtensionAPI) {}
 
-  private getSettings(): TrackerSettings {
+  public getSettings(): TrackerSettings {
     const saved = this.api.settings.get();
     return {
       ...DEFAULT_SETTINGS,
       ...saved,
       schemaPresets: saved?.schemaPresets?.length ? saved.schemaPresets : DEFAULT_SETTINGS.schemaPresets,
     };
+  }
+
+  public getLatestTrackerValue(schemaName: string, path: string): unknown {
+    const parts = path.split('.').filter(Boolean);
+    const history = this.api.chat.getHistory();
+    for (let index = history.length - 1; index >= 0; index--) {
+      const tracker = history[index].extra?.['core.tracker']?.trackers?.[schemaName];
+      if (tracker?.status !== 'success' || !tracker.trackerJson) continue;
+      return parts.reduce<unknown>((value, part) => {
+        if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+        return (value as Record<string, unknown>)[part];
+      }, tracker.trackerJson);
+    }
+    return undefined;
   }
 
   public async runTracker(index: number): Promise<void> {
@@ -417,6 +433,11 @@ export function activate(api: TrackerExtensionAPI) {
   }
 
   const manager = new TrackerManager(api);
+  const trackerService: TrackerService = {
+    getLatestStoryTime: () => getLatestTrackerStoryTime(manager.getSettings(), api.chat.getHistory()),
+    getLatestTrackerValue: (schemaName, path) => manager.getLatestTrackerValue(schemaName, path),
+  };
+  api.extensions.registerService('core.tracker', trackerService);
   const unbinds: Array<() => void> = [];
 
   const onChatEntered = () => manager.injectAllUi();
@@ -459,5 +480,6 @@ export function activate(api: TrackerExtensionAPI) {
   return () => {
     unbinds.forEach((u) => u());
     manager.unmountAllUi();
+    api.extensions.unregisterService('core.tracker');
   };
 }

@@ -767,6 +767,16 @@ export interface ExtensionAPI<
     ) => Promise<GenerationResponse | AsyncGenerator<StreamedChunk>>;
   };
 
+  extensions: {
+    /**
+     * Registers a service object that other extensions can read by extension id.
+     * Scoped extension APIs can only register services for their own id.
+     */
+    registerService: <TService extends object>(extensionId: string, service: TService) => void;
+    unregisterService: (extensionId: string) => void;
+    getService: <TService extends object>(extensionId: string) => TService | null;
+  };
+
   i18n: {
     t: StrictT;
   };

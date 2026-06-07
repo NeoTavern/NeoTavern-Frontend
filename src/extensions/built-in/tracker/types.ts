@@ -43,6 +43,22 @@ export interface TrackerMessageExtra {
   'core.tracker'?: TrackerMessageExtraData;
 }
 
+export interface TrackerStoryTime {
+  schemaName: string;
+  sourceMessageIndex: number;
+  raw: unknown;
+  display: string;
+  comparable: number;
+  precision: 'minute' | 'second';
+  status: 'valid' | 'invalid';
+  error?: string;
+}
+
+export interface TrackerService {
+  getLatestStoryTime: () => TrackerStoryTime | null;
+  getLatestTrackerValue: (schemaName: string, path: string) => unknown;
+}
+
 export const DEFAULT_PROMPT = `You are a Scene Tracker Assistant, tasked with providing clear, consistent, and structured updates to a scene tracker for a roleplay. Use the latest message, previous tracker details, and context from recent messages to accurately update the tracker. Your response must ensuring that each field is filled and complete. If specific information is not provided, make reasonable assumptions based on prior descriptions, logical inferences, or default character details.
 
 ### Key Instructions:
@@ -52,7 +68,6 @@ export const DEFAULT_PROMPT = `You are a Scene Tracker Assistant, tasked with pr
    - **StateOfDress**: Describe how put-together or disheveled the character appears, including any removed clothing. If the character is undressed, indicate where discarded items are placed.
 2. **Incremental Time Progression**:
    - Adjust time in small increments, ideally only a few seconds per update, to reflect realistic scene progression. Avoid large jumps unless a significant time skip (e.g., sleep, travel) is explicitly stated.
-   - Format the time as "HH:MM:SS; MM/DD/YYYY (Day Name)".
 3. **Context-Appropriate Times**:
    - Ensure that the time aligns with the setting. For example, if the scene takes place in a public venue (e.g., a mall), choose an appropriate time within standard operating hours.
 4. **Location Format**: Avoid unintended reuse of specific locations from previous examples or responses. Provide specific, relevant, and detailed locations based on the context, using the format:
@@ -74,7 +89,15 @@ export const DEFAULT_SCHEMA_VALUE = {
   properties: {
     time: {
       type: 'string',
-      description: 'Format: HH:MM:SS; MM/DD/YYYY (Day Name)',
+      description: 'User-readable in-world time for display. Format: HH:MM:SS; MM/DD/YYYY (Day Name)',
+      'x-neotavern-story-time-role': 'display',
+    },
+    datetime: {
+      type: 'string',
+      description: 'Machine-readable in-world time. Format: YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss',
+      pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$',
+      'x-neotavern-story-time-role': 'datetime',
+      'x-neotavern-parse-format': "yyyy-MM-dd'T'HH:mm[:ss]",
     },
     location: {
       type: 'string',
@@ -145,7 +168,7 @@ export const DEFAULT_SCHEMA_VALUE = {
       description: 'Array of character objects',
     },
   },
-  required: ['time', 'location', 'weather', 'topics', 'charactersPresent', 'characters'],
+  required: ['time', 'datetime', 'location', 'weather', 'topics', 'charactersPresent', 'characters'],
 };
 
 export const DEFAULT_TEMPLATE = `<div class="tracker-data-grid">

@@ -201,12 +201,15 @@ export function setMainAppInstance(app: App) {
 }
 
 const extensionCleanupRegistry = new Map<string, () => void>();
+const extensionServiceRegistry = new Map<string, object>();
+
 export function disposeExtension(extensionId: string) {
   const cleanup = extensionCleanupRegistry.get(extensionId);
   if (cleanup) {
     cleanup();
     extensionCleanupRegistry.delete(extensionId);
   }
+  extensionServiceRegistry.delete(extensionId);
 }
 
 const baseExtensionAPI: ExtensionAPI = {
@@ -937,6 +940,17 @@ const baseExtensionAPI: ExtensionAPI = {
       });
     },
   },
+  extensions: {
+    registerService: (extensionId, service) => {
+      extensionServiceRegistry.set(extensionId, service);
+    },
+    unregisterService: (extensionId) => {
+      extensionServiceRegistry.delete(extensionId);
+    },
+    getService: (extensionId) => {
+      return (extensionServiceRegistry.get(extensionId) ?? null) as never;
+    },
+  },
   i18n: {
     // @ts-expect-error 'i18n.global' is of type 'unknown'
     t: i18n.global.t as StrictT,
@@ -1116,6 +1130,24 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
     },
   };
 
+  const scopedExtensions = {
+    registerService: <TService extends object>(id: string, service: TService): void => {
+      if (id !== extensionId) {
+        throw new Error(`Extension "${extensionId}" cannot register service for "${id}".`);
+      }
+      baseExtensionAPI.extensions.registerService(extensionId, service);
+    },
+    unregisterService: (id: string): void => {
+      if (id !== extensionId) {
+        throw new Error(`Extension "${extensionId}" cannot unregister service for "${id}".`);
+      }
+      baseExtensionAPI.extensions.unregisterService(extensionId);
+    },
+    getService: <TService extends object>(id: string): TService | null => {
+      return baseExtensionAPI.extensions.getService<TService>(id);
+    },
+  };
+
   extensionCleanupRegistry.set(extensionId, () => {
     activeListeners.forEach(({ event, listener }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1123,6 +1155,7 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
     });
     activeListeners.clear();
     listenerMap.clear();
+    baseExtensionAPI.extensions.unregisterService(extensionId);
   });
 
   return {
@@ -1132,6 +1165,7 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
     events: scopedEvents,
     ui: scopedUi,
     llm: scopedLlm,
+    extensions: scopedExtensions,
   };
 }
 
