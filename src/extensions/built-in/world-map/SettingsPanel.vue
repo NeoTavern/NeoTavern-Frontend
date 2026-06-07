@@ -113,7 +113,6 @@ const resetPromptTools = computed(() => [
       <Textarea
         v-model="settings.updatePrompt"
         allow-maximize
-        code-mirror
         :rows="12"
         identifier="extension.world-map.updatePrompt"
         :tools="resetPromptTools"
