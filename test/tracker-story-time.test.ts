@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getLatestTrackerStoryTime, getStoryTimeSchemaInfo, parseStoryDatetime } from '../src/extensions/built-in/tracker/story-time';
+import {
+  getLatestTrackerStoryTime,
+  getStoryTimeSchemaInfo,
+  parseStoryDatetime,
+} from '../src/extensions/built-in/tracker/story-time';
 import type { TrackerSettings } from '../src/extensions/built-in/tracker/types';
 import type { ChatMessage } from '../src/types';
 

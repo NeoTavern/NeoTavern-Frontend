@@ -100,7 +100,10 @@ function buildDateRegex(format: string): { regex: RegExp; groups: string[] } | n
   }
 }
 
-function parseFormattedDatetime(value: string, format: string): { comparable: number; precision: 'minute' | 'second' } | null {
+function parseFormattedDatetime(
+  value: string,
+  format: string,
+): { comparable: number; precision: 'minute' | 'second' } | null {
   const compiled = buildDateRegex(format);
   if (!compiled) return null;
 
@@ -133,10 +136,7 @@ function getTrackerDataFromMessage(message: ChatMessage, schemaName: string): Tr
   return trackers?.[schemaName];
 }
 
-export function getLatestTrackerStoryTime(
-  settings: TrackerSettings,
-  history: ChatMessage[],
-): TrackerStoryTime | null {
+export function getLatestTrackerStoryTime(settings: TrackerSettings, history: ChatMessage[]): TrackerStoryTime | null {
   const presets = settings.schemaPresets ?? [];
 
   for (let messageIndex = history.length - 1; messageIndex >= 0; messageIndex--) {

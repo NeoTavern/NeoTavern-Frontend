@@ -43,9 +43,9 @@ async function refresh(): Promise<void> {
 function isDue(event: TimelineEvent): boolean {
   return Boolean(
     currentStoryTime.value &&
-      event.status === 'pending' &&
-      event.dueAt &&
-      event.dueAt.comparable <= currentStoryTime.value.comparable,
+    event.status === 'pending' &&
+    event.dueAt &&
+    event.dueAt.comparable <= currentStoryTime.value.comparable,
   );
 }
 

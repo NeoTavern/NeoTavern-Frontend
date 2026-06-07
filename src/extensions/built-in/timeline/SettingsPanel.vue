@@ -3,12 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
 import { FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
-import {
-  DEFAULT_EXTRACTION_PROMPT,
-  DEFAULT_SETTINGS,
-  type TimelineExtensionAPI,
-  type TimelineSettings,
-} from './types';
+import { DEFAULT_EXTRACTION_PROMPT, DEFAULT_SETTINGS, type TimelineExtensionAPI, type TimelineSettings } from './types';
 
 const props = defineProps<{
   api: TimelineExtensionAPI;

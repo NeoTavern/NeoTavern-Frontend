@@ -1,6 +1,6 @@
 import type { ApiChatMessage, GenerationResponse, StructuredResponseOptions } from '../../../types/generation';
-import type { TrackerService } from '../tracker/types';
 import { parseStoryDatetime } from '../tracker/story-time';
+import type { TrackerService } from '../tracker/types';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
 import TimelinePanel from './TimelinePanel.vue';
@@ -308,7 +308,8 @@ class TimelineManager {
     structuredResponse: StructuredResponseOptions,
   ): Promise<TimelineGenerationResult> {
     const settings = this.getSettings();
-    const connectionProfile = settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile =
+      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
     if (!connectionProfile) throw new Error('No connection profile selected for Timeline.');
 
     let completionStructuredContent: object | undefined;
