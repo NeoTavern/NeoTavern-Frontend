@@ -1,13 +1,14 @@
 import type {
+  WorldMapAccessPoint,
   WorldMapArea,
   WorldMapAreaStyleDefinition,
-  WorldMapConnection,
-  WorldMapConnectionStyleDefinition,
   WorldMapDelta,
   WorldMapDocument,
   WorldMapIconDefinition,
   WorldMapLabelStyleDefinition,
   WorldMapNode,
+  WorldMapRoute,
+  WorldMapRouteStyleDefinition,
   WorldMapSettings,
   WorldMapVisualPack,
 } from './types';
@@ -43,7 +44,7 @@ const SAFE_SVG_ATTRS = new Set([
   'fill-opacity',
   'stroke-opacity',
 ]);
-const ALLOWED_CONNECTION_KINDS = new Set<string>([
+const ALLOWED_ROUTE_KINDS = new Set<string>([
   'road',
   'path',
   'corridor',
@@ -60,7 +61,8 @@ export function createEmptyMap(): WorldMapDocument {
     version: 1,
     updatedAt: new Date().toISOString(),
     nodes: {},
-    connections: [],
+    routes: [],
+    accessPoints: [],
   };
 }
 
@@ -68,7 +70,9 @@ export function getMapFromMetadata(metadata?: { extra?: Record<string, unknown> 
   const value = metadata?.extra?.['core.world-map'];
   if (!value || typeof value !== 'object') return null;
   const map = (value as { map?: WorldMapDocument }).map;
-  if (!map || typeof map !== 'object' || !map.nodes || !Array.isArray(map.connections)) return null;
+  if (!map || typeof map !== 'object' || !map.nodes || !Array.isArray(map.routes) || !Array.isArray(map.accessPoints)) {
+    return null;
+  }
   return map;
 }
 
@@ -139,18 +143,19 @@ export function serializeWorldMapForPrompt(map: WorldMapDocument): string {
     for (const node of orphanedNodes) appendNode(node, 0);
   }
 
-  const connectionLines = map.connections
-    .map((connection) => {
-      const from = map.nodes[connection.fromNodeId];
-      const to = map.nodes[connection.toNodeId];
-      if (!from || !to) return null;
-      const label = connection.label ? `, ${connection.label}` : '';
-      const direction = connection.bidirectional === false ? 'one-way' : 'two-way';
-      return `- ${from.name} to ${to.name}: ${connection.kind}${label}, ${direction}`;
+  const routeLines = map.routes
+    .map((route) => {
+      const label = route.label ? `, ${route.label}` : '';
+      const accessNames = map.accessPoints
+        .filter((access) => access.routeId === route.id)
+        .map((access) => map.nodes[access.nodeId]?.name)
+        .filter((name): name is string => Boolean(name));
+      const accessText = accessNames.length > 0 ? `; access: ${accessNames.join(', ')}` : '';
+      return `- ${route.id}: ${route.kind}${label}${accessText}`;
     })
     .filter((line): line is string => Boolean(line));
 
-  if (connectionLines.length > 0) lines.push('', 'Connections:', ...connectionLines);
+  if (routeLines.length > 0) lines.push('', 'Routes:', ...routeLines);
 
   return lines.join('\n');
 }
@@ -262,32 +267,41 @@ function sanitizeArea(area: WorldMapArea): WorldMapArea | null {
   };
 }
 
-function sanitizeConnection(connection: WorldMapConnection): WorldMapConnection | null {
-  if (!validateId(connection.id) || !validateId(connection.fromNodeId) || !validateId(connection.toNodeId)) return null;
-  if (!ALLOWED_CONNECTION_KINDS.has((connection as { kind: string }).kind)) return null;
-  const next: WorldMapConnection = {
-    id: connection.id,
-    fromNodeId: connection.fromNodeId,
-    toNodeId: connection.toNodeId,
-    kind: connection.kind,
+function sanitizeRoute(route: WorldMapRoute): WorldMapRoute | null {
+  if (!validateId(route.id) || !validateId(route.parentId)) return null;
+  if (!ALLOWED_ROUTE_KINDS.has((route as { kind: string }).kind)) return null;
+  const next: WorldMapRoute = {
+    id: route.id,
+    parentId: route.parentId,
+    kind: route.kind,
   };
-  if (connection.label) next.label = connection.label.slice(0, 120);
-  if (typeof connection.bidirectional === 'boolean') next.bidirectional = connection.bidirectional;
-  if (typeof connection.smoothPath === 'boolean') next.smoothPath = connection.smoothPath;
-  if (Array.isArray(connection.points) && connection.points.length >= 2) {
-    next.points = connection.points.slice(0, 12).map((point) => ({
+  if (route.label) next.label = route.label.slice(0, 120);
+  if (typeof route.smoothPath === 'boolean') next.smoothPath = route.smoothPath;
+  if (Array.isArray(route.points) && route.points.length >= 2) {
+    next.points = route.points.slice(0, 40).map((point) => ({
       x: clampNumber(point.x, 0, -100000, 100000),
       y: clampNumber(point.y, 0, -100000, 100000),
     }));
   }
-  if (connection.visual) next.visual = { ...connection.visual };
+  if (route.visual) next.visual = { ...route.visual };
   return next;
 }
 
-function isDirectParentChildConnection(connection: WorldMapConnection, nodes: Record<string, WorldMapNode>): boolean {
-  const from = nodes[connection.fromNodeId];
-  const to = nodes[connection.toNodeId];
-  return Boolean(from && to && (from.parentId === to.id || to.parentId === from.id));
+function sanitizeAccessPoint(access: WorldMapAccessPoint): WorldMapAccessPoint | null {
+  if (!validateId(access.id) || !validateId(access.routeId) || !validateId(access.nodeId)) {
+    return null;
+  }
+  return {
+    id: access.id,
+    routeId: access.routeId,
+    nodeId: access.nodeId,
+    point: {
+      x: clampNumber(access.point?.x, 0, -100000, 100000),
+      y: clampNumber(access.point?.y, 0, -100000, 100000),
+    },
+    label: access.label?.slice(0, 120),
+    kind: access.kind,
+  };
 }
 
 function collectNodeIdsWithDescendants(nodes: Record<string, WorldMapNode>, nodeIds: Set<string>): Set<string> {
@@ -333,7 +347,7 @@ function clearRemovedVisualRefs(
   removed: {
     iconIds: Set<string>;
     areaStyleIds: Set<string>;
-    connectionStyleIds: Set<string>;
+    routeStyleIds: Set<string>;
     labelStyleIds: Set<string>;
   },
 ): void {
@@ -359,9 +373,9 @@ function clearRemovedVisualRefs(
     }
   }
 
-  for (const connection of map.connections) {
-    if (connection.visual?.styleId && removed.connectionStyleIds.has(connection.visual.styleId)) {
-      connection.visual = undefined;
+  for (const route of map.routes) {
+    if (route.visual?.styleId && removed.routeStyleIds.has(route.visual.styleId)) {
+      route.visual = undefined;
     }
   }
 }
@@ -385,7 +399,7 @@ function normalizeAreaStyle(style: WorldMapAreaStyleDefinition): WorldMapAreaSty
   };
 }
 
-function normalizeConnectionStyle(style: WorldMapConnectionStyleDefinition): WorldMapConnectionStyleDefinition | null {
+function normalizeRouteStyle(style: WorldMapRouteStyleDefinition): WorldMapRouteStyleDefinition | null {
   return {
     ...style,
     label: style.label?.slice(0, 80) || style.id,
@@ -415,25 +429,20 @@ function mergeVisualPack(map: WorldMapDocument, delta: WorldMapDelta, settings: 
     name: visualDelta.packName?.slice(0, 80) || visualDelta.packId,
     icons: { ...(visualPacks[visualDelta.packId]?.icons ?? {}) },
     areaStyles: { ...(visualPacks[visualDelta.packId]?.areaStyles ?? {}) },
-    connectionStyles: { ...(visualPacks[visualDelta.packId]?.connectionStyles ?? {}) },
+    routeStyles: { ...(visualPacks[visualDelta.packId]?.routeStyles ?? {}) },
     labelStyles: { ...(visualPacks[visualDelta.packId]?.labelStyles ?? {}) },
   };
 
   const removed = {
     iconIds: removeVisualPackAssets(pack.icons!, visualDelta.removeIconIds),
     areaStyleIds: removeVisualPackAssets(pack.areaStyles!, visualDelta.removeAreaStyleIds),
-    connectionStyleIds: removeVisualPackAssets(pack.connectionStyles!, visualDelta.removeConnectionStyleIds),
+    routeStyleIds: removeVisualPackAssets(pack.routeStyles!, visualDelta.removeRouteStyleIds),
     labelStyleIds: removeVisualPackAssets(pack.labelStyles!, visualDelta.removeLabelStyleIds),
   };
 
   addVisualPackAsset(pack.icons!, visualDelta.icons, settings.maxVisualAssetsPerDelta, normalizeIcon);
   addVisualPackAsset(pack.areaStyles!, visualDelta.areaStyles, settings.maxVisualAssetsPerDelta, normalizeAreaStyle);
-  addVisualPackAsset(
-    pack.connectionStyles!,
-    visualDelta.connectionStyles,
-    settings.maxVisualAssetsPerDelta,
-    normalizeConnectionStyle,
-  );
+  addVisualPackAsset(pack.routeStyles!, visualDelta.routeStyles, settings.maxVisualAssetsPerDelta, normalizeRouteStyle);
   addVisualPackAsset(pack.labelStyles!, visualDelta.labelStyles, settings.maxVisualAssetsPerDelta, normalizeLabelStyle);
 
   visualPacks[pack.id] = pack;
@@ -446,9 +455,9 @@ function mergeVisualPack(map: WorldMapDocument, delta: WorldMapDelta, settings: 
     }
   }
 
-  for (const assignment of visualDelta.assignConnectionVisuals ?? []) {
-    const connection = map.connections.find((item) => item.id === assignment.connectionId);
-    if (connection) connection.visual = { ...assignment.visual };
+  for (const assignment of visualDelta.assignRouteVisuals ?? []) {
+    const route = map.routes.find((item) => item.id === assignment.routeId);
+    if (route) route.visual = { ...assignment.visual };
   }
 
   clearRemovedVisualRefs(map, removed);
@@ -463,7 +472,8 @@ export function mergeWorldMapDelta(
     ? {
         ...current,
         nodes: { ...current.nodes },
-        connections: [...current.connections],
+        routes: [...current.routes],
+        accessPoints: [...current.accessPoints],
         visualPacks: current.visualPacks ? { ...current.visualPacks } : undefined,
       }
     : createEmptyMap();
@@ -480,22 +490,37 @@ export function mergeWorldMapDelta(
     new Set((delta.removeNodeIds ?? []).filter(validateId)),
   );
   for (const nodeId of removeNodeIds) delete map.nodes[nodeId];
-  map.connections = map.connections.filter(
-    (connection) => !removeNodeIds.has(connection.fromNodeId) && !removeNodeIds.has(connection.toNodeId),
-  );
-  map.connections = map.connections.filter((connection) => !isDirectParentChildConnection(connection, map.nodes));
+  map.routes = map.routes.filter((route) => !removeNodeIds.has(route.parentId));
+  map.accessPoints = map.accessPoints.filter((access) => !removeNodeIds.has(access.nodeId));
 
-  const removeConnectionIds = new Set((delta.removeConnectionIds ?? []).filter(validateId));
-  map.connections = map.connections.filter((connection) => !removeConnectionIds.has(connection.id));
+  const removeRouteIds = new Set((delta.removeRouteIds ?? []).filter(validateId));
+  map.routes = map.routes.filter((route) => !removeRouteIds.has(route.id));
+  map.accessPoints = map.accessPoints.filter((access) => !removeRouteIds.has(access.routeId));
 
-  for (const connection of (delta.createOrUpdateConnections ?? []).slice(0, settings.maxConnectionsPerDelta)) {
-    const sanitized = sanitizeConnection(connection);
-    if (!sanitized || !map.nodes[sanitized.fromNodeId] || !map.nodes[sanitized.toNodeId]) continue;
-    if (isDirectParentChildConnection(sanitized, map.nodes)) continue;
-    const index = map.connections.findIndex((item) => item.id === sanitized.id);
-    if (index === -1) map.connections.push(sanitized);
-    else map.connections[index] = { ...map.connections[index], ...sanitized };
+  for (const route of (delta.createOrUpdateRoutes ?? []).slice(0, settings.maxRoutesPerDelta)) {
+    const sanitized = sanitizeRoute(route);
+    if (!sanitized || !map.nodes[sanitized.parentId]) continue;
+    const index = map.routes.findIndex((item) => item.id === sanitized.id);
+    if (index === -1) map.routes.push(sanitized);
+    else map.routes[index] = { ...map.routes[index], ...sanitized };
   }
+
+  const removeAccessPointIds = new Set((delta.removeAccessPointIds ?? []).filter(validateId));
+  map.accessPoints = map.accessPoints.filter((access) => !removeAccessPointIds.has(access.id));
+
+  for (const access of (delta.createOrUpdateAccessPoints ?? []).slice(0, settings.maxRoutesPerDelta * 2)) {
+    const sanitized = sanitizeAccessPoint(access);
+    if (!sanitized) continue;
+    const route = map.routes.find((item) => item.id === sanitized.routeId);
+    const node = map.nodes[sanitized.nodeId];
+    if (!route || !node || node.parentId !== route.parentId) continue;
+    const index = map.accessPoints.findIndex((item) => item.id === sanitized.id);
+    if (index === -1) map.accessPoints.push(sanitized);
+    else map.accessPoints[index] = { ...map.accessPoints[index], ...sanitized };
+  }
+
+  const routeIds = new Set(map.routes.map((route) => route.id));
+  map.accessPoints = map.accessPoints.filter((access) => routeIds.has(access.routeId) && map.nodes[access.nodeId]);
 
   if (validateId(delta.rootNodeId) && map.nodes[delta.rootNodeId]) {
     map.rootNodeId = delta.rootNodeId;

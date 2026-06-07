@@ -10,8 +10,8 @@ import { smartShuffleWorldMap, type WorldMapShuffleMode } from './smart-shuffle'
 import {
   DEFAULT_SETTINGS,
   WORLD_MAP_UPDATED_EVENT,
+  type WorldMapAccessPoint,
   type WorldMapBounds,
-  type WorldMapConnection,
   type WorldMapDelta,
   type WorldMapDocument,
   type WorldMapExtensionAPI,
@@ -19,6 +19,7 @@ import {
   type WorldMapMessageExtraData,
   type WorldMapNode,
   type WorldMapRollbackSnapshot,
+  type WorldMapRoute,
   type WorldMapSettings,
 } from './types';
 import WorldMapPanel from './WorldMapPanel.vue';
@@ -133,6 +134,30 @@ function areaBounds(area: NonNullable<WorldMapNode['areas']>[number]): WorldMapB
   };
 }
 
+function areaOverflowsView(node: WorldMapNode, area: NonNullable<WorldMapNode['areas']>[number]): boolean {
+  if (!node.view) return false;
+  const bounds = areaBounds(area);
+  if (!bounds) return false;
+  const maxX = bounds.x + bounds.width;
+  const maxY = bounds.y + bounds.height;
+  return bounds.x < -1 || bounds.y < -1 || maxX > node.view.width + 1 || maxY > node.view.height + 1;
+}
+
+function isFloorLikeArea(area: NonNullable<WorldMapNode['areas']>[number]): boolean {
+  const text = `${area.id} ${area.label ?? ''}`.toLowerCase();
+  return (
+    area.kind === 'interior' &&
+    /\b(floor|ground|basement|level|1st|2nd|3rd|4th|5th|first|second|third|fourth|fifth)\b/.test(text)
+  );
+}
+
+function routeLooksLikeNamedDestination(route: WorldMapRoute): boolean {
+  const text = `${route.id} ${route.label ?? ''}`.toLowerCase();
+  return (
+    /\bto[-_\s]+[a-z0-9]/.test(text) || /\b(path|road|trail|corridor|stairs|elevator|portal)[-_\s]+to[-_\s]+/.test(text)
+  );
+}
+
 function childExtentRatio(parent: WorldMapNode, children: WorldMapNode[]): number | null {
   if (!parent.view) return null;
   const boundedChildren = children.filter((child) => child.bounds);
@@ -145,9 +170,36 @@ function childExtentRatio(parent: WorldMapNode, children: WorldMapNode[]): numbe
   return Math.max((maxX - minX) / parent.view.width, (maxY - minY) / parent.view.height);
 }
 
-function hasSiblingConnection(children: WorldMapNode[], connections: WorldMapConnection[]): boolean {
+function hasSiblingRouteAccess(
+  parentId: string,
+  children: WorldMapNode[],
+  routes: WorldMapRoute[],
+  accessPoints: WorldMapAccessPoint[],
+): boolean {
   const childIds = new Set(children.map((child) => child.id));
-  return connections.some((connection) => childIds.has(connection.fromNodeId) && childIds.has(connection.toNodeId));
+  const routeIds = new Set(routes.filter((route) => route.parentId === parentId).map((route) => route.id));
+  const counts = new Map<string, number>();
+  for (const access of accessPoints) {
+    if (!routeIds.has(access.routeId) || !childIds.has(access.nodeId)) continue;
+    counts.set(access.routeId, (counts.get(access.routeId) ?? 0) + 1);
+  }
+  return [...counts.values()].some((count) => count >= 2);
+}
+
+function childIdsWithRouteAccess(
+  parentId: string,
+  children: WorldMapNode[],
+  routes: WorldMapRoute[],
+  accessPoints: WorldMapAccessPoint[],
+): Set<string> {
+  const childIds = new Set(children.map((child) => child.id));
+  const routeIds = new Set(routes.filter((route) => route.parentId === parentId).map((route) => route.id));
+  const covered = new Set<string>();
+  for (const access of accessPoints) {
+    if (!routeIds.has(access.routeId) || !childIds.has(access.nodeId)) continue;
+    covered.add(access.nodeId);
+  }
+  return covered;
 }
 
 function buildProjectedNodes(currentMap: WorldMapDocument | null, delta: WorldMapDelta): Record<string, WorldMapNode> {
@@ -209,17 +261,17 @@ function getVisualPacksAfterDelta(
     name: visualDelta.packName,
     icons: {},
     areaStyles: {},
-    connectionStyles: {},
+    routeStyles: {},
     labelStyles: {},
   };
   const icons = { ...(pack.icons ?? {}) };
   const areaStyles = { ...(pack.areaStyles ?? {}) };
-  const connectionStyles = { ...(pack.connectionStyles ?? {}) };
+  const routeStyles = { ...(pack.routeStyles ?? {}) };
   const labelStyles = { ...(pack.labelStyles ?? {}) };
 
   for (const id of visualDelta.removeIconIds ?? []) delete icons[id];
   for (const id of visualDelta.removeAreaStyleIds ?? []) delete areaStyles[id];
-  for (const id of visualDelta.removeConnectionStyleIds ?? []) delete connectionStyles[id];
+  for (const id of visualDelta.removeRouteStyleIds ?? []) delete routeStyles[id];
   for (const id of visualDelta.removeLabelStyleIds ?? []) delete labelStyles[id];
 
   visualPacks[visualDelta.packId] = {
@@ -229,9 +281,9 @@ function getVisualPacksAfterDelta(
       ...areaStyles,
       ...Object.fromEntries((visualDelta.areaStyles ?? []).map((style) => [style.id, style])),
     },
-    connectionStyles: {
-      ...connectionStyles,
-      ...Object.fromEntries((visualDelta.connectionStyles ?? []).map((style) => [style.id, style])),
+    routeStyles: {
+      ...routeStyles,
+      ...Object.fromEntries((visualDelta.routeStyles ?? []).map((style) => [style.id, style])),
     },
     labelStyles: {
       ...labelStyles,
@@ -261,16 +313,6 @@ function svgSymbolHasMatchingId(svgSymbol: string, iconId: string): boolean {
   const symbolTag = svgSymbol.match(/<symbol\b[^>]*>/i)?.[0];
   if (!symbolTag) return false;
   return new RegExp(`\\sid\\s*=\\s*["']${escapeRegExp(iconId)}["']`, 'i').test(symbolTag);
-}
-
-function getContainingFloor(
-  node: WorldMapNode | undefined,
-  nodes: Record<string, WorldMapNode>,
-): WorldMapNode | undefined {
-  if (!node) return undefined;
-  if (node.kind === 'floor') return node;
-  const parent = node.parentId ? nodes[node.parentId] : undefined;
-  return parent?.kind === 'floor' ? parent : undefined;
 }
 
 function hasInitialMapAnchor(delta: WorldMapDelta): boolean {
@@ -326,7 +368,7 @@ function ensureVisualPackRollback(
     name: pack?.name,
     icons: {},
     areaStyles: {},
-    connectionStyles: {},
+    routeStyles: {},
     labelStyles: {},
   };
   snapshot.visualPacks[packId] = rollback;
@@ -345,11 +387,18 @@ export function createRollbackSnapshot(
     snapshot.nodes[nodeId] = map?.nodes[nodeId] ? cloneValue(map.nodes[nodeId]) : null;
   };
 
-  const snapshotConnection = (connectionId: string) => {
-    snapshot.connections ??= {};
-    if (Object.prototype.hasOwnProperty.call(snapshot.connections, connectionId)) return;
-    const connection = map?.connections.find((item) => item.id === connectionId);
-    snapshot.connections[connectionId] = connection ? cloneValue(connection) : null;
+  const snapshotRoute = (routeId: string) => {
+    snapshot.routes ??= {};
+    if (Object.prototype.hasOwnProperty.call(snapshot.routes, routeId)) return;
+    const route = map?.routes.find((item) => item.id === routeId);
+    snapshot.routes[routeId] = route ? cloneValue(route) : null;
+  };
+
+  const snapshotAccessPoint = (accessPointId: string) => {
+    snapshot.accessPoints ??= {};
+    if (Object.prototype.hasOwnProperty.call(snapshot.accessPoints, accessPointId)) return;
+    const accessPoint = map?.accessPoints.find((item) => item.id === accessPointId);
+    snapshot.accessPoints[accessPointId] = accessPoint ? cloneValue(accessPoint) : null;
   };
 
   for (const delta of deltas) {
@@ -360,18 +409,15 @@ export function createRollbackSnapshot(
     for (const node of delta.createOrUpdateNodes ?? []) snapshotNode(node.id);
     const removedNodeIds = collectNodeIdsWithDescendants(map?.nodes, new Set(delta.removeNodeIds ?? []));
     for (const nodeId of removedNodeIds) snapshotNode(nodeId);
-    for (const connection of map?.connections ?? []) {
-      if (removedNodeIds.has(connection.fromNodeId) || removedNodeIds.has(connection.toNodeId)) {
-        snapshotConnection(connection.id);
-      }
-    }
+    for (const route of map?.routes ?? []) if (removedNodeIds.has(route.parentId)) snapshotRoute(route.id);
+    for (const access of map?.accessPoints ?? []) if (removedNodeIds.has(access.nodeId)) snapshotAccessPoint(access.id);
     for (const assignment of delta.visualPackDelta?.assignNodeVisuals ?? []) snapshotNode(assignment.nodeId);
 
-    for (const connection of delta.createOrUpdateConnections ?? []) snapshotConnection(connection.id);
-    for (const connectionId of delta.removeConnectionIds ?? []) snapshotConnection(connectionId);
-    for (const assignment of delta.visualPackDelta?.assignConnectionVisuals ?? []) {
-      snapshotConnection(assignment.connectionId);
-    }
+    for (const route of delta.createOrUpdateRoutes ?? []) snapshotRoute(route.id);
+    for (const routeId of delta.removeRouteIds ?? []) snapshotRoute(routeId);
+    for (const access of delta.createOrUpdateAccessPoints ?? []) snapshotAccessPoint(access.id);
+    for (const accessPointId of delta.removeAccessPointIds ?? []) snapshotAccessPoint(accessPointId);
+    for (const assignment of delta.visualPackDelta?.assignRouteVisuals ?? []) snapshotRoute(assignment.routeId);
 
     const visualDelta = delta.visualPackDelta;
     if (!visualDelta?.packId) continue;
@@ -388,11 +434,11 @@ export function createRollbackSnapshot(
     for (const styleId of visualDelta.removeAreaStyleIds ?? []) {
       snapshotVisualPackAsset(packRollback.areaStyles!, styleId, pack?.areaStyles);
     }
-    for (const style of visualDelta.connectionStyles ?? []) {
-      snapshotVisualPackAsset(packRollback.connectionStyles!, style.id, pack?.connectionStyles);
+    for (const style of visualDelta.routeStyles ?? []) {
+      snapshotVisualPackAsset(packRollback.routeStyles!, style.id, pack?.routeStyles);
     }
-    for (const styleId of visualDelta.removeConnectionStyleIds ?? []) {
-      snapshotVisualPackAsset(packRollback.connectionStyles!, styleId, pack?.connectionStyles);
+    for (const styleId of visualDelta.removeRouteStyleIds ?? []) {
+      snapshotVisualPackAsset(packRollback.routeStyles!, styleId, pack?.routeStyles);
     }
     for (const style of visualDelta.labelStyles ?? []) {
       snapshotVisualPackAsset(packRollback.labelStyles!, style.id, pack?.labelStyles);
@@ -440,36 +486,47 @@ export function applyRollbackSnapshot(
       name: packRollback.name ?? packId,
       icons: {},
       areaStyles: {},
-      connectionStyles: {},
+      routeStyles: {},
       labelStyles: {},
     });
     if (packRollback.name) pack.name = packRollback.name;
     pack.icons ??= {};
     pack.areaStyles ??= {};
-    pack.connectionStyles ??= {};
+    pack.routeStyles ??= {};
     pack.labelStyles ??= {};
     restoreRecord(pack.icons, packRollback.icons);
     restoreRecord(pack.areaStyles, packRollback.areaStyles);
-    restoreRecord(pack.connectionStyles, packRollback.connectionStyles);
+    restoreRecord(pack.routeStyles, packRollback.routeStyles);
     restoreRecord(pack.labelStyles, packRollback.labelStyles);
   }
 
   restoreRecord(map.nodes, rollback.nodes);
 
-  for (const [connectionId, connection] of Object.entries(rollback.connections ?? {})) {
-    const index = map.connections.findIndex((item) => item.id === connectionId);
-    if (connection === null) {
-      if (index !== -1) map.connections.splice(index, 1);
+  for (const [routeId, route] of Object.entries(rollback.routes ?? {})) {
+    const index = map.routes.findIndex((item) => item.id === routeId);
+    if (route === null) {
+      if (index !== -1) map.routes.splice(index, 1);
     } else if (index === -1) {
-      map.connections.push(cloneValue(connection));
+      map.routes.push(cloneValue(route));
     } else {
-      map.connections[index] = cloneValue(connection);
+      map.routes[index] = cloneValue(route);
     }
   }
 
-  map.connections = map.connections.filter(
-    (connection) => map.nodes[connection.fromNodeId] && map.nodes[connection.toNodeId],
-  );
+  for (const [accessPointId, accessPoint] of Object.entries(rollback.accessPoints ?? {})) {
+    const index = map.accessPoints.findIndex((item) => item.id === accessPointId);
+    if (accessPoint === null) {
+      if (index !== -1) map.accessPoints.splice(index, 1);
+    } else if (index === -1) {
+      map.accessPoints.push(cloneValue(accessPoint));
+    } else {
+      map.accessPoints[index] = cloneValue(accessPoint);
+    }
+  }
+
+  const routeIds = new Set(map.routes.map((route) => route.id));
+  map.routes = map.routes.filter((route) => map.nodes[route.parentId]);
+  map.accessPoints = map.accessPoints.filter((access) => map.nodes[access.nodeId] && routeIds.has(access.routeId));
   map.updatedAt = new Date().toISOString();
 
   return Object.keys(map.nodes).length > 0 ? map : null;
@@ -481,18 +538,23 @@ export function validateWorldMapDeltaQuality(
 ): QualityIssue[] {
   const issues: QualityIssue[] = [];
   const nodes = buildProjectedNodes(currentMap, delta);
-  const removeConnectionIds = new Set(delta.removeConnectionIds ?? []);
-  const connections = [...(currentMap?.connections ?? [])].filter(
-    (connection) => !removeConnectionIds.has(connection.id),
-  );
-  for (const connection of delta.createOrUpdateConnections ?? []) {
-    const index = connections.findIndex((item) => item.id === connection.id);
-    if (index === -1) connections.push(connection);
-    else connections[index] = { ...connections[index], ...connection };
+  const removeRouteIds = new Set(delta.removeRouteIds ?? []);
+  const routes = [...(currentMap?.routes ?? [])].filter((route) => !removeRouteIds.has(route.id));
+  for (const route of delta.createOrUpdateRoutes ?? []) {
+    const index = routes.findIndex((item) => item.id === route.id);
+    if (index === -1) routes.push(route);
+    else routes[index] = { ...routes[index], ...route };
   }
-  for (const assignment of delta.visualPackDelta?.assignConnectionVisuals ?? []) {
-    const connection = connections.find((item) => item.id === assignment.connectionId);
-    if (connection) connection.visual = { ...assignment.visual };
+  const removeAccessPointIds = new Set(delta.removeAccessPointIds ?? []);
+  const accessPoints = [...(currentMap?.accessPoints ?? [])].filter((access) => !removeAccessPointIds.has(access.id));
+  for (const access of delta.createOrUpdateAccessPoints ?? []) {
+    const index = accessPoints.findIndex((item) => item.id === access.id);
+    if (index === -1) accessPoints.push(access);
+    else accessPoints[index] = { ...accessPoints[index], ...access };
+  }
+  for (const assignment of delta.visualPackDelta?.assignRouteVisuals ?? []) {
+    const route = routes.find((item) => item.id === assignment.routeId);
+    if (route) route.visual = { ...assignment.visual };
   }
   const childrenByParent = new Map<string, WorldMapNode[]>();
 
@@ -530,6 +592,13 @@ export function validateWorldMapDeltaQuality(
         });
       }
 
+      if (areaOverflowsView(node, area)) {
+        issues.push({
+          code: 'area_outside_view',
+          message: `Area "${area.id}" on node "${node.id}" extends outside the node view. Keep area polygon points inside the owning node's view coordinate space or enlarge the view.`,
+        });
+      }
+
       const bounds = areaBounds(area);
       if (isIslandNode && node.view && area.kind === 'water' && bounds) {
         const coversMostWidth = bounds.width / node.view.width > 0.85;
@@ -550,6 +619,16 @@ export function validateWorldMapDeltaQuality(
         message: `Node "${node.id}" has ${childCount} child node(s) but no view. Add a generous view for this enterable sub-map.`,
       });
     }
+
+    const directRoomChildren = (childrenByParent.get(node.id) ?? []).filter((child) =>
+      ['room', 'poi'].includes(child.kind),
+    );
+    if (node.kind === 'building' && directRoomChildren.length >= 2 && node.areas?.some(isFloorLikeArea)) {
+      issues.push({
+        code: 'rooms_need_floor_parent',
+        message: `Building "${node.id}" has floor-like interior areas but ${directRoomChildren.length} direct room/POI child node(s). Create floor nodes for known floors and parent those rooms to the matching floor, or remove the floor-like areas and use a single floor-plan layout.`,
+      });
+    }
   }
 
   for (const [parentId, children] of childrenByParent) {
@@ -565,11 +644,28 @@ export function validateWorldMapDeltaQuality(
     const boundedNavigableChildren = children.filter(
       (node) => node.bounds && ['settlement', 'district', 'building', 'room', 'landmark', 'poi'].includes(node.kind),
     );
-    if (boundedNavigableChildren.length >= 3 && !hasSiblingConnection(boundedNavigableChildren, connections)) {
+    if (
+      boundedNavigableChildren.length >= 3 &&
+      !hasSiblingRouteAccess(parentId, boundedNavigableChildren, routes, accessPoints)
+    ) {
       issues.push({
         code: 'disconnected_sibling_map',
-        message: `Parent "${parentId}" has ${boundedNavigableChildren.length} renderable sibling locations but no traversal connections between them. Add physical road, path, corridor, door, adjacent, stairs, elevator, or portal connections where travel routes are known.`,
+        message: `Parent "${parentId}" has ${boundedNavigableChildren.length} renderable sibling locations but no shared route network. Add route geometry and access points for physical roads, paths, corridors, stairs, elevators, or portals where travel routes are known.`,
       });
+    }
+
+    if (
+      boundedNavigableChildren.length >= 3 &&
+      hasSiblingRouteAccess(parentId, boundedNavigableChildren, routes, accessPoints)
+    ) {
+      const coveredChildIds = childIdsWithRouteAccess(parentId, boundedNavigableChildren, routes, accessPoints);
+      const uncoveredChildren = boundedNavigableChildren.filter((child) => !coveredChildIds.has(child.id));
+      if (uncoveredChildren.length > 0) {
+        issues.push({
+          code: 'incomplete_sibling_route_access',
+          message: `Parent "${parentId}" has a shared route network, but ${uncoveredChildren.length} renderable sibling location(s) are not attached by access points: ${uncoveredChildren.map((child) => child.id).join(', ')}. Add access points from each reachable sibling to a route in the same parent view, or remove routes that imply unreachable locations.`,
+        });
+      }
     }
 
     const boundedChildren = children.filter((node) => node.bounds);
@@ -590,13 +686,28 @@ export function validateWorldMapDeltaQuality(
     }
   }
 
-  for (const connection of connections) {
-    const from = nodes[connection.fromNodeId];
-    const to = nodes[connection.toNodeId];
-    if (from && to && (from.parentId === to.id || to.parentId === from.id)) {
+  const routeIds = new Set(routes.map((route) => route.id));
+  const accessCountByRoute = new Map<string, number>();
+  for (const access of accessPoints) {
+    accessCountByRoute.set(access.routeId, (accessCountByRoute.get(access.routeId) ?? 0) + 1);
+  }
+
+  for (const route of routes) {
+    if (routeLooksLikeNamedDestination(route) && (accessCountByRoute.get(route.id) ?? 0) === 0) {
       issues.push({
-        code: 'parent_child_connection',
-        message: `Connection "${connection.id}" connects direct parent/child nodes "${connection.fromNodeId}" and "${connection.toNodeId}". Remove this connection because parentId already represents containment.`,
+        code: 'unattached_named_route',
+        message: `Route "${route.id}" is named like it leads to a specific destination, but it has no access points. Add access points to the destination node(s), create the missing destination node, or rename/remove the route if it is only decorative geometry.`,
+      });
+    }
+  }
+
+  for (const access of accessPoints) {
+    const route = routes.find((item) => item.id === access.routeId);
+    const node = nodes[access.nodeId];
+    if (!node || !routeIds.has(access.routeId) || !route || node.parentId !== route.parentId) {
+      issues.push({
+        code: 'invalid_access_point',
+        message: `Access point "${access.id}" references a missing route or node, or attaches a node outside the route parent view.`,
       });
     }
   }
@@ -611,9 +722,9 @@ export function validateWorldMapDeltaQuality(
     ...existingVisualPacks.flatMap((pack) => Object.keys(pack.areaStyles ?? {})),
     ...(visualDelta?.areaStyles?.map((style) => style.id) ?? []),
   ]);
-  const connectionStyleIds = new Set([
-    ...existingVisualPacks.flatMap((pack) => Object.keys(pack.connectionStyles ?? {})),
-    ...(visualDelta?.connectionStyles?.map((style) => style.id) ?? []),
+  const routeStyleIds = new Set([
+    ...existingVisualPacks.flatMap((pack) => Object.keys(pack.routeStyles ?? {})),
+    ...(visualDelta?.routeStyles?.map((style) => style.id) ?? []),
   ]);
   const labelStyleIds = new Set([
     ...existingVisualPacks.flatMap((pack) => Object.keys(pack.labelStyles ?? {})),
@@ -622,7 +733,7 @@ export function validateWorldMapDeltaQuality(
   const activeVisualPack = getActiveVisualPackAfterDelta(currentMap, delta);
   const activeIcons = Object.values(activeVisualPack?.icons ?? {});
   const activeAreaStyles = Object.values(activeVisualPack?.areaStyles ?? {});
-  const activeConnectionStyles = Object.values(activeVisualPack?.connectionStyles ?? {});
+  const activeRouteStyles = Object.values(activeVisualPack?.routeStyles ?? {});
   const activeLabelStyles = Object.values(activeVisualPack?.labelStyles ?? {});
   const majorVisualNodes = Object.values(nodes).filter(isMajorVisualNode);
 
@@ -687,12 +798,12 @@ export function validateWorldMapDeltaQuality(
       }
     }
 
-    for (const style of activeConnectionStyles) {
-      const assignedCount = connections.filter((connection) => connection.visual?.styleId === style.id).length;
+    for (const style of activeRouteStyles) {
+      const assignedCount = routes.filter((route) => route.visual?.styleId === style.id).length;
       if (assignedCount === 0) {
         issues.push({
-          code: 'unused_connection_style_definition',
-          message: `Connection style "${style.id}" is defined but not assigned to any connection. Assign it to matching connections or remove it with visualPackDelta.removeConnectionStyleIds.`,
+          code: 'unused_route_style_definition',
+          message: `Route style "${style.id}" is defined but not assigned to any route. Assign it to matching routes or remove it with visualPackDelta.removeRouteStyleIds.`,
         });
       }
     }
@@ -758,11 +869,11 @@ export function validateWorldMapDeltaQuality(
     }
   }
 
-  for (const connection of connections) {
-    if (connection.visual?.styleId && !connectionStyleIds.has(connection.visual.styleId)) {
+  for (const route of routes) {
+    if (route.visual?.styleId && !routeStyleIds.has(route.visual.styleId)) {
       issues.push({
-        code: 'missing_connection_style_definition',
-        message: `Connection "${connection.id}" references style "${connection.visual.styleId}" but no active visual pack defines that connection style. Define the style, assign an existing styleId, or remove the invalid connection visual reference.`,
+        code: 'missing_route_style_definition',
+        message: `Route "${route.id}" references style "${route.visual.styleId}" but no active visual pack defines that route style. Define the style, assign an existing styleId, or remove the invalid route visual reference.`,
       });
     }
   }
@@ -783,27 +894,13 @@ export function validateWorldMapDeltaQuality(
       }
     }
 
-    for (const assignment of visualDelta.assignConnectionVisuals ?? []) {
-      if (assignment.visual.styleId && !connectionStyleIds.has(assignment.visual.styleId)) {
+    for (const assignment of visualDelta.assignRouteVisuals ?? []) {
+      if (assignment.visual.styleId && !routeStyleIds.has(assignment.visual.styleId)) {
         issues.push({
-          code: 'missing_connection_style_definition',
-          message: `Connection visual assignment for "${assignment.connectionId}" references style "${assignment.visual.styleId}" but this delta does not define that connection style.`,
+          code: 'missing_route_style_definition',
+          message: `Route visual assignment for "${assignment.routeId}" references style "${assignment.visual.styleId}" but this delta does not define that route style.`,
         });
       }
-    }
-  }
-
-  for (const connection of connections) {
-    if (connection.kind !== 'stairs' && connection.kind !== 'elevator') continue;
-    const from = nodes[connection.fromNodeId];
-    const to = nodes[connection.toNodeId];
-    const fromFloor = getContainingFloor(from, nodes);
-    const toFloor = getContainingFloor(to, nodes);
-    if (fromFloor && toFloor && fromFloor.id !== toFloor.id && (from?.kind !== 'floor' || to?.kind !== 'floor')) {
-      issues.push({
-        code: 'cross_floor_room_connection',
-        message: `Connection "${connection.id}" links "${connection.fromNodeId}" to "${connection.toNodeId}" across floors. Stairs/elevators between floors should connect floor nodes, not specific rooms on different floors.`,
-      });
     }
   }
 
@@ -914,24 +1011,22 @@ function getWorldMapStructuredResponse(format: WorldMapSettings['structuredReque
             },
           },
           removeNodeIds: { type: 'array', items: { type: 'string' } },
-          createOrUpdateConnections: {
+          createOrUpdateRoutes: {
             type: 'array',
             items: {
               type: 'object',
               properties: {
                 id: { type: 'string' },
-                fromNodeId: { type: 'string' },
-                toNodeId: { type: 'string' },
+                parentId: { type: 'string' },
                 kind: {
                   type: 'string',
                   enum: ['road', 'path', 'corridor', 'door', 'stairs', 'elevator', 'portal', 'adjacent', 'unknown'],
                 },
                 label: { type: 'string' },
-                bidirectional: { type: 'boolean' },
                 points: {
                   type: 'array',
                   minItems: 2,
-                  maxItems: 12,
+                  maxItems: 40,
                   items: {
                     type: 'object',
                     properties: {
@@ -941,6 +1036,7 @@ function getWorldMapStructuredResponse(format: WorldMapSettings['structuredReque
                     required: ['x', 'y'],
                   },
                 },
+                smoothPath: { type: 'boolean' },
                 visual: {
                   type: 'object',
                   properties: {
@@ -948,10 +1044,36 @@ function getWorldMapStructuredResponse(format: WorldMapSettings['structuredReque
                   },
                 },
               },
-              required: ['id', 'fromNodeId', 'toNodeId', 'kind'],
+              required: ['id', 'parentId', 'kind', 'points'],
             },
           },
-          removeConnectionIds: { type: 'array', items: { type: 'string' } },
+          removeRouteIds: { type: 'array', items: { type: 'string' } },
+          createOrUpdateAccessPoints: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                routeId: { type: 'string' },
+                nodeId: { type: 'string' },
+                point: {
+                  type: 'object',
+                  properties: {
+                    x: { type: 'number' },
+                    y: { type: 'number' },
+                  },
+                  required: ['x', 'y'],
+                },
+                label: { type: 'string' },
+                kind: {
+                  type: 'string',
+                  enum: ['entrance', 'door', 'gate', 'stairs', 'elevator', 'dock', 'trailhead', 'portal', 'other'],
+                },
+              },
+              required: ['id', 'routeId', 'nodeId', 'point'],
+            },
+          },
+          removeAccessPointIds: { type: 'array', items: { type: 'string' } },
           visualPackDelta: {
             type: 'object',
             properties: {
@@ -959,7 +1081,7 @@ function getWorldMapStructuredResponse(format: WorldMapSettings['structuredReque
               packName: { type: 'string' },
               removeIconIds: { type: 'array', items: { type: 'string' } },
               removeAreaStyleIds: { type: 'array', items: { type: 'string' } },
-              removeConnectionStyleIds: { type: 'array', items: { type: 'string' } },
+              removeRouteStyleIds: { type: 'array', items: { type: 'string' } },
               removeLabelStyleIds: { type: 'array', items: { type: 'string' } },
               icons: {
                 type: 'array',
@@ -1006,7 +1128,7 @@ function getWorldMapStructuredResponse(format: WorldMapSettings['structuredReque
                   required: ['id', 'label'],
                 },
               },
-              connectionStyles: {
+              routeStyles: {
                 type: 'array',
                 items: {
                   type: 'object',
@@ -1056,12 +1178,12 @@ function getWorldMapStructuredResponse(format: WorldMapSettings['structuredReque
                   required: ['nodeId', 'visual'],
                 },
               },
-              assignConnectionVisuals: {
+              assignRouteVisuals: {
                 type: 'array',
                 items: {
                   type: 'object',
                   properties: {
-                    connectionId: { type: 'string' },
+                    routeId: { type: 'string' },
                     visual: {
                       type: 'object',
                       properties: {
@@ -1069,7 +1191,7 @@ function getWorldMapStructuredResponse(format: WorldMapSettings['structuredReque
                       },
                     },
                   },
-                  required: ['connectionId', 'visual'],
+                  required: ['routeId', 'visual'],
                 },
               },
             },
@@ -1272,7 +1394,7 @@ class WorldMapManager {
       name: 'System',
       content: existingMap
         ? `[Existing world map]\nThis map is useful saved state, but it may be incomplete, outdated, or partly wrong. Preserve valid existing ids and topology where possible, but correct clear mistakes and add missing stable locations from the current chat/lore context.\n${JSON.stringify(existingMap)}`
-        : '[Existing world map]\nNo map exists yet. Create a complete initial world map from the available chat context. Use the most useful playable map scope as rootNodeId; do not create generic roots such as "Earth" unless the chat actually has multiple world-scale regions. Include important known locations, sub-map capable places, floors/rooms when known, traversal connections, renderable bounds, valid CSS background colors, generous view sizes for enterable nodes, stable area overlays, and routed connection points. Use backgrounds for broad materials and irregular areas for land/woods/beaches/fields/interiors. Do not create connections for parent-child hierarchy or adjacent/path/corridor edges from a child to its direct parent.',
+        : '[Existing world map]\nNo map exists yet. Create a complete initial world map from the available chat context. Use the most useful playable map scope as rootNodeId; do not create generic roots such as "Earth" unless the chat actually has multiple world-scale regions. Include important known locations, sub-map capable places, floors/rooms when known, traversal route networks, access points from places onto routes, renderable bounds, valid CSS background colors, generous view sizes for enterable nodes, stable area overlays, and route geometry. Use backgrounds for broad materials and irregular areas for land/woods/beaches/fields/interiors. Do not create routes for parent-child hierarchy; parentId already represents containment.',
     });
     return messages;
   }
@@ -1479,7 +1601,7 @@ class WorldMapManager {
           repairMessages,
           'Schema validation error',
           `${generation.parseError}\n\nFix invalid enum values, invalid visual fields, invalid dash strings, additional properties, or other schema errors by using the closest valid schema value or omitting the invalid optional field.`,
-          'Repair your previous World Map structured JSON delta. Return the complete corrected delta, not a partial patch. The previous response was schema-invalid and was not applied, so omitting unchanged nodes or connections would delete the usable map context.',
+          'Repair your previous World Map structured JSON delta. Return the complete corrected delta, not a partial patch. The previous response was schema-invalid and was not applied, so omitting unchanged nodes, routes, or access points would delete the usable map context.',
           settings,
           connectionProfile,
           structuredResponse,
@@ -1515,8 +1637,8 @@ class WorldMapManager {
         let repaired = await this.repairStructuredMapDelta(
           repairMessages,
           'Map quality validation issues',
-          `${qualityValidationError}\n\n[Current candidate map after all applied deltas]\n${candidateMapJson}\n\nThis is a valid structured delta that needs render-quality fixes. You may return only the corrected nodes, connections, removals, or visual assignments as a delta patch. Keep unchanged map data out of the response if it is not needed for the correction. Areas are embedded inside their owning node; to remove or change areas, resend that node with the corrected complete areas array. Do not put area ids in removeNodeIds because areas are not nodes.`,
-          'Repair your previous World Map structured JSON delta. You may return only the corrected nodes, connections, removals, or visual assignments as a delta patch because the previous structured delta has already been applied to a candidate map.',
+          `${qualityValidationError}\n\n[Current candidate map after all applied deltas]\n${candidateMapJson}\n\nThis is a valid structured delta that needs render-quality fixes. You may return only the corrected nodes, routes, access points, removals, or visual assignments as a delta patch. Keep unchanged map data out of the response if it is not needed for the correction. Areas are embedded inside their owning node; to remove or change areas, resend that node with the corrected complete areas array. Do not put area ids in removeNodeIds because areas are not nodes.`,
+          'Repair your previous World Map structured JSON delta. You may return only the corrected nodes, routes, access points, removals, or visual assignments as a delta patch because the previous structured delta has already been applied to a candidate map.',
           settings,
           connectionProfile,
           structuredResponse,

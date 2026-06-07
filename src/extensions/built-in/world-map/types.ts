@@ -11,7 +11,7 @@ export type WorldMapNodeKind =
   | 'landmark'
   | 'poi';
 
-export type WorldMapConnectionKind =
+export type WorldMapRouteKind =
   | 'road'
   | 'path'
   | 'corridor'
@@ -39,7 +39,7 @@ export interface WorldMapNodeVisualRef {
   labelStyleId?: string;
 }
 
-export interface WorldMapConnectionVisualRef {
+export interface WorldMapRouteVisualRef {
   styleId?: string;
 }
 
@@ -73,16 +73,23 @@ export interface WorldMapArea {
   };
 }
 
-export interface WorldMapConnection {
+export interface WorldMapRoute {
   id: string;
-  fromNodeId: string;
-  toNodeId: string;
-  kind: WorldMapConnectionKind;
+  parentId: string;
+  kind: WorldMapRouteKind;
   label?: string;
-  bidirectional?: boolean;
   points?: WorldMapPoint[];
   smoothPath?: boolean;
-  visual?: WorldMapConnectionVisualRef;
+  visual?: WorldMapRouteVisualRef;
+}
+
+export interface WorldMapAccessPoint {
+  id: string;
+  routeId: string;
+  nodeId: string;
+  point: WorldMapPoint;
+  label?: string;
+  kind?: 'entrance' | 'door' | 'gate' | 'stairs' | 'elevator' | 'dock' | 'trailhead' | 'portal' | 'other';
 }
 
 export interface WorldMapIconDefinition {
@@ -102,7 +109,7 @@ export interface WorldMapAreaStyleDefinition {
   opacity?: number;
 }
 
-export interface WorldMapConnectionStyleDefinition {
+export interface WorldMapRouteStyleDefinition {
   id: string;
   label: string;
   stroke?: string;
@@ -123,7 +130,7 @@ export interface WorldMapVisualPack {
   name: string;
   icons?: Record<string, WorldMapIconDefinition>;
   areaStyles?: Record<string, WorldMapAreaStyleDefinition>;
-  connectionStyles?: Record<string, WorldMapConnectionStyleDefinition>;
+  routeStyles?: Record<string, WorldMapRouteStyleDefinition>;
   labelStyles?: Record<string, WorldMapLabelStyleDefinition>;
 }
 
@@ -133,7 +140,8 @@ export interface WorldMapDocument {
   rootNodeId?: string;
   activeVisualPackId?: string;
   nodes: Record<string, WorldMapNode>;
-  connections: WorldMapConnection[];
+  routes: WorldMapRoute[];
+  accessPoints: WorldMapAccessPoint[];
   visualPacks?: Record<string, WorldMapVisualPack>;
 }
 
@@ -142,22 +150,24 @@ export interface WorldMapVisualPackDelta {
   packName: string;
   removeIconIds?: string[];
   removeAreaStyleIds?: string[];
-  removeConnectionStyleIds?: string[];
+  removeRouteStyleIds?: string[];
   removeLabelStyleIds?: string[];
   icons?: WorldMapIconDefinition[];
   areaStyles?: WorldMapAreaStyleDefinition[];
-  connectionStyles?: WorldMapConnectionStyleDefinition[];
+  routeStyles?: WorldMapRouteStyleDefinition[];
   labelStyles?: WorldMapLabelStyleDefinition[];
   assignNodeVisuals?: Array<{ nodeId: string; visual: WorldMapNodeVisualRef }>;
-  assignConnectionVisuals?: Array<{ connectionId: string; visual: WorldMapConnectionVisualRef }>;
+  assignRouteVisuals?: Array<{ routeId: string; visual: WorldMapRouteVisualRef }>;
 }
 
 export interface WorldMapDelta {
   rootNodeId?: string;
   createOrUpdateNodes?: WorldMapNode[];
   removeNodeIds?: string[];
-  createOrUpdateConnections?: WorldMapConnection[];
-  removeConnectionIds?: string[];
+  createOrUpdateRoutes?: WorldMapRoute[];
+  removeRouteIds?: string[];
+  createOrUpdateAccessPoints?: WorldMapAccessPoint[];
+  removeAccessPointIds?: string[];
   visualPackDelta?: WorldMapVisualPackDelta;
 }
 
@@ -166,7 +176,7 @@ export interface WorldMapVisualPackRollback {
   name?: string;
   icons?: Record<string, WorldMapIconDefinition | null>;
   areaStyles?: Record<string, WorldMapAreaStyleDefinition | null>;
-  connectionStyles?: Record<string, WorldMapConnectionStyleDefinition | null>;
+  routeStyles?: Record<string, WorldMapRouteStyleDefinition | null>;
   labelStyles?: Record<string, WorldMapLabelStyleDefinition | null>;
 }
 
@@ -174,7 +184,8 @@ export interface WorldMapRollbackSnapshot {
   rootNodeId?: string | null;
   activeVisualPackId?: string | null;
   nodes?: Record<string, WorldMapNode | null>;
-  connections?: Record<string, WorldMapConnection | null>;
+  routes?: Record<string, WorldMapRoute | null>;
+  accessPoints?: Record<string, WorldMapAccessPoint | null>;
   visualPacks?: Record<string, WorldMapVisualPackRollback>;
 }
 
@@ -211,7 +222,7 @@ export interface WorldMapSettings {
   includeLastXMessages: number;
   includeActiveLorebookEntriesOnCreate: boolean;
   maxNodesPerDelta: number;
-  maxConnectionsPerDelta: number;
+  maxRoutesPerDelta: number;
   maxVisualAssetsPerDelta: number;
   updatePrompt: string;
 }
@@ -225,9 +236,9 @@ export const DEFAULT_UPDATE_PROMPT = `You are a World Map Cartographer for an AI
 Create or update a structured map from the recent chat context. Return only the requested structured JSON delta.
 
 Rules:
-- Build stable map topology only: worlds, regions, settlements, districts, buildings, floors, rooms, landmarks, points of interest, and traversal connections.
+- Build stable map topology only: worlds, regions, settlements, districts, buildings, floors, rooms, landmarks, points of interest, route networks, and access points.
 - Do not track character positions or highly dynamic state.
-- Do not create social/person relationship edges. Connections are physical/topological map relationships only.
+- Do not create social/person relationship edges. Routes and access points are physical/topological map features only.
 - Treat existing map data as useful saved state, not perfect canon. It may be incomplete, outdated, or partly wrong. Preserve valid existing ids and topology where possible, but correct clear mistakes and add missing stable locations from current chat/lore context.
 - Prefer a small, useful delta. Do not rewrite the whole map unless the existing map is empty or clearly wrong.
 - Choose rootNodeId as the most useful playable map scope. Do not create generic roots such as "Earth" unless the chat actually has multiple world-scale regions.
@@ -237,22 +248,26 @@ Rules:
 - Add view width/height for nodes that have children. Use generous local coordinate spaces: roughly 1200x800 for regions/campuses, 900x650 for buildings, and 800x600 for floors. Floor views should stay spacious even when the floor's bounds inside the parent building are a small strip. Do not create tiny 150x100 interior maps.
 - view.background must be a valid CSS color such as "#20252b", "rgb(32,37,43)", "seagreen", or "darkslategray". Do not put style names like "ocean" or "campus-ground" in background.
 - Use node.areas for stable non-location shapes such as island landmass, woods, cliffs, beach, parks, courtyards, fields, gardens, walls, or large interior zones.
+- If a place needs routes, access points, labels, room-level identity, or traversal as a destination, create it as a node instead of only as an area. Do not create a route "to" an area unless there is also a matching node to attach with an access point.
 - area.kind must be one of the schema values. Do not use "room" as an area kind; create a room node when the room needs its own identity.
+- Keep area polygon points inside the owning node view. If an interior/floor area would exceed the view, enlarge the view or reduce the polygon.
 - Use the view background for the broad surrounding material such as ocean, sky, void, ground, or wall color. Do not create multiple full-view overlapping areas. Areas should be smaller or irregular polygons that sit inside the view. For island/coastal maps, use an ocean/water background and draw the landmass as an irregular terrain polygon inside it; do not draw a full-view water area over land. Beaches are terrain areas, not water areas.
-- Use connection.points with at least two points for routed roads/paths/corridors. Set smoothPath true only when a road/path should render as a smooth natural curve; leave it false/omitted for doors, corridors, stairs, elevators, and crisp interior routes. Omit points if no route is known; do not send an empty points array.
+- Use routes for roads, paths, corridors, stairs, elevators, portals, trails, and other traversal geometry. A route belongs to one parent view and has points in that view's coordinate space. Set smoothPath true only when a road/path should render as a smooth natural curve; leave it false/omitted for doors, corridors, stairs, elevators, and crisp interior routes.
+- Use accessPoints to attach locations to routes. Each access point has routeId, nodeId, and point; the route's parentId determines the parent view. Do not create pairwise edges between places when they can share one route network.
+- When a parent view has a route network, attach every reachable renderable sibling location with an access point. Avoid leaving important buildings, rooms, landmarks, or POIs visually present but unreachable.
 - Stairs and elevators between floors should connect floor nodes or explicit stair/elevator nodes, not unrelated rooms on different floors.
 - Sibling nodes in the same parent view should not share identical bounds or heavily overlap. Buildings, landmarks, districts, regions, floors, and rooms all need distinct renderable footprints. Floor nodes under the same building can use stacked strips; rooms should use a floor-plan layout.
-- Keep room parentage consistent. If a room is on a specific floor, create that floor node and parent the room to it.
-- Do not create connections for parent-child hierarchy. parentId already represents containment. Do not create adjacent/path/corridor edges from a room to its own floor, from a floor to its own building, or from a child to its direct parent.
-- For non-trivial maps, include visualPackDelta with chat-specific icons, area styles, connection styles, and label styles.
+- Keep room parentage consistent. If a building has known floors or floor-like interior areas, create floor nodes and parent rooms to their specific floor instead of placing all rooms directly under the building.
+- Do not create routes/access points for parent-child hierarchy. parentId already represents containment.
+- For non-trivial maps, include visualPackDelta with chat-specific icons, area styles, route styles, and label styles.
 - Define icons for important visible location categories in this chat, such as major regions, settlements, buildings, landmarks, points of interest, floors, and notable rooms.
 - Custom visual-pack icons should include safe svgSymbol snippets when the icon is intended to look custom. Use simple <symbol> SVG with paths/shapes only. The <symbol> tag must include id exactly equal to the icon id, for example: <symbol id="icon-library" viewBox="0 0 24 24">...</symbol>.
 - Assign visual.iconId to important visible nodes. Do not leave all nodes on renderer fallback icons when the map has many locations.
-- Prefer defining only icons and styles that are assigned. During repair, use removeIconIds, removeAreaStyleIds, removeConnectionStyleIds, or removeLabelStyleIds to delete stale visual assets.
+- Prefer defining only icons and styles that are assigned. During repair, use removeIconIds, removeAreaStyleIds, removeRouteStyleIds, or removeLabelStyleIds to delete stale visual assets.
 - If the visual pack defines a floor or room icon, assign it to important floor or room nodes instead of leaving those nodes unassigned.
 - Visual pack node assignments must use { "nodeId": "...", "visual": { "iconId": "..." } }.
-- Visual pack connection assignments must use { "connectionId": "...", "visual": { "styleId": "..." } }.
-- Connection styles must use "stroke" for line color. Do not use "color".
+- Visual pack route assignments must use { "routeId": "...", "visual": { "styleId": "..." } }.
+- route styles must use "stroke" for line color. Do not use "color".
 - For solid lines, omit "dash". For dashed or dotted lines, use numeric SVG dash strings with spaces such as "8 6" or "2 5". Do not use commas.
 
 Existing map data and recent chat messages are already in context.`;
@@ -266,7 +281,7 @@ export const DEFAULT_SETTINGS: WorldMapSettings = {
   includeLastXMessages: -1,
   includeActiveLorebookEntriesOnCreate: true,
   maxNodesPerDelta: 240,
-  maxConnectionsPerDelta: 360,
+  maxRoutesPerDelta: 360,
   maxVisualAssetsPerDelta: 90,
   updatePrompt: DEFAULT_UPDATE_PROMPT,
 };

@@ -53,9 +53,41 @@ function createMap(): WorldMapDocument {
         bounds: { x: 0, y: 0, width: 200, height: 160 },
       },
     },
-    connections: [
-      { id: 'admin-field', fromNodeId: 'admin', toNodeId: 'field', kind: 'path' },
-      { id: 'floors', fromNodeId: 'dorm_floor_3', toNodeId: 'dorm_floor_4', kind: 'stairs' },
+    routes: [
+      {
+        id: 'campus-path',
+        parentId: 'root',
+        kind: 'path',
+        points: [
+          { x: 190, y: 170 },
+          { x: 245, y: 205 },
+        ],
+      },
+      {
+        id: 'floor-stairs',
+        parentId: 'dorm',
+        kind: 'stairs',
+        points: [
+          { x: 100, y: 80 },
+          { x: 100, y: 80 },
+        ],
+      },
+    ],
+    accessPoints: [
+      { id: 'admin-campus-path', routeId: 'campus-path', nodeId: 'admin', point: { x: 190, y: 170 } },
+      { id: 'field-campus-path', routeId: 'campus-path', nodeId: 'field', point: { x: 245, y: 205 } },
+      {
+        id: 'third-floor-stairs',
+        routeId: 'floor-stairs',
+        nodeId: 'dorm_floor_3',
+        point: { x: 100, y: 80 },
+      },
+      {
+        id: 'fourth-floor-stairs',
+        routeId: 'floor-stairs',
+        nodeId: 'dorm_floor_4',
+        point: { x: 100, y: 80 },
+      },
     ],
     visualPacks: {
       pack: {
@@ -63,7 +95,7 @@ function createMap(): WorldMapDocument {
         name: 'Pack',
         icons: { building: { id: 'building', label: 'Building', fallbackKind: 'building', color: '#808080' } },
         areaStyles: { land: { id: 'land', label: 'Land', fill: '#445533', opacity: 0.5 } },
-        connectionStyles: { path: { id: 'path', label: 'Path', stroke: '#776655', width: 3 } },
+        routeStyles: { path: { id: 'path', label: 'Path', stroke: '#776655', width: 3 } },
         labelStyles: {},
       },
     },
@@ -97,47 +129,57 @@ describe('smartShuffleWorldMap', () => {
     expect(overlaps(map.nodes.dorm_floor_3.bounds!, map.nodes.dorm_floor_4.bounds!)).toBe(false);
   });
 
-  it('regenerates routed connection points for visible sibling connections', () => {
+  it('regenerates route geometry for visible sibling route networks', () => {
     const source = createMap();
     source.nodes.admin.bounds = { x: 100, y: 100, width: 120, height: 100 };
     source.nodes.field.bounds = { x: 760, y: 500, width: 120, height: 100 };
     const map = smartShuffleWorldMap(source, 'paths', 'seed');
-    const connection = map.connections.find((item) => item.id === 'admin-field');
+    const route = map.routes.find((item) => item.id === 'campus-path');
 
-    expect(connection?.points?.length).toBeGreaterThanOrEqual(2);
-    expect(connection?.smoothPath === true || connection?.smoothPath === undefined).toBe(true);
+    expect(route?.points?.length).toBeGreaterThanOrEqual(2);
+    expect(route?.smoothPath === true || route?.smoothPath === undefined).toBe(true);
+    expect(map.accessPoints.find((access) => access.id === 'admin-campus-path')?.point).toBeDefined();
   });
 
-  it('clears routed points for connections across different parent views', () => {
+  it('clears route geometry when a route has fewer than two visible access points', () => {
     const source = createMap();
-    source.connections.push({
-      id: 'cross-parent',
-      fromNodeId: 'admin',
-      toNodeId: 'dorm_floor_3',
+    source.routes.push({
+      id: 'single-access-route',
+      parentId: 'root',
       kind: 'stairs',
       points: [
         { x: 220, y: 180 },
         { x: 260, y: 220 },
       ],
     });
+    source.accessPoints.push({
+      id: 'single-access',
+      routeId: 'single-access-route',
+      nodeId: 'admin',
+      point: { x: 220, y: 180 },
+    });
 
     const map = smartShuffleWorldMap(source, 'paths', 'seed');
-    const connection = map.connections.find((item) => item.id === 'cross-parent');
+    const route = map.routes.find((item) => item.id === 'single-access-route');
 
-    expect(connection?.points).toBeUndefined();
-    expect(connection?.smoothPath).toBeUndefined();
+    expect(route?.points).toBeUndefined();
+    expect(route?.smoothPath).toBeUndefined();
   });
 
   it('deconflicts duplicate sibling routes instead of stacking identical paths', () => {
     const source = createMap();
     source.nodes.admin.bounds = { x: 100, y: 100, width: 120, height: 100 };
     source.nodes.field.bounds = { x: 760, y: 500, width: 120, height: 100 };
-    source.connections.push({ id: 'admin-field-alt', fromNodeId: 'admin', toNodeId: 'field', kind: 'road' });
+    source.routes.push({ id: 'campus-road', parentId: 'root', kind: 'road' });
+    source.accessPoints.push(
+      { id: 'admin-campus-road', routeId: 'campus-road', nodeId: 'admin', point: { x: 160, y: 150 } },
+      { id: 'field-campus-road', routeId: 'campus-road', nodeId: 'field', point: { x: 820, y: 550 } },
+    );
 
     const map = smartShuffleWorldMap(source, 'paths', 'seed');
-    const first = map.connections.find((connection) => connection.id === 'admin-field')?.points;
-    const second = map.connections.find((connection) => connection.id === 'admin-field-alt')?.points;
-    const stairs = map.connections.find((connection) => connection.id === 'floors');
+    const first = map.routes.find((route) => route.id === 'campus-path')?.points;
+    const second = map.routes.find((route) => route.id === 'campus-road')?.points;
+    const stairs = map.routes.find((route) => route.id === 'floor-stairs');
 
     expect(second?.length).toBeGreaterThanOrEqual(2);
     expect(second).not.toEqual(first);
@@ -172,11 +214,10 @@ describe('smartShuffleWorldMap', () => {
 
     expect(map.visualPacks?.pack.icons?.building.color).not.toBe(source.visualPacks?.pack.icons?.building.color);
     expect(map.visualPacks?.pack.areaStyles?.land.fill).not.toBe(source.visualPacks?.pack.areaStyles?.land.fill);
-    expect(map.visualPacks?.pack.connectionStyles?.path.width).toBeLessThanOrEqual(5.5);
+    expect(map.visualPacks?.pack.routeStyles?.path.width).toBeLessThanOrEqual(5.5);
     expect(Object.keys(map.nodes)).toEqual(Object.keys(source.nodes));
-    expect(map.connections.map((connection) => connection.id)).toEqual(
-      source.connections.map((connection) => connection.id),
-    );
+    expect(map.routes.map((route) => route.id)).toEqual(source.routes.map((route) => route.id));
+    expect(map.accessPoints.map((access) => access.id)).toEqual(source.accessPoints.map((access) => access.id));
   });
 
   it('creates visible style assignments for maps without an existing visual pack', () => {
@@ -188,7 +229,7 @@ describe('smartShuffleWorldMap', () => {
 
     expect(map.activeVisualPackId).toBe('smart_shuffle');
     expect(map.nodes.admin.visual?.iconId).toBe('smart_building');
-    expect(map.connections.find((connection) => connection.id === 'admin-field')?.visual?.styleId).toBe('smart_path');
+    expect(map.routes.find((route) => route.id === 'campus-path')?.visual?.styleId).toBe('smart_path');
     expect(map.visualPacks?.smart_shuffle?.icons?.smart_building.color).toBeDefined();
   });
 

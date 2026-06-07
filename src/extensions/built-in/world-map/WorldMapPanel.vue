@@ -5,12 +5,12 @@ import { getMapFromMetadata } from './map-utils';
 import type { WorldMapShuffleMode } from './smart-shuffle';
 import type {
   WorldMapAreaStyleDefinition,
-  WorldMapConnection,
-  WorldMapConnectionStyleDefinition,
   WorldMapDocument,
   WorldMapExtensionAPI,
   WorldMapNode,
   WorldMapNodeKind,
+  WorldMapRoute,
+  WorldMapRouteStyleDefinition,
 } from './types';
 import { WORLD_MAP_UPDATED_EVENT } from './types';
 
@@ -95,10 +95,17 @@ const activeChildren = computed(() => {
     });
 });
 
-const visibleConnections = computed(() => {
+const visibleRoutes = computed(() => {
   if (!map.value) return [];
-  const ids = new Set(activeChildren.value.map((node) => node.id));
-  return map.value.connections.filter((connection) => ids.has(connection.fromNodeId) && ids.has(connection.toNodeId));
+  if (!activeView.value) return [];
+  return map.value.routes.filter((route) => route.parentId === activeView.value?.id);
+});
+
+const visibleAccessPoints = computed(() => {
+  if (!map.value || !activeView.value) return [];
+  const routeIds = new Set(visibleRoutes.value.map((route) => route.id));
+  const childIds = new Set(activeChildren.value.map((node) => node.id));
+  return map.value.accessPoints.filter((access) => routeIds.has(access.routeId) && childIds.has(access.nodeId));
 });
 
 const activeAreas = computed(() => activeView.value?.areas ?? []);
@@ -236,8 +243,8 @@ function getCameraFitBounds(): {
     });
   }
 
-  for (const connection of visibleConnections.value) {
-    const points = connectionPoints(connection);
+  for (const route of visibleRoutes.value) {
+    const points = route.points ?? [];
     if (points.length === 0) continue;
     const xs = points.map((point) => point.x);
     const ys = points.map((point) => point.y);
@@ -803,17 +810,9 @@ async function copyMap(): Promise<void> {
   }
 }
 
-function connectionPoints(connection: WorldMapConnection): Array<{ x: number; y: number }> {
-  if (!map.value) return [];
-  const from = map.value.nodes[connection.fromNodeId];
-  const to = map.value.nodes[connection.toNodeId];
-  if (!from || !to) return [];
-  return [nodeCenter(from), ...(connection.points ?? []), nodeCenter(to)];
-}
-
-function connectionPath(connection: WorldMapConnection): string {
-  const points = connectionPoints(connection);
-  if (connection.smoothPath && points.length > 2) {
+function routePath(route: WorldMapRoute): string {
+  const points = route.points ?? [];
+  if (route.smoothPath && points.length > 2) {
     const commands = [`M ${points[0].x} ${points[0].y}`];
     for (let index = 1; index < points.length - 2; index += 1) {
       const midpoint = {
@@ -828,6 +827,19 @@ function connectionPath(connection: WorldMapConnection): string {
     return commands.join(' ');
   }
   return points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+}
+
+function accessLine(access: NonNullable<typeof visibleAccessPoints.value>[number]): string {
+  if (!map.value) return '';
+  const node = map.value.nodes[access.nodeId];
+  if (!node) return '';
+  const start = nodeCenter(node);
+  return `M ${start.x} ${start.y} L ${access.point.x} ${access.point.y}`;
+}
+
+function accessStroke(access: NonNullable<typeof visibleAccessPoints.value>[number]): string {
+  const route = visibleRoutes.value.find((item) => item.id === access.routeId);
+  return route ? (routeStyle(route).stroke ?? '#607482') : '#607482';
 }
 
 function nodeIconHref(node: WorldMapNode): string | null {
@@ -894,14 +906,14 @@ function mapAreaStyle(area: NonNullable<WorldMapNode['areas']>[number]): WorldMa
   };
 }
 
-function connectionStyle(connection: WorldMapConnection): WorldMapConnectionStyleDefinition {
-  const styleId = connection.visual?.styleId;
-  const packStyle = styleId ? activeVisualPack.value?.connectionStyles?.[styleId] : undefined;
+function routeStyle(route: WorldMapRoute): WorldMapRouteStyleDefinition {
+  const styleId = route.visual?.styleId;
+  const packStyle = styleId ? activeVisualPack.value?.routeStyles?.[styleId] : undefined;
   return {
     id: 'fallback',
     label: 'Fallback',
-    stroke: packStyle?.stroke ?? (connection.kind === 'road' ? '#77664b' : '#607482'),
-    width: packStyle?.width ?? (connection.kind === 'road' ? 8 : 4),
+    stroke: packStyle?.stroke ?? (route.kind === 'road' ? '#77664b' : '#607482'),
+    width: packStyle?.width ?? (route.kind === 'road' ? 8 : 4),
     dash: packStyle?.dash,
     linecap: packStyle?.linecap ?? 'round',
   };
@@ -1181,15 +1193,24 @@ onBeforeUnmount(() => {
               {{ area.label }}
             </text>
           </g>
-          <g class="world-map-panel__connections" :opacity="transitionSceneOpacity">
+          <g class="world-map-panel__routes" :opacity="transitionSceneOpacity">
             <path
-              v-for="connection in visibleConnections"
-              :key="connection.id"
-              :d="connectionPath(connection)"
-              :stroke="connectionStyle(connection).stroke"
-              :stroke-width="connectionStyle(connection).width"
-              :stroke-dasharray="connectionStyle(connection).dash"
-              :stroke-linecap="connectionStyle(connection).linecap"
+              v-for="route in visibleRoutes"
+              :key="route.id"
+              :d="routePath(route)"
+              :stroke="routeStyle(route).stroke"
+              :stroke-width="routeStyle(route).width"
+              :stroke-dasharray="routeStyle(route).dash"
+              :stroke-linecap="routeStyle(route).linecap"
+            />
+            <path
+              v-for="access in visibleAccessPoints"
+              :key="access.id"
+              :d="accessLine(access)"
+              :stroke="accessStroke(access)"
+              :stroke-width="2"
+              stroke-linecap="round"
+              stroke-dasharray="4 4"
             />
           </g>
           <g class="world-map-panel__nodes">
@@ -1385,7 +1406,7 @@ onBeforeUnmount(() => {
   touch-action: none;
 }
 
-.world-map-panel__connections path {
+.world-map-panel__routes path {
   fill: none;
   opacity: 0.82;
 }

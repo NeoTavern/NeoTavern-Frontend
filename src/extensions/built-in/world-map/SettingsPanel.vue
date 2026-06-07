@@ -101,8 +101,8 @@ const resetPromptTools = computed(() => [
     <FormItem label="Max Nodes Per Delta">
       <Input v-model.number="settings.maxNodesPerDelta" type="number" :min="4" :max="900" />
     </FormItem>
-    <FormItem label="Max Connections Per Delta">
-      <Input v-model.number="settings.maxConnectionsPerDelta" type="number" :min="4" :max="1500" />
+    <FormItem label="Max Routes Per Delta">
+      <Input v-model.number="settings.maxRoutesPerDelta" type="number" :min="4" :max="1500" />
     </FormItem>
     <FormItem label="Max Visual Assets Per Delta">
       <Input v-model.number="settings.maxVisualAssetsPerDelta" type="number" :min="0" :max="300" />

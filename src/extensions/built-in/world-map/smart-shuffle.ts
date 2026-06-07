@@ -1,11 +1,12 @@
 import type {
+  WorldMapAccessPoint,
   WorldMapArea,
   WorldMapBounds,
-  WorldMapConnection,
   WorldMapDocument,
   WorldMapNode,
   WorldMapNodeKind,
   WorldMapPoint,
+  WorldMapRoute,
 } from './types';
 
 export type WorldMapShuffleMode = 'all' | 'positions' | 'paths' | 'areas' | 'style';
@@ -46,17 +47,17 @@ const KIND_SIZE_LIMITS: Record<WorldMapNodeKind, { minWidth: number; minHeight: 
 const STYLE_PALETTES = [
   {
     area: ['#6f8f4f', '#466b43', '#8fa85f', '#6e6b5c', '#4d7a73'],
-    connection: ['#7d6b4f', '#9a815d', '#66717f', '#7a8560'],
+    route: ['#7d6b4f', '#9a815d', '#66717f', '#7a8560'],
     label: { color: '#f5f7f0', background: 'rgba(24,30,32,0.72)' },
   },
   {
     area: ['#587a8f', '#395869', '#7c9baa', '#56616b', '#69806e'],
-    connection: ['#8a785f', '#b19a72', '#5d7482', '#7d8b74'],
+    route: ['#8a785f', '#b19a72', '#5d7482', '#7d8b74'],
     label: { color: '#f7fbff', background: 'rgba(20,28,36,0.74)' },
   },
   {
     area: ['#7f6f95', '#5d5271', '#9a8ab1', '#5f6f79', '#74805c'],
-    connection: ['#887761', '#a78c68', '#706b84', '#75806a'],
+    route: ['#887761', '#a78c68', '#706b84', '#75806a'],
     label: { color: '#fffaf4', background: 'rgba(34,28,38,0.74)' },
   },
 ];
@@ -75,7 +76,7 @@ const DEFAULT_KIND_ICON_IDS: Record<WorldMapNodeKind, string> = {
   poi: 'smart_poi',
 };
 
-const DEFAULT_CONNECTION_STYLE_IDS: Record<WorldMapConnection['kind'], string> = {
+const DEFAULT_CONNECTION_STYLE_IDS: Record<WorldMapRoute['kind'], string> = {
   road: 'smart_road',
   path: 'smart_path',
   corridor: 'smart_corridor',
@@ -204,9 +205,18 @@ function getChildrenByParent(map: WorldMapDocument): Map<string, WorldMapNode[]>
   return childrenByParent;
 }
 
-function connectionsForChildren(children: LayoutNode[], connections: WorldMapConnection[]): WorldMapConnection[] {
+function routeLinksForChildren(
+  children: LayoutNode[],
+  routes: WorldMapRoute[],
+  accessPoints: WorldMapAccessPoint[],
+): WorldMapRoute[] {
   const ids = new Set(children.map((child) => child.id));
-  return connections.filter((connection) => ids.has(connection.fromNodeId) && ids.has(connection.toNodeId));
+  const routeAccessCounts = new Map<string, number>();
+  for (const access of accessPoints) {
+    if (!ids.has(access.nodeId)) continue;
+    routeAccessCounts.set(access.routeId, (routeAccessCounts.get(access.routeId) ?? 0) + 1);
+  }
+  return routes.filter((route) => (routeAccessCounts.get(route.id) ?? 0) >= 2);
 }
 
 function scaleChildrenIntoView(children: LayoutNode[], view: { width: number; height: number }, padding: number): void {
@@ -309,7 +319,8 @@ function layoutRooms(children: LayoutNode[], view: { width: number; height: numb
 
 function applyForceLayout(
   children: LayoutNode[],
-  connections: WorldMapConnection[],
+  routes: WorldMapRoute[],
+  accessPoints: WorldMapAccessPoint[],
   view: { width: number; height: number },
   rng: () => number,
 ): void {
@@ -323,12 +334,17 @@ function applyForceLayout(
   }
   applySeededLayoutVariant(children, view, padding, rng);
 
-  const connectedPairs = connections
-    .map((connection) => ({
-      from: children.find((child) => child.id === connection.fromNodeId),
-      to: children.find((child) => child.id === connection.toNodeId),
-    }))
-    .filter((pair): pair is { from: LayoutNode; to: LayoutNode } => Boolean(pair.from && pair.to));
+  const childById = new Map(children.map((child) => [child.id, child]));
+  const connectedPairs: Array<{ from: LayoutNode; to: LayoutNode }> = [];
+  for (const route of routes) {
+    const routeChildren = accessPoints
+      .filter((access) => access.routeId === route.id)
+      .map((access) => childById.get(access.nodeId))
+      .filter((child): child is LayoutNode => Boolean(child));
+    for (let index = 0; index < routeChildren.length - 1; index += 1) {
+      connectedPairs.push({ from: routeChildren[index], to: routeChildren[index + 1] });
+    }
+  }
 
   for (let iteration = 0; iteration < 92; iteration += 1) {
     const forces = new Map<string, { x: number; y: number }>();
@@ -544,7 +560,13 @@ function smartShufflePositions(map: WorldMapDocument, rng: () => number): void {
       layoutRooms(layoutChildren, view, rng);
       resolveCollisions(layoutChildren, view, 24, rng);
     } else {
-      applyForceLayout(layoutChildren, connectionsForChildren(layoutChildren, map.connections), view, rng);
+      applyForceLayout(
+        layoutChildren,
+        routeLinksForChildren(layoutChildren, map.routes, map.accessPoints),
+        map.accessPoints,
+        view,
+        rng,
+      );
     }
     for (const child of layoutChildren) {
       map.nodes[child.id] = {
@@ -783,6 +805,34 @@ function distancePointToSegment(point: WorldMapPoint, start: WorldMapPoint, end:
   return distanceBetweenPoints(point, { x: start.x + dx * t, y: start.y + dy * t });
 }
 
+function nearestPointOnSegment(point: WorldMapPoint, start: WorldMapPoint, end: WorldMapPoint): WorldMapPoint {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) return start;
+  const t = clamp(((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared, 0, 1);
+  return {
+    x: Math.round(start.x + dx * t),
+    y: Math.round(start.y + dy * t),
+  };
+}
+
+function nearestPointOnPolyline(point: WorldMapPoint, points: WorldMapPoint[]): WorldMapPoint {
+  if (points.length === 0) return point;
+  if (points.length === 1) return points[0];
+  let best = points[0];
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const candidate = nearestPointOnSegment(point, points[index], points[index + 1]);
+    const distance = distanceBetweenPoints(point, candidate);
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
 function segmentDistance(
   firstStart: WorldMapPoint,
   firstEnd: WorldMapPoint,
@@ -832,7 +882,7 @@ function routeTurnAngle(first: WorldMapPoint, second: WorldMapPoint, third: Worl
   return delta;
 }
 
-function scoreRouteTurns(points: WorldMapPoint[], kind: WorldMapConnection['kind']): number {
+function scoreRouteTurns(points: WorldMapPoint[], kind: WorldMapRoute['kind']): number {
   const naturalRoute = kind === 'path' || kind === 'road';
   let score = 0;
   for (let index = 0; index < points.length - 1; index += 1) {
@@ -917,7 +967,7 @@ function createRouteCandidates(
   from: WorldMapPoint,
   to: WorldMapPoint,
   obstacles: Rect[],
-  kind: WorldMapConnection['kind'],
+  kind: WorldMapRoute['kind'],
   rng: () => number,
 ): WorldMapPoint[][] {
   const organicCandidates = [...createSoftBendCandidates(from, to, rng), ...createOrganicArcCandidates(from, to, rng)];
@@ -1060,7 +1110,7 @@ function chooseRoute(
   toCenter: WorldMapPoint,
   obstacles: Rect[],
   assignedRoutes: RoutedPath[],
-  kind: WorldMapConnection['kind'],
+  kind: WorldMapRoute['kind'],
   preferredSmoothPath: boolean,
   rng: () => number,
 ): RouteChoice {
@@ -1103,46 +1153,58 @@ function chooseRoute(
 
 function smartShufflePaths(map: WorldMapDocument, rng: () => number): void {
   const childrenByParent = getChildrenByParent(map);
-  const parentByChild = new Map(Object.values(map.nodes).map((node) => [node.id, node.parentId]));
   const assignedRoutesByParent = new Map<string, RoutedPath[]>();
-  map.connections = map.connections.map((connection) => {
-    const from = map.nodes[connection.fromNodeId];
-    const to = map.nodes[connection.toNodeId];
-    if (!from?.bounds || !to?.bounds) return connection;
-    const parentId = parentByChild.get(from.id);
-    if (parentId !== parentByChild.get(to.id)) return { ...connection, points: undefined, smoothPath: undefined };
-    const siblings = childrenByParent.get(parentId ?? '') ?? [];
+  map.routes = map.routes.map((route) => {
+    const accesses = map.accessPoints
+      .filter((access) => access.routeId === route.id && map.nodes[access.nodeId]?.parentId === route.parentId)
+      .map((access) => ({ access, node: map.nodes[access.nodeId] }))
+      .filter((item): item is { access: WorldMapAccessPoint; node: WorldMapNode } => Boolean(item.node?.bounds));
+    if (accesses.length < 2) return { ...route, points: undefined, smoothPath: undefined };
+    const siblings = childrenByParent.get(route.parentId) ?? [];
+    const attachedNodeIds = new Set(accesses.map((item) => item.node.id));
     const obstacles = siblings
-      .filter((node) => node.id !== from.id && node.id !== to.id && node.bounds)
+      .filter((node) => !attachedNodeIds.has(node.id) && node.bounds)
       .map((node) => ({ id: node.id, ...getBounds(node) }));
-    const fromBounds = getBounds(from);
-    const toBounds = getBounds(to);
+    const sortedAccesses = [...accesses].sort((first, second) => {
+      const firstCenter = center(getBounds(first.node));
+      const secondCenter = center(getBounds(second.node));
+      return firstCenter.x - secondCenter.x || firstCenter.y - secondCenter.y;
+    });
+    const first = sortedAccesses[0].node;
+    const last = sortedAccesses[sortedAccesses.length - 1].node;
+    const fromBounds = getBounds(first);
+    const toBounds = getBounds(last);
     const fromCenter = center(fromBounds);
     const toCenter = center(toBounds);
     const fromPort = edgePoint(fromBounds, toCenter);
     const toPort = edgePoint(toBounds, fromCenter);
-    const assignedRoutes = assignedRoutesByParent.get(parentId ?? '') ?? [];
-    const preferredSmoothPath = connection.smoothPath ?? (connection.kind === 'path' || connection.kind === 'road');
-    const route = chooseRoute(
+    const assignedRoutes = assignedRoutesByParent.get(route.parentId) ?? [];
+    const preferredSmoothPath = route.smoothPath ?? (route.kind === 'path' || route.kind === 'road');
+    const choice = chooseRoute(
       fromCenter,
       fromPort,
       toPort,
       toCenter,
       obstacles,
       assignedRoutes,
-      connection.kind,
+      route.kind,
       preferredSmoothPath,
       rng,
     );
-    assignedRoutes.push({
-      id: connection.id,
-      points: renderedRoutePoints(routePoints(fromCenter, route.points, toCenter), Boolean(route.smoothPath)),
-    });
-    assignedRoutesByParent.set(parentId ?? '', assignedRoutes);
+    const points = normalizeRoutePoints([fromPort, ...(choice.points ?? []), toPort]);
+    const renderedPoints = renderedRoutePoints(points, Boolean(choice.smoothPath));
+    assignedRoutes.push({ id: route.id, points: renderedPoints });
+    assignedRoutesByParent.set(route.parentId, assignedRoutes);
+
+    for (const { access, node } of accesses) {
+      const nodeCenterPoint = center(getBounds(node));
+      access.point = nearestPointOnPolyline(nodeCenterPoint, renderedPoints);
+    }
+
     return {
-      ...connection,
-      points: route.points,
-      smoothPath: route.smoothPath,
+      ...route,
+      points,
+      smoothPath: choice.smoothPath,
     };
   });
 }
@@ -1207,19 +1269,19 @@ function ensurePack(map: WorldMapDocument) {
     name: 'Smart Shuffle Style',
     icons: {},
     areaStyles: {},
-    connectionStyles: {},
+    routeStyles: {},
     labelStyles: {},
   };
   map.visualPacks = { ...(map.visualPacks ?? {}), [packId]: pack };
   map.activeVisualPackId = packId;
   pack.icons ??= {};
   pack.areaStyles ??= {};
-  pack.connectionStyles ??= {};
+  pack.routeStyles ??= {};
   pack.labelStyles ??= {};
   return pack;
 }
 
-function connectionWidthRange(kind: WorldMapConnection['kind']): { min: number; max: number } {
+function routeWidthRange(kind: WorldMapRoute['kind']): { min: number; max: number } {
   if (kind === 'road') return { min: 5, max: 8 };
   if (kind === 'path') return { min: 3, max: 5.5 };
   if (kind === 'corridor') return { min: 2, max: 4 };
@@ -1228,14 +1290,14 @@ function connectionWidthRange(kind: WorldMapConnection['kind']): { min: number; 
   return { min: 2, max: 4.5 };
 }
 
-function inferConnectionStyleKinds(map: WorldMapDocument): Map<string, WorldMapConnection['kind']> {
-  const styleKinds = new Map<string, WorldMapConnection['kind']>();
-  for (const connection of map.connections) {
-    const styleId = connection.visual?.styleId;
-    if (styleId && !styleKinds.has(styleId)) styleKinds.set(styleId, connection.kind);
+function inferRouteStyleKinds(map: WorldMapDocument): Map<string, WorldMapRoute['kind']> {
+  const styleKinds = new Map<string, WorldMapRoute['kind']>();
+  for (const route of map.routes) {
+    const styleId = route.visual?.styleId;
+    if (styleId && !styleKinds.has(styleId)) styleKinds.set(styleId, route.kind);
   }
   for (const [kind, styleId] of Object.entries(DEFAULT_CONNECTION_STYLE_IDS) as Array<
-    [WorldMapConnection['kind'], string]
+    [WorldMapRoute['kind'], string]
   >) {
     styleKinds.set(styleId, kind);
   }
@@ -1245,7 +1307,7 @@ function inferConnectionStyleKinds(map: WorldMapDocument): Map<string, WorldMapC
 function smartShuffleStyle(map: WorldMapDocument, rng: () => number): void {
   const pack = ensurePack(map);
   const palette = STYLE_PALETTES[Math.floor(rng() * STYLE_PALETTES.length)] ?? STYLE_PALETTES[0];
-  const connectionStyleKinds = inferConnectionStyleKinds(map);
+  const routeStyleKinds = inferRouteStyleKinds(map);
   for (const [index, kind] of (
     ['world', 'region', 'settlement', 'district', 'building', 'floor', 'room', 'landmark', 'poi'] as WorldMapNodeKind[]
   ).entries()) {
@@ -1264,15 +1326,15 @@ function smartShuffleStyle(map: WorldMapDocument, rng: () => number): void {
       'portal',
       'adjacent',
       'unknown',
-    ] as WorldMapConnection['kind'][]
+    ] as WorldMapRoute['kind'][]
   ).entries()) {
     const id = DEFAULT_CONNECTION_STYLE_IDS[kind];
-    const range = connectionWidthRange(kind);
-    pack.connectionStyles![id] ??= { id, label: `Smart ${kind}` };
-    pack.connectionStyles![id].stroke = palette.connection[index % palette.connection.length];
-    pack.connectionStyles![id].width = randomBetween(rng, range.min, range.max);
-    pack.connectionStyles![id].linecap = 'round';
-    pack.connectionStyles![id].dash =
+    const range = routeWidthRange(kind);
+    pack.routeStyles![id] ??= { id, label: `Smart ${kind}` };
+    pack.routeStyles![id].stroke = palette.route[index % palette.route.length];
+    pack.routeStyles![id].width = randomBetween(rng, range.min, range.max);
+    pack.routeStyles![id].linecap = 'round';
+    pack.routeStyles![id].dash =
       kind === 'door' || kind === 'unknown'
         ? `${Math.round(randomBetween(rng, 4, 9))} ${Math.round(randomBetween(rng, 4, 8))}`
         : undefined;
@@ -1284,9 +1346,9 @@ function smartShuffleStyle(map: WorldMapDocument, rng: () => number): void {
     area.fill = palette.area[index % palette.area.length];
     area.opacity = clamp((area.opacity ?? 0.5) + randomBetween(rng, -0.12, 0.12), 0.22, 0.9);
   }
-  for (const [index, style] of Object.values(pack.connectionStyles ?? {}).entries()) {
-    const range = connectionWidthRange(connectionStyleKinds.get(style.id) ?? 'unknown');
-    style.stroke = palette.connection[index % palette.connection.length];
+  for (const [index, style] of Object.values(pack.routeStyles ?? {}).entries()) {
+    const range = routeWidthRange(routeStyleKinds.get(style.id) ?? 'unknown');
+    style.stroke = palette.route[index % palette.route.length];
     style.width = clamp((style.width ?? range.min) + randomBetween(rng, -0.6, 0.6), range.min, range.max);
   }
   if (Object.keys(pack.labelStyles ?? {}).length === 0) {
@@ -1317,11 +1379,11 @@ function smartShuffleStyle(map: WorldMapDocument, rng: () => number): void {
       }));
     }
   }
-  map.connections = map.connections.map((connection) => ({
-    ...connection,
+  map.routes = map.routes.map((route) => ({
+    ...route,
     visual: {
-      ...(connection.visual ?? {}),
-      styleId: connection.visual?.styleId ?? DEFAULT_CONNECTION_STYLE_IDS[connection.kind],
+      ...(route.visual ?? {}),
+      styleId: route.visual?.styleId ?? DEFAULT_CONNECTION_STYLE_IDS[route.kind],
     },
   }));
 }
