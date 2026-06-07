@@ -42,7 +42,7 @@ function handleInput(event: Event) {
   let val: string | number = target.value;
 
   if (target.type === 'number') {
-    val = target.valueAsNumber;
+    val = Number.isNaN(target.valueAsNumber) ? target.value : target.valueAsNumber;
   }
 
   emit('update:modelValue', val);
