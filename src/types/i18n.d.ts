@@ -1617,6 +1617,16 @@ export interface MessageSchema {
       displayDurationMs: string;
       promptTemplate: string;
       promptHint: string;
+      askAction: string;
+      askActionTitle: string;
+      askPromptTemplate: string;
+      askPromptHint: string;
+      askAlreadyRunning: string;
+      askNeedsQuestion: string;
+      askNeedsChat: string;
+      askNeedsCharacter: string;
+      askEmptyAnswer: string;
+      askFailed: string;
     };
     tracker: {
       status: {

@@ -1,5 +1,5 @@
 import Bowser from 'bowser';
-import type { ApiChatMessage, Character, ExtensionAPI } from '../../../types';
+import type { ApiChatMessage, Character, ChatMessage, ExtensionAPI } from '../../../types';
 import { DEFAULT_SETTINGS, type LiveCommentarySettings, type RecentCommentary } from './types';
 
 // TODO: i18n
@@ -19,6 +19,18 @@ function formatDuration(ms: number): string {
   if (minutes === 1) return '1 minute';
   if (seconds > 10) return `${seconds} seconds`;
   return 'just now';
+}
+
+function extractCodeBlockContent(text: string): string {
+  const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
+  const match = text.match(codeBlockRegex);
+  return match && match[1] ? match[1].trim() : text.trim();
+}
+
+function formatHistoryMessage(message: ChatMessage, index: number): string {
+  const role = message.is_system ? 'System' : message.is_user ? 'User' : 'Assistant';
+  const content = message.mes.trim() || '[empty message]';
+  return `#${index} ${role} (${message.name}): ${content}`;
 }
 
 export class Commentator {
@@ -269,11 +281,7 @@ export class Commentator {
         thought = response.content;
       }
 
-      const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
-      const match = thought.match(codeBlockRegex);
-      if (match && match[1]) {
-        thought = match[1].trim();
-      }
+      thought = extractCodeBlockContent(thought);
 
       if (thought.trim()) {
         this.lastGenerationTimes.set(character.avatar, Date.now());
@@ -433,5 +441,59 @@ export class Commentator {
   public onGenerationFinished(): void {
     this.pendingInjectionCommentaries = [];
     this.activeGenerationCharacter = null;
+  }
+
+  public async askQuestion(question: string, signal?: AbortSignal): Promise<string> {
+    const settings = this.getSettings();
+    const connectionProfile =
+      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    if (!connectionProfile) {
+      throw new Error('Live Commentary: No connection profile selected.');
+    }
+
+    const trimmedQuestion = question.trim();
+    if (!trimmedQuestion) {
+      throw new Error('Ask needs a question.');
+    }
+
+    const chatHistory = this.api.chat
+      .getHistory()
+      .map((message, index) => formatHistoryMessage(message, index))
+      .join('\n\n');
+    const activeCharacters = this.api.character.getActives();
+
+    const prompt = this.api.macro.process(
+      settings.askPrompt,
+      {
+        activeCharacter: activeCharacters[0],
+        characters: activeCharacters,
+        persona: this.api.persona.getActive() ?? undefined,
+      },
+      {
+        question: trimmedQuestion,
+        chatHistory,
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString(),
+      },
+    );
+
+    const response = await this.api.llm.generate([{ role: 'system', content: prompt, name: 'System' }], {
+      connectionProfile,
+      signal,
+    });
+
+    let answer = '';
+    if (Symbol.asyncIterator in response) {
+      for await (const chunk of response) {
+        if (signal?.aborted) {
+          return '';
+        }
+        answer += chunk.delta;
+      }
+    } else {
+      answer = response.content;
+    }
+
+    return extractCodeBlockContent(answer);
   }
 }

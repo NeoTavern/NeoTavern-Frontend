@@ -4,7 +4,13 @@ import { ConnectionProfileSelector } from '../../../components/common';
 import { FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
 import type { TextareaToolDefinition } from '../../../types/ExtensionAPI';
-import { DEFAULT_INJECTION_TEMPLATE, DEFAULT_PROMPT, DEFAULT_SETTINGS, type LiveCommentarySettings } from './types';
+import {
+  DEFAULT_ASK_PROMPT,
+  DEFAULT_INJECTION_TEMPLATE,
+  DEFAULT_PROMPT,
+  DEFAULT_SETTINGS,
+  type LiveCommentarySettings,
+} from './types';
 
 const props = defineProps<{
   api: ExtensionAPI;
@@ -53,6 +59,17 @@ const injectionTools = computed<TextareaToolDefinition[]>(() => [
     title: t('common.reset'),
     onClick: ({ setValue }) => {
       setValue(DEFAULT_INJECTION_TEMPLATE);
+    },
+  },
+]);
+
+const askPromptTools = computed<TextareaToolDefinition[]>(() => [
+  {
+    id: 'reset',
+    icon: 'fa-rotate-left',
+    title: t('common.reset'),
+    onClick: ({ setValue }) => {
+      setValue(DEFAULT_ASK_PROMPT);
     },
   },
 ]);
@@ -159,6 +176,21 @@ const positionOptions = [
       description="Max number of recent commentaries to include in the prompt context."
     >
       <Input v-model.number="settings.maxCommentaryHistory" type="number" :min="0" :max="50" />
+    </FormItem>
+
+    <div class="group-header">Ask Chat History</div>
+    <FormItem
+      :label="t('extensionsBuiltin.liveCommentary.askPromptTemplate')"
+      :description="t('extensionsBuiltin.liveCommentary.askPromptHint')"
+    >
+      <Textarea
+        v-model="settings.askPrompt"
+        allow-maximize
+        class="prompt-area"
+        :rows="10"
+        identifier="extension.live-commentary.ask"
+        :tools="askPromptTools"
+      />
     </FormItem>
   </div>
 </template>

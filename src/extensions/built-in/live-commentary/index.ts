@@ -18,6 +18,7 @@ export function activate(api: ExtensionAPI<LiveCommentarySettings>) {
   const commentator = new Commentator(api);
   let settingsApp: { unmount: () => void } | null = null;
   const activeBubbles = new Map<string, BubbleInstance>(); // characterAvatar -> BubbleInstance
+  let askController: AbortController | null = null;
 
   // State tracking for visibility
   let isChatLayoutActive = true;
@@ -146,21 +147,92 @@ export function activate(api: ExtensionAPI<LiveCommentarySettings>) {
 
   const resetStateAndBubbles = () => {
     commentator.cancel();
+    askController?.abort();
+    askController = null;
     destroyAllBubbles();
+  };
+
+  const askCurrentInput = async () => {
+    if (askController) {
+      api.ui.showToast(api.i18n.t('extensionsBuiltin.liveCommentary.askAlreadyRunning'), 'warning');
+      return;
+    }
+
+    const input = api.chat.getChatInput();
+    const question = input?.value.trim() ?? '';
+    if (!question) {
+      api.ui.showToast(api.i18n.t('extensionsBuiltin.liveCommentary.askNeedsQuestion'), 'warning');
+      api.chat.focusChatInput();
+      return;
+    }
+
+    if (!api.chat.getChatInfo()) {
+      api.ui.showToast(api.i18n.t('extensionsBuiltin.liveCommentary.askNeedsChat'), 'warning');
+      return;
+    }
+
+    const activeCharacter = api.character.getActives()[0];
+    if (!activeCharacter) {
+      api.ui.showToast(api.i18n.t('extensionsBuiltin.liveCommentary.askNeedsCharacter'), 'warning');
+      return;
+    }
+
+    commentator.cancel();
+    destroyAllBubbles();
+
+    const controller = new AbortController();
+    askController = controller;
+    showCommentaryBubble(activeCharacter.avatar, '...');
+
+    try {
+      const answer = await commentator.askQuestion(question, controller.signal);
+      if (controller.signal.aborted || askController !== controller) {
+        return;
+      }
+      showCommentaryBubble(
+        activeCharacter.avatar,
+        answer || api.i18n.t('extensionsBuiltin.liveCommentary.askEmptyAnswer'),
+      );
+    } catch (error) {
+      if (controller.signal.aborted || askController !== controller) {
+        return;
+      }
+      console.error('Live Commentary ask failed', error);
+      api.ui.showToast(api.i18n.t('extensionsBuiltin.liveCommentary.askFailed'), 'error');
+    } finally {
+      if (askController === controller) {
+        askController = null;
+        api.chat.focusChatInput();
+      }
+    }
+  };
+
+  const registerAskQuickAction = () => {
+    api.ui.registerChatQuickAction('core.context-ai', '', {
+      id: 'live-commentary-ask',
+      icon: 'fa-solid fa-circle-question',
+      label: api.i18n.t('extensionsBuiltin.liveCommentary.askAction'),
+      title: api.i18n.t('extensionsBuiltin.liveCommentary.askActionTitle'),
+      disabled: api.chat.getChatInfo() === null,
+      onClick: askCurrentInput,
+    });
   };
 
   const unbinds: Array<() => void> = [];
 
   unbinds.push(unsubscribeInputChange);
+  registerAskQuickAction();
 
   unbinds.push(
     api.events.on('chat:entered', () => {
+      registerAskQuickAction();
       resetStateAndBubbles();
     }),
   );
 
   unbinds.push(
     api.events.on('chat:cleared', () => {
+      registerAskQuickAction();
       resetStateAndBubbles();
     }),
   );
@@ -241,5 +313,6 @@ export function activate(api: ExtensionAPI<LiveCommentarySettings>) {
     settingsApp?.unmount();
     unbinds.forEach((u) => u());
     resetStateAndBubbles();
+    api.ui.unregisterChatQuickAction('core.context-ai', 'live-commentary-ask');
   };
 }

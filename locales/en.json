@@ -1613,7 +1613,17 @@
       "debounceMs": "Typing Debounce (ms)",
       "displayDurationMs": "Display Duration (ms)",
       "promptTemplate": "Prompt Template",
-      "promptHint": "The prompt template for generating thoughts. Uses Handlebars syntax with variables."
+      "promptHint": "The prompt template for generating thoughts. Uses Handlebars syntax with variables.",
+      "askAction": "Ask",
+      "askActionTitle": "Ask AI about the current chat history",
+      "askPromptTemplate": "Ask Prompt Template",
+      "askPromptHint": "The prompt template for answering questions about chat history. Includes question and chatHistory variables.",
+      "askAlreadyRunning": "An Ask request is already running.",
+      "askNeedsQuestion": "Type a question in the chat input first.",
+      "askNeedsChat": "Open a chat before asking about chat history.",
+      "askNeedsCharacter": "Add an active character before asking.",
+      "askEmptyAnswer": "No answer was returned.",
+      "askFailed": "Ask failed."
     },
     "tracker": {
       "status": {

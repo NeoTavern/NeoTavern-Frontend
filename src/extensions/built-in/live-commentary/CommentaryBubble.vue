@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { arrow, autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
+import { formatText } from '../../../utils/chat';
 
 const props = defineProps<{
   text: string;
@@ -13,6 +14,18 @@ const props = defineProps<{
 const displayedText = ref('');
 const floating = ref<HTMLElement | null>(null);
 const arrowRef = ref<HTMLElement | null>(null);
+const displayMarkdown = computed(() => {
+  const leadingFence = /^\s*```[^\r\n]*(?:\r?\n)?/;
+  if (!leadingFence.test(displayedText.value)) {
+    return displayedText.value;
+  }
+
+  return displayedText.value
+    .replace(leadingFence, '')
+    .replace(/\r?\n?```\s*$/, '')
+    .replace(/\r?\n?`{1,3}\s*$/, '');
+});
+const formattedDisplayedText = computed(() => formatText(displayMarkdown.value));
 
 let typingInterval: number | null = null;
 let closeTimeout: number | null = null;
@@ -84,7 +97,11 @@ onUnmounted(() => {
 
 <template>
   <div ref="floating" class="commentary-bubble" :style="positionStyle" @click="onClose">
-    <div class="commentary-bubble-content">{{ displayedText }}<span class="typing-cursor"></span></div>
+    <div class="commentary-bubble-content">
+      <!-- eslint-disable-next-line vue/no-v-html -->
+      <span class="commentary-bubble-markdown" v-html="formattedDisplayedText"></span
+      ><span class="typing-cursor"></span>
+    </div>
     <div ref="arrowRef" class="commentary-bubble-arrow" :style="arrowStyle"></div>
   </div>
 </template>
@@ -110,7 +127,7 @@ onUnmounted(() => {
 .commentary-bubble {
   z-index: var(--z-tooltip);
   width: max-content;
-  max-width: 250px;
+  max-width: min(420px, calc(100vw - 32px));
   animation: fadeIn 0.3s ease-out forwards;
   will-change: opacity, transform;
   pointer-events: auto;
@@ -126,6 +143,49 @@ onUnmounted(() => {
   font-size: 0.9em;
   line-height: 1.4;
   position: relative;
+}
+
+.commentary-bubble-markdown {
+  display: block;
+}
+
+.commentary-bubble-markdown :deep(p) {
+  margin: 0 0 var(--spacing-xs);
+}
+
+.commentary-bubble-markdown :deep(p:last-child),
+.commentary-bubble-markdown :deep(ul:last-child),
+.commentary-bubble-markdown :deep(ol:last-child),
+.commentary-bubble-markdown :deep(pre:last-child),
+.commentary-bubble-markdown :deep(blockquote:last-child) {
+  margin-bottom: 0;
+}
+
+.commentary-bubble-markdown :deep(ul),
+.commentary-bubble-markdown :deep(ol) {
+  margin: 0 0 var(--spacing-xs);
+  padding-left: var(--spacing-lg);
+}
+
+.commentary-bubble-markdown :deep(pre) {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 var(--spacing-xs);
+  padding: var(--spacing-sm);
+  border-radius: var(--base-border-radius);
+  background-color: var(--black-30a);
+}
+
+.commentary-bubble-markdown :deep(code) {
+  font-family: var(--font-family-mono);
+  font-size: 0.9em;
+}
+
+.commentary-bubble-markdown :deep(blockquote) {
+  margin: 0 0 var(--spacing-xs);
+  padding-left: var(--spacing-sm);
+  border-left: 3px solid var(--theme-border-color);
+  opacity: 0.9;
 }
 
 .commentary-bubble-arrow {

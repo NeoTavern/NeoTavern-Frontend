@@ -7,6 +7,7 @@ export interface LiveCommentarySettings {
   displayDurationMs: number;
   prompt: string;
   maxCommentaryHistory: number;
+  askPrompt: string;
 
   // Injection settings
   injectionEnabled: boolean;
@@ -88,6 +89,24 @@ The user is currently typing a message. Your task is to generate a brief, in-cha
 
 export const DEFAULT_INJECTION_TEMPLATE = `[As the user was typing, {{char}} thought: "{{thought}}"]`;
 
+export const DEFAULT_ASK_PROMPT = `# Task: Answer a question about the chat history
+
+You are a context assistant for an ongoing roleplay chat. The user is asking a meta question to remember or find something from earlier messages.
+
+Answer using only the chat history below. If the answer is not present in the chat history, say that you cannot find it in the current chat.
+
+## Question
+{{question}}
+
+## Chat History
+{{chatHistory}}
+
+## Answer Guidelines
+1. Be concise and direct.
+2. Mention message numbers or character names when they help locate the detail.
+3. Do not continue the roleplay scene.
+4. Do not invent missing details.`;
+
 export const DEFAULT_SETTINGS: LiveCommentarySettings = {
   enabled: false,
   connectionProfile: '',
@@ -97,6 +116,7 @@ export const DEFAULT_SETTINGS: LiveCommentarySettings = {
   displayDurationMs: 15000,
   prompt: DEFAULT_PROMPT,
   maxCommentaryHistory: 10,
+  askPrompt: DEFAULT_ASK_PROMPT,
   injectionEnabled: true,
   injectionDepth: 10,
   injectionPosition: 'end_of_context',
