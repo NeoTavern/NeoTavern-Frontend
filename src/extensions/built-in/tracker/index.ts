@@ -307,12 +307,10 @@ class TrackerManager {
           }
         }
 
-        // TODO: No need user to distinguish user vs bot here
         // TODO: Move to extension settings
-        const messageSource = originalMessage.is_user ? "the user's message" : 'your response';
         const trackerContent = `[Data for schema "${
           trackerData.schemaName
-        }" was tracked from ${messageSource}: ${JSON.stringify(trackerData.trackerJson)}]`;
+        }": ${JSON.stringify(trackerData.trackerJson)}]`;
         apiMessages.push({ role: 'system', name: 'System', content: trackerContent });
       }
     }
