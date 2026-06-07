@@ -23,6 +23,7 @@ export { manifest };
 
 const SIDEBAR_ID = 'timeline-panel';
 const QUICK_ACTION_GROUP_ID = 'core.context-ai';
+const MAX_SCHEMA_REPAIRS = 3;
 const MS_BY_UNIT: Record<Exclude<TimelineRecurrenceUnit, 'month'>, number> = {
   minute: 60 * 1000,
   hour: 60 * 60 * 1000,
@@ -400,15 +401,27 @@ class TimelineManager {
       const structuredResponse = getTimelineStructuredResponse(settings.structuredRequestFormat);
       const messages = await this.buildExtractionContext(structuredResponse);
       let generation = await this.generateOperations(messages, structuredResponse);
+      let repairMessages = messages;
+      let repairCount = 0;
 
-      if (!generation.operations && generation.parseError && generation.rawContent.trim()) {
-        this.api.ui.showToast('Timeline response needs schema repair. Retrying once...', 'info');
+      while (
+        !generation.operations &&
+        generation.parseError &&
+        generation.rawContent.trim() &&
+        repairCount < MAX_SCHEMA_REPAIRS
+      ) {
+        repairCount += 1;
+        this.api.ui.showToast(
+          `Timeline response needs schema repair. Retry ${repairCount}/${MAX_SCHEMA_REPAIRS}...`,
+          'info',
+        );
         generation = await this.repairOperations(
-          messages,
+          repairMessages,
           generation.rawContent,
           generation.parseError,
           structuredResponse,
         );
+        repairMessages = generation.messages ?? repairMessages;
       }
 
       if (!generation.operations) {

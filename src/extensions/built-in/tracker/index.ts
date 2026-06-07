@@ -1,7 +1,13 @@
 import type { Component } from 'vue';
 import type { ChatMessage, ExtensionAPI } from '../../../types';
-import type { ApiChatMessage, StructuredResponseOptions } from '../../../types/generation';
+import type { ApiChatMessage, GenerationResponse, StructuredResponseOptions } from '../../../types/generation';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
+import {
+  buildTrackerDeltaSchema,
+  validateAndApplyTrackerDelta,
+  validateAgainstSchema,
+  type TrackerDeltaMode,
+} from './delta';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
 import { getLatestTrackerStoryTime } from './story-time';
@@ -20,9 +26,54 @@ export { manifest };
 
 type TrackerExtensionAPI = ExtensionAPI<TrackerSettings, TrackerChatExtra, TrackerMessageExtra>;
 
+const MAX_SCHEMA_REPAIRS = 3;
+
 interface MountedComponent {
   unmount: () => void;
   component: Component;
+}
+
+interface TrackerGenerationResult {
+  rawContent: string;
+  structuredContent?: object;
+  parseError?: string;
+}
+
+interface ProcessedTrackerResult {
+  trackerJson: Record<string, unknown>;
+  trackerDelta?: Record<string, unknown>;
+  trackerHtml: string;
+}
+
+function isFinishedAssistantMessage(message: ChatMessage | null): message is ChatMessage {
+  return Boolean(message && !message.is_user && !message.is_system && message.gen_finished);
+}
+
+function findMessageIndex(history: ChatMessage[], message: ChatMessage, generationId?: string): number {
+  if (generationId) {
+    for (let index = history.length - 1; index >= 0; index--) {
+      const candidate = history[index];
+      if (candidate.swipe_info?.some((swipe) => swipe.generation_id === generationId)) return index;
+    }
+  }
+
+  const identityIndex = history.lastIndexOf(message);
+  if (identityIndex !== -1) return identityIndex;
+
+  for (let index = history.length - 1; index >= 0; index--) {
+    const candidate = history[index];
+    if (
+      candidate.name === message.name &&
+      candidate.send_date === message.send_date &&
+      candidate.gen_started === message.gen_started &&
+      candidate.gen_finished === message.gen_finished &&
+      candidate.mes === message.mes
+    ) {
+      return index;
+    }
+  }
+
+  return -1;
 }
 
 // TODO: i18n
@@ -55,6 +106,126 @@ class TrackerManager {
       }, tracker.trackerJson);
     }
     return undefined;
+  }
+
+  private getPreviousTrackerJson(schemaName: string, beforeIndex: number): Record<string, unknown> | null {
+    const history = this.api.chat.getHistory();
+    for (let index = beforeIndex - 1; index >= 0; index--) {
+      const tracker = history[index].extra?.['core.tracker']?.trackers?.[schemaName];
+      if (tracker?.status === 'success' && tracker.trackerJson) return tracker.trackerJson;
+    }
+    return null;
+  }
+
+  private shouldUseDeltaMode(
+    mode: TrackerDeltaMode,
+    previousTrackerJson: Record<string, unknown> | null,
+    hasDeltaFields: boolean,
+  ): boolean {
+    if (!previousTrackerJson || mode === 'off') return false;
+    if (mode === 'always') return hasDeltaFields;
+    return hasDeltaFields;
+  }
+
+  private buildDeltaSystemPrompt(schemaName: string, previousTrackerJson: Record<string, unknown>): ApiChatMessage {
+    return {
+      role: 'system',
+      name: 'System',
+      content: `Delta tracker update for schema "${schemaName}": return only changed fields allowed by the delta schema. Do not repeat unchanged fields. If you change a field that requires another field, include both fields in the same JSON object. For keyed arrays, include the key field plus only changed fields for that item.\n\nPrevious full tracker state:\n${JSON.stringify(
+        previousTrackerJson,
+        null,
+        2,
+      )}`,
+    };
+  }
+
+  private processTrackerStructuredContent(
+    structuredContent: object | undefined,
+    schemaObject: object,
+    presetTemplate: string,
+    useDelta: boolean,
+    previousTrackerJson: Record<string, unknown> | null,
+  ): ProcessedTrackerResult {
+    if (!structuredContent) throw new Error('Tracker generation returned no structured content.');
+
+    let trackerJson: Record<string, unknown>;
+    let trackerDelta: Record<string, unknown> | undefined;
+
+    if (useDelta && previousTrackerJson) {
+      const applied = validateAndApplyTrackerDelta(
+        previousTrackerJson,
+        structuredContent as Record<string, unknown>,
+        schemaObject,
+      );
+      trackerJson = applied.full;
+      trackerDelta = applied.delta;
+    } else {
+      validateAgainstSchema(structuredContent, schemaObject, 'Tracker');
+      trackerJson = structuredContent as Record<string, unknown>;
+    }
+
+    return {
+      trackerJson,
+      trackerDelta,
+      trackerHtml: this.api.macro.process(presetTemplate, undefined, { data: trackerJson }),
+    };
+  }
+
+  private async generateTracker(
+    messages: ApiChatMessage[],
+    connectionProfile: string,
+    maxResponseTokens: number,
+    structuredResponse: StructuredResponseOptions,
+  ): Promise<TrackerGenerationResult> {
+    let completionStructuredContent: object | undefined;
+    let completionParseError: Error | undefined;
+    const response = await this.api.llm.generate(messages, {
+      connectionProfile,
+      samplerOverrides: { max_tokens: maxResponseTokens, stream: false },
+      structuredResponse,
+      onCompletion({ structured_content, parse_error }) {
+        completionStructuredContent = structured_content;
+        completionParseError = parse_error;
+      },
+    });
+
+    if (Symbol.asyncIterator in response) {
+      for await (const chunk of response) void chunk;
+      return { rawContent: '', parseError: 'Tracker generation unexpectedly returned a stream.' };
+    }
+
+    const generationResponse = response as GenerationResponse;
+    const structuredContent = generationResponse.structured_content ?? completionStructuredContent;
+    const parseError = completionParseError?.message;
+
+    return {
+      rawContent: generationResponse.content,
+      structuredContent,
+      parseError: structuredContent ? undefined : (parseError ?? 'Tracker generation returned no structured content.'),
+    };
+  }
+
+  private async repairTracker(
+    originalMessages: ApiChatMessage[],
+    rawContent: string,
+    parseError: string,
+    structuredResponse: StructuredResponseOptions,
+    connectionProfile: string,
+    maxResponseTokens: number,
+    useDelta: boolean,
+  ): Promise<TrackerGenerationResult> {
+    const repairKind = useDelta ? 'delta JSON object' : 'full tracker JSON object';
+    const repairMessages: ApiChatMessage[] = [
+      ...originalMessages,
+      { role: 'assistant', name: 'Assistant', content: rawContent },
+      {
+        role: 'user',
+        name: 'User',
+        content: `[Schema validation error]\n${parseError}\n\nRepair your previous Tracker ${repairKind}. Return the complete corrected ${repairKind}, not prose or markdown. Preserve valid fields unless the error requires changing that specific field. For delta repairs, keep unchanged tracker fields out of the response and include required coupled fields together.`,
+      },
+    ];
+
+    return await this.generateTracker(repairMessages, connectionProfile, maxResponseTokens, structuredResponse);
   }
 
   public async runTracker(index: number): Promise<void> {
@@ -114,8 +285,16 @@ class TrackerManager {
 
         try {
           const systemPrompt = this.api.macro.process(preset.prompt);
+          const deltaSchema = buildTrackerDeltaSchema(schemaObject);
+          const previousTrackerJson = this.getPreviousTrackerJson(schemaName, index);
+          const useDelta = this.shouldUseDeltaMode(settings.deltaMode, previousTrackerJson, deltaSchema.hasDeltaFields);
+          const responseSchema = useDelta ? deltaSchema.schema : schemaObject;
           const structuredResponse: StructuredResponseOptions = {
-            schema: { name: 'tracker_data_extraction', strict: true, value: schemaObject },
+            schema: {
+              name: useDelta ? 'tracker_delta_extraction' : 'tracker_data_extraction',
+              strict: true,
+              value: responseSchema,
+            },
             format: settings.promptEngineering,
           };
 
@@ -124,35 +303,79 @@ class TrackerManager {
 
           const messagesForLlm: ApiChatMessage[] = [
             ...contextMessages,
+            ...(useDelta && previousTrackerJson ? [this.buildDeltaSystemPrompt(schemaName, previousTrackerJson)] : []),
             { role: 'system' as const, name: 'System', content: systemPrompt },
           ];
 
-          // eslint-disable-next-line @typescript-eslint/no-this-alias
-          const thus = this;
-          const response = await this.api.llm.generate(messagesForLlm, {
+          let generation = await this.generateTracker(
+            messagesForLlm,
             connectionProfile,
-            samplerOverrides: { max_tokens: settings.maxResponseTokens },
+            settings.maxResponseTokens,
             structuredResponse,
-            async onCompletion({ structured_content, parse_error }) {
-              let trackerHtml = '';
-              if (!parse_error && structured_content) {
-                trackerHtml = thus.api.macro.process(preset.template, undefined, { data: structured_content });
-              }
+          );
+          let processed: ProcessedTrackerResult | undefined;
+          let error = generation.parseError;
 
-              await thus.updateTrackerData(index, schemaName, {
-                error: parse_error?.message,
-                status: parse_error ? 'error' : 'success',
-                trackerJson: parse_error ? undefined : (structured_content as Record<string, unknown>),
-                trackerHtml,
-              });
-            },
-          });
-
-          if (Symbol.asyncIterator in response) {
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            for await (const _ of response) {
+          if (!error) {
+            try {
+              processed = this.processTrackerStructuredContent(
+                generation.structuredContent,
+                schemaObject,
+                preset.template,
+                useDelta,
+                previousTrackerJson,
+              );
+            } catch (validationError) {
+              error = validationError instanceof Error ? validationError.message : 'Tracker validation failed.';
             }
           }
+
+          let repairCount = 0;
+          while (!processed && error && repairCount < MAX_SCHEMA_REPAIRS) {
+            const repairRawContent =
+              generation.rawContent ||
+              (generation.structuredContent ? JSON.stringify(generation.structuredContent, null, 2) : '');
+            if (!repairRawContent.trim()) break;
+
+            repairCount += 1;
+            this.api.ui.showToast(
+              `Tracker response for "${schemaName}" needs schema repair. Retry ${repairCount}/${MAX_SCHEMA_REPAIRS}...`,
+              'info',
+            );
+            generation = await this.repairTracker(
+              messagesForLlm,
+              repairRawContent,
+              error,
+              structuredResponse,
+              connectionProfile,
+              settings.maxResponseTokens,
+              useDelta,
+            );
+            error = generation.parseError;
+
+            if (!error) {
+              try {
+                processed = this.processTrackerStructuredContent(
+                  generation.structuredContent,
+                  schemaObject,
+                  preset.template,
+                  useDelta,
+                  previousTrackerJson,
+                );
+              } catch (validationError) {
+                error = validationError instanceof Error ? validationError.message : 'Tracker validation failed.';
+              }
+            }
+          }
+
+          await this.updateTrackerData(index, schemaName, {
+            error,
+            status: processed ? 'success' : 'error',
+            trackerJson: processed?.trackerJson,
+            trackerDelta: processed?.trackerDelta,
+            deltaMode: useDelta ? 'delta' : 'full',
+            trackerHtml: processed?.trackerHtml ?? '',
+          });
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
           console.error(`Tracker generation failed for schema "${schemaName}":`, error);
@@ -282,14 +505,26 @@ class TrackerManager {
     const settings = this.getSettings();
     if (!settings.enabled || settings.autoMode === 'none') return;
 
-    const index = this.api.chat.getHistory().length - 1;
     const shouldTrackUser = settings.autoMode === 'inputs' || settings.autoMode === 'both';
-    const shouldTrackBot = settings.autoMode === 'responses' || settings.autoMode === 'both';
 
-    if ((message.is_user && shouldTrackUser) || (!message.is_user && shouldTrackBot)) {
+    if (message.is_user && shouldTrackUser) {
+      const index = this.api.chat.getHistory().lastIndexOf(message);
+      if (index === -1) return;
       // Small delay to allow UI to settle
       setTimeout(() => this.runTracker(index), 200);
     }
+  }
+
+  public handleAutoTrackGenerationFinished(result: { message: ChatMessage | null; error?: Error }, generationId: string) {
+    const settings = this.getSettings();
+    if (!settings.enabled || result.error || settings.autoMode === 'none') return;
+    const shouldTrackBot = settings.autoMode === 'responses' || settings.autoMode === 'both';
+    const message = result.message;
+    if (!shouldTrackBot || !isFinishedAssistantMessage(message)) return;
+
+    const index = findMessageIndex(this.api.chat.getHistory(), message, generationId);
+    if (index === -1) return;
+    setTimeout(() => this.runTracker(index), 200);
   }
 
   public injectContext(
@@ -445,6 +680,12 @@ export function activate(api: TrackerExtensionAPI) {
     manager.injectUiForMessage(api.chat.getHistory().length - 1);
     manager.handleAutoTrack(msg);
   };
+  const onGenerationFinished = (
+    result: { message: ChatMessage | null; error?: Error },
+    context: { generationId: string },
+  ) => {
+    manager.handleAutoTrackGenerationFinished(result, context.generationId);
+  };
   const onMessageUpdated = (index: number) => {
     // Unmount and re-mount to handle data/position changes
     manager.unmountMessageUi([index]);
@@ -467,6 +708,7 @@ export function activate(api: TrackerExtensionAPI) {
 
   unbinds.push(api.events.on('chat:entered', onChatEntered));
   unbinds.push(api.events.on('message:created', onMessageCreated));
+  unbinds.push(api.events.on('generation:finished', onGenerationFinished));
   unbinds.push(api.events.on('message:updated', onMessageUpdated));
   unbinds.push(api.events.on('message:deleted', onMessageDeleted));
   unbinds.push(api.events.on('chat:cleared', onChatCleared));

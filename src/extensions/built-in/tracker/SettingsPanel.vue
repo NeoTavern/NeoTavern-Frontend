@@ -172,6 +172,12 @@ const promptEngineeringOptions = [
   { label: 'Force XML', value: 'xml' },
 ];
 
+const deltaModeOptions = [
+  { label: 'Auto (Recommended)', value: 'auto' },
+  { label: 'Off', value: 'off' },
+  { label: 'Always', value: 'always' },
+];
+
 const defaultActivePreset = computed(() => {
   if (!activePreset.value) return null;
   return DEFAULT_PRESETS.find((p) => p.name === activePreset.value?.name) ?? null;
@@ -265,6 +271,13 @@ const promptTools = computed(() => [
         style="flex: 1"
       >
         <Select v-model="settings.promptEngineering" :options="promptEngineeringOptions" />
+      </FormItem>
+      <FormItem
+        label="Delta Mode"
+        description="Ask for partial JSON updates after the first full tracker when the schema allows it."
+        style="flex: 1"
+      >
+        <Select v-model="settings.deltaMode" :options="deltaModeOptions" />
       </FormItem>
     </div>
     <div class="reset-all-container">

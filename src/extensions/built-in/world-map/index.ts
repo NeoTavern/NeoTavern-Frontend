@@ -43,6 +43,37 @@ interface WorldMapGenerationResult {
   messages?: ApiChatMessage[];
 }
 
+function isFinishedAssistantMessage(message: ChatMessage | null): message is ChatMessage {
+  return Boolean(message && !message.is_user && !message.is_system && message.gen_finished);
+}
+
+function findMessageIndex(history: ChatMessage[], message: ChatMessage, generationId?: string): number {
+  if (generationId) {
+    for (let index = history.length - 1; index >= 0; index--) {
+      const candidate = history[index];
+      if (candidate.swipe_info?.some((swipe) => swipe.generation_id === generationId)) return index;
+    }
+  }
+
+  const identityIndex = history.lastIndexOf(message);
+  if (identityIndex !== -1) return identityIndex;
+
+  for (let index = history.length - 1; index >= 0; index--) {
+    const candidate = history[index];
+    if (
+      candidate.name === message.name &&
+      candidate.send_date === message.send_date &&
+      candidate.gen_started === message.gen_started &&
+      candidate.gen_finished === message.gen_finished &&
+      candidate.mes === message.mes
+    ) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
 export interface QualityIssue {
   code: string;
   message: string;
@@ -1757,11 +1788,23 @@ class WorldMapManager {
     if (!settings.enabled || settings.autoMode === 'none') return;
 
     const shouldTrackUser = settings.autoMode === 'inputs' || settings.autoMode === 'both';
-    const shouldTrackBot = settings.autoMode === 'responses' || settings.autoMode === 'both';
-    if ((message.is_user && shouldTrackUser) || (!message.is_user && shouldTrackBot)) {
-      const index = this.api.chat.getHistory().length - 1;
+    if (message.is_user && shouldTrackUser) {
+      const index = this.api.chat.getHistory().lastIndexOf(message);
+      if (index === -1) return;
       window.setTimeout(() => this.runMapUpdate(index), 200);
     }
+  }
+
+  public handleAutoUpdateGenerationFinished(result: { message: ChatMessage | null; error?: Error }, generationId: string): void {
+    const settings = this.getSettings();
+    if (!settings.enabled || result.error || settings.autoMode === 'none') return;
+    const shouldTrackBot = settings.autoMode === 'responses' || settings.autoMode === 'both';
+    const message = result.message;
+    if (!shouldTrackBot || !isFinishedAssistantMessage(message)) return;
+
+    const index = findMessageIndex(this.api.chat.getHistory(), message, generationId);
+    if (index === -1) return;
+    window.setTimeout(() => this.runMapUpdate(index), 200);
   }
 
   public injectContext(apiMessages: ApiChatMessage[], index: number, chatLength: number, generationId: string): void {
@@ -1891,6 +1934,11 @@ export function activate(api: WorldMapExtensionAPI) {
     api.events.on('message:created', (message: ChatMessage) => {
       manager.injectUiForMessage(api.chat.getHistory().length - 1);
       manager.handleAutoUpdate(message);
+    }),
+  );
+  unbinds.push(
+    api.events.on('generation:finished', (result: { message: ChatMessage | null; error?: Error }, context) => {
+      manager.handleAutoUpdateGenerationFinished(result, context.generationId);
     }),
   );
   unbinds.push(

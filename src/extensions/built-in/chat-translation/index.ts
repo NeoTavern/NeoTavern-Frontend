@@ -9,6 +9,37 @@ export { manifest };
 
 // TODO: i18n
 
+function isFinishedAssistantMessage(message: ChatMessage | null): message is ChatMessage {
+  return Boolean(message && !message.is_user && !message.is_system && message.gen_finished);
+}
+
+function findMessageIndex(history: ChatMessage[], message: ChatMessage, generationId?: string): number {
+  if (generationId) {
+    for (let index = history.length - 1; index >= 0; index--) {
+      const candidate = history[index];
+      if (candidate.swipe_info?.some((swipe) => swipe.generation_id === generationId)) return index;
+    }
+  }
+
+  const identityIndex = history.lastIndexOf(message);
+  if (identityIndex !== -1) return identityIndex;
+
+  for (let index = history.length - 1; index >= 0; index--) {
+    const candidate = history[index];
+    if (
+      candidate.name === message.name &&
+      candidate.send_date === message.send_date &&
+      candidate.gen_started === message.gen_started &&
+      candidate.gen_finished === message.gen_finished &&
+      candidate.mes === message.mes
+    ) {
+      return index;
+    }
+  }
+
+  return -1;
+}
+
 export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
   const translator = new Translator(api);
   let settingsApp: {
@@ -91,6 +122,9 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
     }
   };
 
+  const getMessageIndex = (message: ChatMessage, generationId?: string): number =>
+    findMessageIndex(api.chat.getHistory(), message, generationId);
+
   const unbinds: Array<() => void> = [];
 
   unbinds.push(
@@ -100,10 +134,11 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
     }),
   );
 
-  // Listen for new messages for Injection AND Auto-Translation
+  // Listen for new messages for injection and user-input auto-translation.
   unbinds.push(
     api.events.on('message:created', (message: ChatMessage) => {
-      const messageIndex = api.chat.getHistory().length - 1;
+      const messageIndex = getMessageIndex(message);
+      if (messageIndex === -1) return;
       const messageElements = document.querySelector(`.message[data-message-index="${messageIndex}"]`);
       if (messageElements) {
         injectSingleButton(messageElements as HTMLElement, messageIndex);
@@ -113,9 +148,23 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
 
       const settings = api.settings.get();
 
-      if (settings && shouldTranslate(message, settings.autoMode)) {
+      if (settings && message.is_user && shouldTranslate(message, settings.autoMode)) {
         translator.translateMessage(messageIndex); // fire and forget
       }
+    }),
+  );
+
+  unbinds.push(
+    api.events.on('generation:finished', (result: { message: ChatMessage | null; error?: Error }, context) => {
+      const settings = api.settings.get();
+      const message = result.message;
+      if (!settings || result.error || !isFinishedAssistantMessage(message) || !shouldTranslate(message, settings.autoMode)) {
+        return;
+      }
+
+      const messageIndex = getMessageIndex(message, context.generationId);
+      if (messageIndex === -1) return;
+      translator.translateMessage(messageIndex); // fire and forget
     }),
   );
 

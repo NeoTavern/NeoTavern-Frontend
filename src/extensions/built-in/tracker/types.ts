@@ -10,6 +10,7 @@ export interface TrackerSettings {
   connectionProfile: string;
   autoMode: 'none' | 'responses' | 'inputs' | 'both';
   promptEngineering: 'native' | 'json' | 'xml';
+  deltaMode: 'off' | 'auto' | 'always';
   schemaPresets: TrackerSchemaPreset[];
   activeSchemaPresetName: string;
   maxResponseTokens: number;
@@ -21,6 +22,9 @@ export interface TrackerSettings {
 export interface TrackerData {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   trackerJson?: Record<string, any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  trackerDelta?: Record<string, any>;
+  deltaMode?: 'full' | 'delta';
   trackerHtml?: string;
   schemaName?: string;
   status: 'idle' | 'pending' | 'success' | 'error';
@@ -74,7 +78,8 @@ export const DEFAULT_PROMPT = `You are a Scene Tracker Assistant, tasked with pr
    - **Example**: “Food court, second floor near east wing entrance, Madison Square Mall, Los Angeles, CA”
 5. **Topics Format**: Ensure topics are one- or two-word keywords relevant to the scene to help trigger contextual information. Avoid long phrases.
 6. **Avoid Redundancies**: Use only details provided or logically inferred from context. Do not introduce speculative or unnecessary information.
-7. **Focus and Pause**: Treat each scene update as a standalone, complete entry. Respond with the full tracker every time, even if there are only minor updates.
+7. **Focus and Pause**: Treat each scene update as a standalone, complete entry. For full tracker requests, fill the full tracker even if there are only minor updates.
+8. **Delta Tracking**: When the system asks for a delta update, return only fields that changed. Include coupled fields together when the schema requires it, such as both display time and machine-readable datetime.
 
 ### Important Reminders:
 1. **Recent Messages and Current Tracker**: Before updating, always consider the recent messages to ensure all changes are accurately represented.
@@ -91,6 +96,11 @@ export const DEFAULT_SCHEMA_VALUE = {
       type: 'string',
       description: 'User-readable in-world time for display. Format: HH:MM:SS; MM/DD/YYYY (Day Name)',
       'x-neotavern-story-time-role': 'display',
+      'x-neotavern-delta': {
+        allow: true,
+        requires: ['datetime'],
+        group: 'storyTime',
+      },
     },
     datetime: {
       type: 'string',
@@ -98,17 +108,25 @@ export const DEFAULT_SCHEMA_VALUE = {
       pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$',
       'x-neotavern-story-time-role': 'datetime',
       'x-neotavern-parse-format': "yyyy-MM-dd'T'HH:mm[:ss]",
+      'x-neotavern-delta': {
+        allow: true,
+        requires: ['time'],
+        group: 'storyTime',
+      },
     },
     location: {
       type: 'string',
       description: 'Specific scene location with increasing specificity',
+      'x-neotavern-delta': true,
     },
     weather: {
       type: 'string',
       description: 'Current weather conditions and temperature',
+      'x-neotavern-delta': true,
     },
     topics: {
       type: 'object',
+      'x-neotavern-delta': true,
       properties: {
         primaryTopic: {
           type: 'string',
@@ -132,9 +150,20 @@ export const DEFAULT_SCHEMA_VALUE = {
         description: 'Character name',
       },
       description: 'List of character names present in scene',
+      'x-neotavern-delta': {
+        allow: true,
+        arrayMerge: 'replace',
+      },
     },
     characters: {
       type: 'array',
+      'x-neotavern-delta': {
+        allow: true,
+        arrayMerge: 'byKey',
+        key: 'name',
+        delete: true,
+        deleteKey: '$delete',
+      },
       items: {
         type: 'object',
         properties: {
@@ -216,6 +245,7 @@ export const DEFAULT_SETTINGS: TrackerSettings = {
   connectionProfile: '',
   autoMode: 'none',
   promptEngineering: 'native',
+  deltaMode: 'auto',
   schemaPresets: DEFAULT_PRESETS,
   activeSchemaPresetName: 'Scene Tracker',
   maxResponseTokens: 8192,
