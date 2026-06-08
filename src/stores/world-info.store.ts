@@ -25,6 +25,21 @@ export const useWorldInfoStore = defineStore('world-info', () => {
   const worldInfoCache = ref<Record<string, WorldInfoBook>>({}); // filename -> book
   const loadingBooks = ref<Set<string>>(new Set());
 
+  function resolveBookFileId(identifier: string): string | undefined {
+    const byFileId = bookInfos.value.find((bookInfo) => bookInfo.file_id === identifier);
+    if (byFileId) return byFileId.file_id;
+
+    const byName = bookInfos.value.find((bookInfo) => bookInfo.name === identifier);
+    return byName?.file_id;
+  }
+
+  function findCacheKeyForBook(book: WorldInfoBook): string | undefined {
+    const cacheEntry = Object.entries(worldInfoCache.value).find(([, cachedBook]) => cachedBook === book);
+    if (cacheEntry) return cacheEntry[0];
+
+    return resolveBookFileId(book.name);
+  }
+
   const activeBookNames = computed<string[]>(() => {
     const global = settingsStore.settings.worldInfo.activeBookNames || [];
     const persona = personaStore.activePersona?.lorebooks || [];
@@ -33,26 +48,39 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     const charBooks = new Set<string>();
     for (const char of characterStore.activeCharacters) {
       if (char.data?.character_book?.name) {
-        charBooks.add(char.data.character_book.name);
+        const fileId = resolveBookFileId(char.data.character_book.name);
+        if (fileId) {
+          charBooks.add(fileId);
+        }
       }
     }
 
-    const uniqueNames = new Set<string>([...global, ...persona, ...chat, ...charBooks]);
-    return Array.from(uniqueNames);
+    const uniqueFileIds = new Set<string>();
+    [...global, ...persona, ...chat].forEach((identifier) => {
+      const fileId = resolveBookFileId(identifier);
+      if (fileId) {
+        uniqueFileIds.add(fileId);
+      }
+    });
+    charBooks.forEach((fileId) => uniqueFileIds.add(fileId));
+
+    return Array.from(uniqueFileIds);
   });
 
   const globalBookNames = computed<string[]>({
-    get: () => settingsStore.settings.worldInfo.activeBookNames || [],
+    get: () =>
+      (settingsStore.settings.worldInfo.activeBookNames || []).map((identifier) => resolveBookFileId(identifier) ?? identifier),
     set: (value) => {
       settingsStore.settings.worldInfo.activeBookNames = value;
     },
   });
 
   async function getBookFromCache(filename: string, force?: boolean): Promise<WorldInfoBook | undefined> {
-    if (force && !worldInfoCache.value[filename]) {
-      await fetchBook(filename);
+    const cacheKey = resolveBookFileId(filename) ?? filename;
+    if (force && !worldInfoCache.value[cacheKey]) {
+      await fetchBook(cacheKey);
     }
-    return worldInfoCache.value[filename];
+    return worldInfoCache.value[cacheKey];
   }
 
   async function initialize() {
@@ -81,11 +109,12 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     }
   }
 
-  const saveBookDebounced = debounce(async (book?: WorldInfoBook) => {
+  const saveBookDebounced = debounce(async (book?: WorldInfoBook, filename?: string) => {
     if (book) {
       try {
-        await api.saveWorldInfoBook(book.name, book);
-        worldInfoCache.value[book.name] = JSON.parse(JSON.stringify(book));
+        const cacheKey = filename ?? findCacheKeyForBook(book) ?? book.name;
+        await api.saveWorldInfoBook(cacheKey, book);
+        worldInfoCache.value[cacheKey] = JSON.parse(JSON.stringify(book));
         await nextTick();
         await eventEmitter.emit('world-info:book-updated', book);
       } catch (error) {
@@ -101,7 +130,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     const index = book.entries.findIndex((e) => e.uid === newEntryData.uid);
     if (index !== -1) {
       book.entries[index] = { ...newEntryData };
-      saveBookDebounced(book);
+      saveBookDebounced(book, findCacheKeyForBook(book));
       await nextTick();
       await eventEmitter.emit('world-info:entry-updated', book.name, newEntryData);
     }
@@ -138,7 +167,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     const newEntry = createDefaultEntry(newUid);
 
     book.entries.unshift(newEntry);
-    saveBookDebounced(book);
+    saveBookDebounced(book, filename);
 
     await nextTick();
     await eventEmitter.emit('world-info:entry-created', filename, newEntry);
@@ -187,7 +216,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     const index = book.entries.findIndex((e) => e.uid === entryUid);
     if (index !== -1) {
       book.entries.splice(index, 1);
-      saveBookDebounced(book);
+      saveBookDebounced(book, filename);
       await nextTick();
       await eventEmitter.emit('world-info:entry-deleted', book.name, entryUid);
     }
@@ -204,7 +233,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
       comment: `${entryToCopy.comment} (copy)`,
     };
     book.entries.unshift(newEntry);
-    saveBookDebounced(book);
+    saveBookDebounced(book, filename);
 
     return newEntry.uid;
   }

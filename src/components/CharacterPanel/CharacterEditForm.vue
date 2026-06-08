@@ -469,9 +469,15 @@ const lorebookOptions = computed(() => {
   ];
 });
 
-const embeddedLorebookName = computed({
-  get: () => localCharacter.value?.data?.character_book?.name || '',
-  set: async (newValue) => {
+const embeddedLorebookFileId = computed({
+  get: () => {
+    const embeddedBook = localCharacter.value?.data?.character_book;
+    const embeddedBookName = embeddedBook?.name;
+    if (!embeddedBookName) return '';
+
+    return worldInfoStore.bookInfos.find((info) => info.name === embeddedBookName)?.file_id || '';
+  },
+  set: async (newValue: string) => {
     if (!localCharacter.value || !localCharacter.value.data) return;
     if (!newValue) {
       localCharacter.value.data.character_book = undefined;
@@ -907,7 +913,7 @@ const allCharacterTags = computed<string[]>({
         >
           <div class="inline-drawer-content--column">
             <FormItem for="char-lorebook" :label="t('characterEditor.embeddedLorebook')">
-              <Select id="char-lorebook" v-model="embeddedLorebookName" :options="lorebookOptions" searchable />
+              <Select id="char-lorebook" v-model="embeddedLorebookFileId" :options="lorebookOptions" searchable />
             </FormItem>
 
             <small>{{ t('characterEditor.advanced.metadataOptional') }}</small>
