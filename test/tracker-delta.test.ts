@@ -104,9 +104,7 @@ describe('tracker delta', () => {
       '"time" requires "datetime" in the same delta.',
     );
 
-    expect(() =>
-      validateTrackerDeltaRules({ time: '12:01', datetime: '2026-06-08T12:01' }, schema),
-    ).not.toThrow();
+    expect(() => validateTrackerDeltaRules({ time: '12:01', datetime: '2026-06-08T12:01' }, schema)).not.toThrow();
   });
 
   it('merges keyed array entries without replacing unchanged fields', () => {

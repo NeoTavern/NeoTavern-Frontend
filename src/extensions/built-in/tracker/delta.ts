@@ -174,7 +174,8 @@ function deriveSchema(schema: unknown, forceAllowChildren: boolean): TrackerDelt
 
   const type = getSchemaType(schema);
   if (type === 'object') return deriveObjectDeltaSchema(schema, forceAllowChildren);
-  if (forceAllowChildren || getAnnotation(schema)?.allow === true) return { schema: relaxSchema(schema), hasDeltaFields: true };
+  if (forceAllowChildren || getAnnotation(schema)?.allow === true)
+    return { schema: relaxSchema(schema), hasDeltaFields: true };
   return null;
 }
 
@@ -256,7 +257,11 @@ function getPathSchema(schema: unknown, path: string): unknown {
   return current;
 }
 
-function collectDependencyRules(schema: unknown, path: string[] = [], rules: Array<{ path: string; requires: string[] }> = []) {
+function collectDependencyRules(
+  schema: unknown,
+  path: string[] = [],
+  rules: Array<{ path: string; requires: string[] }> = [],
+) {
   if (!isObject(schema)) return rules;
 
   const annotation = getAnnotation(schema);
@@ -424,7 +429,11 @@ export function applyTrackerDelta(previous: JsonObject, delta: JsonObject, fullS
   return mergeTrackerDelta(previous, delta, fullSchema) as JsonObject;
 }
 
-export function validateAndApplyTrackerDelta(previous: JsonObject, delta: JsonObject, fullSchema: unknown): TrackerDeltaApplyResult {
+export function validateAndApplyTrackerDelta(
+  previous: JsonObject,
+  delta: JsonObject,
+  fullSchema: unknown,
+): TrackerDeltaApplyResult {
   const deltaSchema = buildTrackerDeltaSchema(fullSchema).schema;
   validateAgainstSchema(delta, deltaSchema, 'Tracker delta');
   validateTrackerDeltaRules(delta, fullSchema);

@@ -95,7 +95,8 @@ async function setEvents(api: TimelineExtensionAPI, events: TimelineEvent[]): Pr
 function getDueEvents(events: TimelineEvent[], nowComparable: number): TimelineEvent[] {
   return events
     .filter(
-      (event) => event.inject !== false && event.status === 'pending' && event.dueAt && event.dueAt.comparable <= nowComparable,
+      (event) =>
+        event.inject !== false && event.status === 'pending' && event.dueAt && event.dueAt.comparable <= nowComparable,
     )
     .sort((a, b) => (a.dueAt?.comparable ?? 0) - (b.dueAt?.comparable ?? 0));
 }
@@ -103,7 +104,8 @@ function getDueEvents(events: TimelineEvent[], nowComparable: number): TimelineE
 function getUpcomingEvents(events: TimelineEvent[], nowComparable: number): TimelineEvent[] {
   return events
     .filter(
-      (event) => event.inject !== false && event.status === 'pending' && event.dueAt && event.dueAt.comparable > nowComparable,
+      (event) =>
+        event.inject !== false && event.status === 'pending' && event.dueAt && event.dueAt.comparable > nowComparable,
     )
     .sort((a, b) => (a.dueAt?.comparable ?? 0) - (b.dueAt?.comparable ?? 0));
 }

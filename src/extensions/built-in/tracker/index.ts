@@ -4,8 +4,8 @@ import type { ApiChatMessage, GenerationResponse, StructuredResponseOptions } fr
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
 import {
   buildTrackerDeltaSchema,
-  validateAndApplyTrackerDelta,
   validateAgainstSchema,
+  validateAndApplyTrackerDelta,
   type TrackerDeltaMode,
 } from './delta';
 import { manifest } from './manifest';
@@ -515,7 +515,10 @@ class TrackerManager {
     }
   }
 
-  public handleAutoTrackGenerationFinished(result: { message: ChatMessage | null; error?: Error }, generationId: string) {
+  public handleAutoTrackGenerationFinished(
+    result: { message: ChatMessage | null; error?: Error },
+    generationId: string,
+  ) {
     const settings = this.getSettings();
     if (!settings.enabled || result.error || settings.autoMode === 'none') return;
     const shouldTrackBot = settings.autoMode === 'responses' || settings.autoMode === 'both';

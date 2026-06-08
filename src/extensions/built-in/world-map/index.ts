@@ -1795,7 +1795,10 @@ class WorldMapManager {
     }
   }
 
-  public handleAutoUpdateGenerationFinished(result: { message: ChatMessage | null; error?: Error }, generationId: string): void {
+  public handleAutoUpdateGenerationFinished(
+    result: { message: ChatMessage | null; error?: Error },
+    generationId: string,
+  ): void {
     const settings = this.getSettings();
     if (!settings.enabled || result.error || settings.autoMode === 'none') return;
     const shouldTrackBot = settings.autoMode === 'responses' || settings.autoMode === 'both';

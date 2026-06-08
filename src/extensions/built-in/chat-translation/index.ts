@@ -158,7 +158,12 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
     api.events.on('generation:finished', (result: { message: ChatMessage | null; error?: Error }, context) => {
       const settings = api.settings.get();
       const message = result.message;
-      if (!settings || result.error || !isFinishedAssistantMessage(message) || !shouldTranslate(message, settings.autoMode)) {
+      if (
+        !settings ||
+        result.error ||
+        !isFinishedAssistantMessage(message) ||
+        !shouldTranslate(message, settings.autoMode)
+      ) {
         return;
       }
 
