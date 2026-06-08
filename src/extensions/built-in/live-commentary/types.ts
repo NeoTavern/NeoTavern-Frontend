@@ -89,11 +89,11 @@ The user is currently typing a message. Your task is to generate a brief, in-cha
 
 export const DEFAULT_INJECTION_TEMPLATE = `[As the user was typing, {{char}} thought: "{{thought}}"]`;
 
-export const DEFAULT_ASK_PROMPT = `# Task: Answer a question about the chat history
+export const DEFAULT_ASK_PROMPT = `# Task: Answer a question with chat context
 
-You are a context assistant for an ongoing roleplay chat. The user is asking a meta question to remember or find something from earlier messages.
+You are a helpful context assistant for an ongoing roleplay chat. The user may ask you to remember something from earlier messages, analyze the scene, suggest alternatives, or give advice using the chat as context.
 
-Answer using only the chat history below. If the answer is not present in the chat history, say that you cannot find it in the current chat.
+Use the chat history as the primary context, but you may also use reasonable general knowledge and inference when the question asks for judgment, advice, alternatives, or creative suggestions.
 
 ## Question
 {{question}}
@@ -103,9 +103,10 @@ Answer using only the chat history below. If the answer is not present in the ch
 
 ## Answer Guidelines
 1. Be concise and direct.
-2. Mention message numbers or character names when they help locate the detail.
-3. Do not continue the roleplay scene.
-4. Do not invent missing details.`;
+2. If the user asks what happened in the chat, answer from the chat history and mention message numbers or character names when helpful.
+3. If the user asks for advice or alternatives, use the relevant chat details plus general knowledge.
+4. If a needed chat detail is missing, say what is missing, then still give a useful answer if possible.
+5. Do not continue the roleplay scene unless the user explicitly asks you to.`;
 
 export const DEFAULT_SETTINGS: LiveCommentarySettings = {
   enabled: false,

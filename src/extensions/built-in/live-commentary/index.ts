@@ -67,7 +67,7 @@ export function activate(api: ExtensionAPI<LiveCommentarySettings>) {
   // Subscribe to chat input change events
   const unsubscribeInputChange = api.events.on('chat:input-changed', handleInputChange);
 
-  const showCommentaryBubble = (characterAvatar: string, thought: string) => {
+  const showCommentaryBubble = (characterAvatar: string, thought: string, displayDurationMs?: number) => {
     const settings = api.settings.get();
     if (!settings?.enabled) return;
 
@@ -114,7 +114,7 @@ export function activate(api: ExtensionAPI<LiveCommentarySettings>) {
       const bubbleId = api.uuid();
       const bubbleInstance = api.ui.mount(mountPoint, CommentaryBubble, {
         text: thought,
-        displayDurationMs: settings.displayDurationMs ?? 5000,
+        displayDurationMs: displayDurationMs ?? settings.displayDurationMs ?? 5000,
         referenceElement: targetAvatarElement,
         onClose: () => {
           if (activeBubbles.get(characterAvatar)?.id === bubbleId) {
@@ -192,6 +192,7 @@ export function activate(api: ExtensionAPI<LiveCommentarySettings>) {
       showCommentaryBubble(
         activeCharacter.avatar,
         answer || api.i18n.t('extensionsBuiltin.liveCommentary.askEmptyAnswer'),
+        (api.settings.get()?.displayDurationMs ?? 5000) * 4,
       );
     } catch (error) {
       if (controller.signal.aborted || askController !== controller) {

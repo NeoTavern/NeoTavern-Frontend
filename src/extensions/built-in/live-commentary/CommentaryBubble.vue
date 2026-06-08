@@ -29,7 +29,9 @@ const formattedDisplayedText = computed(() => formatText(displayMarkdown.value))
 
 let typingInterval: number | null = null;
 let closeTimeout: number | null = null;
+let isTypingComplete = false;
 const typingSpeed = 50; // ms per character
+const hoverExtensionRatio = 0.25;
 
 const { x, y, strategy, middlewareData, placement } = useFloating(toRef(props, 'referenceElement'), floating, {
   placement: 'top',
@@ -63,6 +65,25 @@ const arrowStyle = computed(() => {
   };
 });
 
+function scheduleClose(durationMs: number) {
+  if (closeTimeout) {
+    clearTimeout(closeTimeout);
+  }
+
+  closeTimeout = window.setTimeout(() => {
+    props.onClose();
+  }, durationMs);
+}
+
+function handleMouseEnter() {
+  if (!isTypingComplete) {
+    return;
+  }
+
+  const extensionDuration = props.displayDurationMs * hoverExtensionRatio;
+  scheduleClose(extensionDuration);
+}
+
 onMounted(() => {
   let i = 0;
   typingInterval = window.setInterval(() => {
@@ -76,11 +97,8 @@ onMounted(() => {
       }
 
       props.onTypingComplete?.();
-
-      // Start countdown to close after typing is finished
-      closeTimeout = window.setTimeout(() => {
-        props.onClose();
-      }, props.displayDurationMs);
+      isTypingComplete = true;
+      scheduleClose(props.displayDurationMs);
     }
   }, typingSpeed);
 });
@@ -96,7 +114,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="floating" class="commentary-bubble" :style="positionStyle" @click="onClose">
+  <div ref="floating" class="commentary-bubble" :style="positionStyle" @mouseenter="handleMouseEnter" @click="onClose">
     <div class="commentary-bubble-content">
       <!-- eslint-disable-next-line vue/no-v-html -->
       <span class="commentary-bubble-markdown" v-html="formattedDisplayedText"></span
