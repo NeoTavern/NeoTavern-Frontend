@@ -1,3 +1,4 @@
+import { cloneDeep } from 'lodash-es';
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { fetchChatCompletionStatus, fetchTextCompletionStatus } from '../api/connection';
@@ -118,7 +119,7 @@ export const useApiStore = defineStore('api', () => {
         if (!newPresetName) return;
         const preset = presets.value.find((p) => p.name === newPresetName);
         if (preset) {
-          settingsStore.settings.api.samplers = { ...preset.preset };
+          settingsStore.settings.api.samplers = cloneDeep(preset.preset);
         }
       },
     );
@@ -326,7 +327,7 @@ export const useApiStore = defineStore('api', () => {
 
   async function saveCurrentPresetAs(name: string) {
     try {
-      const presetData: SamplerSettings = { ...settingsStore.settings.api.samplers };
+      const presetData: SamplerSettings = cloneDeep(settingsStore.settings.api.samplers);
       await saveSamplerPreset(name, presetData);
       const existingIndex = presets.value.findIndex((p) => p.name === name);
       if (existingIndex >= 0) {

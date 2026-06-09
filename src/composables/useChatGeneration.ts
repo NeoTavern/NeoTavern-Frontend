@@ -1,4 +1,4 @@
-import { escapeRegExp } from 'lodash-es';
+import { cloneDeep, escapeRegExp } from 'lodash-es';
 import { computed, nextTick, ref, type Ref } from 'vue';
 import {
   buildChatCompletionPayload,
@@ -434,10 +434,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     await eventEmitter.emit('generation:resolve-context', contextCharactersWrapper, { generationId });
     const charactersForContext = contextCharactersWrapper.characters;
 
-    const clonedSampler = {
-      ...effectiveSamplerSettings,
-      stop: [...(effectiveSamplerSettings.stop || [])],
-    };
+    const clonedSampler = cloneDeep(effectiveSamplerSettings);
 
     const context: GenerationContext = {
       generationId,

@@ -1,3 +1,4 @@
+import { cloneDeep } from 'lodash-es';
 import { aiConfigDefinition } from '../ai-config-definition';
 import { CustomPromptPostProcessing } from '../constants';
 import { ToolService } from '../services/tool.service';
@@ -74,16 +75,16 @@ export async function resolveConnectionProfileSettings(options: {
   }
 
   // Determine effective sampler settings
-  let effectiveSamplerSettings = { ...settingsStore.settings.api.samplers };
+  let effectiveSamplerSettings = cloneDeep(settingsStore.settings.api.samplers);
   if (profileSettings?.sampler) {
     if (apiStore.presets.length === 0) await apiStore.loadPresetsForApi();
     const preset = apiStore.presets.find((p) => p.name === profileSettings!.sampler);
-    if (preset) effectiveSamplerSettings = { ...preset.preset };
+    if (preset) effectiveSamplerSettings = cloneDeep(preset.preset);
   }
 
   // Apply sampler overrides
   if (samplerOverrides) {
-    effectiveSamplerSettings = { ...effectiveSamplerSettings, ...samplerOverrides };
+    effectiveSamplerSettings = { ...effectiveSamplerSettings, ...cloneDeep(samplerOverrides) };
   }
 
   // Determine formatter and instruct template
