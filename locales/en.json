@@ -1604,7 +1604,10 @@
       "maxResultsHint": "Maximum number of search results to return.",
       "urlInspector": "URL Inspector",
       "maxContentLength": "Max Content Length",
-      "maxContentLengthHint": "Character limit for the extracted content to prevent context overflow."
+      "maxContentLengthHint": "Character limit for the extracted content to prevent context overflow.",
+      "enabled": "Enabled",
+      "useFandomApi": "Use Fandom API",
+      "useFandomApiHint": "Prefer Fandom's MediaWiki API for Fandom wiki pages, then fall back to normal URL inspection if it fails."
     },
     "liveCommentary": {
       "enable": "Enable Live Commentary",

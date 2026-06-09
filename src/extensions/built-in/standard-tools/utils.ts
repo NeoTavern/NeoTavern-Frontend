@@ -37,6 +37,56 @@ export async function fetchHtml(url: string, proxy?: string): Promise<string> {
   }
 }
 
+export function getFandomApiUrl(url: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+
+  if (!parsed.hostname.endsWith('.fandom.com') || !parsed.pathname.startsWith('/wiki/')) {
+    return null;
+  }
+
+  const title = decodeURIComponent(parsed.pathname.slice('/wiki/'.length)).replace(/_/g, ' ').trim();
+  if (!title) {
+    return null;
+  }
+
+  const apiUrl = new URL('/api.php', parsed.origin);
+  apiUrl.searchParams.set('action', 'parse');
+  apiUrl.searchParams.set('page', title);
+  apiUrl.searchParams.set('prop', 'text');
+  apiUrl.searchParams.set('format', 'json');
+  apiUrl.searchParams.set('formatversion', '2');
+  apiUrl.searchParams.set('redirects', '1');
+  apiUrl.searchParams.set('disableeditsection', '1');
+
+  return apiUrl.toString();
+}
+
+export async function fetchFandomArticleHtml(url: string, proxy?: string): Promise<string | null> {
+  const apiUrl = getFandomApiUrl(url);
+  if (!apiUrl) {
+    return null;
+  }
+
+  const responseText = await fetchHtml(apiUrl, proxy);
+  const data = JSON.parse(responseText);
+  const text = data?.parse?.text;
+
+  if (typeof text === 'string') {
+    return text;
+  }
+
+  if (typeof text?.['*'] === 'string') {
+    return text['*'];
+  }
+
+  throw new Error('Fandom API response did not include article HTML');
+}
+
 /**
  * Basic HTML to Markdown converter.
  * Walks the DOM and produces a simplified Markdown string.

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
-import { FormItem, Input } from '../../../components/UI';
+import { Checkbox, FormItem, Input } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
 import { DEFAULT_SETTINGS, type StandardToolsSettings } from './types';
 
@@ -86,6 +86,12 @@ const getResetTool = (field: keyof StandardToolsSettings) => ({
           :step="500"
           :tools="[getResetTool('urlInspectorMaxContentLength')]"
         />
+      </FormItem>
+      <FormItem
+        :label="t('extensionsBuiltin.standardTools.useFandomApi')"
+        :description="t('extensionsBuiltin.standardTools.useFandomApiHint')"
+      >
+        <Checkbox v-model="settings.useFandomApi" :label="t('extensionsBuiltin.standardTools.enabled')" />
       </FormItem>
     </div>
   </div>

@@ -1608,6 +1608,9 @@ export interface MessageSchema {
       urlInspector: string;
       maxContentLength: string;
       maxContentLengthHint: string;
+      enabled: string;
+      useFandomApi: string;
+      useFandomApiHint: string;
     };
     liveCommentary: {
       enable: string;

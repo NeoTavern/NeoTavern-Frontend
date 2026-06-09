@@ -22,7 +22,7 @@ export function activate(api: ExtensionAPI<StandardToolsSettings>) {
   }
 
   // Helper to get fresh settings inside tool execution
-  const getSettings = () => api.settings.get() || DEFAULT_SETTINGS;
+  const getSettings = () => ({ ...DEFAULT_SETTINGS, ...api.settings.get() });
 
   // Register Tools
   const webSearchTool = createWebSearchTool(getSettings);

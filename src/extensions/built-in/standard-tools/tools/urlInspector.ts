@@ -1,6 +1,6 @@
 import type { ToolDefinition } from '../../../../types/tools';
 import type { StandardToolsSettings } from '../types';
-import { cleanDom, fetchHtml, htmlToMarkdown } from '../utils';
+import { cleanDom, fetchFandomArticleHtml, fetchHtml, htmlToMarkdown } from '../utils';
 
 export const createUrlInspectorTool = (getSettings: () => StandardToolsSettings): ToolDefinition => ({
   name: 'inspect_url',
@@ -27,7 +27,13 @@ export const createUrlInspectorTool = (getSettings: () => StandardToolsSettings)
 
     let html = '';
     try {
-      html = await fetchHtml(url, settings.corsProxy);
+      const fandomHtml = settings.useFandomApi
+        ? await fetchFandomArticleHtml(url, settings.corsProxy).catch((error) => {
+            console.warn('Fandom API fetch failed, falling back to normal URL inspection:', error);
+            return null;
+          })
+        : null;
+      html = fandomHtml ?? (await fetchHtml(url, settings.corsProxy));
     } catch (error) {
       return `Error fetching URL: ${(error as Error).message}`;
     }
