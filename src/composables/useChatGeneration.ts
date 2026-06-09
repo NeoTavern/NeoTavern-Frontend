@@ -675,7 +675,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       api: payloadRaw.provider,
       tokenizer: settings.api.tokenizer,
       presetName: chatMetadata.connection_profile || settings.api.selectedSampler || 'Default', // FIXME: Instead of "chatMetadata.connection_profile", we should get the sampler name from the resolved connection profile
-      messages: messages,
+      messages: payloadRaw.messages,
       breakdown: breakdown,
       timestamp: Date.now(),
       worldInfoEntries: promptBuilder.processedWorldInfo?.triggeredEntries ?? {},

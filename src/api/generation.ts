@@ -138,7 +138,8 @@ export async function resolveConnectionProfileSettings(options: {
     instructTemplate: effectiveTemplate,
     reasoningTemplate: effectiveReasoningTemplate,
     providerSpecific: effectiveProviderSpecific,
-    customPromptPostProcessing: profileSettings?.customPromptPostProcessing ?? CustomPromptPostProcessing.NONE,
+    customPromptPostProcessing:
+      profileSettings?.customPromptPostProcessing ?? settingsStore.settings.api.customPromptPostProcessing,
   };
 }
 
