@@ -1,0 +1,21 @@
+# Development
+
+## Local dev overrides
+
+For a custom proxy target, HTTPS, or Basic auth during `npm run dev` or `vite preview`, you can use an optional **local overrides file** that is gitignored and never committed.
+
+1. Copy the example file:
+   ```bash
+   cp vite.config.local.example.ts vite.config.local.ts
+   ```
+2. Edit `vite.config.local.ts` and export `devOverrides` (or a default export) with your values.
+
+**Shape:** See the `DevOverrides` interface and `defaultDevOverrides` in `vite-dev-overrides.ts`. You can override:
+
+- **proxyTarget** — Backend URL for the dev/preview proxy (default: `http://localhost:8000`).
+- **proxyOptions** — Optional [Vite proxy options](https://vite.dev/config/server-options.html#server-proxy) merged into every proxy rule (e.g. `ca` with your CA’s PEM content to trust a self-signed or internal backend cert).
+- **server** / **preview** — `port`, `host` for the Vite dev and preview servers.
+- **https** — `certPath` and `keyPath` to PEM files; the main config reads them and sets `server.https` / `preview.https`.
+- **auth** — `{ user, pass }` to require Basic auth and validate against that user/pass; omit for no auth.
+
+All logic (proxy path list, auth middleware, cert reading) lives in `vite.config.ts`; the local file only supplies values. Do not put secrets or real paths in the example file.
