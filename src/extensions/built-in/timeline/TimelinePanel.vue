@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { Button, Tabs } from '../../../components/UI';
+import { Button, Select, Tabs } from '../../../components/UI';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
+import { parseStoryDatetime } from '../tracker/story-time';
 import {
   EXTENSION_ID,
   TIMELINE_UPDATED_EVENT,
@@ -22,6 +23,8 @@ const activeTab = ref('due');
 const events = ref<TimelineEvent[]>([]);
 const currentStoryTime = ref<TimelineTimeRef | undefined>();
 const loading = ref(false);
+const dueDrafts = ref<Record<string, string>>({});
+const expandedEventIds = ref<Set<string>>(new Set());
 
 const tabs = [
   { label: 'Due', value: 'due' },
@@ -31,6 +34,12 @@ const tabs = [
   { label: 'Time', value: 'time' },
 ];
 
+const statusOptions: Array<{ label: string; value: TimelineEvent['status'] }> = [
+  { label: 'Pending', value: 'pending' },
+  { label: 'Resolved', value: 'resolved' },
+  { label: 'Cancelled', value: 'cancelled' },
+];
+
 function getTimelineExtra(): TimelineChatExtraData {
   return props.api.chat.metadata.get()?.extra?.[EXTENSION_ID] ?? {};
 }
@@ -38,6 +47,7 @@ function getTimelineExtra(): TimelineChatExtraData {
 async function refresh(): Promise<void> {
   events.value = [...(getTimelineExtra().events ?? [])];
   currentStoryTime.value = await props.getCurrentStoryTime();
+  dueDrafts.value = Object.fromEntries(events.value.map((event) => [event.id, event.dueAt?.display ?? '']));
 }
 
 function isDue(event: TimelineEvent): boolean {
@@ -85,6 +95,12 @@ async function updateStatus(event: TimelineEvent, status: TimelineEvent['status'
   await setEvents(next);
 }
 
+async function onStatusChange(event: TimelineEvent, value: string | number | Array<string | number>): Promise<void> {
+  if (Array.isArray(value)) return;
+  if (value !== 'pending' && value !== 'resolved' && value !== 'cancelled') return;
+  await updateStatus(event, value);
+}
+
 async function toggleInject(event: TimelineEvent): Promise<void> {
   const next = events.value.map((item) =>
     item.id === event.id ? { ...item, inject: item.inject === false, updatedAt: new Date().toISOString() } : item,
@@ -92,8 +108,57 @@ async function toggleInject(event: TimelineEvent): Promise<void> {
   await setEvents(next);
 }
 
+async function updateDueTime(event: TimelineEvent): Promise<void> {
+  const draft = dueDrafts.value[event.id]?.trim() ?? '';
+  if (!draft) {
+    await clearDueTime(event);
+    return;
+  }
+
+  const parsed = parseStoryDatetime(draft);
+  if (!parsed) {
+    props.api.ui.showToast('Use YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss for timeline time.', 'error');
+    return;
+  }
+
+  const dueAt: TimelineTimeRef = {
+    display: draft,
+    comparable: parsed.comparable,
+    precision: parsed.precision,
+  };
+  const next = events.value.map((item) =>
+    item.id === event.id ? { ...item, dueAt, updatedAt: new Date().toISOString() } : item,
+  );
+  await setEvents(next);
+}
+
+async function clearDueTime(event: TimelineEvent): Promise<void> {
+  dueDrafts.value = { ...dueDrafts.value, [event.id]: '' };
+  const next = events.value.map((item) => {
+    if (item.id !== event.id) return item;
+    const { dueAt, ...rest } = item;
+    void dueAt;
+    return { ...rest, updatedAt: new Date().toISOString() };
+  });
+  await setEvents(next);
+}
+
 async function removeEvent(event: TimelineEvent): Promise<void> {
   await setEvents(events.value.filter((item) => item.id !== event.id));
+}
+
+function isExpanded(eventId: string): boolean {
+  return expandedEventIds.value.has(eventId);
+}
+
+function toggleExpanded(eventId: string): void {
+  const next = new Set(expandedEventIds.value);
+  if (next.has(eventId)) {
+    next.delete(eventId);
+  } else {
+    next.add(eventId);
+  }
+  expandedEventIds.value = next;
 }
 
 async function clearAll(): Promise<void> {
@@ -169,22 +234,43 @@ onBeforeUnmount(() => {
       <div v-if="activeTab === 'due'" class="timeline-list">
         <div v-if="dueEvents.length === 0" class="timeline-empty">No due events.</div>
         <article v-for="event in dueEvents" :key="event.id" class="timeline-item timeline-item--due">
-          <div class="timeline-item__header">
-            <strong>{{ event.title }}</strong>
-            <span>{{ event.type }}</span>
-          </div>
-          <p>{{ event.description }}</p>
-          <div class="timeline-item__meta">
+          <button class="timeline-item__summary" type="button" @click="toggleExpanded(event.id)">
+            <span>
+              <strong>{{ event.title }}</strong>
+              <small>{{ event.type }} · {{ event.importance }}</small>
+            </span>
             <span>{{ event.dueAt?.display }}</span>
-            <span>{{ event.importance }} · {{ event.inject === false ? 'muted' : 'injects' }}</span>
+            <i :class="['fa-solid', isExpanded(event.id) ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+          </button>
+          <div class="timeline-item__body">
+            <p>{{ event.description }}</p>
+            <div class="timeline-item__meta">
+              <span>{{ event.status }}</span>
+              <span>{{ event.inject === false ? 'muted' : 'injects' }} · {{ event.tags.join(', ') || 'No tags' }}</span>
+            </div>
           </div>
-          <div class="timeline-item__actions">
-            <Button variant="confirm" icon="fa-check" @click="updateStatus(event, 'resolved')">Resolve</Button>
-            <Button variant="ghost" icon="fa-ban" @click="updateStatus(event, 'cancelled')">Cancel</Button>
-            <Button variant="ghost" icon="fa-bullhorn" @click="toggleInject(event)">
-              {{ event.inject === false ? 'Inject' : 'Mute' }}
-            </Button>
-            <Button variant="danger" icon="fa-trash" @click="removeEvent(event)">Remove</Button>
+          <div v-if="isExpanded(event.id)" class="timeline-item__details">
+            <div class="timeline-item__editor">
+              <Select
+                :model-value="event.status"
+                :options="statusOptions"
+                title="Status"
+                @change="(value) => onStatusChange(event, value)"
+              />
+              <input
+                v-model="dueDrafts[event.id]"
+                class="text-pole timeline-item__time-input"
+                placeholder="YYYY-MM-DDTHH:mm"
+              />
+              <Button variant="ghost" icon="fa-floppy-disk" @click="updateDueTime(event)">Save Time</Button>
+              <Button variant="ghost" icon="fa-clock-rotate-left" @click="clearDueTime(event)">Clear Time</Button>
+            </div>
+            <div class="timeline-item__actions">
+              <Button variant="ghost" icon="fa-bullhorn" @click="toggleInject(event)">
+                {{ event.inject === false ? 'Inject' : 'Mute' }}
+              </Button>
+              <Button variant="danger" icon="fa-trash" @click="removeEvent(event)">Remove</Button>
+            </div>
           </div>
         </article>
       </div>
@@ -192,22 +278,43 @@ onBeforeUnmount(() => {
       <div v-if="activeTab === 'upcoming'" class="timeline-list">
         <div v-if="upcomingEvents.length === 0" class="timeline-empty">No upcoming events.</div>
         <article v-for="event in upcomingEvents" :key="event.id" class="timeline-item">
-          <div class="timeline-item__header">
-            <strong>{{ event.title }}</strong>
+          <button class="timeline-item__summary" type="button" @click="toggleExpanded(event.id)">
+            <span>
+              <strong>{{ event.title }}</strong>
+              <small>{{ event.type }} · {{ event.importance }}</small>
+            </span>
             <span>{{ event.dueAt?.display }}</span>
+            <i :class="['fa-solid', isExpanded(event.id) ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+          </button>
+          <div class="timeline-item__body">
+            <p>{{ event.description }}</p>
+            <div class="timeline-item__meta">
+              <span>{{ event.status }}</span>
+              <span>{{ event.inject === false ? 'muted' : 'injects' }} · {{ event.tags.join(', ') || 'No tags' }}</span>
+            </div>
           </div>
-          <p>{{ event.description }}</p>
-          <div class="timeline-item__meta">
-            <span>{{ event.type }}</span>
-            <span>{{ event.inject === false ? 'muted' : 'injects' }} · {{ event.tags.join(', ') }}</span>
-          </div>
-          <div class="timeline-item__actions">
-            <Button variant="confirm" icon="fa-check" @click="updateStatus(event, 'resolved')">Resolve</Button>
-            <Button variant="ghost" icon="fa-ban" @click="updateStatus(event, 'cancelled')">Cancel</Button>
-            <Button variant="ghost" icon="fa-bullhorn" @click="toggleInject(event)">
-              {{ event.inject === false ? 'Inject' : 'Mute' }}
-            </Button>
-            <Button variant="danger" icon="fa-trash" @click="removeEvent(event)">Remove</Button>
+          <div v-if="isExpanded(event.id)" class="timeline-item__details">
+            <div class="timeline-item__editor">
+              <Select
+                :model-value="event.status"
+                :options="statusOptions"
+                title="Status"
+                @change="(value) => onStatusChange(event, value)"
+              />
+              <input
+                v-model="dueDrafts[event.id]"
+                class="text-pole timeline-item__time-input"
+                placeholder="YYYY-MM-DDTHH:mm"
+              />
+              <Button variant="ghost" icon="fa-floppy-disk" @click="updateDueTime(event)">Save Time</Button>
+              <Button variant="ghost" icon="fa-clock-rotate-left" @click="clearDueTime(event)">Clear Time</Button>
+            </div>
+            <div class="timeline-item__actions">
+              <Button variant="ghost" icon="fa-bullhorn" @click="toggleInject(event)">
+                {{ event.inject === false ? 'Inject' : 'Mute' }}
+              </Button>
+              <Button variant="danger" icon="fa-trash" @click="removeEvent(event)">Remove</Button>
+            </div>
           </div>
         </article>
       </div>
@@ -215,22 +322,43 @@ onBeforeUnmount(() => {
       <div v-if="activeTab === 'recurring'" class="timeline-list">
         <div v-if="recurringEvents.length === 0" class="timeline-empty">No recurring events.</div>
         <article v-for="event in recurringEvents" :key="event.id" class="timeline-item">
-          <div class="timeline-item__header">
-            <strong>{{ event.title }}</strong>
-            <span>{{ recurrenceLabel(event) }}</span>
-          </div>
-          <p>{{ event.description }}</p>
-          <div class="timeline-item__meta">
+          <button class="timeline-item__summary" type="button" @click="toggleExpanded(event.id)">
+            <span>
+              <strong>{{ event.title }}</strong>
+              <small>{{ recurrenceLabel(event) }}</small>
+            </span>
             <span>{{ event.dueAt?.display ?? 'No due time' }}</span>
-            <span>{{ event.inject === false ? 'muted' : 'injects' }} · {{ event.tags.join(', ') }}</span>
+            <i :class="['fa-solid', isExpanded(event.id) ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+          </button>
+          <div class="timeline-item__body">
+            <p>{{ event.description }}</p>
+            <div class="timeline-item__meta">
+              <span>{{ event.status }}</span>
+              <span>{{ event.inject === false ? 'muted' : 'injects' }} · {{ event.tags.join(', ') || 'No tags' }}</span>
+            </div>
           </div>
-          <div class="timeline-item__actions">
-            <Button variant="confirm" icon="fa-check" @click="updateStatus(event, 'resolved')">Resolve</Button>
-            <Button variant="ghost" icon="fa-ban" @click="updateStatus(event, 'cancelled')">Cancel</Button>
-            <Button variant="ghost" icon="fa-bullhorn" @click="toggleInject(event)">
-              {{ event.inject === false ? 'Inject' : 'Mute' }}
-            </Button>
-            <Button variant="danger" icon="fa-trash" @click="removeEvent(event)">Remove</Button>
+          <div v-if="isExpanded(event.id)" class="timeline-item__details">
+            <div class="timeline-item__editor">
+              <Select
+                :model-value="event.status"
+                :options="statusOptions"
+                title="Status"
+                @change="(value) => onStatusChange(event, value)"
+              />
+              <input
+                v-model="dueDrafts[event.id]"
+                class="text-pole timeline-item__time-input"
+                placeholder="YYYY-MM-DDTHH:mm"
+              />
+              <Button variant="ghost" icon="fa-floppy-disk" @click="updateDueTime(event)">Save Time</Button>
+              <Button variant="ghost" icon="fa-clock-rotate-left" @click="clearDueTime(event)">Clear Time</Button>
+            </div>
+            <div class="timeline-item__actions">
+              <Button variant="ghost" icon="fa-bullhorn" @click="toggleInject(event)">
+                {{ event.inject === false ? 'Inject' : 'Mute' }}
+              </Button>
+              <Button variant="danger" icon="fa-trash" @click="removeEvent(event)">Remove</Button>
+            </div>
           </div>
         </article>
       </div>
@@ -238,16 +366,43 @@ onBeforeUnmount(() => {
       <div v-if="activeTab === 'history'" class="timeline-list">
         <div v-if="historyEvents.length === 0" class="timeline-empty">No resolved or cancelled events.</div>
         <article v-for="event in historyEvents" :key="event.id" class="timeline-item timeline-item--muted">
-          <div class="timeline-item__header">
-            <strong>{{ event.title }}</strong>
+          <button class="timeline-item__summary" type="button" @click="toggleExpanded(event.id)">
+            <span>
+              <strong>{{ event.title }}</strong>
+              <small>{{ event.type }} · {{ event.importance }}</small>
+            </span>
             <span>{{ event.status }}</span>
+            <i :class="['fa-solid', isExpanded(event.id) ? 'fa-chevron-up' : 'fa-chevron-down']"></i>
+          </button>
+          <div class="timeline-item__body">
+            <p>{{ event.description }}</p>
+            <div class="timeline-item__meta">
+              <span>{{ event.dueAt?.display ?? 'No due time' }}</span>
+              <span>{{ event.inject === false ? 'muted' : 'injects' }} · {{ event.tags.join(', ') || 'No tags' }}</span>
+            </div>
           </div>
-          <p>{{ event.description }}</p>
-          <div class="timeline-item__actions">
-            <Button variant="ghost" icon="fa-bullhorn" @click="toggleInject(event)">
-              {{ event.inject === false ? 'Inject' : 'Mute' }}
-            </Button>
-            <Button variant="danger" icon="fa-trash" @click="removeEvent(event)">Remove</Button>
+          <div v-if="isExpanded(event.id)" class="timeline-item__details">
+            <div class="timeline-item__editor">
+              <Select
+                :model-value="event.status"
+                :options="statusOptions"
+                title="Status"
+                @change="(value) => onStatusChange(event, value)"
+              />
+              <input
+                v-model="dueDrafts[event.id]"
+                class="text-pole timeline-item__time-input"
+                placeholder="YYYY-MM-DDTHH:mm"
+              />
+              <Button variant="ghost" icon="fa-floppy-disk" @click="updateDueTime(event)">Save Time</Button>
+              <Button variant="ghost" icon="fa-clock-rotate-left" @click="clearDueTime(event)">Clear Time</Button>
+            </div>
+            <div class="timeline-item__actions">
+              <Button variant="ghost" icon="fa-bullhorn" @click="toggleInject(event)">
+                {{ event.inject === false ? 'Inject' : 'Mute' }}
+              </Button>
+              <Button variant="danger" icon="fa-trash" @click="removeEvent(event)">Remove</Button>
+            </div>
           </div>
         </article>
       </div>
@@ -326,8 +481,8 @@ onBeforeUnmount(() => {
 .timeline-item {
   border: 1px solid var(--theme-border-color);
   border-radius: var(--base-border-radius);
-  padding: var(--spacing-sm);
   background: var(--theme-background-color);
+  overflow: hidden;
 }
 
 .timeline-item--due {
@@ -338,7 +493,6 @@ onBeforeUnmount(() => {
   opacity: 0.75;
 }
 
-.timeline-item__header,
 .timeline-item__meta,
 .timeline-item__actions {
   display: flex;
@@ -347,19 +501,95 @@ onBeforeUnmount(() => {
   gap: var(--spacing-sm);
 }
 
-.timeline-item__header span {
+.timeline-item__summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  width: 100%;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.timeline-item__summary > span:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.timeline-item__summary strong,
+.timeline-item__summary small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-item__summary small,
+.timeline-item__summary > span:nth-child(2),
+.timeline-item__summary i {
   color: var(--theme-text-color-secondary);
   font-size: 0.8rem;
 }
 
+.timeline-item__summary:hover {
+  background: var(--theme-background-tint);
+}
+
+.timeline-item__details {
+  padding: 0 var(--spacing-sm) var(--spacing-sm);
+  border-top: 1px solid var(--theme-border-color);
+}
+
+.timeline-item__body {
+  display: grid;
+  gap: var(--spacing-xs);
+  padding: 0 var(--spacing-sm) var(--spacing-sm);
+}
+
+.timeline-item__editor {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(150px, 1.4fr);
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+}
+
+.timeline-item__editor :deep(.select-wrapper) {
+  min-width: 0;
+}
+
+.timeline-item__time-input {
+  width: 100%;
+  min-width: 0;
+}
+
 .timeline-item p {
-  margin: var(--spacing-xs) 0;
+  margin: 0;
   line-height: 1.4;
 }
 
+.timeline-item__meta {
+  flex-wrap: wrap;
+}
+
+.timeline-item__meta span:last-child {
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
 .timeline-item__actions {
+  flex-wrap: wrap;
   justify-content: flex-start;
   margin-top: var(--spacing-sm);
+}
+
+@media (max-width: 520px) {
+  .timeline-item__editor {
+    grid-template-columns: 1fr;
+  }
 }
 
 .timeline-time-details {
