@@ -55,6 +55,7 @@ const isReasoningCollapsed = ref(false);
 const editTextarea = ref<InstanceType<typeof Textarea>>();
 const messageContent = ref<HTMLElement>();
 const editTextareaHeight = ref<string>();
+const minEditTextareaRows = 3;
 
 const isContentCollapsed = ref(false);
 const isToolStepsCollapsed = ref(true);
@@ -729,7 +730,7 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
           ref="editTextarea"
           v-model="editedContent"
           identifier="chat.edit_message"
-          :rows="5"
+          :rows="minEditTextareaRows"
           :height="editTextareaHeight"
           resizable
           allow-maximize

@@ -124,14 +124,22 @@ async function maximizeEditor() {
   });
 }
 
+const rowMinHeight = computed(() => {
+  return `calc(${props.rows} * 1em + var(--textarea-padding-y) * 2)`;
+});
+
+const effectiveHeight = computed(() => {
+  return props.height ? `max(${props.height}, ${rowMinHeight.value})` : rowMinHeight.value;
+});
+
 const cmMinHeight = computed(() => {
-  return props.height ?? `calc(${props.rows} * 1em + var(--textarea-padding-y) * 2)`;
+  return effectiveHeight.value;
 });
 
 const textareaStyle = computed<StyleValue>(() => ({
   resize: props.resizable ? 'vertical' : 'none',
-  height: props.height,
-  minHeight: props.height,
+  height: props.height ? effectiveHeight.value : undefined,
+  minHeight: rowMinHeight.value,
 }));
 </script>
 
