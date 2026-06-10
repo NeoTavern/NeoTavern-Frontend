@@ -1,6 +1,7 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
 import { computed, markRaw, ref } from 'vue';
+import type { StyleValue } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useComponentRegistryStore } from '../../stores/component-registry.store';
 import { usePopupStore } from '../../stores/popup.store';
@@ -24,6 +25,7 @@ interface Props {
   identifier?: CodeMirrorTarget | string;
   id?: string;
   tools?: TextareaToolDefinition[];
+  height?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -38,6 +40,7 @@ const props = withDefaults(defineProps<Props>(), {
   identifier: undefined,
   id: undefined,
   tools: () => [],
+  height: undefined,
 });
 
 const emit = defineEmits(['update:modelValue', 'focus', 'blur', 'input', 'keydown', 'paste']);
@@ -122,8 +125,14 @@ async function maximizeEditor() {
 }
 
 const cmMinHeight = computed(() => {
-  return `calc(${props.rows} * 1em + var(--textarea-padding-y) * 2)`;
+  return props.height ?? `calc(${props.rows} * 1em + var(--textarea-padding-y) * 2)`;
 });
+
+const textareaStyle = computed<StyleValue>(() => ({
+  resize: props.resizable ? 'vertical' : 'none',
+  height: props.height,
+  minHeight: props.height,
+}));
 </script>
 
 <template>
@@ -185,7 +194,7 @@ const cmMinHeight = computed(() => {
       :rows="rows"
       :placeholder="placeholder"
       :disabled="disabled"
-      :style="{ resize: resizable ? 'vertical' : 'none' }"
+      :style="textareaStyle"
       :aria-label="!label ? placeholder : undefined"
       @input="onInput"
       @focus="$emit('focus', $event)"

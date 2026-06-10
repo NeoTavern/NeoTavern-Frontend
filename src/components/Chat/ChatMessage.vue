@@ -53,6 +53,8 @@ const editedReasoning = ref('');
 const isEditingReasoning = ref(false);
 const isReasoningCollapsed = ref(false);
 const editTextarea = ref<InstanceType<typeof Textarea>>();
+const messageContent = ref<HTMLElement>();
+const editTextareaHeight = ref<string>();
 
 const isContentCollapsed = ref(false);
 const isToolStepsCollapsed = ref(true);
@@ -88,6 +90,7 @@ watch(isEditing, async (editing) => {
     editTextarea.value?.focus();
   } else {
     isEditingReasoning.value = false;
+    editTextareaHeight.value = undefined;
   }
 });
 
@@ -289,6 +292,8 @@ function swipe(direction: 'left' | 'right') {
 }
 
 function startEditing() {
+  const contentHeight = messageContent.value?.getBoundingClientRect().height;
+  editTextareaHeight.value = contentHeight && contentHeight > 0 ? `${Math.ceil(contentHeight)}px` : undefined;
   chatStore.startEditing(props.index);
 }
 
@@ -677,6 +682,7 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
           <!-- eslint-disable-next-line vue/no-v-html -->
           <div
             v-show="!isSmallSys || !isContentCollapsed"
+            ref="messageContent"
             class="message-content"
             @click="handleContentClick"
             v-html="formattedContent"
@@ -724,6 +730,7 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
           v-model="editedContent"
           identifier="chat.edit_message"
           :rows="5"
+          :height="editTextareaHeight"
           resizable
           allow-maximize
           :tools="editTools"
