@@ -1,7 +1,9 @@
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useChatUiStore } from '../stores/chat-ui.store';
 import { useChatStore } from '../stores/chat.store';
 import { useSettingsStore } from '../stores/settings.store';
+
+const BOTTOM_SCROLL_THRESHOLD = 100;
 
 export function useChatView() {
   const chatStore = useChatStore();
@@ -9,6 +11,16 @@ export function useChatView() {
   const settingsStore = useSettingsStore();
 
   const messagesContainer = ref<HTMLElement | null>(null);
+  const shouldFollowStreaming = ref(true);
+  const lastScrollTop = ref(0);
+  let lastTouchY: number | null = null;
+
+  const isNearBottom = (el: HTMLElement) =>
+    el.scrollHeight - el.clientHeight - el.scrollTop <= BOTTOM_SCROLL_THRESHOLD;
+
+  const pauseAutoScroll = () => {
+    shouldFollowStreaming.value = false;
+  };
 
   // --- Virtualization ---
   const visibleMessages = computed(() => {
@@ -51,22 +63,63 @@ export function useChatView() {
       const el = messagesContainer.value;
       if (el) {
         el.scrollTo({ top: el.scrollHeight, behavior });
+        shouldFollowStreaming.value = true;
+        lastScrollTop.value = el.scrollTop;
       }
     });
   };
 
   const handleStreamingScroll = () => {
     const el = messagesContainer.value;
-    if (!el) return;
+    if (!el || !shouldFollowStreaming.value) return;
 
     requestAnimationFrame(() => {
-      // 100px tolerance
-      const isScrolledToBottom = el.scrollHeight - el.clientHeight <= el.scrollTop + 100;
+      if (!shouldFollowStreaming.value) return;
 
-      if (isScrolledToBottom) {
+      if (isNearBottom(el)) {
         el.scrollTo({ top: el.scrollHeight, behavior: 'auto' });
+        lastScrollTop.value = el.scrollTop;
       }
     });
+  };
+
+  const handleScroll = () => {
+    const el = messagesContainer.value;
+    if (!el) return;
+
+    const isScrollingUp = el.scrollTop < lastScrollTop.value - 1;
+    const isScrollingDown = el.scrollTop > lastScrollTop.value + 1;
+
+    if (isScrollingUp) {
+      pauseAutoScroll();
+    }
+
+    if (isScrollingDown && isNearBottom(el)) {
+      shouldFollowStreaming.value = true;
+    }
+
+    lastScrollTop.value = el.scrollTop;
+  };
+
+  const handleWheel = (event: WheelEvent) => {
+    if (event.deltaY < 0) {
+      pauseAutoScroll();
+    }
+  };
+
+  const handleTouchStart = (event: TouchEvent) => {
+    lastTouchY = event.touches[0]?.clientY ?? null;
+  };
+
+  const handleTouchMove = (event: TouchEvent) => {
+    const touchY = event.touches[0]?.clientY;
+    if (touchY === undefined || lastTouchY === null) return;
+
+    if (touchY > lastTouchY) {
+      pauseAutoScroll();
+    }
+
+    lastTouchY = touchY;
   };
 
   const lastMessageContent = computed(() => {
@@ -83,7 +136,7 @@ export function useChatView() {
       const newEnd = newVal[newVal.length - 1]?.index ?? -1;
 
       // New message added at the bottom
-      if (newEnd > oldEnd) {
+      if (newEnd > oldEnd && shouldFollowStreaming.value) {
         scrollToBottom('smooth');
       }
     },
@@ -103,6 +156,28 @@ export function useChatView() {
     },
     { flush: 'post' },
   );
+
+  onMounted(() => {
+    const el = messagesContainer.value;
+    if (!el) return;
+
+    lastScrollTop.value = el.scrollTop;
+    shouldFollowStreaming.value = isNearBottom(el);
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    el.addEventListener('wheel', handleWheel, { passive: true });
+    el.addEventListener('touchstart', handleTouchStart, { passive: true });
+    el.addEventListener('touchmove', handleTouchMove, { passive: true });
+  });
+
+  onUnmounted(() => {
+    const el = messagesContainer.value;
+    if (!el) return;
+
+    el.removeEventListener('scroll', handleScroll);
+    el.removeEventListener('wheel', handleWheel);
+    el.removeEventListener('touchstart', handleTouchStart);
+    el.removeEventListener('touchmove', handleTouchMove);
+  });
 
   return {
     messagesContainer,
