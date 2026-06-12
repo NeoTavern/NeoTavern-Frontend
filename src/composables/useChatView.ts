@@ -134,9 +134,10 @@ export function useChatView() {
     (newVal, oldVal) => {
       const oldEnd = oldVal[oldVal.length - 1]?.index ?? -1;
       const newEnd = newVal[newVal.length - 1]?.index ?? -1;
+      const newestMessage = newVal[newVal.length - 1]?.message;
 
       // New message added at the bottom
-      if (newEnd > oldEnd && shouldFollowStreaming.value) {
+      if (newEnd > oldEnd && (newestMessage?.is_user || shouldFollowStreaming.value)) {
         scrollToBottom('smooth');
       }
     },
