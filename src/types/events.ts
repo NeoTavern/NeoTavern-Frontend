@@ -104,7 +104,14 @@ export interface ExtensionEventMap {
   'world-info:entry-deleted': [bookName: string, uid: number];
 
   // Generation Flow Events
-  'generation:started': [context: { controller: AbortController; generationId: string; activeCharacter?: Character }];
+  'generation:started': [
+    context: {
+      controller: AbortController;
+      generationId: string;
+      mode: GenerationMode;
+      activeCharacter?: Character;
+    },
+  ];
   'generation:finished': [
     result: { message: ChatMessage | null; error?: Error },
     context: { generationId: string; mode: GenerationMode },

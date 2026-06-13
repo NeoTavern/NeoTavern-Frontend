@@ -72,7 +72,7 @@ class RoadwayManager {
     this.choiceGenAbortControllers.set(index, abortController);
 
     try {
-      await this.updateMessageExtra(index, { isGeneratingChoices: true });
+      await this.updateMessageExtra(index, { choiceMade: false, isGeneratingChoices: true });
 
       const chatHistory = this.api.chat.getHistory().slice(0, index + 1);
       const generationId = `roadway-choices-${index}-${Date.now()}`;
@@ -148,15 +148,60 @@ class RoadwayManager {
     }
   }
 
-  public abortChoiceGeneration(messageIndex: number) {
+  public abortChoiceGeneration(messageIndex: number, showToast = true) {
     const controller = this.choiceGenAbortControllers.get(messageIndex);
     if (controller) {
       controller.abort();
       this.choiceGenAbortControllers.delete(messageIndex);
       // Clean up the UI state
       this.updateMessageExtra(messageIndex, { isGeneratingChoices: false });
-      this.api.ui.showToast('Choice generation cancelled.', 'info');
+      if (showToast) {
+        this.api.ui.showToast('Choice generation cancelled.', 'info');
+      }
     }
+  }
+
+  public async dismissPendingChoices(): Promise<void> {
+    const history = this.api.chat.getHistory();
+    const updates = history.map(async (message, index) => {
+      const roadwayExtra = message.extra['core.roadway'];
+      const isGeneratingChoices = roadwayExtra?.isGeneratingChoices || this.choiceGenAbortControllers.has(index);
+      if (
+        message.is_user ||
+        roadwayExtra?.choiceMade ||
+        (!roadwayExtra?.choices?.length && !isGeneratingChoices)
+      ) {
+        return;
+      }
+
+      this.abortChoiceGeneration(index, false);
+      await this.updateMessageExtra(index, {
+        choiceMade: true,
+        isGeneratingChoices: false,
+      });
+    });
+
+    await Promise.all(updates);
+  }
+
+  public async dismissChoicesForMessage(index: number): Promise<void> {
+    const message = this.api.chat.getHistory()[index];
+    const roadwayExtra = message?.extra['core.roadway'];
+    const isGeneratingChoices = roadwayExtra?.isGeneratingChoices || this.choiceGenAbortControllers.has(index);
+    if (
+      !message ||
+      message.is_user ||
+      roadwayExtra?.choiceMade ||
+      (!roadwayExtra?.choices?.length && !isGeneratingChoices)
+    ) {
+      return;
+    }
+
+    this.abortChoiceGeneration(index, false);
+    await this.updateMessageExtra(index, {
+      choiceMade: true,
+      isGeneratingChoices: false,
+    });
   }
 
   private async updateMessageExtra(index: number, data: Partial<RoadwayMessageExtraData>) {
@@ -308,10 +353,22 @@ export function activate(api: RoadwayExtensionAPI) {
       manager.handleGenerationFinished(result, context);
     }, 100);
   };
+  const onGenerationRequested = async (payload: { mode: GenerationMode }) => {
+    if (![GenerationMode.ADD_SWIPE, GenerationMode.REGENERATE].includes(payload.mode)) return;
+
+    const lastMessageIndex = api.chat.getHistory().length - 1;
+    await manager.dismissChoicesForMessage(lastMessageIndex);
+  };
   const onMessageUpdated = (index: number) => {
     // Unmount and re-mount to handle data changes
     manager.unmountMessageUi([index]);
     manager.injectUiForMessage(index);
+  };
+  const onMessageCreated = async () => {
+    await manager.dismissPendingChoices();
+  };
+  const onSwipeChanged = async (messageIndex: number) => {
+    await manager.dismissChoicesForMessage(messageIndex);
   };
   const onMessageDeleted = (indices: number[]) => manager.unmountMessageUi(indices);
   const onChatCleared = () => manager.unmountAllUi();
@@ -323,8 +380,11 @@ export function activate(api: RoadwayExtensionAPI) {
   const onSettingsChanged = () => manager.handleChatContextChange();
 
   unbinds.push(api.events.on('chat:entered', onChatContextChanged));
+  unbinds.push(api.events.on('chat:generation-requested', onGenerationRequested));
   unbinds.push(api.events.on('generation:finished', onGenerationFinished));
+  unbinds.push(api.events.on('message:created', onMessageCreated));
   unbinds.push(api.events.on('message:updated', onMessageUpdated));
+  unbinds.push(api.events.on('message:swipe-changed', onSwipeChanged));
   unbinds.push(api.events.on('message:deleted', onMessageDeleted));
   unbinds.push(api.events.on('chat:cleared', onChatCleared));
   unbinds.push(api.events.on('chat:deleted', onChatDeleted));

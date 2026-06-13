@@ -281,6 +281,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       await eventEmitter.emit('generation:started', {
         controller: startController,
         generationId: finalGenerationId,
+        mode,
         activeCharacter,
       });
       if (startController.signal.aborted) return;
