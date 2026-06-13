@@ -69,17 +69,18 @@ export function useChatView() {
     });
   };
 
-  const handleStreamingScroll = () => {
-    const el = messagesContainer.value;
-    if (!el || !shouldFollowStreaming.value) return;
+  const followBottomAfterContentChange = (wasNearBottom: boolean, behavior: ScrollBehavior) => {
+    if (!wasNearBottom && !shouldFollowStreaming.value) return;
 
-    requestAnimationFrame(() => {
-      if (!shouldFollowStreaming.value) return;
+    nextTick(() => {
+      requestAnimationFrame(() => {
+        const el = messagesContainer.value;
+        if (!el || (!wasNearBottom && !shouldFollowStreaming.value)) return;
 
-      if (isNearBottom(el)) {
-        el.scrollTo({ top: el.scrollHeight, behavior: 'auto' });
+        el.scrollTo({ top: el.scrollHeight, behavior });
+        shouldFollowStreaming.value = true;
         lastScrollTop.value = el.scrollTop;
-      }
+      });
     });
   };
 
@@ -145,7 +146,10 @@ export function useChatView() {
   );
 
   watch(lastMessageContent, () => {
-    handleStreamingScroll();
+    const el = messagesContainer.value;
+    const wasNearBottom = el ? isNearBottom(el) : shouldFollowStreaming.value;
+
+    followBottomAfterContentChange(wasNearBottom, chatStore.isGenerating ? 'smooth' : 'auto');
   });
 
   watch(
