@@ -64,6 +64,7 @@ export interface ExtensionEventMap {
   // Built-in extension coordination
   'world-map:updated': [];
   'timeline:updated': [];
+  'phone:updated': [];
 
   // Layout Events
   'layout:left-sidebar-changed': [isOpen: boolean, view: string | null];
