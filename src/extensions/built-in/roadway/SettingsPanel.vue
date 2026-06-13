@@ -34,6 +34,8 @@ watch(
   settings,
   (newSettings) => {
     props.api.settings.set(undefined, newSettings);
+    // @ts-expect-error custom event
+    props.api.events.emit('roadway:settings-changed');
     props.api.settings.save();
   },
   { deep: true },

@@ -37,28 +37,12 @@ class RoadwayManager {
     return { ...DEFAULT_SETTINGS, ...saved };
   }
 
-  private isRoadwayEnabledForChat(): boolean {
-    const chatExtra = this.api.chat.metadata.get()?.extra?.['core.roadway'];
-    return chatExtra?.enabled ?? false;
-  }
-
-  private async setRoadwayEnabledForChat(enabled: boolean): Promise<void> {
-    await this.api.chat.metadata.update({
-      extra: {
-        'core.roadway': { enabled },
-      },
-    });
-    this.api.ui.showToast(`Roadway ${enabled ? 'enabled' : 'disabled'}.`, enabled ? 'success' : 'info');
-    // Manually trigger the UI refresh for the whole chat, since metadata changed.
-    this.handleChatContextChange();
-  }
-
-  public toggleRoadwayMode(): void {
-    const isEnabled = this.isRoadwayEnabledForChat();
-    this.setRoadwayEnabledForChat(!isEnabled);
-  }
-
   public manualGenerateChoicesForLastMessage(): void {
+    if (!this.getSettings().enabled) {
+      this.api.ui.showToast('Roadway is disabled.', 'info');
+      return;
+    }
+
     const history = this.api.chat.getHistory();
     // Find the last non-user message to generate choices for
     for (let i = history.length - 1; i >= 0; i--) {
@@ -73,6 +57,8 @@ class RoadwayManager {
 
   public async generateChoicesForMessage(message: ChatMessage, index: number): Promise<void> {
     const settings = this.getSettings();
+    if (!settings.enabled) return;
+
     const connectionProfile =
       settings.choiceGenConnectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
     if (!connectionProfile) {
@@ -200,7 +186,7 @@ class RoadwayManager {
       result.message &&
       !result.error &&
       !result.message.is_user &&
-      this.isRoadwayEnabledForChat() &&
+      settings.enabled &&
       settings.autoMode &&
       relevantModes.includes(context.mode)
     ) {
@@ -211,6 +197,8 @@ class RoadwayManager {
 
   public injectAllUi(): void {
     this.unmountAllUi();
+    if (!this.getSettings().enabled) return;
+
     const messages = this.api.chat.getHistory();
     messages.forEach((_, index) => this.injectUiForMessage(index));
     this.injectChatFormUi();
@@ -260,23 +248,9 @@ class RoadwayManager {
     const isChatOpen = this.api.chat.getChatInfo() !== null;
     if (!isChatOpen) return;
 
-    const isRoadwayEnabled = this.isRoadwayEnabledForChat();
+    const isRoadwayEnabled = this.getSettings().enabled;
     const quickActionGroupId = 'core.context-ai';
     const quickActionGroupLabel = 'Context AI';
-
-    // ---- Toggle Action ----
-    const toggleAction: ChatQuickActionDefinition & ChatFormOptionsMenuItemDefinition = {
-      id: 'roadway-toggle',
-      icon: 'fa-solid fa-route',
-      label: 'Roadway',
-      title: `Toggle Roadway (${isRoadwayEnabled ? 'On' : 'Off'})`,
-      onClick: () => this.toggleRoadwayMode(),
-    };
-
-    this.unregisterChatFormUiFns.push(
-      this.api.ui.registerChatQuickAction(quickActionGroupId, quickActionGroupLabel, toggleAction),
-    );
-    this.unregisterChatFormUiFns.push(this.api.ui.registerChatFormOptionsMenuItem(toggleAction));
 
     // ---- Generate Choices Action ----
     const generateAction: ChatQuickActionDefinition & ChatFormOptionsMenuItemDefinition = {
@@ -346,6 +320,7 @@ export function activate(api: RoadwayExtensionAPI) {
   const onAbortChoiceGeneration = ({ messageIndex }: { messageIndex: number }) => {
     manager.abortChoiceGeneration(messageIndex);
   };
+  const onSettingsChanged = () => manager.handleChatContextChange();
 
   unbinds.push(api.events.on('chat:entered', onChatContextChanged));
   unbinds.push(api.events.on('generation:finished', onGenerationFinished));
@@ -355,6 +330,8 @@ export function activate(api: RoadwayExtensionAPI) {
   unbinds.push(api.events.on('chat:deleted', onChatDeleted));
   // @ts-expect-error custom event
   unbinds.push(api.events.on('roadway:abort-choice-generation', onAbortChoiceGeneration));
+  // @ts-expect-error custom event
+  unbinds.push(api.events.on('roadway:settings-changed', onSettingsChanged));
 
   // Initial load if a chat is already open
   if (api.chat.getChatInfo()) {

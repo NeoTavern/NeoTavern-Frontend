@@ -11,9 +11,7 @@ export interface RoadwaySettings {
   impersonatePrompt: string;
 }
 
-export interface RoadwayChatExtraData {
-  enabled?: boolean;
-}
+export type RoadwayChatExtraData = Record<string, never>;
 
 export interface RoadwayMessageExtraData {
   choices?: string[];
