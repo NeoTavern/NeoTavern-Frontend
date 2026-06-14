@@ -11,6 +11,7 @@
     "dev": "npm run i18n && vite",
     "build:types": "vite build --config vite.config.types.ts",
     "build": "npm run i18n && vue-tsc --noEmit && vite build",
+    "build:profile": "node scripts/build-profile.js",
     "build:deploy": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",

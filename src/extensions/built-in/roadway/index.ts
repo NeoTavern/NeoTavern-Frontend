@@ -245,12 +245,11 @@ class RoadwayManager {
     if (!this.getSettings().enabled) return;
 
     const messages = this.api.chat.getHistory();
-    messages.forEach((_, index) => this.injectUiForMessage(index));
+    messages.forEach((message, index) => this.injectUiForMessage(index, message));
     this.injectChatFormUi();
   }
 
-  public injectUiForMessage(index: number): void {
-    const message = this.api.chat.getHistory()[index];
+  public injectUiForMessage(index: number, message = this.api.chat.getHistory()[index]): void {
     if (!message || message.is_user) return;
 
     const roadwayExtra = message.extra['core.roadway'];

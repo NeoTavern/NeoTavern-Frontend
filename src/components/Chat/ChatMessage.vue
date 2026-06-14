@@ -47,6 +47,8 @@ const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
 const promptStore = usePromptStore();
 const { animationsDisabled } = useAnimationControl();
+const chatTransitionsEnabled = computed(() => !animationsDisabled.value && !chatStore.isChatLoading);
+const expandTransitionName = computed(() => (chatTransitionsEnabled.value ? 'expand' : undefined));
 
 const editedContent = ref('');
 const editedReasoning = ref('');
@@ -594,7 +596,7 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
             aria-hidden="true"
           ></i>
         </div>
-        <transition name="expand">
+        <transition :name="expandTransitionName" :css="chatTransitionsEnabled">
           <div v-show="!isToolStepsCollapsed" class="message-tool-steps-content">
             <div
               v-for="step in formattedToolSteps"
@@ -621,7 +623,7 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
                   :class="collapsedToolSteps.has(step.index) ? 'fa-chevron-down' : 'fa-chevron-up'"
                 ></i>
               </div>
-              <transition name="expand">
+              <transition :name="expandTransitionName" :css="chatTransitionsEnabled">
                 <div v-show="!collapsedToolSteps.has(step.index)" class="tool-step-body">
                   <div v-if="step.hasReasoning" class="message-reasoning">
                     <div class="message-reasoning-header">
@@ -657,7 +659,7 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
             aria-hidden="true"
           ></i>
         </div>
-        <transition name="expand">
+        <transition :name="expandTransitionName" :css="chatTransitionsEnabled">
           <!-- eslint-disable-next-line vue/no-v-html -->
           <div v-show="!isReasoningCollapsed" class="message-reasoning-content" v-html="formattedReasoning"></div>
         </transition>
@@ -679,7 +681,7 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
           <i class="fa-solid" :class="isContentCollapsed ? 'fa-chevron-down' : 'fa-chevron-up'"></i>
         </div>
 
-        <transition :name="isSmallSys ? 'expand' : ''">
+        <transition :name="isSmallSys ? expandTransitionName : undefined" :css="chatTransitionsEnabled">
           <!-- eslint-disable-next-line vue/no-v-html -->
           <div
             v-show="!isSmallSys || !isContentCollapsed"
@@ -714,7 +716,7 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
       </div>
 
       <div v-show="isEditing" class="message-edit-area">
-        <transition name="expand">
+        <transition :name="expandTransitionName" :css="chatTransitionsEnabled">
           <div v-show="isEditingReasoning" class="message-reasoning-edit-area">
             <Textarea
               v-model="editedReasoning"

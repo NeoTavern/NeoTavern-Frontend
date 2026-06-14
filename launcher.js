@@ -107,6 +107,7 @@ function loadConfig() {
 }
 
 const config = loadConfig();
+const isProfileBuild = process.env.NEO_PROFILE_BUILD === 'true' || process.env.PROFILE === '1';
 
 // --- Utils ---
 
@@ -278,11 +279,12 @@ async function setupInternalBackend() {
 }
 
 async function ensureFrontendBuilt() {
-  const currentHash = getGitHash() || getHash(path.join(__dirname, 'package.json'));
+  const baseHash = getGitHash() || getHash(path.join(__dirname, 'package.json'));
+  const currentHash = baseHash ? `${baseHash}:${isProfileBuild ? 'profile' : 'production'}` : null;
   const storedHash = fs.existsSync(PATHS.BUILD_HASH) ? fs.readFileSync(PATHS.BUILD_HASH, 'utf8') : null;
 
   if (!fs.existsSync(path.join(PATHS.DIST, 'index.html')) || currentHash !== storedHash) {
-    log('Building Frontend...', 'BUILD');
+    log(`Building Frontend${isProfileBuild ? ' with sourcemaps' : ''}...`, 'BUILD');
     await runCommand('npm', ['run', 'build:deploy'], __dirname);
 
     if (!fs.existsSync(PATHS.DIST)) fs.mkdirSync(PATHS.DIST);

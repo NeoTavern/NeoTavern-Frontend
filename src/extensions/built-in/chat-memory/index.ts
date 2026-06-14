@@ -172,9 +172,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
     if (existing) existing.remove();
   };
 
-  const processMessageElement = (element: HTMLElement, index: number) => {
-    const history = api.chat.getHistory();
-    const message = history[index];
+  const processMessageElement = (element: HTMLElement, index: number, message?: ChatMessage) => {
     if (!message) return;
 
     const settings = api.settings.get();
@@ -218,6 +216,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
 
   const updateAllMessages = () => {
     const settings = api.settings.get();
+    const history = api.chat.getHistory();
 
     const messageElements = document.querySelectorAll('.message');
     messageElements.forEach((el) => {
@@ -225,7 +224,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
       if (indexAttr === null) return;
       const messageIndex = parseInt(indexAttr, 10);
       if (isNaN(messageIndex)) return;
-      processMessageElement(el as HTMLElement, messageIndex);
+      processMessageElement(el as HTMLElement, messageIndex, history[messageIndex]);
     });
 
     // Clean up if message summarization is disabled
@@ -282,7 +281,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
       const messageIndex = history.length - 1;
 
       const el = document.querySelector(`.message[data-message-index="${messageIndex}"]`);
-      if (el) processMessageElement(el as HTMLElement, messageIndex);
+      if (el) processMessageElement(el as HTMLElement, messageIndex, message);
 
       // Auto Summarize
       const settings = api.settings.get();
@@ -296,7 +295,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
   unbinds.push(
     api.events.on('message:updated', async (index: number) => {
       const el = document.querySelector(`.message[data-message-index="${index}"]`);
-      if (el) processMessageElement(el as HTMLElement, index);
+      if (el) processMessageElement(el as HTMLElement, index, api.chat.getHistory()[index]);
 
       // Handle Content Changes vs Summary
       // const extra = message.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;

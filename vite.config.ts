@@ -76,6 +76,7 @@ const setupAuth = (_server) => {
 
 export default defineConfig(({ mode }) => {
   const isDevBuild = mode !== 'production';
+  const isProfileBuild = process.env.NEO_PROFILE_BUILD === 'true' || process.env.PROFILE === '1';
 
   return {
     plugins: [
@@ -154,7 +155,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       minify: isDevBuild ? false : 'esbuild',
-      sourcemap: isDevBuild,
+      sourcemap: isDevBuild || isProfileBuild,
       chunkSizeWarningLimit: 2000,
       rollupOptions: {
         output: {

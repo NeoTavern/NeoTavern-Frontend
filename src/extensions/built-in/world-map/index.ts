@@ -1832,12 +1832,16 @@ class WorldMapManager {
 
   public injectAllUi(): void {
     this.unmountAllUi();
-    this.api.chat.getHistory().forEach((_, index) => this.injectUiForMessage(index));
-    this.injectChatUi();
+    const hasMap = Boolean(this.getMap());
+    this.api.chat.getHistory().forEach((message, index) => this.injectUiForMessage(index, message, hasMap));
+    this.injectChatUi(hasMap);
   }
 
-  public injectUiForMessage(index: number): void {
-    const message = this.api.chat.getHistory()[index];
+  public injectUiForMessage(
+    index: number,
+    message = this.api.chat.getHistory()[index],
+    hasMap = Boolean(this.getMap()),
+  ): void {
     if (!message || this.mountedButtons.has(index)) return;
     const messageEl = document.querySelector(`[data-message-index="${index}"]`);
     const target = messageEl?.querySelector('.message-buttons');
@@ -1847,7 +1851,7 @@ class WorldMapManager {
     target.insertAdjacentElement('afterbegin', mountPoint);
     const button = this.api.ui.mount(mountPoint, MapMessageButton, {
       message,
-      title: this.getMap() ? 'Update world map from this message' : 'Create world map from this message',
+      title: hasMap ? 'Update world map from this message' : 'Create world map from this message',
       onRun: () => this.runMapUpdate(index),
       onClear: () => this.clearMessageExtra(index),
     });
@@ -1860,7 +1864,7 @@ class WorldMapManager {
     });
   }
 
-  public injectChatUi(): void {
+  public injectChatUi(hasMap = Boolean(this.getMap())): void {
     this.unregisterChatUiFns.forEach((fn) => fn());
     this.unregisterChatUiFns = [];
     if (!this.api.chat.getChatInfo()) return;
@@ -1877,7 +1881,7 @@ class WorldMapManager {
       this.api.ui.registerChatFormOptionsMenuItem({
         id: 'world-map-update',
         icon: 'fa-solid fa-map-location-dot',
-        label: this.getMap() ? 'Update World Map' : 'Create World Map',
+        label: hasMap ? 'Update World Map' : 'Create World Map',
         onClick: () => this.runMapUpdate(),
       }),
     );
@@ -1902,8 +1906,9 @@ class WorldMapManager {
 
     this.mountedButtons.forEach((component) => component.unmount());
     this.mountedButtons.clear();
-    this.api.chat.getHistory().forEach((_, index) => this.injectUiForMessage(index));
-    this.injectChatUi();
+    const hasMap = Boolean(this.getMap());
+    this.api.chat.getHistory().forEach((message, index) => this.injectUiForMessage(index, message, hasMap));
+    this.injectChatUi(hasMap);
   }
 
   public unmountAllUi(): void {
