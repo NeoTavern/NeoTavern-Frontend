@@ -114,6 +114,12 @@ async function send(): Promise<void> {
   }
 }
 
+function handleComposerKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+  event.preventDefault();
+  send();
+}
+
 async function deleteSms(message: PhoneMessage): Promise<void> {
   await props.manager.deleteSmsMessage(messageIndex.value, message.id);
   await refresh();
@@ -296,6 +302,7 @@ watch(messageIndex, () => {
                   :rows="1"
                   placeholder="Text message"
                   :disabled="!selectedContact || sending"
+                  @keydown="handleComposerKeydown"
                 />
                 <Button
                   icon="fa-paper-plane"
