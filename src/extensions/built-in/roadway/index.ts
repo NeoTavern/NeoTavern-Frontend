@@ -330,6 +330,8 @@ class RoadwayManager {
 
   public handleChatContextChange(): void {
     this.unmountAllUi();
+    if (!this.api.chat.getChatInfo()) return;
+
     this.injectAllUi();
   }
 }

@@ -17,23 +17,38 @@ const activeNpcCount = computed(() => scene.value?.characters.length || 0);
 
 const loading = ref(false);
 const abortController = ref<AbortController | null>(null);
+const activeRequestId = ref(0);
 const generateIdentities = ref(true);
+const actionButtonLabel = computed(() => {
+  if (loading.value) return 'Abort';
+  return 'Reinitialize Scene';
+});
 
 async function generateInitialScene() {
   if (loading.value) {
-    abortController.value?.abort();
+    const controller = abortController.value;
+    activeRequestId.value += 1;
+    loading.value = false;
+    abortController.value = null;
+    controller?.abort();
+    props.api.ui.showToast('Scene reinitialization abort requested.', 'info');
     return;
   }
 
   loading.value = true;
   abortController.value = new AbortController();
+  const requestId = activeRequestId.value + 1;
+  activeRequestId.value = requestId;
+  const signal = abortController.value.signal;
 
   try {
     const newScene = await sceneManagerGenerateInitialScene(
       props.api,
-      abortController.value.signal,
+      signal,
       generateIdentities.value,
     );
+    if (signal.aborted || requestId !== activeRequestId.value) return;
+
     const history = props.api.chat.getHistory();
     if (history.length === 0) return;
     const mythicIndex = getLatestMythicMessageIndex();
@@ -68,12 +83,16 @@ async function generateInitialScene() {
       });
     }
   } catch (error) {
-    if (!(error instanceof Error) || error.name !== 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
+      props.api.ui.showToast('Scene reinitialization aborted.', 'info');
+    } else {
       console.error('Failed to generate initial scene:', error);
     }
   } finally {
-    loading.value = false;
-    abortController.value = null;
+    if (requestId === activeRequestId.value) {
+      loading.value = false;
+      abortController.value = null;
+    }
   }
 }
 </script>
@@ -83,8 +102,9 @@ async function generateInitialScene() {
     <div class="controls">
       <Checkbox v-model="generateIdentities" label="Let LLM generate character identities" />
       <Button block class="action-btn" @click="generateInitialScene">
-        <i :class="loading ? 'fas fa-stop' : 'fas fa-film'"></i>{{ loading ? 'Abort' : 'Reinitialize Scene' }}</Button
-      >
+        <i :class="loading ? 'fas fa-stop' : 'fas fa-film'"></i>
+        {{ actionButtonLabel }}
+      </Button>
     </div>
 
     <div class="section-header">Current Scene Details</div>

@@ -3,7 +3,14 @@ import type { ChatMessage } from '../../../types/chat';
 import { uuidv4 } from '../../../utils/commons';
 import { DEFAULT_UNE_SETTINGS } from './defaults';
 import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT } from './prompts';
-import type { AnalysisOutput, MythicCharacter, MythicExtensionAPI, Scene, SceneUpdate } from './types';
+import type {
+  AnalysisOutput,
+  EventMeaningResult,
+  FateRollResult,
+  MythicExtensionAPI,
+  Scene,
+  SceneUpdate,
+} from './types';
 import { AnalysisOutputSchema, SceneSchema, SceneUpdateSchema } from './types';
 import { genUNENpc } from './une';
 
@@ -17,6 +24,10 @@ function getCurrentCharacterTypes(api: MythicExtensionAPI) {
   const settings = api.settings.get();
   const currentPreset = settings.presets.find((p) => p.name === settings.selectedPreset) || settings.presets[0];
   return currentPreset?.data?.characterTypes || ['NPC'];
+}
+
+function getStructuredRequestFormat(api: MythicExtensionAPI) {
+  return api.settings.get().structuredRequestFormat ?? 'native';
 }
 
 export async function analyzeUserAction(
@@ -34,7 +45,7 @@ export async function analyzeUserAction(
   });
   const structuredResponse: StructuredResponseOptions = {
     schema: { name: 'analysis_output', strict: true, value: AnalysisOutputSchema.toJSONSchema() },
-    format: 'json',
+    format: getStructuredRequestFormat(api),
   };
   const itemizedPrompt = await api.chat.buildPrompt({ structuredResponse, chatHistory });
   const messages = itemizedPrompt.messages;
@@ -82,7 +93,7 @@ export async function genInitialScene(
   });
   const structuredResponse: StructuredResponseOptions = {
     schema: { name: 'initial_scene', strict: true, value: SceneSchema.toJSONSchema() },
-    format: 'json',
+    format: getStructuredRequestFormat(api),
   };
   const itemizedPrompt = await api.chat.buildPrompt({ structuredResponse });
   const messages = itemizedPrompt.messages;
@@ -129,12 +140,12 @@ export async function generateNarration(
   api: MythicExtensionAPI,
   scene: Scene,
   analysis: AnalysisOutput,
-  fateRollResult: { roll: number; chaosDie: number; outcome: string; exceptional: boolean } | undefined,
-  randomEvent: { focus: string; action: string; subject: string; new_npcs?: MythicCharacter[] } | undefined,
   messageIndex: number,
   swipeId: number = 0,
   chatHistory?: ChatMessage[],
   signal?: AbortSignal,
+  fateRollResults: FateRollResult[] = [],
+  randomEvents: EventMeaningResult[] = [],
 ): Promise<string> {
   const settings = api.settings.get();
   const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
@@ -143,8 +154,8 @@ export async function generateNarration(
   const processedPrompt = api.macro.process(settings.prompts.narration || NARRATION_PROMPT, undefined, {
     scene,
     analysis,
-    fateRollResult,
-    randomEvent,
+    fateRollResults,
+    randomEvents,
     language_name: settings?.language || 'English',
     character_types: characterTypes.join(', '),
     narrationRules: '',
@@ -177,12 +188,12 @@ export async function generateNarrationAndSceneUpdate(
   api: MythicExtensionAPI,
   scene: Scene,
   analysis: AnalysisOutput,
-  fateRollResult: { roll: number; chaosDie: number; outcome: string; exceptional: boolean } | undefined,
-  randomEvent: { focus: string; action: string; subject: string; new_npcs?: MythicCharacter[] } | undefined,
   messageIndex: number,
   swipeId: number = 0,
   chatHistory?: ChatMessage[],
   signal?: AbortSignal,
+  fateRollResults: FateRollResult[] = [],
+  randomEvents: EventMeaningResult[] = [],
 ): Promise<{ narration: string; sceneUpdate: SceneUpdate }> {
   const settings = api.settings.get();
   const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
@@ -191,8 +202,8 @@ export async function generateNarrationAndSceneUpdate(
   const processedPrompt = api.macro.process(settings.prompts.narration || NARRATION_PROMPT, undefined, {
     scene,
     analysis,
-    fateRollResult,
-    randomEvent,
+    fateRollResults,
+    randomEvents,
     language_name: settings?.language || 'English',
     character_types: characterTypes.join(', '),
     narrationRules: '',
@@ -213,7 +224,7 @@ export async function generateNarrationAndSceneUpdate(
         required: ['narration', 'sceneUpdate'],
       },
     },
-    format: 'json',
+    format: getStructuredRequestFormat(api),
   };
 
   const itemizedPrompt = await api.chat.buildPrompt({

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import Pagination from '../../../../components/common/Pagination.vue';
-import type { MythicExtensionAPI } from '../types';
+import type { EventMeaningResult, FateQuestion, FateRollResult, MythicExtensionAPI, MythicOdds } from '../types';
 
 interface Props {
   api: MythicExtensionAPI;
@@ -21,6 +21,19 @@ const paginatedHistory = computed(() => {
   return reversedHistory.value.slice(start, end);
 });
 
+type DisplayAction = {
+  analysis?: {
+    questions?: FateQuestion[];
+    extracted_question?: string;
+    odds?: MythicOdds;
+    justification?: string;
+  };
+  fateRollResults?: FateRollResult[];
+  fateRollResult?: FateRollResult;
+  randomEvents?: EventMeaningResult[];
+  randomEvent?: EventMeaningResult;
+};
+
 function getOutcomeClass(outcome: string) {
   if (outcome.startsWith('Exceptional')) return 'outcome-exceptional';
   if (outcome === 'Yes') return 'outcome-yes';
@@ -31,46 +44,74 @@ function getOutcomeClass(outcome: string) {
 function formatOutcome(outcome: string) {
   return outcome;
 }
+
+function getQuestions(action: DisplayAction): FateQuestion[] {
+  if (action.analysis?.questions) return action.analysis.questions;
+  if (!action.analysis?.extracted_question) return [];
+  return [
+    {
+      extracted_question: action.analysis.extracted_question,
+      odds: action.analysis.odds ?? '50/50',
+      justification: action.analysis.justification ?? '',
+    },
+  ];
+}
+
+function getRolls(action: DisplayAction): FateRollResult[] {
+  if (action.fateRollResults) return action.fateRollResults;
+  return action.fateRollResult ? [action.fateRollResult] : [];
+}
+
+function getRandomEvents(action: DisplayAction): EventMeaningResult[] {
+  if (action.randomEvents) return action.randomEvents;
+  return action.randomEvent ? [action.randomEvent] : [];
+}
+
+function getJustification(action: DisplayAction) {
+  return action.analysis?.justification ?? '';
+}
 </script>
 
 <template>
   <div class="log">
     <div v-if="reversedHistory.length === 0" class="empty-state">No history recorded.</div>
     <div v-for="(action, index) in paginatedHistory" :key="index" class="log-card">
-      <div class="log-header">
-        <span class="question">{{ action.analysis.extracted_question }}</span>
-        <span class="odds-badge">{{ action.analysis.odds }}</span>
-      </div>
-
-      <div v-if="action.fateRollResult" class="log-body">
-        <div class="roll-info">
-          <div class="roll-detail">
-            <span class="label">Roll:</span>
-            <span class="value">{{ action.fateRollResult.roll }}</span>
-          </div>
-          <div class="roll-detail">
-            <span class="label">Chaos Die:</span>
-            <span class="value">{{ action.fateRollResult.chaosDie }}</span>
-          </div>
+      <div v-for="(question, questionIndex) in getQuestions(action)" :key="questionIndex" class="question-block">
+        <div class="log-header">
+          <span class="question">{{ question.extracted_question }}</span>
+          <span class="odds-badge">{{ question.odds }}</span>
         </div>
 
-        <div :class="['outcome-display', getOutcomeClass(action.fateRollResult.outcome)]">
-          {{ formatOutcome(action.fateRollResult.outcome) }}
+        <div v-if="getRolls(action)[questionIndex]" class="log-body">
+          <div class="roll-info">
+            <div class="roll-detail">
+              <span class="label">Roll:</span>
+              <span class="value">{{ getRolls(action)[questionIndex].roll }}</span>
+            </div>
+            <div class="roll-detail">
+              <span class="label">Chaos Die:</span>
+              <span class="value">{{ getRolls(action)[questionIndex].chaosDie }}</span>
+            </div>
+          </div>
+
+          <div :class="['outcome-display', getOutcomeClass(getRolls(action)[questionIndex].outcome)]">
+            {{ formatOutcome(getRolls(action)[questionIndex].outcome) }}
+          </div>
         </div>
       </div>
 
-      <div v-if="action.randomEvent" class="random-event">
+      <div v-for="(randomEvent, eventIndex) in getRandomEvents(action)" :key="`event-${eventIndex}`" class="random-event">
         <div class="event-header"><i class="fas fa-bolt"></i> Random Event</div>
         <div class="event-content">
-          <span class="focus">{{ action.randomEvent.focus }}</span>
+          <span class="focus">{{ randomEvent.focus }}</span>
           <span class="separator">•</span>
-          <span class="action">{{ action.randomEvent.action }}</span>
-          <span class="subject">{{ action.randomEvent.subject }}</span>
+          <span class="action">{{ randomEvent.action }}</span>
+          <span class="subject">{{ randomEvent.subject }}</span>
         </div>
       </div>
 
-      <div v-if="action.analysis.justification" class="justification">
-        <i class="fas fa-info-circle"></i> {{ action.analysis.justification }}
+      <div v-if="getJustification(action)" class="justification">
+        <i class="fas fa-info-circle"></i> {{ getJustification(action) }}
       </div>
     </div>
     <Pagination
@@ -99,6 +140,17 @@ function formatOutcome(outcome: string) {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
+}
+
+.question-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.question-block + .question-block {
+  border-top: 1px solid var(--theme-border-color);
+  padding-top: var(--spacing-sm);
 }
 
 .log-header {

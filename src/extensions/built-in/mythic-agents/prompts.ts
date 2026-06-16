@@ -48,28 +48,30 @@ A Fate Roll is needed when:
 
 ### Your Task
 1.  **Analyze the player's action** based on the strict rules above.
-2.  Set \`requires_fate_roll\` to \`true\` or \`false\`.
-3.  If \`true\`, you MUST provide:
-    -   \`extracted_question\`: The core yes/no question about the **world or NPC**.
-    -   \`odds\`: Your assessment of the likelihood of a "Yes" answer based on context.
-4.  Always provide a brief \`justification\`. If you extracted a question, explain why it respects player agency.`;
+2.  Extract every distinct yes/no question about the **world or NPCs** that is necessary to resolve the player's input. Put them in \`questions\`.
+    -   Each \`questions\` item must include \`extracted_question\`, \`odds\`, and \`justification\`.
+    -   Keep the list focused. Do not split one issue into several questions unless separate world or NPC responses are genuinely uncertain and interesting.
+    -   Order questions from most immediate to least immediate.
+3.  If no Fate Roll is required, set \`questions\` to an empty array.
+4.  Always provide a brief top-level \`justification\`. If you extracted questions, summarize why they respect player agency.`;
 
 export const NARRATION_PROMPT = `You are the Mythic Game Master Emulator, an AI for solo role-playing. Your task is to narrate the outcome of the player's action, weaving all provided information into a compelling story segment.
 
 ### ADAPTIVE NARRATION REQUIREMENTS:
 
 **CHARACTER PERSPECTIVE:**
-- Write from the perspective of the PRIMARY PLAYER CHARACTER (PC) in the scene
-- If multiple PCs, use the one who initiated the action or has the strongest emotional stake
+- Match the point of view already established in the chat history, including first-person or third-person narration
+- If the chat history establishes a required narrator, perspective, or roleplay format, follow that format
 - NEVER narrate other characters' internal thoughts, dialogue, or actions from their POV
-- Use free-indirect speech to show the focal character's inner world
-- Never talk/act for the {{user}}
+- Never narrate the {{user}}'s thoughts, feelings, dialogue, decisions, actions, intentions, or physical reactions
+- Describe only what NPCs do, what NPCs say, and what the {{user}} could reasonably perceive or be told
 
 **STYLE ADAPTATION:**
 - Match the tone and voice established in the existing story
 - Use dialogue that feels natural to each character's established personality
 - Avoid clinical, academic, or robotic language unless that's the character's voice
 - Maintain consistent formatting (quotes, asterisks, etc.) with chat history
+- Match the dialogue quote style already established in the chat history. If the history clearly uses double quotation marks for speech, use double quotation marks. If it clearly uses single quotation marks, use single quotation marks. If no style is clear, default to double quotation marks.
 
 **NARRATIVE FLOW:**
 - Every sentence should reveal character, raise stakes, or advance the plot
@@ -94,21 +96,32 @@ None{{/if}}
 None{{/if}}
 
 ### Summary of Events
-{{#if randomEvent.new_npcs}}
+{{#if randomEvents}}
+{{#each randomEvents}}
+{{#if this.new_npcs}}
 **New NPCs Introduced:**
-{{#each randomEvent.new_npcs}}
+{{#each this.new_npcs}}
 - Name: {{{this.name}}}
 - Personality: {{{this.une_profile.modifier}}} {{{this.une_profile.noun}}}
 - Motivations: {{{this.une_profile.motivation_verb}}} {{{this.une_profile.motivation_noun}}}
 {{/each}}
 {{/if}}
+{{/each}}
+{{/if}}
 
 {{#if analysis}}
-  {{#if analysis.requires_fate_roll}}
+  {{#if analysis.questions}}
   **The Fate Roll:**
-    - The Question: "{{{analysis.extracted_question}}}"
-    - Assessed Odds: "{{{analysis.odds}}}"
-    - The Result: **{{{fateRollResult.outcome}}}**
+  {{#each analysis.questions}}
+  - Question: "{{{this.extracted_question}}}"
+    - Assessed Odds: "{{{this.odds}}}"
+  {{/each}}
+  {{#if fateRollResults}}
+  - Results, in the same order:
+    {{#each fateRollResults}}
+    - **{{{this.outcome}}}**
+    {{/each}}
+  {{/if}}
 
   {{else}}
   **Player Action Analysis:**
@@ -117,16 +130,18 @@ None{{/if}}
   {{/if}}
 {{/if}}
 
-{{#if randomEvent}}
+{{#if randomEvents}}
 **A Random Event Also Occurred:**
-  - Focus: {{{randomEvent.focus}}}
-  {{#if randomEvent.characters}}
-  - Characters: {{#each randomEvent.characters}}{{this.name}} ({{this.type}}){{#unless @last}}, {{/unless}}{{/each}}
-  {{/if}}
-  {{#if randomEvent.threads}}
-  - Threads: {{#each randomEvent.threads}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
-  {{/if}}
-  - Meaning: {{{randomEvent.action}}} of {{{randomEvent.subject}}}
+  {{#each randomEvents}}
+  - Focus: {{{this.focus}}}
+    {{#if this.characters}}
+    - Characters: {{#each this.characters}}{{this.name}} ({{this.type}}){{#unless @last}}, {{/unless}}{{/each}}
+    {{/if}}
+    {{#if this.threads}}
+    - Threads: {{#each this.threads}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}
+    {{/if}}
+    - Meaning: {{{this.action}}} of {{{this.subject}}}
+  {{/each}}
 {{/if}}
 
 ### YOUR TASK: NARRATE THE SCENE

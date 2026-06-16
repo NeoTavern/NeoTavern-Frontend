@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { Button } from '../../../../components/UI';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../../types/popup';
 import { useMythicState } from '../composables/useMythicState';
-import { type MythicExtensionAPI } from '../types';
+import type { EventMeaningResult, FateQuestion, FateRollResult, MythicExtensionAPI, MythicOdds } from '../types';
 
 interface Props {
   api: MythicExtensionAPI;
@@ -15,7 +15,26 @@ const { state: extra, getLatestMythicMessageIndex } = useMythicState(props.api);
 const chaos = computed(() => extra.value?.chaos ?? 5);
 const scene = computed(() => extra.value?.scene);
 const actionHistory = computed(() => props.api.chat.metadata.get()?.extra?.actionHistory ?? []);
-const npcCount = computed(() => scene.value?.characters.length);
+const npcCount = computed(() => scene.value?.characters?.length ?? 0);
+
+type DisplayAction = {
+  analysis?: {
+    questions?: FateQuestion[];
+    extracted_question?: string;
+    odds?: MythicOdds;
+    justification?: string;
+  };
+  fateRollResults?: FateRollResult[];
+  fateRollResult?: FateRollResult;
+  randomEvents?: EventMeaningResult[];
+  randomEvent?: EventMeaningResult;
+};
+
+function stripMythicExtra<T extends Record<string, unknown> | undefined>(extra: T): T {
+  if (!extra?.['core.mythic-agents']) return extra;
+  const nextExtra = { ...extra, 'core.mythic-agents': undefined };
+  return nextExtra as T;
+}
 
 function adjustChaos(delta: number) {
   const mythicIndex = getLatestMythicMessageIndex();
@@ -47,40 +66,36 @@ function resetAll() {
       content: 'This will clear all mythic agents data (chaos, scene, action history, etc.). Are you sure?',
       type: POPUP_TYPE.CONFIRM,
     })
-    .then((result) => {
+    .then(async (result) => {
       if (result.result === POPUP_RESULT.AFFIRMATIVE) {
-        const mythicIndex = getLatestMythicMessageIndex();
-        if (mythicIndex === null) return;
         const history = props.api.chat.getHistory();
-        const msg = history[mythicIndex];
-        const resetExtra = {
-          actionHistory: [],
-          chaos: 5,
-          scene: {
-            chaos_rank: 5,
-            characters: [],
-            threads: [],
-          },
-        };
-        msg.extra = {
-          ...msg.extra,
-          'core.mythic-agents': resetExtra,
-        };
-        props.api.chat.updateMessageObject(mythicIndex, {
-          extra: msg.extra,
-        });
-        // Clear mythic extras from other messages
-        for (let i = 0; i < history.length - 1; i++) {
-          const msg = history[i];
-          if (msg.extra?.['core.mythic-agents']) {
-            props.api.chat.updateMessageObject(i, {
-              extra: {
-                ...msg.extra,
-                'core.mythic-agents': undefined,
-              },
+
+        await Promise.all(
+          history.map((msg, i) => {
+            const extra = stripMythicExtra(msg.extra);
+            const swipeInfo = msg.swipe_info?.map((info) => ({
+              ...info,
+              extra: stripMythicExtra(info.extra),
+            }));
+
+            if (extra === msg.extra && !swipeInfo) return Promise.resolve();
+
+            return props.api.chat.updateMessageObject(i, {
+              extra,
+              ...(swipeInfo ? { swipe_info: swipeInfo } : {}),
             });
-          }
+          }),
+        );
+
+        const metadata = props.api.chat.metadata.get();
+        if (metadata) {
+          const extra = { ...metadata.extra };
+          delete extra.actionHistory;
+          delete extra.resolved_threads;
+          props.api.chat.metadata.set({ ...metadata, extra });
         }
+
+        props.api.ui.showToast('Mythic Agents chat data reset', 'success');
       }
     });
 }
@@ -94,6 +109,28 @@ function getOutcomeClass(outcome: string) {
 
 function formatOutcome(outcome: string) {
   return outcome;
+}
+
+function getQuestions(action: DisplayAction): FateQuestion[] {
+  if (action.analysis?.questions) return action.analysis.questions;
+  if (!action.analysis?.extracted_question) return [];
+  return [
+    {
+      extracted_question: action.analysis.extracted_question,
+      odds: action.analysis.odds ?? '50/50',
+      justification: action.analysis.justification ?? '',
+    },
+  ];
+}
+
+function getRolls(action: DisplayAction): FateRollResult[] {
+  if (action.fateRollResults) return action.fateRollResults;
+  return action.fateRollResult ? [action.fateRollResult] : [];
+}
+
+function getRandomEvents(action: DisplayAction): EventMeaningResult[] {
+  if (action.randomEvents) return action.randomEvents;
+  return action.randomEvent ? [action.randomEvent] : [];
 }
 </script>
 
@@ -130,7 +167,7 @@ function formatOutcome(outcome: string) {
         <div class="stat-label">NPCs</div>
       </div>
       <div class="stat-card">
-        <div class="stat-value">{{ scene?.threads.length || 0 }}</div>
+        <div class="stat-value">{{ scene?.threads?.length || 0 }}</div>
         <div class="stat-label">Threads</div>
       </div>
     </div>
@@ -141,17 +178,22 @@ function formatOutcome(outcome: string) {
       <div v-if="actionHistory.length === 0" class="empty-state">No actions recorded yet.</div>
       <ul v-else class="activity-list">
         <li v-for="(action, index) in actionHistory.slice().reverse().slice(0, 5)" :key="index" class="activity-item">
-          <div class="activity-main">
-            <span class="question">{{ action.analysis.extracted_question }}</span>
+          <div
+            v-for="(question, questionIndex) in getQuestions(action)"
+            :key="questionIndex"
+            class="activity-main"
+          >
+            <span class="question">{{ question.extracted_question }}</span>
             <span
-              v-if="action.fateRollResult"
-              :class="['outcome-badge', getOutcomeClass(action.fateRollResult.outcome)]"
+              v-if="getRolls(action)[questionIndex]"
+              :class="['outcome-badge', getOutcomeClass(getRolls(action)[questionIndex].outcome)]"
             >
-              {{ formatOutcome(action.fateRollResult.outcome) }}
+              {{ formatOutcome(getRolls(action)[questionIndex].outcome) }}
             </span>
           </div>
-          <div v-if="action.randomEvent" class="activity-event">
-            <i class="fas fa-bolt"></i> {{ action.randomEvent.focus }}
+          <div v-if="getRandomEvents(action).length" class="activity-event">
+            <i class="fas fa-bolt"></i> {{ getRandomEvents(action)[0].focus }}
+            <span v-if="getRandomEvents(action).length > 1">(+{{ getRandomEvents(action).length - 1 }})</span>
           </div>
         </li>
       </ul>

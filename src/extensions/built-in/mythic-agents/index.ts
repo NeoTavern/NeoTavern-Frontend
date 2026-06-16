@@ -10,6 +10,8 @@ import { askOracle } from './oracle';
 import { generateInitialScene } from './scene-manager';
 import SettingsPanel from './SettingsPanel.vue';
 import type {
+  EventMeaningResult,
+  FateRollResult,
   MythicCharacter,
   MythicExtensionAPI,
   MythicMessageExtra,
@@ -140,36 +142,31 @@ export function activate(api: MythicExtensionAPI) {
           return;
         }
 
-        let fateRollResult:
-          | {
-              roll: number;
-              chaosDie: number;
-              outcome: 'Yes' | 'No' | 'Exceptional Yes' | 'Exceptional No';
-              exceptional: boolean;
-            }
-          | undefined;
-        let randomEvent: { focus: string; action: string; subject: string; new_npcs?: MythicCharacter[] } | undefined;
-        let anal = analysis;
+        const fateRollResults: FateRollResult[] = [];
+        const randomEvents: EventMeaningResult[] = [];
+        const anal = analysis;
 
-        if (analysis.requires_fate_roll) {
-          const result = await askOracle(
-            analysis,
-            currentMythicData.chaos ?? 5,
-            currentPreset.data.fateChart,
-            currentMythicData.scene!,
-            currentPreset.data.eventGeneration,
-            currentPreset.data.une,
-          );
-          if (context?.controller.signal.aborted) return;
-          anal = result.analysis;
-          fateRollResult = result.fateRollResult;
-          randomEvent = result.randomEvent;
+        if (analysis.questions.length > 0) {
+          for (const question of analysis.questions) {
+            const result = await askOracle(
+              question,
+              currentMythicData.chaos ?? 5,
+              currentPreset.data.fateChart,
+              currentMythicData.scene!,
+              currentPreset.data.eventGeneration,
+              currentPreset.data.une,
+            );
+            if (context?.controller.signal.aborted) return;
+            fateRollResults.push(result.fateRollResult);
+            if (result.randomEvent) randomEvents.push(result.randomEvent);
+          }
         }
 
         // Update scene with new NPCs if any
         let updatedScene = { ...currentMythicData.scene! };
-        if (randomEvent?.new_npcs) {
-          updatedScene.characters = [...updatedScene.characters, ...randomEvent.new_npcs];
+        const newNpcs = randomEvents.flatMap((event) => event.new_npcs ?? []);
+        if (newNpcs.length) {
+          updatedScene.characters = [...updatedScene.characters, ...newNpcs];
         }
 
         const history = api.chat.getHistory();
@@ -189,12 +186,12 @@ export function activate(api: MythicExtensionAPI) {
             api,
             updatedScene,
             anal,
-            fateRollResult,
-            randomEvent,
             messageIndex,
             swipeId,
             isSwipe ? api.chat.getHistory().slice(0, -1) : undefined,
             context?.controller.signal,
+            fateRollResults,
+            randomEvents,
           );
           if (context?.controller.signal.aborted) return;
           narration = narr;
@@ -239,12 +236,12 @@ export function activate(api: MythicExtensionAPI) {
             api,
             updatedScene,
             anal,
-            fateRollResult,
-            randomEvent,
             messageIndex,
             swipeId,
             isSwipe ? api.chat.getHistory().slice(0, -1) : undefined,
             context?.controller.signal,
+            fateRollResults,
+            randomEvents,
           );
           if (context?.controller.signal.aborted) return;
         }
@@ -252,7 +249,11 @@ export function activate(api: MythicExtensionAPI) {
         // Create assistant message object
         const genStarted = new Date().toISOString();
         const genFinished = new Date().toISOString();
-        const actionData = { analysis: anal, fateRollResult, randomEvent };
+        const actionData = {
+          analysis: anal,
+          fateRollResults,
+          randomEvents,
+        };
 
         const currentActionHistory = api.chat.metadata.get()?.extra?.actionHistory ?? [];
         api.chat.metadata.update({

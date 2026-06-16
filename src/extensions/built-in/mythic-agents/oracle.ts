@@ -2,6 +2,7 @@ import { generateFullRandomEvent } from './event-generator';
 import type {
   EventGenerationData,
   EventMeaningResult,
+  FateQuestion,
   FateChartData,
   FateRollResult,
   MythicOdds,
@@ -83,19 +84,19 @@ export function rollFate(
 }
 
 export async function askOracle(
-  analysis: { extracted_question: string; odds: MythicOdds; requires_fate_roll: boolean; justification: string },
+  question: FateQuestion,
   chaos: number,
   fateChart: FateChartData,
   scene: Scene,
   eventGenerationData: EventGenerationData,
   uneSettings: UNESettings,
 ): Promise<{
-  analysis: { extracted_question: string; odds: MythicOdds; requires_fate_roll: boolean; justification: string };
+  question: FateQuestion;
   fateRollResult: FateRollResult;
   randomEvent?: EventMeaningResult;
 }> {
   const { fateRollResult, randomEvent } = rollFate(
-    analysis.odds,
+    question.odds,
     chaos,
     fateChart,
     scene,
@@ -103,5 +104,5 @@ export async function askOracle(
     uneSettings,
   );
 
-  return { analysis, fateRollResult, randomEvent };
+  return { question, fateRollResult, randomEvent };
 }

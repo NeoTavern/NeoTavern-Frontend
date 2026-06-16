@@ -5,7 +5,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
 import type { CustomAction } from '../../../components/common/PresetControl.vue';
 import PresetControl from '../../../components/common/PresetControl.vue';
-import { FormItem, Input, Toggle } from '../../../components/UI';
+import { FormItem, Input, Select, Toggle } from '../../../components/UI';
 import CollapsibleSection from '../../../components/UI/CollapsibleSection.vue';
 import Tabs from '../../../components/UI/Tabs.vue';
 import Textarea from '../../../components/UI/Textarea.vue';
@@ -50,6 +50,12 @@ const promptTypes: { key: keyof NonNullable<MythicSettings['prompts']>; label: s
   { key: 'initialScene', label: 'Initial Scene' },
   { key: 'analysis', label: 'Analysis' },
   { key: 'narration', label: 'Narration' },
+];
+
+const formatOptions = [
+  { label: 'Native', value: 'native' },
+  { label: 'JSON', value: 'json' },
+  { label: 'XML', value: 'xml' },
 ];
 
 // JSON Editors State
@@ -483,16 +489,18 @@ function handleFileImport(event: Event) {
 async function handleResetAllPresets() {
   const confirm = await popupStore.show({
     type: POPUP_TYPE.CONFIRM,
-    content: 'Are you sure you want to reset all presets?',
+    content: 'Are you sure you want to reset Mythic Agents prompts, presets, fate charts, event tables, and UNE data to default?',
     okButton: true,
     cancelButton: true,
   });
   if (confirm) {
-    settings.value.presets = JSON.parse(JSON.stringify(initial.presets));
+    const defaults = JSON.parse(JSON.stringify(initial)) as MythicSettings;
+    settings.value.prompts = defaults.prompts;
+    settings.value.presets = defaults.presets;
     selectedPreset.value = 'Default';
     settings.value.selectedPreset = 'Default';
     loadJsonFromSettings();
-    props.api.ui.showToast('All presets reset', 'success');
+    props.api.ui.showToast('Mythic Agents content reset', 'success');
   }
 }
 
@@ -747,6 +755,9 @@ const customActions: CustomAction[] = [
       </FormItem>
       <FormItem label="Language" description="The language for generated content.">
         <Input v-model="settings.language" placeholder="English" />
+      </FormItem>
+      <FormItem label="Request Format" description="Format to enforce for Mythic structured responses.">
+        <Select v-model="settings.structuredRequestFormat" :options="formatOptions" />
       </FormItem>
     </div>
 

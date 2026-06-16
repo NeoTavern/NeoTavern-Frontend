@@ -1991,6 +1991,7 @@ export const DEFAULT_BASE_SETTINGS: MythicSettings = {
   chaos: 5,
   connectionProfileId: '',
   language: 'English',
+  structuredRequestFormat: 'native',
   prompts: {
     analysis: ANALYSIS_PROMPT,
     initialScene: INITIAL_SCENE_PROMPT,

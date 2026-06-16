@@ -19,11 +19,17 @@ export const mythicOddsEnum = z.enum([
 export type MythicOdds = z.infer<typeof mythicOddsEnum>;
 
 // Schemas
-export const AnalysisOutputSchema = z.object({
+export const FateQuestionSchema = z.object({
   extracted_question: z.string(),
   odds: mythicOddsEnum,
-  requires_fate_roll: z.boolean(),
   justification: z.string(),
+});
+
+export type FateQuestion = z.infer<typeof FateQuestionSchema>;
+
+export const AnalysisOutputSchema = z.object({
+  justification: z.string(),
+  questions: z.array(FateQuestionSchema),
 });
 
 export type AnalysisOutput = z.infer<typeof AnalysisOutputSchema>;
@@ -85,8 +91,8 @@ export type SceneUpdate = z.infer<typeof SceneUpdateSchema>;
 
 export const ActionDataSchema = z.object({
   analysis: AnalysisOutputSchema,
-  fateRollResult: FateRollResultSchema.optional(),
-  randomEvent: EventMeaningResultSchema.optional(),
+  fateRollResults: z.array(FateRollResultSchema),
+  randomEvents: z.array(EventMeaningResultSchema),
 });
 
 export type ActionData = z.infer<typeof ActionDataSchema>;
@@ -176,6 +182,7 @@ export const MythicSettingsSchema = z.object({
   connectionProfileId: z.string().optional(),
   chaos: z.number().min(1).max(9).default(5),
   language: z.string().default('English'),
+  structuredRequestFormat: z.enum(['native', 'json', 'xml']).default('native'),
   prompts: z
     .object({
       initialScene: z.string(),
