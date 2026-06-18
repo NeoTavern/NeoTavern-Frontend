@@ -7,7 +7,7 @@ services:
     container_name: neotavern-frontend
     restart: unless-stopped
     ports:
-      - '4173:4173'
+      - '8787:8787'
     environment:
       - PUID=1000
       - PGID=1000

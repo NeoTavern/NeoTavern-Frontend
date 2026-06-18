@@ -12,7 +12,7 @@ COPY . .
 
 RUN npm run build:deploy
 
-EXPOSE 4173
+EXPOSE 8787
 
 COPY docker/entrypoint.sh /entrypoint.sh
 
@@ -20,4 +20,4 @@ RUN dos2unix /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["npm", "run", "preview", "--", "--host"]
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "8787"]

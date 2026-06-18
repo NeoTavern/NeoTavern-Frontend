@@ -21,7 +21,7 @@ This directory contains the necessary files to run NeoTavern Frontend using Dock
    ```
 
 2. **Open the App**
-   Go to: `http://localhost:4173`
+   Go to: `http://localhost:8787`
 
 The container automatically creates a bridge so the application can talk to your locally running SillyTavern instance, regardless of whether you are on Windows, Mac, or Linux.
 

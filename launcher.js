@@ -25,9 +25,13 @@ const REPO_URLS = {
   PLUGIN: 'https://github.com/NeoTavern/NeoTavern-Server-Plugin',
 };
 
+const CONFIG_VERSION = 2;
+const LEGACY_DEFAULT_APP_PORT = 8000;
+
 // Default Config
 const DEFAULT_CONFIG = {
-  appPort: 8000,
+  configVersion: CONFIG_VERSION,
+  appPort: 8787,
   appHost: '0.0.0.0',
   useInternalBackend: true,
   internalBackendPort: 8001,
@@ -56,6 +60,17 @@ function loadConfig() {
       };
 
       let needsSave = false;
+      const loadedConfigVersion = Number.isInteger(loaded.configVersion) ? loaded.configVersion : 1;
+
+      if (loadedConfigVersion < 2) {
+        config.configVersion = CONFIG_VERSION;
+        needsSave = true;
+
+        if (loaded.appPort === LEGACY_DEFAULT_APP_PORT) {
+          config.appPort = DEFAULT_CONFIG.appPort;
+        }
+      }
+
       const checkNeedsSave = (defaultObj, loadedObj) => {
         for (const key of Object.keys(defaultObj)) {
           if (!Object.prototype.hasOwnProperty.call(loadedObj, key)) {
