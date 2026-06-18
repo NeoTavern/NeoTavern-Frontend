@@ -18,7 +18,7 @@ import { PROVIDER_CAPABILITIES } from '../api/provider-definitions';
 import { useStrictI18n } from '../composables/useStrictI18n';
 import { toast } from '../composables/useToast';
 import { defaultPrompts, PROVIDER_SECRET_KEYS } from '../constants';
-import { migrateLegacyOaiPreset } from '../services/settings-migration.service';
+import { migrateLegacyOaiPreset, migrateLegacyTextCompletionPreset } from '../services/settings-migration.service';
 import type {
   ApiModel,
   ApiProvider,
@@ -438,7 +438,6 @@ export const useApiStore = defineStore('api', () => {
         } else if ('temp' in presetData || 'genamt' in presetData || 'rep_pen' in presetData) {
           // Text completion (Kobold-style) preset
           try {
-            const { migrateLegacyTextCompletionPreset } = await import('../services/settings-migration.service');
             presetData = migrateLegacyTextCompletionPreset(presetData);
             toast.success(t('aiConfig.presets.messages.migrateTextCompletion'));
           } catch (error) {

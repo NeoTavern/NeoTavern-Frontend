@@ -167,6 +167,9 @@ export default defineConfig(({ mode }) => {
               if (id.includes('codemirror') || id.includes('@codemirror')) {
                 return 'vendor-editor';
               }
+              if (id.includes('@tiptap') || id.includes('prosemirror')) {
+                return 'vendor-richtext';
+              }
               if (id.includes('marked') || id.includes('dompurify') || id.includes('yaml')) {
                 return 'vendor-utils';
               }

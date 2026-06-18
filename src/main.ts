@@ -5,6 +5,7 @@ import { toast } from './composables/useToast';
 import i18n from './i18n';
 import pinia from './stores';
 import { useAuthStore } from './stores/auth.store';
+import { setMainAppInstance } from './utils/extensions';
 
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './styles/main.scss';
@@ -15,8 +16,6 @@ async function initializeApp() {
   app.use(i18n);
   app.config.performance = true;
 
-  // Dynamically import and initialize the extension API
-  const { setMainAppInstance } = await import('./utils/extensions');
   setMainAppInstance(app);
 
   // @ts-expect-error 'i18n.global' is of type 'unknown'

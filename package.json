@@ -30,7 +30,7 @@
     "@types/jsdom": "^27.0.0",
     "@types/lodash-es": "^4.17.12",
     "@vitejs/plugin-vue": "^6.0.0",
-    "@vitest/coverage-istanbul": "3.2.4",
+    "@vitest/coverage-istanbul": "^3.2.6",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^10.5.1",
@@ -79,5 +79,14 @@
     "vue-i18n": "^11.1.12",
     "yaml": "^2.8.1",
     "zod": "^4.3.6"
+  },
+  "overrides": {
+    "minimatch@5.1.9": {
+      "brace-expansion": "2.0.3"
+    },
+    "minimatch@9.0.9": {
+      "brace-expansion": "2.0.3"
+    },
+    "esbuild": "0.28.1"
   }
 }
