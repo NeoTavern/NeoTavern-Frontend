@@ -30,6 +30,7 @@ import type {
 import { api_providers, POPUP_RESULT, POPUP_TYPE } from '../types';
 import type { InstructTemplate } from '../types/instruct';
 import { downloadFile, readFileAsText, uuidv4 } from '../utils/commons';
+import { normalizeSamplerSettings } from '../utils/sampler-settings';
 import { usePopupStore } from './popup.store';
 import { useSecretStore } from './secret.store';
 import { useSettingsStore } from './settings.store';
@@ -119,7 +120,7 @@ export const useApiStore = defineStore('api', () => {
         if (!newPresetName) return;
         const preset = presets.value.find((p) => p.name === newPresetName);
         if (preset) {
-          settingsStore.settings.api.samplers = cloneDeep(preset.preset);
+          settingsStore.settings.api.samplers = normalizeSamplerSettings(preset.preset);
         }
       },
     );
@@ -327,7 +328,8 @@ export const useApiStore = defineStore('api', () => {
 
   async function saveCurrentPresetAs(name: string) {
     try {
-      const presetData: SamplerSettings = cloneDeep(settingsStore.settings.api.samplers);
+      const presetData: SamplerSettings = normalizeSamplerSettings(settingsStore.settings.api.samplers);
+      settingsStore.settings.api.samplers = cloneDeep(presetData);
       await saveSamplerPreset(name, presetData);
       const existingIndex = presets.value.findIndex((p) => p.name === name);
       if (existingIndex >= 0) {
@@ -367,10 +369,11 @@ export const useApiStore = defineStore('api', () => {
         if (!presetToRename) throw new Error('Preset not found');
 
         await apideleteSamplerPreset(oldName);
-        await saveSamplerPreset(newName, presetToRename.preset);
+        const renamedPreset = normalizeSamplerSettings(presetToRename.preset);
+        await saveSamplerPreset(newName, renamedPreset);
 
         presets.value = presets.value.filter((p) => p.name !== oldName);
-        presets.value.push({ name: newName, preset: presetToRename.preset });
+        presets.value.push({ name: newName, preset: renamedPreset });
         settingsStore.settings.api.selectedSampler = newName;
       } catch (error) {
         toast.error('Failed to rename preset.');
@@ -467,6 +470,8 @@ export const useApiStore = defineStore('api', () => {
           console.error('Invalid preset: incorrect field types');
           return;
         }
+
+        presetData = normalizeSamplerSettings(presetData);
 
         // Update UI optimistically
         const existingIndex = presets.value.findIndex((p) => p.name === name);

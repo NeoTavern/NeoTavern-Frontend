@@ -1,4 +1,5 @@
 import * as Vue from 'vue';
+import { cloneDeep } from 'lodash-es';
 import { createVNode, nextTick, render, type App } from 'vue';
 import { CustomPromptPostProcessing, default_avatar, default_user_avatar } from '../constants';
 import type {
@@ -374,8 +375,13 @@ const baseExtensionAPI: ExtensionAPI = {
       const uiStore = useUiStore();
       if (!apiStore.activeModel) throw new Error('No active model selected.');
 
+      const samplerSettings = {
+        ...cloneDeep(settingsStore.settings.api.samplers),
+        ...cloneDeep(samplerOverrides),
+      };
+
       return buildChatCompletionPayload({
-        samplerSettings: { ...settingsStore.settings.api.samplers, ...samplerOverrides },
+        samplerSettings,
         messages,
         model: apiStore.activeModel,
         provider: settingsStore.settings.api.provider,
@@ -459,7 +465,11 @@ const baseExtensionAPI: ExtensionAPI = {
         chatMetadata,
         chatHistory,
         persona,
-        samplerSettings: mergeWithUndefinedMulti({}, settingsStore.settings.api.samplers, options?.samplerSettings),
+        samplerSettings: mergeWithUndefinedMulti(
+          {},
+          cloneDeep(settingsStore.settings.api.samplers),
+          cloneDeep(options?.samplerSettings),
+        ),
         tokenizer,
         books,
         worldInfo: mergeWithUndefinedMulti({}, settingsStore.settings.worldInfo, options?.worldInfo),

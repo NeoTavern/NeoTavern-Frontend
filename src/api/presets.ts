@@ -2,6 +2,7 @@ import type { ReasoningTemplate, SamplerSettings } from '../types';
 import type { InstructTemplate } from '../types/instruct';
 import type { Theme } from '../types/theme';
 import { getRequestHeaders } from '../utils/client';
+import { normalizeSamplerSettings } from '../utils/sampler-settings';
 import { fetchUserSettings } from './settings';
 
 export interface Preset<T> {
@@ -19,14 +20,16 @@ export async function fetchAllSamplerPresets(): Promise<Preset<SamplerSettings>[
     throw new Error('Failed to fetch sampler presets');
   }
 
-  return await response.json();
+  const presets = (await response.json()) as Preset<SamplerSettings>[];
+  return presets.map((p) => ({ ...p, preset: normalizeSamplerSettings(p.preset) }));
 }
 
 export async function saveSamplerPreset(name: string, preset: SamplerSettings): Promise<void> {
+  const normalizedPreset = normalizeSamplerSettings(preset);
   const response = await fetch('/api/plugins/neo/samplers', {
     method: 'POST',
     headers: getRequestHeaders(),
-    body: JSON.stringify({ name, preset }),
+    body: JSON.stringify({ name, preset: normalizedPreset }),
   });
 
   if (!response.ok) {

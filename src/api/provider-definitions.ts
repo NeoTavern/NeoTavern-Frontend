@@ -13,6 +13,7 @@ import { api_providers } from '../types';
 import type { ApiUserMessage, BuildChatCompletionPayloadOptions } from '../types/generation';
 import type { ApiFormatter, SamplerSettings } from '../types/settings';
 import { isDataURL } from '../utils/media';
+import { normalizeStopSequences } from '../utils/sampler-settings';
 
 /**
  * Defines how a setting maps to an API payload parameter.
@@ -898,9 +899,20 @@ export function getProviderHandler(provider: ApiProvider): ProviderResponseHandl
 
 // --- Helper Transforms ---
 
-const googleStopTransform = (v: string[]) => v?.slice(0, 5).filter((x) => x.length >= 1 && x.length <= 16);
-const cohereStopTransform = (v: string[]) => v?.slice(0, 5);
-const zaiStopTransform = (v: string[]) => v?.slice(0, 1);
+const googleStopTransform = (v: string[]) => {
+  const stops = normalizeStopSequences(v)
+    ?.filter((x) => x.length >= 1 && x.length <= 16)
+    .slice(0, 5);
+  return stops?.length ? stops : undefined;
+};
+const cohereStopTransform = (v: string[]) => {
+  const stops = normalizeStopSequences(v)?.slice(0, 5);
+  return stops?.length ? stops : undefined;
+};
+const zaiStopTransform = (v: string[]) => {
+  const stops = normalizeStopSequences(v)?.slice(0, 4);
+  return stops?.length ? stops : undefined;
+};
 
 const allProviders = Object.values(api_providers);
 const allowAll = allProviders.reduce((acc, p) => ({ ...acc, [p]: {} }), {}) as Record<ApiProvider, ParamHandling>;
@@ -1112,7 +1124,10 @@ export const PARAMETER_DEFINITIONS: Partial<Record<keyof SamplerSettings, ParamC
 
   stop: {
     defaults: {
-      transform: (v: string[]) => (v && v.length > 0 ? v : undefined),
+      transform: (v: string[]) => {
+        const stops = normalizeStopSequences(v);
+        return stops?.length ? stops : undefined;
+      },
     },
     providers: {
       ...allowExcept([api_providers.PERPLEXITY]),

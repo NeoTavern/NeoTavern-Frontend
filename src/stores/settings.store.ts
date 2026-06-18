@@ -17,6 +17,7 @@ import { settingsDefinition } from '../settings-definition';
 import { type SettingDefinition, type Settings, type SettingsPath } from '../types';
 import type { ValueForPath } from '../types/utils';
 import { eventEmitter } from '../utils/extensions';
+import { normalizeSamplerSettings } from '../utils/sampler-settings';
 
 type SettingsValue<P extends SettingsPath> = ValueForPath<Settings, P>;
 
@@ -32,6 +33,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const { trigger: saveSettingsDebounced } = useAutoSave(async () => {
     if (settingsInitializing.value) return;
 
+    settings.value.api.samplers = normalizeSamplerSettings(settings.value.api.samplers);
     await saveNeoSettings(settings.value);
   });
 
@@ -98,8 +100,12 @@ export const useSettingsStore = defineStore('settings', () => {
         // This handles v1 -> v2, etc. in the future.
         const { migrated, hasChanged } = migrateSettings(currentSettings);
 
-        if (hasChanged) {
-          console.log('Settings were migrated to a new version. Saving changes.');
+        const normalizedSamplers = normalizeSamplerSettings(migrated.api.samplers);
+        const samplerSettingsChanged = JSON.stringify(normalizedSamplers.stop) !== JSON.stringify(migrated.api.samplers.stop);
+        migrated.api.samplers = normalizedSamplers;
+
+        if (hasChanged || samplerSettingsChanged) {
+          console.log('Settings were migrated or normalized. Saving changes.');
           await saveNeoSettings(migrated);
         }
 
