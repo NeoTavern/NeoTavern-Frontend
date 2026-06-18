@@ -68,7 +68,7 @@ NeoTavern acts as an "All-In-One" launcher. It will automatically download Silly
 2. Navigate to the folder.
 3. Double-click `start.bat`.
 
-The script will setup the environment and launch the app at `http://localhost:8000`.
+The script will setup the environment and launch the app at `http://localhost:8787`.
 
 ### Linux / macOS
 
@@ -100,7 +100,7 @@ NeoTavern runs in a single session. You do **not** need to run SillyTavern separ
    chmod +x start.sh
    ./start.sh
    ```
-3. Open your browser to `http://localhost:8000`.
+3. Open your browser to `http://localhost:8787`.
 
 ## Updating
 
@@ -119,7 +119,7 @@ NeoTavern supports **Progressive Web App (PWA)** functionality. This allows you 
 
 **On Android:**
 
-1. Start the app and open Chrome to `http://localhost:8000`.
+1. Start the app and open Chrome to `http://localhost:8787`.
 2. Tap the **Three Dots Menu** (top right).
 3. Tap **"Add to Home screen"** or **"Install App"**.
 4. The NeoTavern icon will appear in your app drawer. You can now launch it directly without opening Chrome first.
