@@ -1,7 +1,7 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
-import { computed, markRaw, ref } from 'vue';
 import type { StyleValue } from 'vue';
+import { computed, markRaw, ref } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useComponentRegistryStore } from '../../stores/component-registry.store';
 import { usePopupStore } from '../../stores/popup.store';

@@ -42,11 +42,7 @@ async function generateInitialScene() {
   const signal = abortController.value.signal;
 
   try {
-    const newScene = await sceneManagerGenerateInitialScene(
-      props.api,
-      signal,
-      generateIdentities.value,
-    );
+    const newScene = await sceneManagerGenerateInitialScene(props.api, signal, generateIdentities.value);
     if (signal.aborted || requestId !== activeRequestId.value) return;
 
     const history = props.api.chat.getHistory();

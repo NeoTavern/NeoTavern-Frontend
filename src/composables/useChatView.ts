@@ -15,8 +15,7 @@ export function useChatView() {
   const lastScrollTop = ref(0);
   let lastTouchY: number | null = null;
 
-  const isNearBottom = (el: HTMLElement) =>
-    el.scrollHeight - el.clientHeight - el.scrollTop <= BOTTOM_SCROLL_THRESHOLD;
+  const isNearBottom = (el: HTMLElement) => el.scrollHeight - el.clientHeight - el.scrollTop <= BOTTOM_SCROLL_THRESHOLD;
 
   const pauseAutoScroll = () => {
     shouldFollowStreaming.value = false;

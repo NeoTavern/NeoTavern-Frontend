@@ -2,8 +2,8 @@ import { generateFullRandomEvent } from './event-generator';
 import type {
   EventGenerationData,
   EventMeaningResult,
-  FateQuestion,
   FateChartData,
+  FateQuestion,
   FateRollResult,
   MythicOdds,
   Scene,

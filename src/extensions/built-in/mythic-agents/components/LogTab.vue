@@ -100,7 +100,11 @@ function getJustification(action: DisplayAction) {
         </div>
       </div>
 
-      <div v-for="(randomEvent, eventIndex) in getRandomEvents(action)" :key="`event-${eventIndex}`" class="random-event">
+      <div
+        v-for="(randomEvent, eventIndex) in getRandomEvents(action)"
+        :key="`event-${eventIndex}`"
+        class="random-event"
+      >
         <div class="event-header"><i class="fas fa-bolt"></i> Random Event</div>
         <div class="event-content">
           <span class="focus">{{ randomEvent.focus }}</span>

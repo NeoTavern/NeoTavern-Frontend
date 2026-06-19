@@ -69,7 +69,9 @@ export const useWorldInfoStore = defineStore('world-info', () => {
 
   const globalBookNames = computed<string[]>({
     get: () =>
-      (settingsStore.settings.worldInfo.activeBookNames || []).map((identifier) => resolveBookFileId(identifier) ?? identifier),
+      (settingsStore.settings.worldInfo.activeBookNames || []).map(
+        (identifier) => resolveBookFileId(identifier) ?? identifier,
+      ),
     set: (value) => {
       settingsStore.settings.worldInfo.activeBookNames = value;
     },

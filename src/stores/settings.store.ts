@@ -101,7 +101,8 @@ export const useSettingsStore = defineStore('settings', () => {
         const { migrated, hasChanged } = migrateSettings(currentSettings);
 
         const normalizedSamplers = normalizeSamplerSettings(migrated.api.samplers);
-        const samplerSettingsChanged = JSON.stringify(normalizedSamplers.stop) !== JSON.stringify(migrated.api.samplers.stop);
+        const samplerSettingsChanged =
+          JSON.stringify(normalizedSamplers.stop) !== JSON.stringify(migrated.api.samplers.stop);
         migrated.api.samplers = normalizedSamplers;
 
         if (hasChanged || samplerSettingsChanged) {

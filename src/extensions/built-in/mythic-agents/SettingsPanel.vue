@@ -489,7 +489,8 @@ function handleFileImport(event: Event) {
 async function handleResetAllPresets() {
   const confirm = await popupStore.show({
     type: POPUP_TYPE.CONFIRM,
-    content: 'Are you sure you want to reset Mythic Agents prompts, presets, fate charts, event tables, and UNE data to default?',
+    content:
+      'Are you sure you want to reset Mythic Agents prompts, presets, fate charts, event tables, and UNE data to default?',
     okButton: true,
     cancelButton: true,
   });

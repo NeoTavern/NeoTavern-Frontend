@@ -178,11 +178,7 @@ function getRandomEvents(action: DisplayAction): EventMeaningResult[] {
       <div v-if="actionHistory.length === 0" class="empty-state">No actions recorded yet.</div>
       <ul v-else class="activity-list">
         <li v-for="(action, index) in actionHistory.slice().reverse().slice(0, 5)" :key="index" class="activity-item">
-          <div
-            v-for="(question, questionIndex) in getQuestions(action)"
-            :key="questionIndex"
-            class="activity-main"
-          >
+          <div v-for="(question, questionIndex) in getQuestions(action)" :key="questionIndex" class="activity-main">
             <span class="question">{{ question.extracted_question }}</span>
             <span
               v-if="getRolls(action)[questionIndex]"
