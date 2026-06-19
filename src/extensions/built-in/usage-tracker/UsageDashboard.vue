@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, markRaw, onMounted, ref, watch } from 'vue';
 import { Button, Input, Select } from '../../../components/UI';
 import { Pagination } from '../../../components/common';
+import { useExtensionStore } from '../../../stores/extension.store';
 import { POPUP_TYPE, type ExtensionAPI } from '../../../types';
+import CaptureViewer from './CaptureViewer.vue';
 import { UsageStorage } from './storage';
 import type {
   DashboardState,
@@ -10,6 +12,7 @@ import type {
   SortField,
   SortOrder,
   TimeRange,
+  UsageCaptureEntry,
   UsageChartPoint,
   UsageLogEntry,
   UsageStats,
@@ -22,6 +25,8 @@ const props = defineProps<{
   api: ExtensionAPI;
   storage: UsageStorage;
 }>();
+
+const extensionStore = useExtensionStore();
 
 // --- Types & Constants ---
 
@@ -57,8 +62,10 @@ const loading = ref(false);
 // Stats & Data
 const stats = ref<UsageStats | null>(null);
 const logs = ref<UsageLogEntry[]>([]);
+const captures = ref<UsageCaptureEntry[]>([]);
 const chartPoints = ref<UsageChartPoint[]>([]);
 const totalLogs = ref(0);
+const totalCaptures = ref(0);
 
 // Filters & Pagination
 const currentPage = ref(1);
@@ -78,7 +85,7 @@ const availableModels = computed(() => {
 
 const availableSources = computed(() => {
   if (!stats.value) return [];
-  return Object.keys(stats.value.bySource).map((s) => ({ label: s, value: s }));
+  return Object.keys(stats.value.bySource).map((s) => ({ label: formatSource(s), value: s }));
 });
 
 const sortedModels = computed(() => {
@@ -90,6 +97,12 @@ const sortedSources = computed(() => {
   if (!stats.value) return [];
   return Object.entries(stats.value.bySource).sort((a, b) => b[1].input + b[1].output - (a[1].input + a[1].output));
 });
+
+function formatSource(source: string): string {
+  if (source === 'core') return 'Core';
+  if (source === 'unknown') return 'Unknown';
+  return extensionStore.extensions[source]?.manifest.display_name ?? source;
+}
 
 // --- Methods ---
 
@@ -127,14 +140,35 @@ async function loadLogs() {
   totalLogs.value = result.total;
 }
 
+async function loadCaptures() {
+  if (viewMode.value !== 'captures') return;
+
+  const result = await props.storage.getCaptures(currentPage.value, itemsPerPage.value);
+  captures.value = result.items;
+  totalCaptures.value = result.total;
+}
+
+async function showCapture(capture: UsageCaptureEntry) {
+  await props.api.ui.showPopup({
+    type: POPUP_TYPE.DISPLAY,
+    title: 'Request / Response Capture',
+    wide: true,
+    large: true,
+    component: markRaw(CaptureViewer),
+    componentProps: { captures: [capture], formatSource },
+    okButton: true,
+  });
+}
 async function refresh() {
   loading.value = true;
   try {
     await loadStats();
     if (viewMode.value === 'chart') {
       await loadChartData();
-    } else {
+    } else if (viewMode.value === 'table') {
       await loadLogs();
+    } else {
+      await loadCaptures();
     }
   } finally {
     loading.value = false;
@@ -148,7 +182,7 @@ async function clearLogs() {
     content: 'Are you sure you want to clear all usage logs? This action cannot be undone.',
   });
   if (popupResult.result) {
-    await props.storage.clearLogs();
+    await props.storage.clearAll();
     currentPage.value = 1;
     await refresh();
   }
@@ -224,6 +258,7 @@ watch(viewMode, () => {
 
 watch([currentPage, itemsPerPage, sortField, sortOrder], () => {
   if (viewMode.value === 'table') loadLogs();
+  if (viewMode.value === 'captures') loadCaptures();
 });
 
 watch([filterModels, filterSources], () => {
@@ -348,9 +383,11 @@ const chartYLabels = computed(() => {
   <div class="usage-dashboard">
     <!-- Header / Global Controls -->
     <div class="dashboard-header">
-      <div class="header-left">
+      <div class="header-top">
         <Select v-model="activeRange" :options="rangeOptions" class="range-select" title="Time Range" />
-        <div class="view-toggles">
+      </div>
+      <div class="header-actions">
+        <div class="view-toggles" aria-label="Usage view">
           <Button
             :variant="viewMode === 'chart' ? 'default' : 'ghost'"
             icon="fa-chart-area"
@@ -363,18 +400,23 @@ const chartYLabels = computed(() => {
             title="Logs View"
             @click="viewMode = 'table'"
           />
+          <Button
+            :variant="viewMode === 'captures' ? 'default' : 'ghost'"
+            icon="fa-file-lines"
+            title="Request/Response Captures"
+            @click="viewMode = 'captures'"
+          />
         </div>
-      </div>
-      <div class="header-right">
-        <Button icon="fa-rotate" title="Refresh" variant="ghost" @click="refresh" />
+        <Button icon="fa-rotate" title="Refresh" variant="ghost" class="refresh-button" @click="refresh" />
         <Button
           icon="fa-trash-can"
           title="Clear Logs"
           variant="danger"
+          class="clear-button"
           :disabled="!stats || stats.totalRequests === 0"
           @click="clearLogs"
         >
-          Clear Data
+          Clear
         </Button>
       </div>
     </div>
@@ -523,7 +565,7 @@ const chartYLabels = computed(() => {
             <div class="chart-list">
               <div v-for="[source, s] in sortedSources" :key="source" class="chart-item">
                 <div class="chart-info">
-                  <span class="chart-label">{{ source }}</span>
+                  <span class="chart-label" :title="source">{{ formatSource(source) }}</span>
                   <span class="chart-details">
                     {{ formatNumber(s.input + s.output) }}
                   </span>
@@ -546,6 +588,51 @@ const chartYLabels = computed(() => {
         </div>
       </div>
 
+      <!-- CAPTURES VIEW -->
+      <div v-else-if="viewMode === 'captures'" class="captures-view fadeIn">
+        <div class="logs-table-wrapper">
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Source</th>
+                <th>Model</th>
+                <th>Message</th>
+                <th>Status</th>
+                <th class="text-right">Size</th>
+                <th class="text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="loading">
+                <td colspan="7" class="text-center">Loading...</td>
+              </tr>
+              <tr v-else-if="captures.length === 0">
+                <td colspan="7" class="text-center">No request/response captures found.</td>
+              </tr>
+              <tr v-for="capture in captures" :key="capture.id">
+                <td>{{ new Date(capture.timestamp).toLocaleString() }}</td>
+                <td>
+                  <span class="badge source" :title="capture.source">{{ formatSource(capture.source) }}</span>
+                </td>
+                <td :title="capture.model">{{ capture.model }}</td>
+                <td>#{{ capture.messageIndex ?? '-' }}</td>
+                <td>{{ capture.status }}</td>
+                <td class="text-right">{{ Math.ceil(capture.sizeBytes / 1024) }} KB</td>
+                <td class="text-right">
+                  <Button variant="ghost" icon="fa-eye" title="View capture" @click="showCapture(capture)" />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <Pagination
+          v-model:current-page="currentPage"
+          v-model:items-per-page="itemsPerPage"
+          :total-items="totalCaptures"
+        />
+      </div>
       <!-- TABLE VIEW -->
       <div v-else class="table-view fadeIn">
         <div class="logs-table-wrapper">
@@ -572,7 +659,7 @@ const chartYLabels = computed(() => {
               <tr v-for="log in logs" :key="log.id">
                 <td>{{ new Date(log.timestamp).toLocaleString() }}</td>
                 <td>
-                  <span class="badge source">{{ log.source }}</span>
+                  <span class="badge source" :title="log.source">{{ formatSource(log.source) }}</span>
                 </td>
                 <td :title="log.model">{{ log.model }}</td>
                 <td :title="log.context">{{ log.context || '-' }}</td>
@@ -603,35 +690,56 @@ const chartYLabels = computed(() => {
 }
 
 .dashboard-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) 1fr;
+  gap: 10px;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 15px;
 
-  .header-left {
-    display: flex;
-    gap: 10px;
-    align-items: center;
+  .header-top {
+    min-width: 0;
   }
 
-  .header-right {
+  .header-actions {
     display: flex;
-    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .view-toggles {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--theme-border-color);
+    border-radius: var(--base-border-radius);
+    background: var(--black-30a);
+    flex: 0 0 auto;
+  }
+
+  .refresh-button {
+    flex: 0 0 auto;
+  }
+
+  .clear-button {
+    flex: 0 0 auto;
   }
 
   @container (max-width: 600px) {
-    justify-content: center;
+    grid-template-columns: 1fr;
+    gap: 8px;
 
-    .header-left,
-    .header-right {
-      justify-content: center;
+    .header-actions {
+      justify-content: space-between;
+      width: 100%;
     }
   }
 }
 
 .range-select {
-  width: 180px;
+  width: 100%;
+  min-width: 0;
 }
 
 .summary-cards {
@@ -702,7 +810,7 @@ const chartYLabels = computed(() => {
     }
 
     .sort-order {
-      width: 80px;
+      width: 110px;
     }
   }
 }

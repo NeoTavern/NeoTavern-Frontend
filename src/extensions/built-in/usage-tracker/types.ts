@@ -10,6 +10,26 @@ export interface UsageLogEntry {
   context?: string;
 }
 
+export interface UsageTrackerSettings {
+  captureFullPayloads: boolean;
+  captureStorageLimitBytes: number;
+}
+
+export interface UsageCaptureEntry {
+  id: string;
+  generationId: string;
+  messageIndex?: number;
+  chatFile?: string;
+  source: string;
+  model: string;
+  timestamp: number;
+  request: unknown;
+  response?: unknown;
+  responseText?: string;
+  status: 'pending' | 'complete' | 'aborted' | 'error';
+  sizeBytes: number;
+}
+
 export interface UsageStats {
   totalInput: number;
   totalOutput: number;
@@ -28,7 +48,7 @@ export interface LogFilter {
 
 export type SortField = 'timestamp' | 'totalTokens' | 'duration';
 export type SortOrder = 'asc' | 'desc';
-export type ViewMode = 'chart' | 'table';
+export type ViewMode = 'chart' | 'table' | 'captures';
 
 export interface UsageChartPoint {
   timestamp: number;
@@ -46,3 +66,7 @@ export interface DashboardState {
 }
 
 export const STORE_NAME = 'NeoTavern_UsageTracker';
+export const DEFAULT_SETTINGS: UsageTrackerSettings = {
+  captureFullPayloads: true,
+  captureStorageLimitBytes: 50 * 1024 * 1024,
+};

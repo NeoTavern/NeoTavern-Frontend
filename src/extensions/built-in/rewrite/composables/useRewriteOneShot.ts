@@ -47,6 +47,7 @@ export function useRewriteOneShot(api: ExtensionAPI<RewriteSettings>) {
     escapeMacros: boolean,
     t: (key: string) => string,
     lastAssistantMessage?: string,
+    referenceMessageIndex?: number,
   ) {
     if (!selectedProfile) {
       api.ui.showToast(t('extensionsBuiltin.rewrite.errors.selectProfile'), 'error');
@@ -74,6 +75,7 @@ export function useRewriteOneShot(api: ExtensionAPI<RewriteSettings>) {
         argOverrides,
         abortController.value?.signal,
         lastAssistantMessage,
+        referenceMessageIndex,
       );
 
       if (Symbol.asyncIterator in response) {

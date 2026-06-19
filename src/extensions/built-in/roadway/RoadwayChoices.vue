@@ -100,6 +100,7 @@ async function handleImpersonate(choiceText: string) {
     const responseStream = await props.api.llm.generate(messages, {
       connectionProfile,
       signal: impersonateAbortController.value.signal,
+      captureMessageIndex: props.index,
     });
 
     if (Symbol.asyncIterator in responseStream) {

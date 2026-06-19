@@ -264,6 +264,7 @@ async function summarizeRange(mode: 'missing-only' | 'force-all') {
 
       const response = await props.api.llm.generate([{ role: 'system', content: prompt, name: 'System' }], {
         connectionProfile: props.connectionProfile,
+        captureMessageIndex: idx,
       });
 
       let fullContent = '';

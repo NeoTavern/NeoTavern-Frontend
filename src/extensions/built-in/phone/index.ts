@@ -242,6 +242,7 @@ class PhoneManager {
   private async generateStructured<T>(
     messages: ApiChatMessage[],
     structuredResponse: StructuredResponseOptions,
+    captureMessageIndex?: number,
   ): Promise<StructuredGenerationResult<T>> {
     const settings = this.getSettings();
     const connectionProfile =
@@ -254,6 +255,7 @@ class PhoneManager {
       connectionProfile,
       samplerOverrides: { max_tokens: settings.maxResponseTokens, stream: false },
       structuredResponse,
+      captureMessageIndex,
       onCompletion({ structured_content, parse_error }) {
         completionStructuredContent = structured_content;
         completionParseError = parse_error;
@@ -282,6 +284,7 @@ class PhoneManager {
     parseError: string,
     structuredResponse: StructuredResponseOptions,
     label: string,
+    captureMessageIndex?: number,
   ): Promise<StructuredGenerationResult<T>> {
     const repairMessages: ApiChatMessage[] = [
       ...originalMessages,
@@ -292,7 +295,7 @@ class PhoneManager {
         content: `[Schema validation error]\n${parseError}\n\nRepair your previous ${label} JSON. Return the complete corrected object, not a patch or prose explanation.`,
       },
     ];
-    const repaired = await this.generateStructured<T>(repairMessages, structuredResponse);
+    const repaired = await this.generateStructured<T>(repairMessages, structuredResponse, captureMessageIndex);
     return { ...repaired, messages: repairMessages };
   }
 
@@ -300,8 +303,9 @@ class PhoneManager {
     messages: ApiChatMessage[],
     structuredResponse: StructuredResponseOptions,
     label: string,
+    captureMessageIndex?: number,
   ): Promise<T> {
-    let generation = await this.generateStructured<T>(messages, structuredResponse);
+    let generation = await this.generateStructured<T>(messages, structuredResponse, captureMessageIndex);
     let repairMessages = messages;
     let repairCount = 0;
 
@@ -318,6 +322,7 @@ class PhoneManager {
         generation.parseError,
         structuredResponse,
         label,
+        captureMessageIndex,
       );
       repairMessages = generation.messages ?? repairMessages;
     }
@@ -486,7 +491,12 @@ class PhoneManager {
           ].join('\n\n'),
         },
       ];
-      const result = await this.generateWithRepair<PhoneSmsResponse>(messages, structuredResponse, 'SMS replies');
+      const result = await this.generateWithRepair<PhoneSmsResponse>(
+        messages,
+        structuredResponse,
+        'SMS replies',
+        messageIndex,
+      );
       const deliveredAt = new Date().toISOString();
       const replies: PhoneMessage[] = result.messages
         .filter((reply) => reply.contactId === contact.id && reply.body.trim())

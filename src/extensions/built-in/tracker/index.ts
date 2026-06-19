@@ -176,6 +176,7 @@ class TrackerManager {
     connectionProfile: string,
     maxResponseTokens: number,
     structuredResponse: StructuredResponseOptions,
+    captureMessageIndex?: number,
   ): Promise<TrackerGenerationResult> {
     let completionStructuredContent: object | undefined;
     let completionParseError: Error | undefined;
@@ -183,6 +184,8 @@ class TrackerManager {
       connectionProfile,
       samplerOverrides: { max_tokens: maxResponseTokens, stream: false },
       structuredResponse,
+      source: 'core.tracker',
+      captureMessageIndex,
       onCompletion({ structured_content, parse_error }) {
         completionStructuredContent = structured_content;
         completionParseError = parse_error;
@@ -213,6 +216,7 @@ class TrackerManager {
     connectionProfile: string,
     maxResponseTokens: number,
     useDelta: boolean,
+    captureMessageIndex?: number,
   ): Promise<TrackerGenerationResult> {
     const repairKind = useDelta ? 'delta JSON object' : 'full tracker JSON object';
     const repairMessages: ApiChatMessage[] = [
@@ -225,7 +229,13 @@ class TrackerManager {
       },
     ];
 
-    return await this.generateTracker(repairMessages, connectionProfile, maxResponseTokens, structuredResponse);
+    return await this.generateTracker(
+      repairMessages,
+      connectionProfile,
+      maxResponseTokens,
+      structuredResponse,
+      captureMessageIndex,
+    );
   }
 
   public async runTracker(index: number): Promise<void> {
@@ -312,6 +322,7 @@ class TrackerManager {
             connectionProfile,
             settings.maxResponseTokens,
             structuredResponse,
+            index,
           );
           let processed: ProcessedTrackerResult | undefined;
           let error = generation.parseError;
@@ -350,6 +361,7 @@ class TrackerManager {
               connectionProfile,
               settings.maxResponseTokens,
               useDelta,
+              index,
             );
             error = generation.parseError;
 

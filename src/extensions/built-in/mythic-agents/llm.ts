@@ -169,7 +169,11 @@ export async function generateNarration(
   messages.push({ role: 'user', name: 'User', content: processedPrompt });
   itemizedPrompt.messages = messages;
 
-  const result = await api.llm.generate(messages, { connectionProfile, signal });
+  const result = await api.llm.generate(messages, {
+    connectionProfile,
+    signal,
+    captureMessageIndex: messageIndex,
+  });
   let content = '';
   if ('content' in result) {
     content = result.content;
@@ -243,6 +247,7 @@ export async function generateNarrationAndSceneUpdate(
     const response = await api.llm.generate(messages, {
       connectionProfile,
       signal,
+      captureMessageIndex: messageIndex,
       samplerOverrides: {
         stream: false,
       },

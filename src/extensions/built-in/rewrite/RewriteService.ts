@@ -142,6 +142,7 @@ export class RewriteService {
     argOverrides?: Record<string, boolean | number | string>,
     signal?: AbortSignal,
     lastAssistantMessage?: string,
+    captureMessageIndex?: number,
   ) {
     if (!connectionProfile) {
       throw new Error(this.api.i18n.t('extensionsBuiltin.rewrite.errors.noConnectionProfile'));
@@ -182,6 +183,7 @@ export class RewriteService {
     const response = await this.api.llm.generate(messages, {
       connectionProfile,
       signal,
+      captureMessageIndex,
     });
 
     return response;
@@ -193,6 +195,7 @@ export class RewriteService {
     availableFields: RewriteField[],
     connectionProfile?: string,
     signal?: AbortSignal,
+    captureMessageIndex?: number,
   ): Promise<RewriteLLMResponse> {
     if (!connectionProfile) {
       throw new Error(this.api.i18n.t('extensionsBuiltin.rewrite.errors.noConnectionProfile'));
@@ -307,6 +310,7 @@ export class RewriteService {
       const response = await this.api.llm.generate(apiMessages, {
         connectionProfile,
         signal,
+        captureMessageIndex,
       });
 
       let content = '';
@@ -327,6 +331,7 @@ export class RewriteService {
     const response = (await this.api.llm.generate(apiMessages, {
       connectionProfile,
       signal,
+      captureMessageIndex,
       samplerOverrides: {
         stream: false,
       },

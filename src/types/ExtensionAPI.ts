@@ -40,6 +40,10 @@ export interface LlmGenerationOptions {
   signal?: AbortSignal;
   generationId?: string;
   /**
+   * Optional chat message index to associate request/response captures with.
+   */
+  captureMessageIndex?: number;
+  /**
    * Identity of the requester.
    * Automatically populated for extensions using the scoped API.
    * Defaults to 'unknown' if not provided.

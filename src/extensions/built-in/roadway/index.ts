@@ -110,6 +110,7 @@ class RoadwayManager {
         connectionProfile,
         structuredResponse,
         signal: abortController.signal,
+        captureMessageIndex: index,
         async onCompletion({ structured_content, parse_error }) {
           if (abortController.signal.aborted) return;
           if (parse_error) {
@@ -166,11 +167,7 @@ class RoadwayManager {
     const updates = history.map(async (message, index) => {
       const roadwayExtra = message.extra['core.roadway'];
       const isGeneratingChoices = roadwayExtra?.isGeneratingChoices || this.choiceGenAbortControllers.has(index);
-      if (
-        message.is_user ||
-        roadwayExtra?.choiceMade ||
-        (!roadwayExtra?.choices?.length && !isGeneratingChoices)
-      ) {
+      if (message.is_user || roadwayExtra?.choiceMade || (!roadwayExtra?.choices?.length && !isGeneratingChoices)) {
         return;
       }
 

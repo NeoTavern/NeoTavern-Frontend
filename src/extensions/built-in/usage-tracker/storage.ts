@@ -7,6 +7,7 @@ import {
   type SortField,
   type SortOrder,
   type TimeRange,
+  type UsageCaptureEntry,
   type UsageChartPoint,
   type UsageLogEntry,
   type UsageStats,
@@ -15,6 +16,7 @@ import {
 export class UsageStorage {
   private logsStore: LocalForage;
   private stateStore: LocalForage;
+  private capturesStore: LocalForage;
 
   constructor() {
     this.logsStore = localforage.createInstance({
@@ -28,6 +30,12 @@ export class UsageStorage {
       storeName: 'state',
       description: 'Usage Tracker UI State',
     });
+
+    this.capturesStore = localforage.createInstance({
+      name: STORE_NAME,
+      storeName: 'captures',
+      description: 'Full LLM Request and Response Captures',
+    });
   }
 
   // --- State Management ---
@@ -39,6 +47,142 @@ export class UsageStorage {
 
   async getState(): Promise<DashboardState | null> {
     return await this.stateStore.getItem<DashboardState>('dashboardState');
+  }
+
+  // --- Full Request/Response Capture Management ---
+
+  private captureKey(entry: Pick<UsageCaptureEntry, 'timestamp' | 'id'>): string {
+    return `${entry.timestamp}_${entry.id}`;
+  }
+
+  private estimateSize(value: unknown): number {
+    return new Blob([JSON.stringify(value)]).size;
+  }
+
+  private async getCaptureByGenerationId(
+    generationId: string,
+  ): Promise<{ key: string; entry: UsageCaptureEntry } | null> {
+    let found: { key: string; entry: UsageCaptureEntry } | null = null;
+    await this.capturesStore.iterate<UsageCaptureEntry, void>((value, key) => {
+      if (value.generationId === generationId) {
+        found = { key, entry: value };
+      }
+    });
+    return found;
+  }
+
+  private async enforceCaptureLimit(limitBytes: number): Promise<void> {
+    if (limitBytes <= 0) {
+      await this.capturesStore.clear();
+      return;
+    }
+
+    const entries: Array<{ key: string; entry: UsageCaptureEntry }> = [];
+    let totalSize = 0;
+
+    await this.capturesStore.iterate<UsageCaptureEntry, void>((entry, key) => {
+      entries.push({ key, entry });
+      totalSize += entry.sizeBytes || this.estimateSize(entry);
+    });
+
+    entries.sort((a, b) => a.entry.timestamp - b.entry.timestamp);
+
+    for (const item of entries) {
+      if (totalSize <= limitBytes) break;
+      await this.capturesStore.removeItem(item.key);
+      totalSize -= item.entry.sizeBytes || this.estimateSize(item.entry);
+    }
+  }
+
+  async addCapture(
+    entry: Omit<UsageCaptureEntry, 'id' | 'timestamp' | 'status' | 'sizeBytes'>,
+    limitBytes: number,
+  ): Promise<UsageCaptureEntry> {
+    const capture: UsageCaptureEntry = {
+      ...entry,
+      id: uuidv4(),
+      timestamp: Date.now(),
+      status: 'pending',
+      sizeBytes: 0,
+    };
+    capture.sizeBytes = this.estimateSize(capture);
+    await this.capturesStore.setItem(this.captureKey(capture), capture);
+    await this.enforceCaptureLimit(limitBytes);
+    return capture;
+  }
+
+  async updateCapture(
+    generationId: string,
+    updates: Partial<Pick<UsageCaptureEntry, 'response' | 'responseText' | 'status'>>,
+    limitBytes: number,
+  ): Promise<UsageCaptureEntry | null> {
+    const found = await this.getCaptureByGenerationId(generationId);
+    if (!found) return null;
+
+    const entry: UsageCaptureEntry = {
+      ...found.entry,
+      ...updates,
+    };
+    entry.sizeBytes = this.estimateSize(entry);
+    await this.capturesStore.setItem(found.key, entry);
+    await this.enforceCaptureLimit(limitBytes);
+    return entry;
+  }
+
+  async getCaptures(page = 1, pageSize = 20): Promise<{ items: UsageCaptureEntry[]; total: number }> {
+    const entries: UsageCaptureEntry[] = [];
+    await this.capturesStore.iterate<UsageCaptureEntry, void>((entry) => {
+      entries.push(entry);
+    });
+
+    entries.sort((a, b) => b.timestamp - a.timestamp);
+    const total = entries.length;
+    const startIdx = (page - 1) * pageSize;
+    return { items: entries.slice(startIdx, startIdx + pageSize), total };
+  }
+
+  async getCapturesForMessage(chatFile: string | undefined, messageIndex: number): Promise<UsageCaptureEntry[]> {
+    const entries: UsageCaptureEntry[] = [];
+    await this.capturesStore.iterate<UsageCaptureEntry, void>((entry) => {
+      if (entry.messageIndex !== messageIndex) return;
+      if (chatFile && entry.chatFile !== chatFile) return;
+      entries.push(entry);
+    });
+    return entries.sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  async deleteCapturesForChat(chatFile: string | undefined): Promise<void> {
+    const keys: string[] = [];
+    await this.capturesStore.iterate<UsageCaptureEntry, void>((entry, key) => {
+      if (chatFile ? entry.chatFile === chatFile : !entry.chatFile) {
+        keys.push(key);
+      }
+    });
+
+    await Promise.all(keys.map((key) => this.capturesStore.removeItem(key)));
+  }
+
+  async handleDeletedMessages(chatFile: string | undefined, deletedIndices: number[]): Promise<void> {
+    const uniqueDeletedIndices = [...new Set(deletedIndices)].sort((a, b) => a - b);
+    if (uniqueDeletedIndices.length === 0) return;
+
+    const keysToRemove: string[] = [];
+    const firstDeletedIndex = uniqueDeletedIndices[0];
+
+    await this.capturesStore.iterate<UsageCaptureEntry, void>((entry, key) => {
+      if (chatFile ? entry.chatFile !== chatFile : entry.chatFile) return;
+      if (entry.messageIndex === undefined) return;
+
+      if (entry.messageIndex >= firstDeletedIndex) {
+        keysToRemove.push(key);
+      }
+    });
+
+    await Promise.all(keysToRemove.map((key) => this.capturesStore.removeItem(key)));
+  }
+
+  async clearCaptures(): Promise<void> {
+    await this.capturesStore.clear();
   }
 
   // --- Logs Management ---
@@ -276,5 +420,10 @@ export class UsageStorage {
 
   async clearLogs() {
     await this.logsStore.clear();
+  }
+
+  async clearAll() {
+    await this.clearLogs();
+    await this.clearCaptures();
   }
 }

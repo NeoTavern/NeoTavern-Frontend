@@ -65,6 +65,7 @@ export class Translator {
 
       const response = await this.api.llm.generate(messages, {
         connectionProfile,
+        captureMessageIndex: messageIndex,
       });
 
       let translatedText = '';

@@ -174,15 +174,35 @@ export interface ExtensionEventMap {
 
   'process:request-payload': [
     payload: ChatCompletionPayload,
-    context: { controller: AbortController; generationId: string },
+    context: {
+      controller: AbortController;
+      generationId: string;
+      source?: string;
+      model?: string;
+      messageIndex?: number;
+    },
   ];
   'process:response': [
     response: GenerationResponse,
-    context: { payload: ChatCompletionPayload; controller: AbortController; generationId: string },
+    context: {
+      payload: ChatCompletionPayload;
+      controller: AbortController;
+      generationId: string;
+      source?: string;
+      model?: string;
+      messageIndex?: number;
+    },
   ];
   'process:stream-chunk': [
     chunk: StreamedChunk,
-    context: { payload: ChatCompletionPayload; controller: AbortController; generationId: string },
+    context: {
+      payload: ChatCompletionPayload;
+      controller: AbortController;
+      generationId: string;
+      source?: string;
+      model?: string;
+      messageIndex?: number;
+    },
   ];
 
   // Tool Events

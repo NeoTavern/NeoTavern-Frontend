@@ -97,6 +97,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
         ],
         {
           connectionProfile,
+          captureMessageIndex: messageIndex,
         },
       );
 

@@ -177,6 +177,7 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
     structuredResponseFormat: StructuredResponseFormat,
     availableFields: RewriteField[],
     t: (key: string) => string,
+    referenceMessageIndex?: number,
   ) {
     if (!activeSession.value || !selectedProfile) return;
 
@@ -192,7 +193,13 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
     });
     await service.saveSession(deepToRaw(activeSession.value));
 
-    await executeSessionGeneration(selectedProfile, structuredResponseFormat, availableFields, t);
+    await executeSessionGeneration(
+      selectedProfile,
+      structuredResponseFormat,
+      availableFields,
+      t,
+      referenceMessageIndex,
+    );
   }
 
   async function executeSessionGeneration(
@@ -200,6 +207,7 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
     structuredResponseFormat: StructuredResponseFormat,
     availableFields: RewriteField[],
     t: (key: string) => string,
+    referenceMessageIndex?: number,
   ) {
     if (!activeSession.value || !selectedProfile) return;
 
@@ -214,6 +222,7 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
           deepToRaw(availableFields),
           selectedProfile || api.settings.getGlobal('api.selectedConnectionProfile'),
           abortController.value?.signal,
+          referenceMessageIndex,
         );
 
         activeSession.value.messages.push({
@@ -304,6 +313,7 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
     structuredResponseFormat: StructuredResponseFormat,
     availableFields: RewriteField[],
     t: (key: string) => string,
+    referenceMessageIndex?: number,
   ) {
     if (!activeSession.value) return;
 
@@ -319,7 +329,13 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
     // Generate
     isGenerating.value = true;
     abortController.value = new AbortController();
-    await executeSessionGeneration(selectedProfile, structuredResponseFormat, availableFields, t);
+    await executeSessionGeneration(
+      selectedProfile,
+      structuredResponseFormat,
+      availableFields,
+      t,
+      referenceMessageIndex,
+    );
   }
 
   function handleAbort() {

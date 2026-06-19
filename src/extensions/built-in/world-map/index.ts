@@ -1463,6 +1463,7 @@ class WorldMapManager {
     settings: WorldMapSettings,
     connectionProfile: string,
     structuredResponse: StructuredResponseOptions,
+    captureMessageIndex?: number,
   ): Promise<WorldMapGenerationResult> {
     let completionStructuredContent: object | undefined;
     let completionParseError: Error | undefined;
@@ -1470,6 +1471,7 @@ class WorldMapManager {
       connectionProfile,
       samplerOverrides: { max_tokens: settings.maxResponseTokens, stream: false },
       structuredResponse,
+      captureMessageIndex,
       onCompletion({ structured_content, parse_error }) {
         completionStructuredContent = structured_content;
         completionParseError = parse_error;
@@ -1505,6 +1507,7 @@ class WorldMapManager {
     settings: WorldMapSettings,
     connectionProfile: string,
     structuredResponse: StructuredResponseOptions,
+    captureMessageIndex?: number,
   ): Promise<WorldMapGenerationResult> {
     const repairMessages: ApiChatMessage[] = [
       ...originalMessages,
@@ -1521,6 +1524,7 @@ class WorldMapManager {
       connectionProfile,
       samplerOverrides: { max_tokens: settings.maxResponseTokens, stream: false },
       structuredResponse,
+      captureMessageIndex,
       onCompletion({ structured_content, parse_error }) {
         completionStructuredContent = structured_content;
         completionParseError = parse_error;
@@ -1615,6 +1619,7 @@ class WorldMapManager {
         settings,
         connectionProfile,
         structuredResponse,
+        targetIndex,
       );
       const existingMap = this.getMap();
       let repairMessages = [
@@ -1636,6 +1641,7 @@ class WorldMapManager {
           settings,
           connectionProfile,
           structuredResponse,
+          targetIndex,
         );
         generation = { ...generation, ...repaired };
         if (repaired.messages) repairMessages = repaired.messages;
@@ -1673,6 +1679,7 @@ class WorldMapManager {
           settings,
           connectionProfile,
           structuredResponse,
+          targetIndex,
         );
         if (!repaired.delta && repaired.parseError && repaired.rawContent.trim()) {
           const schemaRepaired = await this.repairStructuredMapDelta(
@@ -1683,6 +1690,7 @@ class WorldMapManager {
             settings,
             connectionProfile,
             structuredResponse,
+            targetIndex,
           );
           repaired = { ...repaired, ...schemaRepaired };
         }

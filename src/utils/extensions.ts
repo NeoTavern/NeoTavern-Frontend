@@ -1,5 +1,5 @@
-import * as Vue from 'vue';
 import { cloneDeep } from 'lodash-es';
+import * as Vue from 'vue';
 import { createVNode, nextTick, render, type App } from 'vue';
 import { CustomPromptPostProcessing, default_avatar, default_user_avatar } from '../constants';
 import type {
@@ -11,11 +11,13 @@ import type {
   ExtensionAPI,
   ExtensionEventMap,
   ExtensionMetadata,
+  GenerationResponse,
   ItemizedPrompt,
   MediaHydrationContext,
   MountableComponent,
   PromptTokenBreakdown,
   SettingsPath,
+  StreamedChunk,
   Tokenizer,
   WorldInfoBook,
 } from '../types';
@@ -934,11 +936,25 @@ const baseExtensionAPI: ExtensionAPI = {
         console.warn('[ExtensionAPI] Failed to count input tokens for tracking:', err);
       }
 
-      return await ChatCompletionService.generate(payload, effectiveFormatter, {
+      const source = options.source || 'unknown';
+      const generationId = options.generationId || uuidv4();
+      const requestPayloadController = new AbortController();
+      await eventEmitter.emit('process:request-payload', payload, {
+        controller: requestPayloadController,
+        generationId,
+        source,
+        model,
+        messageIndex: options.captureMessageIndex,
+      });
+      if (requestPayloadController.signal.aborted) {
+        throw new Error('Generation aborted by request payload processor.');
+      }
+
+      const response = await ChatCompletionService.generate(payload, effectiveFormatter, {
         signal: options.signal,
         tokenizer: tokenizer,
         tracking: {
-          source: options.source || 'unknown',
+          source,
           model: model,
           inputTokens: inputTokens,
         },
@@ -948,6 +964,65 @@ const baseExtensionAPI: ExtensionAPI = {
         onCompletion: options.onCompletion,
         isContinuation: options.isContinuation,
       });
+
+      if (Symbol.asyncIterator in response) {
+        const streamGenerator = response as AsyncGenerator<StreamedChunk>;
+        return (async function* () {
+          let content = '';
+          let reasoning: string | undefined;
+          let images: string[] | undefined;
+          let toolCalls: StreamedChunk['tool_calls'];
+
+          for await (const chunk of streamGenerator) {
+            const chunkController = new AbortController();
+            await eventEmitter.emit('process:stream-chunk', chunk, {
+              payload,
+              controller: chunkController,
+              generationId,
+              source,
+              model,
+              messageIndex: options.captureMessageIndex,
+            });
+            if (chunkController.signal.aborted) break;
+
+            content += chunk.delta ?? '';
+            if (chunk.reasoning) reasoning = chunk.reasoning;
+            if (chunk.images?.length) images = [...(images ?? []), ...chunk.images];
+            if (chunk.tool_calls) toolCalls = chunk.tool_calls;
+            yield chunk;
+          }
+
+          const responseController = new AbortController();
+          await eventEmitter.emit(
+            'process:response',
+            { content, reasoning, images, tool_calls: toolCalls },
+            {
+              payload,
+              controller: responseController,
+              generationId,
+              source,
+              model,
+              messageIndex: options.captureMessageIndex,
+            },
+          );
+        })();
+      }
+
+      const generationResponse = response as GenerationResponse;
+      const responseController = new AbortController();
+      await eventEmitter.emit('process:response', generationResponse, {
+        payload,
+        controller: responseController,
+        generationId,
+        source,
+        model,
+        messageIndex: options.captureMessageIndex,
+      });
+      if (responseController.signal.aborted) {
+        throw new Error('Generation aborted by response processor.');
+      }
+
+      return generationResponse;
     },
   },
   extensions: {

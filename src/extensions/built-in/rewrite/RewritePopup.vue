@@ -149,6 +149,7 @@ async function handleGenerateOneShot(lastAssistantMessage?: string) {
     escapeMacros.value,
     t as (key: string) => string,
     lastAssistantMessage,
+    props.referenceMessageIndex,
   );
 }
 
@@ -184,6 +185,7 @@ function handleSend(text: string) {
     structuredResponseFormat.value,
     safeInitialFields.value,
     t as (key: string) => string,
+    props.referenceMessageIndex,
   );
 }
 
@@ -193,6 +195,7 @@ function handleRegenerate() {
     structuredResponseFormat.value,
     safeInitialFields.value,
     t as (key: string) => string,
+    props.referenceMessageIndex,
   );
 }
 
