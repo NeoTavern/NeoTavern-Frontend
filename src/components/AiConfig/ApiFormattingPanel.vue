@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, markRaw, ref } from 'vue';
+import { computed, markRaw, onMounted, ref } from 'vue';
 import { PROVIDER_CAPABILITIES } from '../../api/provider-definitions';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useApiStore } from '../../stores/api.store';
@@ -19,6 +19,11 @@ const popupStore = usePopupStore();
 
 const isInstructPopupVisible = ref(false);
 const editingTemplateId = ref<string | undefined>(undefined);
+
+onMounted(() => {
+  void apiStore.loadInstructTemplates();
+  void apiStore.loadReasoningTemplates();
+});
 
 const currentProviderCaps = computed(() => PROVIDER_CAPABILITIES[settingsStore.settings.api.provider]);
 

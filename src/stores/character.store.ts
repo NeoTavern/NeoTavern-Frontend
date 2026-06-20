@@ -29,13 +29,6 @@ export const useCharacterStore = defineStore('character', () => {
     try {
       const newCharacters = await characterService.fetchAll();
       characters.value = newCharacters;
-
-      const now = Date.now();
-      for (const char of newCharacters) {
-        if (!characterImageTimestamps.value[char.avatar]) {
-          characterImageTimestamps.value[char.avatar] = now;
-        }
-      }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Failed to fetch characters:', error);

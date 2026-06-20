@@ -1,4 +1,4 @@
-import { cloneDeep, get, set } from 'lodash-es';
+import { cloneDeep, get, isEqual, set } from 'lodash-es';
 import { defineStore } from 'pinia';
 import { computed, nextTick, ref } from 'vue';
 import { fetchAllSamplerPresets } from '../api/presets';
@@ -29,12 +29,18 @@ export const useSettingsStore = defineStore('settings', () => {
   const definitions = ref<SettingDefinition[]>(settingsDefinition);
 
   let initializationPromise: Promise<void> | null = null;
+  let lastSavedSettingsSnapshot = '';
 
   const { trigger: saveSettingsDebounced } = useAutoSave(async () => {
     if (settingsInitializing.value) return;
 
-    settings.value.api.samplers = normalizeSamplerSettings(settings.value.api.samplers);
-    await saveNeoSettings(settings.value);
+    const settingsToSave = cloneDeep(settings.value);
+    settingsToSave.api.samplers = normalizeSamplerSettings(settingsToSave.api.samplers);
+    const settingsSnapshot = JSON.stringify(settingsToSave);
+    if (settingsSnapshot === lastSavedSettingsSnapshot) return;
+
+    await saveNeoSettings(settingsToSave);
+    lastSavedSettingsSnapshot = settingsSnapshot;
   });
 
   function getSetting<P extends SettingsPath>(id: P): SettingsValue<P> {
@@ -44,6 +50,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
   function setSetting<P extends SettingsPath>(id: P, value: SettingsValue<P>) {
     const oldValue = cloneDeep(get(settings.value, id));
+    if (isEqual(oldValue, value)) return;
+
     set(settings.value, id, value);
 
     nextTick(async () => {
@@ -111,6 +119,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }
 
         settings.value = migrated;
+        lastSavedSettingsSnapshot = JSON.stringify(settings.value);
 
         settingsInitializing.value = false;
         await nextTick();

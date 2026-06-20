@@ -53,6 +53,8 @@ export const useApiStore = defineStore('api', () => {
 
   const instructTemplates = ref<InstructTemplate[]>([]);
   const reasoningTemplates = ref<ReasoningTemplate[]>([]);
+  const instructTemplatesLoaded = ref(false);
+  const reasoningTemplatesLoaded = ref(false);
 
   const watchersInitialized = ref(false);
 
@@ -711,18 +713,23 @@ export const useApiStore = defineStore('api', () => {
   }
 
   async function loadInstructTemplates() {
+    if (instructTemplatesLoaded.value) return;
+
     try {
       const fetchedTemplates = await fetchAllInstructTemplates();
       instructTemplates.value = fetchedTemplates;
     } catch (e) {
       console.warn('Failed to load instruct templates, using default', e);
       instructTemplates.value = [];
+    } finally {
+      instructTemplatesLoaded.value = true;
     }
   }
 
   async function saveInstructTemplate(template: InstructTemplate) {
     try {
       await apiSaveInstructTemplate(template);
+      instructTemplatesLoaded.value = false;
       await loadInstructTemplates();
       settingsStore.settings.api.instructTemplateName = template.name;
     } catch (e) {
@@ -734,6 +741,7 @@ export const useApiStore = defineStore('api', () => {
   async function deleteInstructTemplate(name: string) {
     try {
       await apiDeleteInstructTemplate(name);
+      instructTemplatesLoaded.value = false;
       await loadInstructTemplates();
       if (settingsStore.settings.api.instructTemplateName === name) {
         settingsStore.settings.api.instructTemplateName = 'ChatML';
@@ -771,18 +779,23 @@ export const useApiStore = defineStore('api', () => {
 
   // Reasoning Templates
   async function loadReasoningTemplates() {
+    if (reasoningTemplatesLoaded.value) return;
+
     try {
       const fetchedTemplates = await fetchAllReasoningTemplates();
       reasoningTemplates.value = fetchedTemplates;
     } catch (e) {
       console.warn('Failed to load reasoning templates', e);
       reasoningTemplates.value = [];
+    } finally {
+      reasoningTemplatesLoaded.value = true;
     }
   }
 
   async function saveReasoningTemplate(template: ReasoningTemplate) {
     try {
       await apiSaveReasoningTemplate(template);
+      reasoningTemplatesLoaded.value = false;
       await loadReasoningTemplates();
       settingsStore.settings.api.reasoningTemplateName = template.name;
     } catch (e) {
@@ -794,6 +807,7 @@ export const useApiStore = defineStore('api', () => {
   async function deleteReasoningTemplate(name: string) {
     try {
       await apiDeleteReasoningTemplate(name);
+      reasoningTemplatesLoaded.value = false;
       await loadReasoningTemplates();
       if (settingsStore.settings.api.reasoningTemplateName === name) {
         settingsStore.settings.api.reasoningTemplateName = undefined;

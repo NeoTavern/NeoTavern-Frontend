@@ -129,8 +129,6 @@ async function initializeAppData() {
       chatStore.refreshChats(),
       apiStore.initialize(),
       apiStore.loadPresetsForApi(),
-      apiStore.loadInstructTemplates(),
-      apiStore.loadReasoningTemplates(),
       backgroundStore.initialize(),
       worldInfoStore.initialize(),
       personaStore.initialize(),

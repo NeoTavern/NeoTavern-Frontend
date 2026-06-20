@@ -101,11 +101,17 @@ export async function resolveConnectionProfileSettings(options: {
   }
 
   const effectiveTemplateName = profileSettings?.instructTemplate || settingsStore.settings.api.instructTemplateName;
+  if (effectiveTemplateName && apiStore.instructTemplates.length === 0) {
+    await apiStore.loadInstructTemplates();
+  }
   const effectiveTemplate = apiStore.instructTemplates.find((t) => t.name === effectiveTemplateName);
 
   // Determine reasoning template
   const effectiveReasoningTemplateName =
     profileSettings?.reasoningTemplate || settingsStore.settings.api.reasoningTemplateName;
+  if (effectiveReasoningTemplateName && apiStore.reasoningTemplates.length === 0) {
+    await apiStore.loadReasoningTemplates();
+  }
   const effectiveReasoningTemplate = apiStore.reasoningTemplates.find((t) => t.name === effectiveReasoningTemplateName);
 
   // Apply profile-specific API URL if set
@@ -154,19 +160,7 @@ export async function processMessagesWithPrefill(
 
   let processedMessages = [...messages];
   const lastMsg = processedMessages.length > 0 ? processedMessages[processedMessages.length - 1] : null;
-  let isPrefill = false;
-
-  if (lastMsg && lastMsg.role === 'assistant') {
-    const contentStr =
-      typeof lastMsg.content === 'string'
-        ? lastMsg.content
-        : Array.isArray(lastMsg.content) &&
-            lastMsg.content.length > 0 &&
-            lastMsg.content[lastMsg.content.length - 1].type === 'text'
-          ? lastMsg.content[lastMsg.content.length - 1].text || ''
-          : '';
-    isPrefill = contentStr.trim().endsWith(':');
-  }
+  const isPrefill = isAssistantPrefillMessage(lastMsg);
 
   const lastPrefillMessage = isPrefill ? processedMessages.pop() : null;
 
@@ -188,6 +182,26 @@ export async function processMessagesWithPrefill(
   }
 
   return processedMessages;
+}
+
+function isAssistantPrefillMessage(message: ApiChatMessage | null): boolean {
+  if (!message || message.role !== 'assistant') return false;
+
+  const contentStr = getLastTextContent(message);
+  if (contentStr.trim().endsWith(':')) return true;
+
+  return !!message.name && contentStr.startsWith(`${message.name}: `);
+}
+
+function getLastTextContent(message: ApiChatMessage): string {
+  if (typeof message.content === 'string') return message.content;
+
+  if (Array.isArray(message.content) && message.content.length > 0) {
+    const lastTextPart = [...message.content].reverse().find((part) => part.type === 'text');
+    return lastTextPart?.text || '';
+  }
+
+  return '';
 }
 
 const PARAM_TO_GROUP_MAP: Record<string, string> = {};

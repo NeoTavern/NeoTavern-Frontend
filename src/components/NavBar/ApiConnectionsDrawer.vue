@@ -178,6 +178,10 @@ async function testMessage() {
   isTestingMessage.value = true;
 
   try {
+    if (settingsStore.settings.api.instructTemplateName && apiStore.instructTemplates.length === 0) {
+      await apiStore.loadInstructTemplates();
+    }
+
     // Process any pending secrets before sending test message
     await apiStore.processPendingSecrets();
 

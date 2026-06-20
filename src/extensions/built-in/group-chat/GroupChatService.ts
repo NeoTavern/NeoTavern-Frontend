@@ -90,11 +90,20 @@ export class GroupChatService {
       return;
     }
 
-    // Validate and clean up member list
-    this.validateMembers();
+    let metadataChanged = this.validateMembers(meta);
+    const currentMembers = new Set(meta.members || []);
+    const isGroupChat = currentMembers.size > 1;
 
     // Try to load from extra first (new way), or fallback to old way if legacy
     let loadedConfig = meta.extra?.group as GroupChatConfig | undefined;
+
+    if (!isGroupChat && !loadedConfig) {
+      this.groupConfig.value = null;
+      if (metadataChanged) {
+        this.api.chat.metadata.set(meta);
+      }
+      return;
+    }
 
     // Initialize if missing
     if (!loadedConfig) {
@@ -114,21 +123,24 @@ export class GroupChatService {
         if (loadedConfig) loadedConfig.members[avatar] = { muted: false, summary: '' };
       });
 
-      this.saveConfig(loadedConfig);
+      metadataChanged = true;
     } else {
+      loadedConfig.members ??= {};
+
       // Ensure decisionContextSize has a default
       if (loadedConfig.config.decisionContextSize === undefined) {
         loadedConfig.config.decisionContextSize = 15;
+        metadataChanged = true;
       }
 
       // Sync members: add missing, remove stale
-      const currentMembers = new Set(meta.members || []);
       const configMemberKeys = Object.keys(loadedConfig.members);
 
       // Add new members not in config
       meta.members?.forEach((avatar) => {
         if (!loadedConfig!.members[avatar]) {
           loadedConfig!.members[avatar] = { muted: false, summary: '' };
+          metadataChanged = true;
         }
       });
 
@@ -136,12 +148,16 @@ export class GroupChatService {
       configMemberKeys.forEach((avatar) => {
         if (!currentMembers.has(avatar)) {
           delete loadedConfig!.members[avatar];
+          metadataChanged = true;
         }
       });
-
-      this.saveConfig(loadedConfig);
     }
 
+    if (metadataChanged) {
+      if (!meta.extra) meta.extra = {};
+      meta.extra.group = loadedConfig;
+      this.api.chat.metadata.set(meta);
+    }
     this.groupConfig.value = loadedConfig;
   }
 
@@ -149,9 +165,8 @@ export class GroupChatService {
    * Validates that all members in metadata exist as actual characters.
    * Removes any stale references.
    */
-  private validateMembers() {
-    const meta = this.api.chat.metadata.get();
-    if (!meta || !meta.members) return;
+  private validateMembers(meta: ReturnType<ExtensionAPI<GroupExtensionSettings>['chat']['metadata']['get']>): boolean {
+    if (!meta || !meta.members) return false;
 
     const allChars = this.api.character.getAll();
     const validAvatars = new Set(allChars.map((c) => c.avatar));
@@ -161,8 +176,10 @@ export class GroupChatService {
     // Update if members were removed
     if (validMembers.length !== meta.members.length) {
       meta.members = validMembers;
-      this.api.chat.metadata.set(meta);
+      return true;
     }
+
+    return false;
   }
 
   public saveConfig(config: GroupChatConfig) {
