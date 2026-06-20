@@ -101,6 +101,7 @@ async function handleImpersonate(choiceText: string) {
       connectionProfile,
       signal: impersonateAbortController.value.signal,
       captureMessageIndex: props.index,
+      isContinuation: true,
     });
 
     if (Symbol.asyncIterator in responseStream) {

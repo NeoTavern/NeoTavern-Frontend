@@ -409,6 +409,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     try {
       const response = await api.llm.generate(genMessages, {
         connectionProfile: connectionProfileId,
+        isContinuation: true,
       });
 
       let generated = chatInputValue;

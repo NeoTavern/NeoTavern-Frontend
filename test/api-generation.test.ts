@@ -1,9 +1,9 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { processMessagesWithPrefill } from '../src/api/generation';
+import { ChatCompletionService, processMessagesWithPrefill } from '../src/api/generation';
 import { CustomPromptPostProcessing } from '../src/constants';
 import { useAuthStore } from '../src/stores/auth.store';
-import type { ApiChatMessage } from '../src/types/generation';
+import type { ApiChatMessage, ChatCompletionPayload } from '../src/types/generation';
 
 describe('processMessagesWithPrefill', () => {
   afterEach(() => {
@@ -55,5 +55,40 @@ describe('processMessagesWithPrefill', () => {
     );
 
     expect(result.at(-1)).toEqual({ role: 'assistant', content: 'Eli: I think', name: 'Eli' });
+  });
+
+  it('preserves leading whitespace in the first streamed prefill chunk', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        [
+          'data: {"choices":[{"delta":{"role":"assistant","content":""},"finish_reason":null}]}',
+          'data: {"choices":[{"delta":{"content":" \\""},"finish_reason":null}]}',
+          'data: {"choices":[{"delta":{"content":"Local"},"finish_reason":null}]}',
+          'data: [DONE]',
+          '',
+        ].join('\n\n'),
+        { status: 200 },
+      ),
+    );
+
+    const response = await ChatCompletionService.generate(
+      {
+        model: 'deepseek-v4-flash',
+        chat_completion_source: 'deepseek',
+        stream: true,
+        messages: [{ role: 'assistant', content: 'Joe: The name of the book is', name: 'Joe' }],
+      } as ChatCompletionPayload,
+      'chat',
+      { isContinuation: true },
+    );
+
+    let generated = '';
+    if (Symbol.asyncIterator in response) {
+      for await (const chunk of response) {
+        generated += chunk.delta ?? '';
+      }
+    }
+
+    expect(generated).toBe(' "Local');
   });
 });
