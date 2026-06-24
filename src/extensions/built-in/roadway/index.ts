@@ -99,8 +99,10 @@ class RoadwayManager {
       const itemizedPrompt = await this.api.chat.buildPrompt({ chatHistory, generationId, structuredResponse });
       const contextMessages = itemizedPrompt.messages;
 
+      const chatInput = this.api.chat.getChatInput()?.value.trim() ?? '';
       const choicePrompt = this.api.macro.process(settings.choiceGenPrompt, undefined, {
         choiceCount: settings.choiceCount,
+        input: chatInput,
       });
       contextMessages.push({ role: 'system', name: 'System', content: choicePrompt });
 

@@ -29,6 +29,13 @@ export interface RoadwayMessageExtra {
 
 export const DEFAULT_CHOICE_GEN_PROMPT = `You are an assistant guiding a creative writing session. Your task is to propose {{choiceCount}} compelling and diverse options for the story's next step, based on the provided chat history. These options should offer different narrative paths and perspectives.
 
+{{#if input}}
+The {{user}} has an in-progress draft in the chat input:
+{{input}}
+
+Treat this draft as the {{user}}'s current intent and generate choices that can continue, refine, or branch from it.
+{{/if}}
+
 The options can be, but are not limited to:
 - A direct action or dialogue from the {{user}}'s perspective, matching the established writing style (e.g., first-person, third-person).
 - An internal thought or reflection from {{user}}.
