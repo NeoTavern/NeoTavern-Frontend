@@ -65,6 +65,7 @@ interface EarlyPlaybackState {
 export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
   const service = new TextToSpeechService(api);
   let settingsApp: { unmount: () => void } | null = null;
+  let playbackActionCleanup: (() => void) | null = null;
   const buttonCleanupCallbacks: Array<() => void> = [];
   const earlyPlaybackByGeneration = new Map<string, EarlyPlaybackState>();
 
@@ -152,21 +153,35 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
       service.stop();
     };
 
-    api.ui.registerChatFormOptionsMenuItem({
-      id: 'text-to-speech-stop',
-      icon: 'fa-solid fa-volume-xmark',
-      label: api.i18n.t('extensionsBuiltin.textToSpeech.stopPlayback'),
-      onClick,
-      visible: api.chat.getChatInfo() !== null,
-    });
+    const registerPlaybackAction = (state = service.getPlaybackState()) => {
+      const isActive = state.status !== 'idle';
+      const isRequesting = state.status === 'requesting';
+      const icon = `fa-solid ${isRequesting ? 'fa-spinner fa-spin' : isActive ? 'fa-volume-xmark' : 'fa-volume-high'}`;
+      const label = isActive
+        ? api.i18n.t('extensionsBuiltin.textToSpeech.stopPlayback')
+        : api.i18n.t('extensionsBuiltin.textToSpeech.playback');
 
-    api.ui.registerChatQuickAction('core.input-message', '', {
-      id: 'text-to-speech-stop',
-      icon: 'fa-solid fa-volume-xmark',
-      label: api.i18n.t('extensionsBuiltin.textToSpeech.stopPlayback'),
-      onClick,
-      disabled: api.chat.getChatInfo() === null,
-    });
+      api.ui.registerChatFormOptionsMenuItem({
+        id: 'text-to-speech-stop',
+        icon,
+        label,
+        onClick,
+        visible: api.chat.getChatInfo() !== null,
+      });
+
+      api.ui.registerChatQuickAction('core.input-message', '', {
+        id: 'text-to-speech-stop',
+        icon,
+        label,
+        title: label,
+        onClick,
+        disabled: api.chat.getChatInfo() === null || !isActive,
+      });
+    };
+
+    playbackActionCleanup?.();
+    registerPlaybackAction();
+    playbackActionCleanup = service.subscribe(registerPlaybackAction);
   };
 
   const unbinds: Array<() => void> = [];
@@ -414,6 +429,7 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
     cancelEarlyPlayback();
     settingsApp?.unmount();
     unbinds.forEach((unbind) => unbind());
+    playbackActionCleanup?.();
     buttonCleanupCallbacks.forEach((cleanup) => cleanup());
     document.querySelectorAll('.tts-button-wrapper').forEach((element) => element.remove());
     api.ui.unregisterChatFormOptionsMenuItem('text-to-speech-stop');

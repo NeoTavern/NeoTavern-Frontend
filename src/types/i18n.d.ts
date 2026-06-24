@@ -1351,6 +1351,7 @@ export interface MessageSchema {
       refreshFailed: string;
       testVoice: string;
       testPhrase: string;
+      playback: string;
       speakMessage: string;
       stopPlayback: string;
       playbackFailed: string;

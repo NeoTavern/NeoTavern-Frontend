@@ -1348,6 +1348,7 @@
       "refreshFailed": "Failed to refresh voices",
       "testVoice": "Test voice",
       "testPhrase": "This is a NeoTavern text to speech test.",
+      "playback": "TTS playback",
       "speakMessage": "Speak message",
       "stopPlayback": "Stop TTS playback",
       "playbackFailed": "TTS playback failed"
