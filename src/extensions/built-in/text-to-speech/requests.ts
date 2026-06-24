@@ -19,11 +19,17 @@ async function readError(response: Response): Promise<string> {
   return text || `${response.status} ${response.statusText}`;
 }
 
-async function postJsonForAudio(url: string, body: object, headers: Record<string, string>): Promise<Blob> {
+async function postJsonForAudio(
+  url: string,
+  body: object,
+  headers: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<Blob> {
   const response = await fetch(url, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!response.ok) {
@@ -47,7 +53,11 @@ function mapVoiceResponse(value: unknown): TtsVoice[] {
     .filter((voice): voice is TtsVoice => Boolean(voice));
 }
 
-export async function generateOpenAiSpeech(text: string, settings: TextToSpeechSettings): Promise<Blob> {
+export async function generateOpenAiSpeech(
+  text: string,
+  settings: TextToSpeechSettings,
+  signal?: AbortSignal,
+): Promise<Blob> {
   return postJsonForAudio(
     '/api/openai/generate-voice',
     {
@@ -58,10 +68,15 @@ export async function generateOpenAiSpeech(text: string, settings: TextToSpeechS
       response_format: settings.openai.responseFormat,
     },
     getRequestHeaders(),
+    signal,
   );
 }
 
-export async function generateElevenLabsSpeech(text: string, settings: TextToSpeechSettings): Promise<Blob> {
+export async function generateElevenLabsSpeech(
+  text: string,
+  settings: TextToSpeechSettings,
+  signal?: AbortSignal,
+): Promise<Blob> {
   return postJsonForAudio(
     '/api/speech/elevenlabs/synthesize',
     {
@@ -72,6 +87,7 @@ export async function generateElevenLabsSpeech(text: string, settings: TextToSpe
       similarity_boost: settings.elevenlabs.similarityBoost,
     },
     getRequestHeaders(),
+    signal,
   );
 }
 
@@ -101,6 +117,7 @@ export async function generateOpenAiCompatibleSpeech(
     speed: number;
     apiKey?: string;
   },
+  signal?: AbortSignal,
 ): Promise<Blob> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -120,6 +137,7 @@ export async function generateOpenAiCompatibleSpeech(
       speed: options.speed,
     },
     headers,
+    signal,
   );
 }
 

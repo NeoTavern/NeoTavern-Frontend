@@ -52,10 +52,18 @@ export interface TextToSpeechSettings {
 
 export interface TextToSpeechExtensionService {
   speakMessage: (messageIndex: number) => Promise<void>;
+  toggleMessage: (messageIndex: number) => Promise<void>;
   speakText: (text: string, speakerName?: string) => Promise<void>;
   stop: () => void;
   refreshVoices: () => Promise<TtsVoice[]>;
   getCachedVoices: () => TtsVoice[];
+  getPlaybackState: () => TtsPlaybackState;
+  subscribe: (listener: (state: TtsPlaybackState) => void) => () => void;
+}
+
+export interface TtsPlaybackState {
+  status: 'idle' | 'requesting' | 'playing';
+  messageIndex: number | null;
 }
 
 export const KOKORO_DEFAULT_VOICES = [

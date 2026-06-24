@@ -1,9 +1,8 @@
 import type { ChatMessage, ExtensionAPI } from '../../../types';
-import { MountableComponent } from '../../../types/ExtensionAPI';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
 import { TextToSpeechService } from './tts-service';
-import { mergeTtsSettings, type TextToSpeechSettings } from './types';
+import { mergeTtsSettings, type TextToSpeechSettings, type TtsPlaybackState } from './types';
 
 export { manifest };
 
@@ -35,9 +34,14 @@ function findMessageIndex(history: ChatMessage[], message: ChatMessage, generati
   return -1;
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
 export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
   const service = new TextToSpeechService(api);
   let settingsApp: { unmount: () => void } | null = null;
+  const buttonCleanupCallbacks: Array<() => void> = [];
 
   api.settings.set(undefined, mergeTtsSettings(api.settings.get()));
   api.settings.save();
@@ -48,7 +52,27 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
     settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
   }
 
-  const injectSingleButton = async (messageElement: HTMLElement, messageIndex: number) => {
+  const renderButton = (
+    button: HTMLButtonElement,
+    icon: HTMLElement,
+    messageIndex: number,
+    state: TtsPlaybackState,
+  ) => {
+    const isActive = state.messageIndex === messageIndex && state.status !== 'idle';
+    const isRequesting = isActive && state.status === 'requesting';
+
+    button.classList.toggle('active', isActive);
+    button.disabled = false;
+    button.title = isActive
+      ? api.i18n.t('extensionsBuiltin.textToSpeech.stopPlayback')
+      : api.i18n.t('extensionsBuiltin.textToSpeech.speakMessage');
+    button.setAttribute('aria-label', button.title);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+
+    icon.className = `fa-solid ${isRequesting ? 'fa-spinner fa-spin' : isActive ? 'fa-volume-xmark' : 'fa-volume-high'}`;
+  };
+
+  const injectSingleButton = (messageElement: HTMLElement, messageIndex: number) => {
     const buttonsContainer = messageElement.querySelector('.message-buttons');
     if (!buttonsContainer) return;
     if (buttonsContainer.querySelector('.tts-button-wrapper')) return;
@@ -58,17 +82,28 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
     wrapper.style.display = 'inline-flex';
     buttonsContainer.appendChild(wrapper);
 
-    await api.ui.mountComponent(wrapper, MountableComponent.Button, {
-      icon: 'fa-volume-high',
-      title: api.i18n.t('extensionsBuiltin.textToSpeech.speakMessage'),
-      variant: 'ghost',
-      onClick: (event: MouseEvent) => {
-        event.stopPropagation();
-        service.speakMessage(messageIndex).catch((error: unknown) => {
-          const message = error instanceof Error ? error.message : String(error);
-          api.ui.showToast(`${api.i18n.t('extensionsBuiltin.textToSpeech.playbackFailed')}: ${message}`, 'error');
-        });
-      },
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'menu-button menu-button--ghost';
+    button.setAttribute('aria-pressed', 'false');
+
+    const icon = document.createElement('i');
+    icon.setAttribute('aria-hidden', 'true');
+    button.appendChild(icon);
+    wrapper.appendChild(button);
+
+    const unsubscribe = service.subscribe((state) => {
+      renderButton(button, icon, messageIndex, state);
+    });
+    buttonCleanupCallbacks.push(unsubscribe);
+
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      service.toggleMessage(messageIndex).catch((error: unknown) => {
+        if (isAbortError(error)) return;
+        const message = error instanceof Error ? error.message : String(error);
+        api.ui.showToast(`${api.i18n.t('extensionsBuiltin.textToSpeech.playbackFailed')}: ${message}`, 'error');
+      });
     });
   };
 
@@ -134,6 +169,7 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
       if (messageIndex === -1) return;
 
       service.speakMessage(messageIndex).catch((error: unknown) => {
+        if (isAbortError(error)) return;
         const errorMessage = error instanceof Error ? error.message : String(error);
         api.ui.showToast(`${api.i18n.t('extensionsBuiltin.textToSpeech.playbackFailed')}: ${errorMessage}`, 'error');
       });
@@ -147,6 +183,7 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
     service.stop();
     settingsApp?.unmount();
     unbinds.forEach((unbind) => unbind());
+    buttonCleanupCallbacks.forEach((cleanup) => cleanup());
     document.querySelectorAll('.tts-button-wrapper').forEach((element) => element.remove());
     api.ui.unregisterChatFormOptionsMenuItem('text-to-speech-stop');
     api.ui.unregisterChatQuickAction('core.input-message', 'text-to-speech-stop');

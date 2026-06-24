@@ -1,4 +1,4 @@
-import type { ChatMessage, ExtensionAPI } from '../../../types';
+import type { ExtensionAPI } from '../../../types';
 import {
   fetchElevenLabsVoices,
   fetchOpenAiCompatibleVoices,
@@ -6,7 +6,13 @@ import {
   generateOpenAiCompatibleSpeech,
   generateOpenAiSpeech,
 } from './requests';
-import { KOKORO_DEFAULT_VOICES, mergeTtsSettings, type TextToSpeechSettings, type TtsVoice } from './types';
+import {
+  KOKORO_DEFAULT_VOICES,
+  mergeTtsSettings,
+  type TextToSpeechSettings,
+  type TtsPlaybackState,
+  type TtsVoice,
+} from './types';
 
 function isSpeechSynthesisAvailable(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
@@ -47,16 +53,14 @@ function parseVoiceList(value: string): TtsVoice[] {
     .map((voice) => ({ id: voice, name: voice }));
 }
 
-function messageCanBeNarrated(message: ChatMessage, settings: TextToSpeechSettings): boolean {
-  if (message.is_system) return settings.narrateSystemMessages;
-  if (message.is_user) return settings.narrateUserMessages;
-  return true;
-}
-
 export class TextToSpeechService {
   private currentAudio: HTMLAudioElement | null = null;
   private currentAudioUrl: string | null = null;
+  private currentAbortController: AbortController | null = null;
+  private stopRequested = false;
   private cachedVoices: TtsVoice[] = [];
+  private state: TtsPlaybackState = { status: 'idle', messageIndex: null };
+  private listeners = new Set<(state: TtsPlaybackState) => void>();
 
   constructor(private readonly api: ExtensionAPI<TextToSpeechSettings>) {}
 
@@ -64,8 +68,24 @@ export class TextToSpeechService {
     return this.cachedVoices;
   }
 
+  getPlaybackState(): TtsPlaybackState {
+    return { ...this.state };
+  }
+
+  subscribe(listener: (state: TtsPlaybackState) => void): () => void {
+    this.listeners.add(listener);
+    listener(this.getPlaybackState());
+    return () => this.listeners.delete(listener);
+  }
+
   stop(): void {
+    this.stopRequested = true;
+    this.currentAbortController?.abort();
+    this.currentAbortController = null;
+
     if (this.currentAudio) {
+      this.currentAudio.onended = null;
+      this.currentAudio.onerror = null;
       this.currentAudio.pause();
       this.currentAudio.src = '';
       this.currentAudio = null;
@@ -79,18 +99,30 @@ export class TextToSpeechService {
     if (isSpeechSynthesisAvailable()) {
       window.speechSynthesis.cancel();
     }
+
+    this.setState({ status: 'idle', messageIndex: null });
+  }
+
+  async toggleMessage(messageIndex: number): Promise<void> {
+    const state = this.getPlaybackState();
+    if (state.messageIndex === messageIndex && state.status !== 'idle') {
+      this.stop();
+      return;
+    }
+
+    await this.speakMessage(messageIndex);
   }
 
   async speakMessage(messageIndex: number): Promise<void> {
     const message = this.api.chat.getHistory()[messageIndex];
     const settings = this.getSettings();
 
-    if (!settings.enabled || !message || !messageCanBeNarrated(message, settings)) return;
+    if (!settings.enabled || !message) return;
 
-    await this.speakText(message.mes, message.name);
+    await this.speakText(message.mes, message.name, messageIndex);
   }
 
-  async speakText(text: string, speakerName?: string): Promise<void> {
+  async speakText(text: string, speakerName?: string, messageIndex: number | null = null): Promise<void> {
     const settings = this.getSettings();
     if (!settings.enabled) return;
 
@@ -98,14 +130,32 @@ export class TextToSpeechService {
     if (!preparedText) return;
 
     if (settings.interruptPlayback) this.stop();
+    this.stopRequested = false;
 
-    if (settings.provider === 'system') {
-      await this.speakWithSystemVoice(preparedText, this.resolveVoice(settings, speakerName));
-      return;
+    this.currentAbortController = new AbortController();
+    const signal = this.currentAbortController.signal;
+
+    try {
+      if (settings.provider === 'system') {
+        this.setState({ status: 'playing', messageIndex });
+        await this.speakWithSystemVoice(preparedText, this.resolveVoice(settings, speakerName));
+        return;
+      }
+
+      this.setState({ status: 'requesting', messageIndex });
+      const audio = await this.generateAudio(preparedText, settings, this.resolveVoice(settings, speakerName), signal);
+      if (signal.aborted) return;
+
+      this.setState({ status: 'playing', messageIndex });
+      await this.playBlob(audio);
+    } finally {
+      if (this.currentAbortController?.signal === signal) {
+        this.currentAbortController = null;
+      }
+      if (this.state.messageIndex === messageIndex) {
+        this.setState({ status: 'idle', messageIndex: null });
+      }
     }
-
-    const audio = await this.generateAudio(preparedText, settings, this.resolveVoice(settings, speakerName));
-    await this.playBlob(audio);
   }
 
   async refreshVoices(): Promise<TtsVoice[]> {
@@ -177,39 +227,63 @@ export class TextToSpeechService {
     }
   }
 
-  private async generateAudio(text: string, settings: TextToSpeechSettings, voice: string): Promise<Blob> {
+  private async generateAudio(
+    text: string,
+    settings: TextToSpeechSettings,
+    voice: string,
+    signal: AbortSignal,
+  ): Promise<Blob> {
     switch (settings.provider) {
       case 'openai':
-        return generateOpenAiSpeech(text, {
-          ...settings,
-          openai: { ...settings.openai, voice },
-        });
+        return generateOpenAiSpeech(
+          text,
+          {
+            ...settings,
+            openai: { ...settings.openai, voice },
+          },
+          signal,
+        );
       case 'elevenlabs':
-        return generateElevenLabsSpeech(text, {
-          ...settings,
-          elevenlabs: { ...settings.elevenlabs, voiceId: voice },
-        });
+        return generateElevenLabsSpeech(
+          text,
+          {
+            ...settings,
+            elevenlabs: { ...settings.elevenlabs, voiceId: voice },
+          },
+          signal,
+        );
       case 'kokoro-fastapi':
-        return generateOpenAiCompatibleSpeech(settings.kokoro.baseUrl, text, {
-          model: settings.kokoro.model,
-          voice,
-          responseFormat: settings.kokoro.responseFormat,
-          speed: settings.kokoro.speed,
-        });
+        return generateOpenAiCompatibleSpeech(
+          settings.kokoro.baseUrl,
+          text,
+          {
+            model: settings.kokoro.model,
+            voice,
+            responseFormat: settings.kokoro.responseFormat,
+            speed: settings.kokoro.speed,
+          },
+          signal,
+        );
       case 'openai-compatible':
-        return generateOpenAiCompatibleSpeech(settings.openaiCompatible.baseUrl, text, {
-          model: settings.openaiCompatible.model,
-          voice,
-          responseFormat: settings.openaiCompatible.responseFormat,
-          speed: settings.openaiCompatible.speed,
-          apiKey: settings.openaiCompatible.apiKey,
-        });
+        return generateOpenAiCompatibleSpeech(
+          settings.openaiCompatible.baseUrl,
+          text,
+          {
+            model: settings.openaiCompatible.model,
+            voice,
+            responseFormat: settings.openaiCompatible.responseFormat,
+            speed: settings.openaiCompatible.speed,
+            apiKey: settings.openaiCompatible.apiKey,
+          },
+          signal,
+        );
       case 'system':
         throw new Error('System TTS does not generate audio blobs');
     }
   }
 
   private async playBlob(blob: Blob): Promise<void> {
+    this.stopRequested = false;
     this.currentAudioUrl = URL.createObjectURL(blob);
     this.currentAudio = new Audio(this.currentAudioUrl);
 
@@ -220,9 +294,21 @@ export class TextToSpeechService {
       }
 
       this.currentAudio.onended = () => resolve();
-      this.currentAudio.onerror = () => reject(new Error('Audio playback failed'));
+      this.currentAudio.onerror = () => {
+        if (this.stopRequested) {
+          resolve();
+          return;
+        }
+        reject(new Error('Audio playback failed'));
+      };
       this.currentAudio.play().catch(reject);
     });
+  }
+
+  private setState(state: TtsPlaybackState): void {
+    this.state = state;
+    const snapshot = this.getPlaybackState();
+    this.listeners.forEach((listener) => listener(snapshot));
   }
 
   private async speakWithSystemVoice(text: string, voiceName: string): Promise<void> {
