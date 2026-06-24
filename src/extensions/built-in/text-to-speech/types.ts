@@ -15,6 +15,7 @@ export interface TextToSpeechSettings {
   stripMarkdown: boolean;
   interruptPlayback: boolean;
   streamingPlayback: boolean;
+  streamingStartMinWords: number;
   characterVoices: string;
   system: {
     voice: string;
@@ -54,7 +55,9 @@ export interface TextToSpeechSettings {
 export interface TextToSpeechExtensionService {
   speakMessage: (messageIndex: number) => Promise<void>;
   toggleMessage: (messageIndex: number) => Promise<void>;
-  speakText: (text: string, speakerName?: string) => Promise<void>;
+  speakText: (text: string, speakerName?: string, messageIndex?: number | null) => Promise<void>;
+  prepareText: (text: string, speakerName?: string, messageIndex?: number | null) => Promise<TtsPreparedAudio | null>;
+  playPrepared: (preparedAudio: TtsPreparedAudio) => Promise<void>;
   stop: () => void;
   refreshVoices: () => Promise<TtsVoice[]>;
   getCachedVoices: () => TtsVoice[];
@@ -64,6 +67,11 @@ export interface TextToSpeechExtensionService {
 
 export interface TtsPlaybackState {
   status: 'idle' | 'requesting' | 'playing';
+  messageIndex: number | null;
+}
+
+export interface TtsPreparedAudio {
+  blob: Blob;
   messageIndex: number | null;
 }
 
@@ -90,6 +98,7 @@ export const DEFAULT_TTS_SETTINGS: TextToSpeechSettings = {
   stripMarkdown: true,
   interruptPlayback: true,
   streamingPlayback: true,
+  streamingStartMinWords: 24,
   characterVoices: '',
   system: {
     voice: '',
@@ -100,7 +109,7 @@ export const DEFAULT_TTS_SETTINGS: TextToSpeechSettings = {
     model: 'gpt-4o-mini-tts',
     voice: 'alloy',
     speed: 1,
-    responseFormat: 'pcm',
+    responseFormat: 'mp3',
   },
   elevenlabs: {
     voiceId: '',

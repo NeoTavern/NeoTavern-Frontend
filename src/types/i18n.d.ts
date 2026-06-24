@@ -1324,6 +1324,8 @@ export interface MessageSchema {
       interruptPlayback: string;
       streamingPlayback: string;
       streamingPlaybackHint: string;
+      streamingStartMinWords: string;
+      streamingStartMinWordsHint: string;
       narrateUserMessages: string;
       narrateSystemMessages: string;
       stripMarkdown: string;

@@ -1321,6 +1321,8 @@
       "interruptPlayback": "Interrupt current playback",
       "streamingPlayback": "Streaming playback",
       "streamingPlaybackHint": "Start playback as audio arrives when the selected provider supports it. Kokoro-FastAPI and OpenAI-compatible streaming use PCM.",
+      "streamingStartMinWords": "Early start words",
+      "streamingStartMinWordsHint": "Start auto-play during streamed generation after this many cleaned words are available.",
       "narrateUserMessages": "Allow user messages",
       "narrateSystemMessages": "Allow system messages",
       "stripMarkdown": "Strip Markdown",

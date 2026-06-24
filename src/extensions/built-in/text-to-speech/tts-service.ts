@@ -13,6 +13,7 @@ import {
   mergeTtsSettings,
   type TextToSpeechSettings,
   type TtsPlaybackState,
+  type TtsPreparedAudio,
   type TtsVoice,
 } from './types';
 
@@ -29,6 +30,15 @@ function stripMarkdown(text: string): string {
     .replace(/[*_~>#-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+export function prepareTtsText(text: string, shouldStripMarkdown: boolean): string {
+  return shouldStripMarkdown ? stripMarkdown(text) : text.trim();
+}
+
+export function countTtsWords(text: string): number {
+  const matches = text.match(/\S+/g);
+  return matches?.length ?? 0;
 }
 
 function parseCharacterVoices(value: string): Record<string, string> {
@@ -59,6 +69,7 @@ export class TextToSpeechService {
   private currentAudio: HTMLAudioElement | null = null;
   private currentAudioUrl: string | null = null;
   private currentAbortController: AbortController | null = null;
+  private pendingAbortControllers = new Set<AbortController>();
   private currentAudioContext: AudioContext | null = null;
   private stopRequested = false;
   private cachedVoices: TtsVoice[] = [];
@@ -85,6 +96,8 @@ export class TextToSpeechService {
     this.stopRequested = true;
     this.currentAbortController?.abort();
     this.currentAbortController = null;
+    this.pendingAbortControllers.forEach((controller) => controller.abort());
+    this.pendingAbortControllers.clear();
 
     if (this.currentAudio) {
       this.currentAudio.onended = null;
@@ -132,7 +145,7 @@ export class TextToSpeechService {
     const settings = this.getSettings();
     if (!settings.enabled) return;
 
-    const preparedText = settings.stripMarkdown ? stripMarkdown(text) : text.trim();
+    const preparedText = prepareTtsText(text, settings.stripMarkdown);
     if (!preparedText) return;
 
     if (settings.interruptPlayback) this.stop();
@@ -170,6 +183,51 @@ export class TextToSpeechService {
         this.currentAbortController = null;
       }
       if (this.state.messageIndex === messageIndex) {
+        this.setState({ status: 'idle', messageIndex: null });
+      }
+    }
+  }
+
+  async prepareText(
+    text: string,
+    speakerName?: string,
+    messageIndex: number | null = null,
+  ): Promise<TtsPreparedAudio | null> {
+    const settings = this.getSettings();
+    if (!settings.enabled || settings.provider === 'system') return null;
+
+    const preparedText = prepareTtsText(text, settings.stripMarkdown);
+    if (!preparedText) return null;
+
+    const controller = new AbortController();
+    this.pendingAbortControllers.add(controller);
+    const previousState = this.getPlaybackState();
+    const shouldShowRequesting = previousState.status === 'idle' && messageIndex !== null;
+    if (shouldShowRequesting) {
+      this.setState({ status: 'requesting', messageIndex });
+    }
+
+    try {
+      const voice = this.resolveVoice(settings, speakerName);
+      const blob = await this.generateAudio(preparedText, settings, voice, controller.signal);
+      if (controller.signal.aborted) return null;
+      return { blob, messageIndex };
+    } finally {
+      this.pendingAbortControllers.delete(controller);
+      if (shouldShowRequesting && this.state.status === 'requesting' && this.state.messageIndex === messageIndex) {
+        this.setState(previousState);
+      }
+    }
+  }
+
+  async playPrepared(preparedAudio: TtsPreparedAudio): Promise<void> {
+    this.stopRequested = false;
+
+    this.setState({ status: 'playing', messageIndex: preparedAudio.messageIndex });
+    try {
+      await this.playBlob(preparedAudio.blob);
+    } finally {
+      if (this.state.messageIndex === preparedAudio.messageIndex) {
         this.setState({ status: 'idle', messageIndex: null });
       }
     }

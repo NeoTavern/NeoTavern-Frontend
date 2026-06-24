@@ -191,6 +191,16 @@ function resetSettings() {
         <Toggle v-model="settings.streamingPlayback" :label="t('extensionsBuiltin.textToSpeech.streamingPlayback')" />
       </FormItem>
 
+      <RangeControl
+        v-model="settings.streamingStartMinWords"
+        :label="t('extensionsBuiltin.textToSpeech.streamingStartMinWords')"
+        :title="t('extensionsBuiltin.textToSpeech.streamingStartMinWordsHint')"
+        :min="4"
+        :max="120"
+        :step="1"
+        :disabled="!settings.streamingPlayback"
+      />
+
       <FormItem :label="t('extensionsBuiltin.textToSpeech.narrateUserMessages')">
         <Toggle
           v-model="settings.narrateUserMessages"
