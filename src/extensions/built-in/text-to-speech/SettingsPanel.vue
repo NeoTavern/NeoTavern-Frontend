@@ -195,7 +195,7 @@ function resetSettings() {
         v-model="settings.streamingStartMinWords"
         :label="t('extensionsBuiltin.textToSpeech.streamingStartMinWords')"
         :title="t('extensionsBuiltin.textToSpeech.streamingStartMinWordsHint')"
-        :min="4"
+        :min="0"
         :max="120"
         :step="1"
         :disabled="!settings.streamingPlayback"
