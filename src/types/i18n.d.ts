@@ -1309,6 +1309,48 @@ export interface MessageSchema {
     };
   };
   extensionsBuiltin: {
+    textToSpeech: {
+      enabled: string;
+      provider: string;
+      providers: {
+        system: string;
+        openai: string;
+        elevenlabs: string;
+        kokoroFastApi: string;
+        openaiCompatible: string;
+      };
+      autoPlayAssistant: string;
+      autoPlayAssistantHint: string;
+      interruptPlayback: string;
+      narrateUserMessages: string;
+      narrateSystemMessages: string;
+      stripMarkdown: string;
+      baseUrl: string;
+      kokoroBaseUrlHint: string;
+      model: string;
+      responseFormat: string;
+      speed: string;
+      rate: string;
+      pitch: string;
+      apiKey: string;
+      apiKeyHint: string;
+      stability: string;
+      similarityBoost: string;
+      voice: string;
+      voiceHint: string;
+      kokoroVoices: string;
+      kokoroVoicesHint: string;
+      characterVoices: string;
+      characterVoicesHint: string;
+      refreshVoices: string;
+      voicesRefreshed: string;
+      refreshFailed: string;
+      testVoice: string;
+      testPhrase: string;
+      speakMessage: string;
+      stopPlayback: string;
+      playbackFailed: string;
+    };
     chatTranslation: {
       connectionProfile: string;
       connectionProfileHint: string;

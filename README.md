@@ -34,7 +34,7 @@ Why another frontend for [SillyTavern?](https://github.com/SillyTavern/SillyTave
 **What things did not implement:**
 
 - STScript, QRs, slash commands, detailed macro system.
-- More built-in extensions. E.g. NeoTavern don't have a TTS or image generation extension yet.
+- More built-in extensions. E.g. NeoTavern doesn't have an image generation extension yet.
 - NovelAI/Horde/KoboldClassic. If they have OpenAI compatible API, we can add later. If not, we are not planning to add them.
 
 **Thing that not implemented fully:**
