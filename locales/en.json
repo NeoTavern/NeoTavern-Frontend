@@ -1319,6 +1319,8 @@
       "autoPlayAssistant": "Auto-play assistant replies",
       "autoPlayAssistantHint": "Read completed assistant messages aloud after generation finishes.",
       "interruptPlayback": "Interrupt current playback",
+      "streamingPlayback": "Streaming playback",
+      "streamingPlaybackHint": "Start playback as audio arrives when the selected provider supports it. Kokoro-FastAPI and OpenAI-compatible streaming use PCM.",
       "narrateUserMessages": "Allow user messages",
       "narrateSystemMessages": "Allow system messages",
       "stripMarkdown": "Strip Markdown",

@@ -14,6 +14,7 @@ export interface TextToSpeechSettings {
   narrateSystemMessages: boolean;
   stripMarkdown: boolean;
   interruptPlayback: boolean;
+  streamingPlayback: boolean;
   characterVoices: string;
   system: {
     voice: string;
@@ -36,7 +37,7 @@ export interface TextToSpeechSettings {
     baseUrl: string;
     model: string;
     voice: string;
-    responseFormat: 'mp3' | 'wav' | 'opus' | 'flac';
+    responseFormat: 'mp3' | 'wav' | 'opus' | 'flac' | 'pcm';
     speed: number;
     voices: string;
   };
@@ -88,6 +89,7 @@ export const DEFAULT_TTS_SETTINGS: TextToSpeechSettings = {
   narrateSystemMessages: false,
   stripMarkdown: true,
   interruptPlayback: true,
+  streamingPlayback: true,
   characterVoices: '',
   system: {
     voice: '',
@@ -98,7 +100,7 @@ export const DEFAULT_TTS_SETTINGS: TextToSpeechSettings = {
     model: 'gpt-4o-mini-tts',
     voice: 'alloy',
     speed: 1,
-    responseFormat: 'mp3',
+    responseFormat: 'pcm',
   },
   elevenlabs: {
     voiceId: '',

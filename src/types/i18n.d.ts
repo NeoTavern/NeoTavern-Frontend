@@ -1322,6 +1322,8 @@ export interface MessageSchema {
       autoPlayAssistant: string;
       autoPlayAssistantHint: string;
       interruptPlayback: string;
+      streamingPlayback: string;
+      streamingPlaybackHint: string;
       narrateUserMessages: string;
       narrateSystemMessages: string;
       stripMarkdown: string;

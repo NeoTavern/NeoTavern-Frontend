@@ -184,6 +184,13 @@ function resetSettings() {
         <Toggle v-model="settings.interruptPlayback" :label="t('extensionsBuiltin.textToSpeech.interruptPlayback')" />
       </FormItem>
 
+      <FormItem
+        :label="t('extensionsBuiltin.textToSpeech.streamingPlayback')"
+        :description="t('extensionsBuiltin.textToSpeech.streamingPlaybackHint')"
+      >
+        <Toggle v-model="settings.streamingPlayback" :label="t('extensionsBuiltin.textToSpeech.streamingPlayback')" />
+      </FormItem>
+
       <FormItem :label="t('extensionsBuiltin.textToSpeech.narrateUserMessages')">
         <Toggle
           v-model="settings.narrateUserMessages"

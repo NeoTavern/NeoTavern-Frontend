@@ -5,6 +5,8 @@ import {
   generateElevenLabsSpeech,
   generateOpenAiCompatibleSpeech,
   generateOpenAiSpeech,
+  streamElevenLabsSpeech,
+  streamOpenAiCompatibleSpeech,
 } from './requests';
 import {
   KOKORO_DEFAULT_VOICES,
@@ -57,6 +59,7 @@ export class TextToSpeechService {
   private currentAudio: HTMLAudioElement | null = null;
   private currentAudioUrl: string | null = null;
   private currentAbortController: AbortController | null = null;
+  private currentAudioContext: AudioContext | null = null;
   private stopRequested = false;
   private cachedVoices: TtsVoice[] = [];
   private state: TtsPlaybackState = { status: 'idle', messageIndex: null };
@@ -95,6 +98,9 @@ export class TextToSpeechService {
       URL.revokeObjectURL(this.currentAudioUrl);
       this.currentAudioUrl = null;
     }
+
+    void this.currentAudioContext?.close();
+    this.currentAudioContext = null;
 
     if (isSpeechSynthesisAvailable()) {
       window.speechSynthesis.cancel();
@@ -143,7 +149,18 @@ export class TextToSpeechService {
       }
 
       this.setState({ status: 'requesting', messageIndex });
-      const audio = await this.generateAudio(preparedText, settings, this.resolveVoice(settings, speakerName), signal);
+      const voice = this.resolveVoice(settings, speakerName);
+
+      if (this.shouldStream(settings)) {
+        const stream = await this.generateAudioStream(preparedText, settings, voice, signal);
+        if (signal.aborted) return;
+
+        this.setState({ status: 'playing', messageIndex });
+        await this.playStream(stream, settings, signal);
+        return;
+      }
+
+      const audio = await this.generateAudio(preparedText, settings, voice, signal);
       if (signal.aborted) return;
 
       this.setState({ status: 'playing', messageIndex });
@@ -282,6 +299,53 @@ export class TextToSpeechService {
     }
   }
 
+  private async generateAudioStream(
+    text: string,
+    settings: TextToSpeechSettings,
+    voice: string,
+    signal: AbortSignal,
+  ): Promise<Response> {
+    switch (settings.provider) {
+      case 'elevenlabs':
+        return streamElevenLabsSpeech(
+          text,
+          {
+            ...settings,
+            elevenlabs: { ...settings.elevenlabs, voiceId: voice },
+          },
+          signal,
+        );
+      case 'kokoro-fastapi':
+        return streamOpenAiCompatibleSpeech(
+          settings.kokoro.baseUrl,
+          text,
+          {
+            model: settings.kokoro.model,
+            voice,
+            responseFormat: 'pcm',
+            speed: settings.kokoro.speed,
+          },
+          signal,
+        );
+      case 'openai-compatible':
+        return streamOpenAiCompatibleSpeech(
+          settings.openaiCompatible.baseUrl,
+          text,
+          {
+            model: settings.openaiCompatible.model,
+            voice,
+            responseFormat: 'pcm',
+            speed: settings.openaiCompatible.speed,
+            apiKey: settings.openaiCompatible.apiKey,
+          },
+          signal,
+        );
+      case 'openai':
+      case 'system':
+        throw new Error('Streaming is not supported for this provider');
+    }
+  }
+
   private async playBlob(blob: Blob): Promise<void> {
     this.stopRequested = false;
     this.currentAudioUrl = URL.createObjectURL(blob);
@@ -303,6 +367,158 @@ export class TextToSpeechService {
       };
       this.currentAudio.play().catch(reject);
     });
+  }
+
+  private async playStream(response: Response, settings: TextToSpeechSettings, signal: AbortSignal): Promise<void> {
+    if (settings.provider === 'kokoro-fastapi' || settings.provider === 'openai-compatible') {
+      await this.playPcmStream(response, signal);
+      return;
+    }
+
+    await this.playMediaSourceStream(response, signal);
+  }
+
+  private async playPcmStream(response: Response, signal: AbortSignal): Promise<void> {
+    const reader = response.body?.getReader();
+    if (!reader) {
+      await this.playBlob(await response.blob());
+      return;
+    }
+
+    const audioContext = new AudioContext({ sampleRate: 24000 });
+    this.currentAudioContext = audioContext;
+    let nextStartTime = audioContext.currentTime + 0.05;
+    let pending = new Uint8Array(0);
+
+    const scheduleChunk = (bytes: Uint8Array) => {
+      const sampleCount = Math.floor(bytes.byteLength / 2);
+      if (sampleCount === 0) return;
+
+      const audioBuffer = audioContext.createBuffer(1, sampleCount, audioContext.sampleRate);
+      const channel = audioBuffer.getChannelData(0);
+      const view = new DataView(bytes.buffer, bytes.byteOffset, sampleCount * 2);
+      for (let index = 0; index < sampleCount; index++) {
+        channel[index] = view.getInt16(index * 2, true) / 32768;
+      }
+
+      const source = audioContext.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContext.destination);
+
+      const startTime = Math.max(nextStartTime, audioContext.currentTime + 0.02);
+      source.start(startTime);
+      nextStartTime = startTime + audioBuffer.duration;
+    };
+
+    while (!signal.aborted) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+
+      const merged = new Uint8Array(pending.byteLength + value.byteLength);
+      merged.set(pending, 0);
+      merged.set(value, pending.byteLength);
+
+      const playableLength = merged.byteLength - (merged.byteLength % 2);
+      scheduleChunk(merged.slice(0, playableLength));
+      pending = merged.slice(playableLength);
+    }
+
+    if (signal.aborted || this.stopRequested) return;
+
+    const remainingMs = Math.max(0, (nextStartTime - audioContext.currentTime) * 1000);
+    await new Promise((resolve) => window.setTimeout(resolve, remainingMs));
+  }
+
+  private async playMediaSourceStream(response: Response, signal: AbortSignal): Promise<void> {
+    const contentType = response.headers.get('content-type')?.split(';')[0] || 'audio/mpeg';
+    const mediaSourceType = contentType === 'audio/mpeg' ? 'audio/mpeg' : contentType;
+
+    if (!response.body || typeof MediaSource === 'undefined' || !MediaSource.isTypeSupported(mediaSourceType)) {
+      await this.playBlob(await response.blob());
+      return;
+    }
+
+    const mediaSource = new MediaSource();
+    this.currentAudioUrl = URL.createObjectURL(mediaSource);
+    this.currentAudio = new Audio(this.currentAudioUrl);
+
+    await new Promise<void>((resolve, reject) => {
+      if (!this.currentAudio) {
+        reject(new Error('Audio player was not initialized'));
+        return;
+      }
+
+      const appendChunk = (sourceBuffer: SourceBuffer, chunk: Uint8Array) =>
+        new Promise<void>((appendResolve, appendReject) => {
+          const cleanup = () => {
+            sourceBuffer.removeEventListener('updateend', onUpdateEnd);
+            sourceBuffer.removeEventListener('error', onError);
+          };
+          const onUpdateEnd = () => {
+            cleanup();
+            appendResolve();
+          };
+          const onError = () => {
+            cleanup();
+            appendReject(new Error('Streaming audio append failed'));
+          };
+
+          sourceBuffer.addEventListener('updateend', onUpdateEnd);
+          sourceBuffer.addEventListener('error', onError);
+          const buffer = chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength) as ArrayBuffer;
+          sourceBuffer.appendBuffer(buffer);
+        });
+
+      mediaSource.addEventListener(
+        'sourceopen',
+        () => {
+          const sourceBuffer = mediaSource.addSourceBuffer(mediaSourceType);
+          const reader = response.body?.getReader();
+          if (!reader) {
+            reject(new Error('Audio stream reader was not initialized'));
+            return;
+          }
+
+          this.currentAudio?.play().catch(reject);
+
+          void (async () => {
+            try {
+              while (!signal.aborted) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                if (!value) continue;
+                await appendChunk(sourceBuffer, value);
+              }
+
+              if (mediaSource.readyState === 'open') mediaSource.endOfStream();
+            } catch (error) {
+              if (signal.aborted || this.stopRequested) return;
+              reject(error);
+            }
+          })();
+        },
+        { once: true },
+      );
+
+      this.currentAudio.onended = () => resolve();
+      this.currentAudio.onerror = () => {
+        if (this.stopRequested) {
+          resolve();
+          return;
+        }
+        reject(new Error('Streaming audio playback failed'));
+      };
+    });
+  }
+
+  private shouldStream(settings: TextToSpeechSettings): boolean {
+    return (
+      settings.streamingPlayback &&
+      (settings.provider === 'kokoro-fastapi' ||
+        settings.provider === 'openai-compatible' ||
+        settings.provider === 'elevenlabs')
+    );
   }
 
   private setState(state: TtsPlaybackState): void {

@@ -25,6 +25,16 @@ async function postJsonForAudio(
   headers: Record<string, string>,
   signal?: AbortSignal,
 ): Promise<Blob> {
+  const response = await postJsonForAudioResponse(url, body, headers, signal);
+  return response.blob();
+}
+
+async function postJsonForAudioResponse(
+  url: string,
+  body: object,
+  headers: Record<string, string>,
+  signal?: AbortSignal,
+): Promise<Response> {
   const response = await fetch(url, {
     method: 'POST',
     headers,
@@ -36,7 +46,7 @@ async function postJsonForAudio(
     throw new Error(await readError(response));
   }
 
-  return response.blob();
+  return response;
 }
 
 function mapVoiceResponse(value: unknown): TtsVoice[] {
@@ -80,11 +90,38 @@ export async function generateElevenLabsSpeech(
   return postJsonForAudio(
     '/api/speech/elevenlabs/synthesize',
     {
-      text,
-      voice_id: settings.elevenlabs.voiceId,
-      model_id: settings.elevenlabs.model,
-      stability: settings.elevenlabs.stability,
-      similarity_boost: settings.elevenlabs.similarityBoost,
+      voiceId: settings.elevenlabs.voiceId,
+      request: {
+        text,
+        model_id: settings.elevenlabs.model,
+        voice_settings: {
+          stability: settings.elevenlabs.stability,
+          similarity_boost: settings.elevenlabs.similarityBoost,
+        },
+      },
+    },
+    getRequestHeaders(),
+    signal,
+  );
+}
+
+export async function streamElevenLabsSpeech(
+  text: string,
+  settings: TextToSpeechSettings,
+  signal?: AbortSignal,
+): Promise<Response> {
+  return postJsonForAudioResponse(
+    '/api/speech/elevenlabs/synthesize',
+    {
+      voiceId: settings.elevenlabs.voiceId,
+      request: {
+        text,
+        model_id: settings.elevenlabs.model,
+        voice_settings: {
+          stability: settings.elevenlabs.stability,
+          similarity_boost: settings.elevenlabs.similarityBoost,
+        },
+      },
     },
     getRequestHeaders(),
     signal,
@@ -128,6 +165,40 @@ export async function generateOpenAiCompatibleSpeech(
   }
 
   return postJsonForAudio(
+    joinUrl(baseUrl, 'audio/speech'),
+    {
+      model: options.model,
+      input: text,
+      voice: options.voice,
+      response_format: options.responseFormat,
+      speed: options.speed,
+    },
+    headers,
+    signal,
+  );
+}
+
+export async function streamOpenAiCompatibleSpeech(
+  baseUrl: string,
+  text: string,
+  options: {
+    model: string;
+    voice: string;
+    responseFormat: string;
+    speed: number;
+    apiKey?: string;
+  },
+  signal?: AbortSignal,
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (options.apiKey?.trim()) {
+    headers.Authorization = `Bearer ${options.apiKey.trim()}`;
+  }
+
+  return postJsonForAudioResponse(
     joinUrl(baseUrl, 'audio/speech'),
     {
       model: options.model,
