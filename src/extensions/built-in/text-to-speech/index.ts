@@ -311,6 +311,14 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
 
   unbinds.push(
     api.events.on('generation:started', (context) => {
+      const settings = mergeTtsSettings(api.settings.get());
+      if (settings.enabled && settings.autoPlayAssistant) {
+        cancelEarlyPlayback();
+        if (settings.interruptPlayback) {
+          service.stop();
+        }
+      }
+
       let resolveMessageIndex!: (messageIndex: number) => void;
       const messageIndexReady = new Promise<number>((resolve) => {
         resolveMessageIndex = resolve;
