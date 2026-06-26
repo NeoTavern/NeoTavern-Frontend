@@ -11,11 +11,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const PATHS = {
   CONFIG: path.join(__dirname, 'launcher-config.json'),
-  BACKEND: path.join(__dirname, 'backend'),
-  PLUGINS: path.join(__dirname, 'backend', 'plugins'),
-  ST_CONFIG: path.join(__dirname, 'backend', 'config.yaml'),
   DIST: path.join(__dirname, 'dist'),
-  BACKEND_HASH: path.join(__dirname, 'backend', 'node_modules', '.package-json.hash'),
   BUILD_HASH: path.join(__dirname, 'dist', '.build_hash'),
 };
 
@@ -44,6 +40,14 @@ const DEFAULT_CONFIG = {
     password: 'password',
   },
 };
+
+function resolveBackendPath(backendPath) {
+  if (!backendPath || typeof backendPath !== 'string') {
+    return path.join(__dirname, 'backend');
+  }
+
+  return path.resolve(__dirname, backendPath);
+}
 
 function loadConfig() {
   let config;
@@ -97,8 +101,8 @@ function loadConfig() {
       if (needsSave) {
         fs.writeFileSync(PATHS.CONFIG, JSON.stringify(config, null, 2));
       }
-    } catch {
-      config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+    } catch (e) {
+      throw new Error(`Failed to parse ${PATHS.CONFIG}: ${e.message}`);
     }
   }
 
@@ -117,11 +121,19 @@ function loadConfig() {
     config.basicAuth.enabled = process.env.NEO_BASIC_AUTH_ENABLED.toLowerCase() === 'true';
   if (process.env.NEO_BASIC_AUTH_USERNAME) config.basicAuth.username = process.env.NEO_BASIC_AUTH_USERNAME;
   if (process.env.NEO_BASIC_AUTH_PASSWORD) config.basicAuth.password = process.env.NEO_BASIC_AUTH_PASSWORD;
+  if (process.env.NEO_SILLYTAVERN_BACKEND_PATH)
+    config.sillyTavernBackendPath = process.env.NEO_SILLYTAVERN_BACKEND_PATH;
 
   return config;
 }
 
 const config = loadConfig();
+const configuredBackendPath = config.sillyTavernBackendPath;
+const backendPath = resolveBackendPath(configuredBackendPath);
+PATHS.BACKEND = backendPath;
+PATHS.PLUGINS = path.join(backendPath, 'plugins');
+PATHS.ST_CONFIG = path.join(backendPath, 'config.yaml');
+PATHS.BACKEND_HASH = path.join(backendPath, 'node_modules', '.package-json.hash');
 const isProfileBuild = process.env.NEO_PROFILE_BUILD === 'true' || process.env.PROFILE === '1';
 
 // --- Utils ---
@@ -156,18 +168,25 @@ function getGitHash() {
 // --- Logic ---
 
 async function setupInternalBackend() {
+  const usesCustomBackendPath = Boolean(configuredBackendPath);
+
   // 1. Clone Backend (Only if missing package.json, assume fresh install)
   if (!fs.existsSync(path.join(PATHS.BACKEND, 'package.json'))) {
     log('Cloning SillyTavern Backend...', 'SETUP');
 
-    // Clean up if invalid dir exists
+    // Clean up only the default managed backend if an invalid dir exists.
     if (fs.existsSync(PATHS.BACKEND)) {
+      if (usesCustomBackendPath) {
+        throw new Error(`SillyTavern backend path exists but has no package.json: ${PATHS.BACKEND}`);
+      }
+
       try {
         fs.rmSync(PATHS.BACKEND, { recursive: true, force: true });
       } catch {}
     }
 
-    await runCommand('git', ['clone', '-b', REPO_URLS.BACKEND_BRANCH, REPO_URLS.BACKEND, 'backend'], __dirname);
+    fs.mkdirSync(path.dirname(PATHS.BACKEND), { recursive: true });
+    await runCommand('git', ['clone', '-b', REPO_URLS.BACKEND_BRANCH, REPO_URLS.BACKEND, PATHS.BACKEND], __dirname);
   } else if (config.autoUpdateBackend) {
     try {
       await runCommand('git', ['pull'], PATHS.BACKEND);
@@ -193,6 +212,7 @@ async function setupInternalBackend() {
   const pluginPath = path.join(PATHS.PLUGINS, 'NeoTavern-Server-Plugin');
   if (!fs.existsSync(pluginPath)) {
     log('Cloning NeoTavern Plugin...', 'SETUP');
+    fs.mkdirSync(PATHS.PLUGINS, { recursive: true });
     await runCommand('git', ['clone', REPO_URLS.PLUGIN], PATHS.PLUGINS);
   } else if (config.autoUpdateBackend) {
     try {

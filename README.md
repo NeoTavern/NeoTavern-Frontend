@@ -158,6 +158,7 @@ On the first run, `launcher-config.json` is generated in the root directory. You
 - **Port**: Change the port NeoTavern runs on.
 - **Host**: Change to `0.0.0.0` to allow access from other devices (LAN).
 - **Backend Mode**: Switch between Internal (managed) or External SillyTavern instances.
+- **Internal Backend Path**: Optional. Add `"sillyTavernBackendPath": "../SillyTavern"` to use a specific SillyTavern backend directory.
 - **Basic Auth**: Protect the UI with a username and password. If using the internal backend, it will be automatically configured with the same credentials.
   ```json
   "basicAuth": {
