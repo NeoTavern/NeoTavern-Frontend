@@ -382,7 +382,7 @@ export const apiConnectionDefinition: AiConfigSection[] = [
         id: 'api.providerSpecific.koboldcpp.url',
         widget: 'text-input',
         label: 'apiConnections.koboldUrl',
-        placeholder: 'http://localhost:5001/v1/chat/completions',
+        placeholder: 'http://localhost:5001/v1',
       },
       {
         id: 'api.selectedProviderModels.koboldcpp',

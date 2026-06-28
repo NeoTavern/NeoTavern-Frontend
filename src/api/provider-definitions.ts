@@ -1238,7 +1238,7 @@ export const PROVIDER_INJECTIONS: Partial<Record<string, InjectionFunction>> = {
   },
 
   [api_providers.CUSTOM]: (payload, { providerSpecific, proxy }) => {
-    payload.custom_url = providerSpecific.custom?.url;
+    payload.custom_url = providerSpecific.custom?.url?.replace(/\/+$/, '');
     payload.custom_include_body = providerSpecific.custom?.include_body;
     payload.custom_exclude_body = providerSpecific.custom?.exclude_body;
     payload.custom_include_headers = providerSpecific.custom?.include_headers;
@@ -1363,7 +1363,7 @@ export const PROVIDER_INJECTIONS: Partial<Record<string, InjectionFunction>> = {
       // Chat Completion Mode
       // We use the Generic CUSTOM provider to proxy the request
       payload.chat_completion_source = api_providers.CUSTOM;
-      payload.custom_url = providerSpecific.koboldcpp.url;
+      payload.custom_url = providerSpecific.koboldcpp.url.replace(/\/+$/, '');
 
       const body: Record<string, unknown> = {};
 
