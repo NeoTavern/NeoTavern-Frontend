@@ -67,6 +67,12 @@ const isEditing = computed(() => chatStore.activeMessageEditState?.index === pro
 const hasReasoning = computed(() => props.message.extra.reasoning && props.message.extra.reasoning.trim().length > 0);
 const hasItemizedPrompt = computed(() => !!promptStore.getItemizedPrompt(props.index, props.message.swipe_id ?? 0));
 const isSmallSys = computed(() => !!props.message.extra.isSmallSys);
+const formattedTokensPerSecond = computed(() => {
+  const tps = props.message.extra.tokens_per_second;
+  if (typeof tps !== 'number' || !Number.isFinite(tps) || tps <= 0) return '';
+
+  return tps >= 10 ? Math.round(tps).toString() : tps.toFixed(1);
+});
 
 onMounted(() => {
   isReasoningCollapsed.value = settingsStore.settings.ui?.chat?.reasoningCollapsed ?? false;
@@ -538,7 +544,12 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
       <div v-if="message.extra.reasoning_duration" class="message-timer">
         {{ message.extra.reasoning_duration.toFixed(1) }}s
       </div>
-      <div v-if="message.extra.token_count" class="message-token-count">{{ message.extra.token_count }}t</div>
+      <div v-if="message.extra.token_count" class="message-token-count" :title="t('chat.metrics.tokenCount')">
+        {{ message.extra.token_count }}t
+      </div>
+      <div v-if="formattedTokensPerSecond" class="message-token-rate" :title="t('chat.metrics.tokensPerSecond')">
+        {{ formattedTokensPerSecond }}tps
+      </div>
     </div>
 
     <div class="message-main">

@@ -670,6 +670,10 @@ export interface MessageSchema {
     reasoning: {
       title: string;
     };
+    metrics: {
+      tokenCount: string;
+      tokensPerSecond: string;
+    };
     itemization: {
       title: string;
       apiModel: string;

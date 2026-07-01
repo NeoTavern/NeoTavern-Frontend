@@ -49,6 +49,7 @@ export interface SwipeInfo {
   extra: {
     reasoning?: string;
     token_count?: number;
+    tokens_per_second?: number;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } & Record<string, any>;
 }
@@ -73,6 +74,7 @@ export interface ChatMessage {
     display_text?: string;
     reasoning_display_text?: string;
     token_count?: number;
+    tokens_per_second?: number;
     media?: ChatMediaItem[];
     ignored_media?: string[];
     tool_invocations?: ToolInvocation[];

@@ -94,7 +94,8 @@
 
   &-id,
   &-timer,
-  &-token-count {
+  &-token-count,
+  &-token-rate {
     cursor: default;
     opacity: 0.7;
     font-size: calc(var(--font-size-main) * 0.9);

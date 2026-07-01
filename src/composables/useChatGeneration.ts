@@ -121,24 +121,29 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
     const inlineMedia = extractMediaFromMarkdown(messageText);
     const allMedia = [...media, ...inlineMedia];
+    const trimmedMessage = messageText.trim();
+    const activeModel = apiStore.activeModel || '';
+    const tokenizer = new ApiTokenizer({ tokenizerType: settingsStore.settings.api.tokenizer, model: activeModel });
+    const token_count = await countTokens(trimmedMessage, tokenizer);
 
     const userMessage: ChatMessage = {
       name: uiStore.activePlayerName || 'User',
       is_user: true,
-      mes: messageText.trim(),
+      mes: trimmedMessage,
       send_date: getMessageTimeStamp(),
       force_avatar: getThumbnailUrl('persona', uiStore.activePlayerAvatar || default_user_avatar),
       original_avatar: personaStore.activePersona.avatarId,
       is_system: false,
       extra: {
         media: allMedia.length > 0 ? allMedia : undefined,
+        token_count,
       },
       swipe_id: 0,
-      swipes: [messageText.trim()],
+      swipes: [trimmedMessage],
       swipe_info: [
         {
           send_date: getMessageTimeStamp(),
-          extra: {},
+          extra: { token_count },
         },
       ],
     };
@@ -893,6 +898,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       let fullResponseContent = '';
       let finalReasoning: string | undefined;
       let isFirstChunk = true;
+      let firstStreamResponseAt: number | undefined;
 
       // For CONTINUE mode, we work on existing message
       const isContinuation = mode === GenerationMode.CONTINUE || isLastMsgPrefill;
@@ -903,6 +909,8 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
       try {
         for await (const chunk of streamGenerator) {
+          firstStreamResponseAt ??= Date.now();
+
           const chunkController = new AbortController();
           await eventEmitter.emit('process:stream-chunk', chunk, {
             payload,
@@ -964,6 +972,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
               lastMessage.swipes.push('');
               lastMessage.swipe_id = lastMessage.swipes.length - 1;
               lastMessage.mes = '';
+              generatedMessage = lastMessage;
+              if (!lastMessage.extra) lastMessage.extra = {};
+              delete lastMessage.extra.token_count;
+              delete lastMessage.extra.tokens_per_second;
               if (lastMessage.extra) {
                 delete lastMessage.extra.display_text;
                 delete lastMessage.extra.reasoning_display_text;
@@ -1075,6 +1087,12 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
           if (finalMessage.extra.token_count === undefined) {
             finalMessage.extra.token_count = await countTokens(finalMessage.mes, tokenizer);
+          }
+          if (firstStreamResponseAt !== undefined) {
+            const elapsedSeconds = (Date.parse(finalMessage.gen_finished) - firstStreamResponseAt) / 1000;
+            if (elapsedSeconds > 0) {
+              finalMessage.extra.tokens_per_second = finalMessage.extra.token_count / elapsedSeconds;
+            }
           }
 
           const swipeInfo: SwipeInfo = {

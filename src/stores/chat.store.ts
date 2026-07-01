@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, nextTick, ref, watch } from 'vue';
 import { type ChatExportRequest } from '../api/chat';
+import { ApiTokenizer } from '../api/tokenizer';
 import { useAutoSave } from '../composables/useAutoSave';
 import { useChatGeneration } from '../composables/useChatGeneration';
 import { useStrictI18n } from '../composables/useStrictI18n';
@@ -96,11 +97,55 @@ export const useChatStore = defineStore('chat', () => {
 
     const message = activeChat.value.messages[messageIndex];
     chatService.syncSwipe(message, swipeIndex);
+    await ensureActiveSwipeTokenCount(message, swipeIndex);
 
     await nextTick();
     await eventEmitter.emit('message:updated', messageIndex, message);
     await eventEmitter.emit('message:swipe-changed', messageIndex, swipeIndex);
     triggerSave();
+  }
+
+  async function ensureActiveSwipeTokenCount(message: ChatMessage, swipeIndex: number) {
+    const swipeInfo = message.swipe_info?.[swipeIndex];
+    if (swipeInfo?.extra?.token_count !== undefined) return;
+
+    await updateMessageTokenCount(message);
+  }
+
+  function updateMessageTokenCountLater(messageIndex: number, contentSnapshot: string) {
+    void (async () => {
+      if (!activeChat.value || messageIndex < 0 || messageIndex >= activeChat.value.messages.length) return;
+
+      const message = activeChat.value.messages[messageIndex];
+      if (message.mes !== contentSnapshot) return;
+
+      await updateMessageTokenCount(message);
+
+      if (!activeChat.value || activeChat.value.messages[messageIndex] !== message || message.mes !== contentSnapshot) {
+        return;
+      }
+
+      await nextTick();
+      await eventEmitter.emit('message:updated', messageIndex, message);
+      triggerSave();
+    })();
+  }
+
+  async function updateMessageTokenCount(message: ChatMessage) {
+    const apiSettings = settingsStore.settings.api;
+    const model = apiSettings.selectedProviderModels[apiSettings.provider] || '';
+    const tokenizer = new ApiTokenizer({ tokenizerType: apiSettings.tokenizer, model });
+    const tokenCount = await tokenizer.getTokenCount(message.mes);
+
+    if (!message.extra) message.extra = {};
+    message.extra.token_count = tokenCount;
+
+    const swipeIndex = message.swipe_id ?? 0;
+    const swipeInfo = message.swipe_info?.[swipeIndex];
+    if (swipeInfo) {
+      if (!swipeInfo.extra) swipeInfo.extra = {};
+      swipeInfo.extra.token_count = tokenCount;
+    }
   }
 
   function stopAutoModeTimer() {
@@ -470,6 +515,8 @@ export const useChatStore = defineStore('chat', () => {
           delete swipeInfo.extra.reasoning;
         }
       }
+      clearMessageTokenCount(message);
+      updateMessageTokenCountLater(index, message.mes);
 
       cancelEditing();
       await nextTick();
@@ -487,11 +534,26 @@ export const useChatStore = defineStore('chat', () => {
       if (message.swipes && typeof message.swipe_id === 'number' && message.swipes[message.swipe_id] !== undefined) {
         message.swipes[message.swipe_id] = updates.mes;
       }
+      clearMessageTokenCount(message);
+      updateMessageTokenCountLater(index, message.mes);
+    } else if (updates.swipe_id !== undefined || updates.swipes !== undefined) {
+      await ensureActiveSwipeTokenCount(message, message.swipe_id ?? 0);
     }
 
     await nextTick();
     await eventEmitter.emit('message:updated', index, message);
     triggerSave();
+  }
+
+  function clearMessageTokenCount(message: ChatMessage) {
+    if (!message.extra) message.extra = {};
+
+    delete message.extra.token_count;
+
+    const swipeInfo = message.swipe_info?.[message.swipe_id ?? 0];
+    if (swipeInfo?.extra) {
+      delete swipeInfo.extra.token_count;
+    }
   }
 
   async function swipeMessage(messageIndex: number, direction: 'left' | 'right') {

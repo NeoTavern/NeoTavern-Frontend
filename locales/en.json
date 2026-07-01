@@ -667,6 +667,10 @@
     "reasoning": {
       "title": "Thinking"
     },
+    "metrics": {
+      "tokenCount": "Token count",
+      "tokensPerSecond": "Tokens per second"
+    },
     "itemization": {
       "title": "Prompt Itemization",
       "apiModel": "API/Model",
