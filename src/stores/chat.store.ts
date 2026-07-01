@@ -160,6 +160,7 @@ export const useChatStore = defineStore('chat', () => {
     syncSwipeToMes,
     stopAutoModeTimer,
     findToolChainStart,
+    triggerSave,
   });
 
   eventEmitter.on(

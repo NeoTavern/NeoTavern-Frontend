@@ -51,6 +51,7 @@ export interface ChatGenerationDependencies {
   syncSwipeToMes: (msgIndex: number, swipeIndex: number) => Promise<void>;
   stopAutoModeTimer: () => void;
   findToolChainStart: (endIndex: number) => number;
+  triggerSave: () => void;
 }
 
 interface GenerationStepResult {
@@ -122,9 +123,6 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     const inlineMedia = extractMediaFromMarkdown(messageText);
     const allMedia = [...media, ...inlineMedia];
     const trimmedMessage = messageText.trim();
-    const activeModel = apiStore.activeModel || '';
-    const tokenizer = new ApiTokenizer({ tokenizerType: settingsStore.settings.api.tokenizer, model: activeModel });
-    const token_count = await countTokens(trimmedMessage, tokenizer);
 
     const userMessage: ChatMessage = {
       name: uiStore.activePlayerName || 'User',
@@ -136,14 +134,13 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       is_system: false,
       extra: {
         media: allMedia.length > 0 ? allMedia : undefined,
-        token_count,
       },
       swipe_id: 0,
       swipes: [trimmedMessage],
       swipe_info: [
         {
           send_date: getMessageTimeStamp(),
-          extra: { token_count },
+          extra: {},
         },
       ],
     };
@@ -160,13 +157,41 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       return;
     }
 
+    const messageIndex = deps.activeChat.value.messages.length;
     deps.activeChat.value.messages.push(userMessage);
     await nextTick();
     await eventEmitter.emit('message:created', userMessage);
+    updateUserMessageTokenCountLater(currentChatContext, messageIndex, trimmedMessage);
 
     if (triggerGeneration) {
       await generateResponse(GenerationMode.NEW, { generationId });
     }
+  }
+
+  function updateUserMessageTokenCountLater(chatContext: ChatStateRef, messageIndex: number, contentSnapshot: string) {
+    void (async () => {
+      const activeModel = apiStore.activeModel || '';
+      const tokenizer = new ApiTokenizer({ tokenizerType: settingsStore.settings.api.tokenizer, model: activeModel });
+      const tokenCount = await countTokens(contentSnapshot, tokenizer);
+
+      const message = chatContext.messages[messageIndex];
+      if (deps.activeChat.value !== chatContext || !message || message.mes !== contentSnapshot) {
+        return;
+      }
+
+      if (!message.extra) message.extra = {};
+      message.extra.token_count = tokenCount;
+
+      const swipeInfo = message.swipe_info?.[message.swipe_id ?? 0];
+      if (swipeInfo) {
+        if (!swipeInfo.extra) swipeInfo.extra = {};
+        swipeInfo.extra.token_count = tokenCount;
+      }
+
+      await nextTick();
+      await eventEmitter.emit('message:updated', messageIndex, message);
+      deps.triggerSave();
+    })();
   }
 
   async function generateResponse(
