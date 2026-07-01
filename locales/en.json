@@ -989,6 +989,7 @@
       "deletePopupContent": "Are you sure you want to delete the profile \"<b>{name}</b>\"?",
       "updatedFields": "Updated fields: {fields}",
       "noChanges": "No changes detected based on current settings.",
+      "staleSamplerRemoved": "Sampler preset \"{sampler}\" was not found, so profile \"{profile}\" now uses the current sampler.",
       "errors": {
         "noSelection": "No profile selected.",
         "nameExists": "A profile with this name already exists.",

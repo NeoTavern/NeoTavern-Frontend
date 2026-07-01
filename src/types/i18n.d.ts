@@ -992,6 +992,7 @@ export interface MessageSchema {
       deletePopupContent: string;
       updatedFields: string;
       noChanges: string;
+      staleSamplerRemoved: string;
       errors: {
         noSelection: string;
         nameExists: string;

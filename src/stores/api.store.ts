@@ -44,6 +44,7 @@ export const useApiStore = defineStore('api', () => {
   const onlineStatus = ref(t('api.status.notConnected'));
   const isConnecting = ref(false);
   const presets = ref<Preset<SamplerSettings>[]>([]);
+  const samplerPresetsLoaded = ref(false);
   const modelsByProvider = ref<Map<ApiProvider, ApiModel[]>>(new Map());
 
   const modelList = computed(() => {
@@ -165,8 +166,19 @@ export const useApiStore = defineStore('api', () => {
     if (profile.provider && profile.provider !== settingsStore.settings.api.provider) {
       settingsStore.settings.api.provider = profile.provider;
     }
-    if (profile.sampler && profile.sampler !== settingsStore.settings.api.selectedSampler) {
-      settingsStore.settings.api.selectedSampler = profile.sampler;
+    if (profile.sampler) {
+      if (!samplerPresetsLoaded.value) {
+        await loadPresetsForApi();
+      }
+
+      const samplerExists = presets.value.some((preset) => preset.name === profile.sampler);
+      if (samplerExists) {
+        if (profile.sampler !== settingsStore.settings.api.selectedSampler) {
+          settingsStore.settings.api.selectedSampler = profile.sampler;
+        }
+      } else if (samplerPresetsLoaded.value) {
+        removeStaleSamplerFromConnectionProfile(profile.id, profile.sampler);
+      }
     }
     if (
       profile.model &&
@@ -319,13 +331,35 @@ export const useApiStore = defineStore('api', () => {
     }
   }
 
-  async function loadPresetsForApi() {
+  async function loadPresetsForApi(): Promise<boolean> {
     try {
       presets.value = await fetchAllSamplerPresets();
+      samplerPresetsLoaded.value = true;
+      return true;
     } catch (error) {
       console.error('Failed to load presets:', error);
       toast.error('Could not load presets.');
+      return false;
     }
+  }
+
+  function removeStaleSamplerFromConnectionProfile(profileId: string, staleSampler: string) {
+    const profileIndex = connectionProfiles.value.findIndex((p) => p.id === profileId);
+    if (profileIndex === -1) return;
+
+    const updatedProfile = { ...connectionProfiles.value[profileIndex] };
+    delete updatedProfile.sampler;
+
+    const newProfiles = [...connectionProfiles.value];
+    newProfiles[profileIndex] = updatedProfile;
+    connectionProfiles.value = newProfiles;
+
+    toast.warning(
+      t('apiConnections.profileManagement.staleSamplerRemoved', {
+        profile: updatedProfile.name,
+        sampler: staleSampler,
+      }),
+    );
   }
 
   async function saveCurrentPresetAs(name: string) {
