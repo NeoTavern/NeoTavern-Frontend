@@ -1,6 +1,6 @@
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 import { execSync, spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -420,7 +420,7 @@ async function start() {
 
     app.use(proxy);
     app.use(express.static(PATHS.DIST));
-    app.get('*', (req, res) => res.sendFile(path.join(PATHS.DIST, 'index.html')));
+    app.get('/{*splat}', (req, res) => res.sendFile(path.join(PATHS.DIST, 'index.html')));
 
     app.listen(config.appPort, config.appHost, () => {
       console.log(`\n> NeoTavern UI: http://${config.appHost}:${config.appPort}\n`);
