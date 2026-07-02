@@ -108,19 +108,10 @@ $base-border-radius-rounded: 8px;
 
   // Calculates a contrasting tick color (black/white) based on luminance.
   --theme-checkbox-tick-color-value: calc(
-    (
-      (
-          (
-              (
-                  (var(--theme-checkbox-bg-r) * 299) + (var(--theme-checkbox-bg-g) * 587) +
-                    (var(--theme-checkbox-bg-b) * 114)
-                ) /
-                1000
-            ) -
-            128
-        ) *
-        -1000
-    )
+    (((((var(--theme-checkbox-bg-r) * 299) + (var(--theme-checkbox-bg-g) * 587) + (var(--theme-checkbox-bg-b) * 114)) /
+          1000) -
+        128) *
+      -1000)
   );
   --theme-checkbox-tick-color: rgb(
     var(--theme-checkbox-tick-color-value),

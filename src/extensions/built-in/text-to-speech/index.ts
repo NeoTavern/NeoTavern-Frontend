@@ -248,9 +248,10 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
         ensurePrefetch(state);
       }
     } catch (error) {
-      if (state.canceled || isAbortError(error)) return;
-      const message = error instanceof Error ? error.message : String(error);
-      api.ui.showToast(`${api.i18n.t('extensionsBuiltin.textToSpeech.playbackFailed')}: ${message}`, 'error');
+      if (!state.canceled && !isAbortError(error)) {
+        const message = error instanceof Error ? error.message : String(error);
+        api.ui.showToast(`${api.i18n.t('extensionsBuiltin.textToSpeech.playbackFailed')}: ${message}`, 'error');
+      }
     } finally {
       state.processing = false;
       if (
@@ -260,10 +261,7 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
         state.preparedQueue.length === 0
       ) {
         earlyPlaybackByGeneration.delete(generationId);
-        return;
-      }
-
-      if (
+      } else if (
         !state.canceled &&
         earlyPlaybackByGeneration.has(generationId) &&
         (state.segmentQueue.length > 0 || state.preparedQueue.length > 0)

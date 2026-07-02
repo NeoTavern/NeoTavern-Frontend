@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "vue"],
+  "ignorePatterns": [
+    "dist/**",
+    "coverage/**",
+    "*.log",
+    "repomix-output.xml",
+    "src/types/i18n.d.ts",
+    "backend/**",
+    "launcher.js"
+  ],
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "typescript/consistent-type-imports": "error"
+  }
+}

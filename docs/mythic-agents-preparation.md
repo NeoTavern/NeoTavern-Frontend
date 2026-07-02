@@ -3,12 +3,14 @@
 This guide explains **exactly how to create a valid JSON preset** for the **Mythic Agents** extension. It customizes the Mythic Game Master Emulator (GME) tables for a specific **theme** (e.g., "Cyberpunk Noir", "High Fantasy", "Horror Survival").
 
 Presets control:
+
 - **Fate Chart**: Yes/No probabilities adjusted by Chaos (1-9).
 - **Event Generation**: Random events (focuses, actions, subjects).
 - **UNE (NPCs)**: Universal NPC Emulator tables for personalities/motivations.
 - **Character Types**: Defines available character types for manual editing (NpcTab dropdown) and consistent scene tracking across LLM generation, UI, and events. Types are stored/matched in lowercase for case-insensitive and non-ASCII support.
 
 ## Preset Structure (Strict Zod Schema)
+
 A preset is **always** this exact JSON shape. **Do not add/remove fields**.
 
 ```json
@@ -17,7 +19,7 @@ A preset is **always** this exact JSON shape. **Do not add/remove fields**.
   "data": {
     "fateChart": {
       "1": {
-        "Impossible": { "chance": 50, "exceptional_yes": 10, "exceptional_no": 91 },
+        "Impossible": { "chance": 50, "exceptional_yes": 10, "exceptional_no": 91 }
         // ... all 11 odds for each chaos level "1" to "9"
       }
     },
@@ -26,16 +28,16 @@ A preset is **always** this exact JSON shape. **Do not add/remove fields**.
         { "min": 1, "max": 10, "focus": "Gang Turf War", "action": "random_gangster" }
         // Array must cover exactly 1-100 with no gaps/overlaps
       ],
-      "actions": [ "Hack", "Betray" ],  // 50-100 themed entries
-      "subjects": [ "Datastreams", "Corpos" ]  // 50-100 themed entries
+      "actions": ["Hack", "Betray"], // 50-100 themed entries
+      "subjects": ["Datastreams", "Corpos"] // 50-100 themed entries
     },
     "une": {
-      "modifiers": [ "Glitchy", "Augmented" ],  // 100-200+ themed adjectives
-      "nouns": [ "Fixer", "Netrunner" ],  // 100-200+ themed nouns
-      "motivation_verbs": [ "Sabotage", "Decrypt" ],  // 100-200+ themed verbs
-      "motivation_nouns": [ "Paydata", "Chrome" ]  // 100-200+ themed nouns
+      "modifiers": ["Glitchy", "Augmented"], // 100-200+ themed adjectives
+      "nouns": ["Fixer", "Netrunner"], // 100-200+ themed nouns
+      "motivation_verbs": ["Sabotage", "Decrypt"], // 100-200+ themed verbs
+      "motivation_nouns": ["Paydata", "Chrome"] // 100-200+ themed nouns
     },
-    "characterTypes": [ "gangster", "decker", "exec" ]  // 5-20 themed types; all equal, lowercase for consistency
+    "characterTypes": ["gangster", "decker", "exec"] // 5-20 themed types; all equal, lowercase for consistency
   }
 }
 ```
@@ -43,12 +45,14 @@ A preset is **always** this exact JSON shape. **Do not add/remove fields**.
 ## Key Field Explanations
 
 ### fateChart
+
 - Outer keys: Chaos rank `"1"` (orderly) to `"9"` (chaotic).
 - Inner keys: Exact odds enum: `"Impossible"`, `"No Way"`, `"Very Unlikely"`, `"Unlikely"`, `"50/50"`, `"Somewhat Likely"`, `"Likely"`, `"Very Likely"`, `"Near Sure Thing"`, `"A Sure Thing"`, `"Has to be"`.
 - Values: `{ chance: number (d100 Yes threshold), exceptional_yes: number, exceptional_no: number }`.
 - **Customization**: Minor tweaks for theme (e.g., grimdark: lower `chance`; heroic: higher). Higher chaos reduces effective `chance`.
 
 ### eventGeneration.focuses
+
 - **Ranges**: d100 roll picks entry (`min/max` inclusive). **Must chain exactly 1-100 (sum(max-min+1)=100), sorted ascending, no gaps/overlaps.**
 - `focus`: Descriptive label for logs/narration.
 - **`action` (optional string)**: Triggers special logic in `generateFullRandomEvent`. Supports **complex expressions** parsed as JS AST (parentheses, `and`/`or`):
@@ -66,10 +70,12 @@ A preset is **always** this exact JSON shape. **Do not add/remove fields**.
 - **actions/subjects**: Randomly paired for event meaning (e.g., "Hack Datastreams").
 
 ### une
+
 - Generates NPC profiles: `${modifier} ${noun}` who `${motivation_verb} ${motivation_noun}`.
 - Uniform random pick from each array.
 
 ### characterTypes
+
 - **All types equal**: Defines preset's character archetypes (e.g., `["gangster", "decker", "exec"]`).
 - **Uses**:
   - NpcTab dropdown for manual adds/edits (adds `{type: selected}` to scene).
@@ -78,6 +84,7 @@ A preset is **always** this exact JSON shape. **Do not add/remove fields**.
 - **Best Practice**: 5-20 themed entries. Use these exact strings in `action` values (with underscores for spaces).
 
 ## Customization Rules for Themes
+
 1. **Start with Defaults**: Copy exported "Default" preset.
 2. **Rename**: `"name": "Your Theme"`.
 3. **Theme Lists**:
@@ -92,11 +99,14 @@ A preset is **always** this exact JSON shape. **Do not add/remove fields**.
 7. **Validate**: JSON.parse; focuses 1-100; themed/varied lists.
 
 ## Example: "Cyberpunk Noir" Preset
+
 ```json
 {
   "name": "Cyberpunk Noir",
   "data": {
-    "fateChart": { /* Defaults or paranoia-biased (lower chances at high chaos) */ },
+    "fateChart": {
+      /* Defaults or paranoia-biased (lower chances at high chaos) */
+    },
     "eventGeneration": {
       "focuses": [
         { "min": 1, "max": 5, "focus": "Neon Glitch" },
@@ -105,18 +115,23 @@ A preset is **always** this exact JSON shape. **Do not add/remove fields**.
         { "min": 31, "max": 40, "focus": "Exec Intrigue", "action": "random_exec" },
         { "min": 41, "max": 50, "focus": "Samurai Clash", "action": "new_street_samurai and random_street_samurai" },
         { "min": 51, "max": 60, "focus": "Data Leak", "action": "random_thread" },
-        { "min": 61, "max": 100, "focus": "Gang Ambush", "action": "(random_gangster or new_gangster) and random_decker" }
+        {
+          "min": 61,
+          "max": 100,
+          "focus": "Gang Ambush",
+          "action": "(random_gangster or new_gangster) and random_decker"
+        }
       ],
-      "actions": [ "Hack", "Betray", "Implant", "Sabotage", "Overclock" /* +95 cyber-themed */ ],
-      "subjects": [ "ICE", "Paydata", "Chrome", "Fixers", "Gangs" /* +95 cyber-themed */ ]
+      "actions": ["Hack", "Betray", "Implant", "Sabotage", "Overclock" /* +95 cyber-themed */],
+      "subjects": ["ICE", "Paydata", "Chrome", "Fixers", "Gangs" /* +95 cyber-themed */]
     },
     "une": {
-      "modifiers": [ "Glitchy", "Augmented", "Burned-Out", "Paranoid" /* +196 more */ ],
-      "nouns": [ "Netrunner", "Ripperdoc", "Solo", "Media" /* +396 more */ ],
-      "motivation_verbs": [ "Jack-In", "Ghost", "Rip-Off" /* +197 more */ ],
-      "motivation_nouns": [ "Net", "Street Cred", "Corpo Secrets" /* +396 more */ ]
+      "modifiers": ["Glitchy", "Augmented", "Burned-Out", "Paranoid" /* +196 more */],
+      "nouns": ["Netrunner", "Ripperdoc", "Solo", "Media" /* +396 more */],
+      "motivation_verbs": ["Jack-In", "Ghost", "Rip-Off" /* +197 more */],
+      "motivation_nouns": ["Net", "Street Cred", "Corpo Secrets" /* +396 more */]
     },
-    "characterTypes": [ "street samurai", "decker", "exec", "gangster" ]
+    "characterTypes": ["street samurai", "decker", "exec", "gangster"]
   }
 }
 ```

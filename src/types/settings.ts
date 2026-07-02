@@ -1,8 +1,10 @@
-import {
+import type {
   CharacterSortOption,
   CustomPromptPostProcessing,
   ReasoningEffort,
   WorldInfoSortOption,
+} from '../constants';
+import {
   type OpenrouterMiddleoutType,
   type SendOnEnterOptions,
   type TagImportSetting,

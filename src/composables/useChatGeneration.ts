@@ -924,6 +924,8 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       let finalReasoning: string | undefined;
       let isFirstChunk = true;
       let firstStreamResponseAt: number | undefined;
+      let streamResponse: GenerationResponse | null = null;
+      let streamShouldReturnNull = false;
 
       // For CONTINUE mode, we work on existing message
       const isContinuation = mode === GenerationMode.CONTINUE || isLastMsgPrefill;
@@ -981,7 +983,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
                 controller: createController,
                 generationId,
               });
-              if (createController.signal.aborted) return null;
+              if (createController.signal.aborted) {
+                streamShouldReturnNull = true;
+                break;
+              }
 
               if (deps.activeChat.value !== chatContext) throw new Error('Context switched');
 
@@ -1060,10 +1065,11 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         if (!messageCreated) {
           if (!finalToolCalls || finalToolCalls.length === 0) {
             toast.error(t('chat.generate.emptyResponseError'));
-            return null;
+            streamShouldReturnNull = true;
+          } else {
+            // If there are only tool calls, we still need to create an empty message to attach them to
+            await handleGenerationResult('');
           }
-          // If there are only tool calls, we still need to create an empty message to attach them to
-          await handleGenerationResult('');
         }
 
         // Finalize streaming
@@ -1135,14 +1141,15 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
             finalMessage.swipe_info.push(swipeInfo);
           }
         }
-        const response: GenerationResponse = {
+        streamResponse = {
           content: fullResponseContent,
           tool_calls: finalToolCalls,
           reasoning: finalReasoning,
           images: streamImages.length > 0 ? streamImages : undefined,
         };
-        return { message: generatedMessage, response };
       }
+      if (streamShouldReturnNull || !streamResponse) return null;
+      return { message: generatedMessage, response: streamResponse };
     }
     return null;
   }

@@ -1,4 +1,4 @@
-import { CustomPromptPostProcessing } from '../constants';
+import type { CustomPromptPostProcessing } from '../constants';
 import type { I18nKey } from './i18n';
 import type { ApiFormatter, SettingsPath } from './settings';
 

@@ -9,8 +9,8 @@ Built with Vue 3, Pinia, Vite, SCSS, vue-i18n.
 ```
 npm install
 npm run build     # Production build
-npm run lint:fix  # Lint (ESLint + TS) and fix
-npm run format    # Format (Prettier)
+npm run lint:fix  # Lint (oxlint) and fix
+npm run format    # Format (oxfmt)
 npm test          # Run tests
 ```
 
@@ -38,7 +38,7 @@ npm test          # Run tests
 - **i18n**: `t('key')`; tooltips in locales.
 - **Types**: Augment `src/types/`; avoid `any`.
 
-ESLint/Prettier: Run `npm run lint --fix`.
+oxlint/oxfmt: Run `npm run lint:fix` and `npm run format`.
 
 ## Testing Instructions
 

@@ -37,13 +37,14 @@ describe('Mythic Agents Oracle', () => {
     const eventGenerationData = { focuses: [], actions: [], subjects: [] };
     const uneSettings = { modifiers: [], nouns: [], motivation_verbs: [], motivation_nouns: [] };
 
+    const originalRandom = Math.random;
     Math.random = () => 0.4;
 
     try {
       const result = rollFate('A Sure Thing', 4, DEFAULT_FATE_CHART_DATA, scene, eventGenerationData, uneSettings);
       expect(result.fateRollResult.outcome).toBeDefined();
     } finally {
-      Math.random = Math.random;
+      Math.random = originalRandom;
     }
   });
 

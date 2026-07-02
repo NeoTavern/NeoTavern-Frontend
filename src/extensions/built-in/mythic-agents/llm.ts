@@ -51,29 +51,35 @@ export async function analyzeUserAction(
   const messages = itemizedPrompt.messages;
   messages.push({ role: 'user', name: 'User', content: processedPrompt });
 
-  return new Promise(async (resolve, reject) => {
-    const response = await api.llm.generate(messages, {
-      connectionProfile,
-      signal,
-      samplerOverrides: {
-        stream: false,
-      },
-      structuredResponse,
-      onCompletion: ({ structured_content, parse_error }) => {
-        if (structured_content) {
-          resolve(structured_content as AnalysisOutput);
-        } else if (parse_error) {
-          reject(new Error(parse_error.message));
-        } else {
-          reject(new Error('No structured content or parse error'));
+  return new Promise((resolve, reject) => {
+    void (async () => {
+      try {
+        const response = await api.llm.generate(messages, {
+          connectionProfile,
+          signal,
+          samplerOverrides: {
+            stream: false,
+          },
+          structuredResponse,
+          onCompletion: ({ structured_content, parse_error }) => {
+            if (structured_content) {
+              resolve(structured_content as AnalysisOutput);
+            } else if (parse_error) {
+              reject(new Error(parse_error.message));
+            } else {
+              reject(new Error('No structured content or parse error'));
+            }
+          },
+        });
+        if (Symbol.asyncIterator in response) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          for await (const _ of response) {
+          }
         }
-      },
-    });
-    if (Symbol.asyncIterator in response) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      for await (const _ of response) {
+      } catch (error) {
+        reject(error);
       }
-    }
+    })();
   });
 }
 
@@ -99,40 +105,46 @@ export async function genInitialScene(
   const messages = itemizedPrompt.messages;
   messages.push({ role: 'user', name: 'User', content: processedPrompt });
 
-  return new Promise(async (resolve, reject) => {
-    const response = await api.llm.generate(messages, {
-      connectionProfile,
-      signal,
-      samplerOverrides: {
-        stream: false,
-      },
-      structuredResponse,
-      onCompletion: ({ structured_content, parse_error }) => {
-        if (structured_content) {
-          const scene = structured_content as Scene;
-          scene.characters = scene.characters.map((char) => ({
-            ...char,
-            id: uuidv4(),
-            ...(!generateUNEProfiles && {
-              une_profile: (() => {
-                const une = getCurrentUNE(api);
-                return genUNENpc(une.modifiers, une.nouns, une.motivation_verbs, une.motivation_nouns);
-              })(),
-            }),
-          }));
-          resolve(scene);
-        } else if (parse_error) {
-          reject(new Error(parse_error.message));
-        } else {
-          reject(new Error('No structured content or parse error'));
+  return new Promise((resolve, reject) => {
+    void (async () => {
+      try {
+        const response = await api.llm.generate(messages, {
+          connectionProfile,
+          signal,
+          samplerOverrides: {
+            stream: false,
+          },
+          structuredResponse,
+          onCompletion: ({ structured_content, parse_error }) => {
+            if (structured_content) {
+              const scene = structured_content as Scene;
+              scene.characters = scene.characters.map((char) => ({
+                ...char,
+                id: uuidv4(),
+                ...(!generateUNEProfiles && {
+                  une_profile: (() => {
+                    const une = getCurrentUNE(api);
+                    return genUNENpc(une.modifiers, une.nouns, une.motivation_verbs, une.motivation_nouns);
+                  })(),
+                }),
+              }));
+              resolve(scene);
+            } else if (parse_error) {
+              reject(new Error(parse_error.message));
+            } else {
+              reject(new Error('No structured content or parse error'));
+            }
+          },
+        });
+        if (Symbol.asyncIterator in response) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          for await (const _ of response) {
+          }
         }
-      },
-    });
-    if (Symbol.asyncIterator in response) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      for await (const _ of response) {
+      } catch (error) {
+        reject(error);
       }
-    }
+    })();
   });
 }
 
@@ -243,29 +255,35 @@ export async function generateNarrationAndSceneUpdate(
   itemizedPrompt.messages = messages;
   api.chat.addItemizedPrompt(itemizedPrompt);
 
-  return new Promise(async (resolve, reject) => {
-    const response = await api.llm.generate(messages, {
-      connectionProfile,
-      signal,
-      captureMessageIndex: messageIndex,
-      samplerOverrides: {
-        stream: false,
-      },
-      structuredResponse,
-      onCompletion: ({ structured_content, parse_error }) => {
-        if (structured_content) {
-          resolve(structured_content as { narration: string; sceneUpdate: SceneUpdate });
-        } else if (parse_error) {
-          reject(new Error(parse_error.message));
-        } else {
-          reject(new Error('No structured content or parse error'));
+  return new Promise((resolve, reject) => {
+    void (async () => {
+      try {
+        const response = await api.llm.generate(messages, {
+          connectionProfile,
+          signal,
+          captureMessageIndex: messageIndex,
+          samplerOverrides: {
+            stream: false,
+          },
+          structuredResponse,
+          onCompletion: ({ structured_content, parse_error }) => {
+            if (structured_content) {
+              resolve(structured_content as { narration: string; sceneUpdate: SceneUpdate });
+            } else if (parse_error) {
+              reject(new Error(parse_error.message));
+            } else {
+              reject(new Error('No structured content or parse error'));
+            }
+          },
+        });
+        if (Symbol.asyncIterator in response) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          for await (const _ of response) {
+          }
         }
-      },
-    });
-    if (Symbol.asyncIterator in response) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      for await (const _ of response) {
+      } catch (error) {
+        reject(error);
       }
-    }
+    })();
   });
 }
