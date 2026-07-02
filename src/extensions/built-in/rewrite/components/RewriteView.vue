@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import * as Diff from 'diff';
+import type { Change } from 'diff';
 import { ref, watch } from 'vue';
 import { useStrictI18n } from '../../../../composables/useStrictI18n';
 import type { FieldChange } from '../types';
@@ -69,7 +70,7 @@ function updateDiff() {
     let lHtml = '';
     let rHtml = '';
 
-    diff.forEach((part) => {
+    diff.forEach((part: Change) => {
       const escapedVal = escapeHtml(part.value);
       if (part.removed) {
         lHtml += `<span class="diff-del">${escapedVal}</span>`;

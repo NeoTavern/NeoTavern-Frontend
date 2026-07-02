@@ -149,19 +149,21 @@ const mockSamplerSettings: SamplerSettings = {
 describe('PromptBuilder', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (WorldInfoProcessor as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-      process: vi.fn().mockResolvedValue({
-        worldInfoBefore: '',
-        worldInfoAfter: '',
-        anBefore: [],
-        anAfter: [],
-        emBefore: [],
-        emAfter: [],
-        depthEntries: [],
-        outletEntries: {},
-        triggeredEntries: {},
-      }),
-    }));
+    (WorldInfoProcessor as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
+      return {
+        process: vi.fn().mockResolvedValue({
+          worldInfoBefore: '',
+          worldInfoAfter: '',
+          anBefore: [],
+          anAfter: [],
+          emBefore: [],
+          emAfter: [],
+          depthEntries: [],
+          outletEntries: {},
+          triggeredEntries: {},
+        }),
+      };
+    });
   });
 
   it('builds prompts with single character context', async () => {
@@ -437,22 +439,24 @@ describe('PromptBuilder', () => {
   });
 
   it('inserts World Info entries at specific depth', async () => {
-    (WorldInfoProcessor as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-      process: vi.fn().mockResolvedValue({
-        worldInfoBefore: '',
-        worldInfoAfter: '',
-        anBefore: [],
-        anAfter: [],
-        emBefore: [],
-        emAfter: [],
-        depthEntries: [
-          { depth: 0, role: 'system', entries: ['At Depth 0'] },
-          { depth: 1, role: 'system', entries: ['At Depth 1'] },
-        ],
-        outletEntries: {},
-        triggeredEntries: {},
-      }),
-    }));
+    (WorldInfoProcessor as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
+      return {
+        process: vi.fn().mockResolvedValue({
+          worldInfoBefore: '',
+          worldInfoAfter: '',
+          anBefore: [],
+          anAfter: [],
+          emBefore: [],
+          emAfter: [],
+          depthEntries: [
+            { depth: 0, role: 'system', entries: ['At Depth 0'] },
+            { depth: 1, role: 'system', entries: ['At Depth 1'] },
+          ],
+          outletEntries: {},
+          triggeredEntries: {},
+        }),
+      };
+    });
 
     const builder = new PromptBuilder({
       characters: [mockCharacter],
@@ -496,19 +500,21 @@ describe('PromptBuilder', () => {
   });
 
   it('inserts World Info entries around dialogue examples (EM)', async () => {
-    (WorldInfoProcessor as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
-      process: vi.fn().mockResolvedValue({
-        worldInfoBefore: '',
-        worldInfoAfter: '',
-        anBefore: [],
-        anAfter: [],
-        emBefore: ['EM Before'],
-        emAfter: ['EM After'],
-        depthEntries: [],
-        outletEntries: {},
-        triggeredEntries: {},
-      }),
-    }));
+    (WorldInfoProcessor as unknown as ReturnType<typeof vi.fn>).mockImplementation(function () {
+      return {
+        process: vi.fn().mockResolvedValue({
+          worldInfoBefore: '',
+          worldInfoAfter: '',
+          anBefore: [],
+          anAfter: [],
+          emBefore: ['EM Before'],
+          emAfter: ['EM After'],
+          depthEntries: [],
+          outletEntries: {},
+          triggeredEntries: {},
+        }),
+      };
+    });
 
     const emSettings: SamplerSettings = {
       ...mockSamplerSettings,

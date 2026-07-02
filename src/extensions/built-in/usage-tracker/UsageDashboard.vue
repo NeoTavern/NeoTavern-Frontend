@@ -289,7 +289,6 @@ function getBarWidth(value: number, total: number) {
 }
 
 // Simple SVG Line Chart Logic
-const chartContainer = ref<HTMLElement | null>(null);
 const chartWidth = 800;
 const chartHeight = 250;
 const padding = { top: 20, right: 20, bottom: 30, left: 50 };
@@ -474,7 +473,7 @@ const chartYLabels = computed(() => {
         <!-- Time Series Chart -->
         <div class="chart-container-wrapper card-base">
           <h3>Token Usage Over Time</h3>
-          <div v-if="chartPoints.length > 1" ref="chartContainer" class="svg-container">
+          <div v-if="chartPoints.length > 1" class="svg-container">
             <svg :viewBox="`0 0 ${chartWidth} ${chartHeight}`" preserveAspectRatio="none" class="usage-chart">
               <!-- Grid Lines -->
               <g class="grid">

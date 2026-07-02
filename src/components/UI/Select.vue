@@ -20,7 +20,7 @@ export interface Group<T> {
 
 export type SelectItem<T> = Option<T> | Group<T>;
 
-interface Props {
+export interface Props<T extends string | number> {
   modelValue: T | T[];
   options: SelectItem<T>[];
   label?: string;
@@ -33,7 +33,7 @@ interface Props {
   id?: string;
 }
 
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props<T>>(), {
   multiple: false,
   disabled: false,
   label: undefined,

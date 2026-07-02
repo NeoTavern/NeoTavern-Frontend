@@ -170,7 +170,7 @@ const logicOptions = [
             :model-value="modelValue?.position ?? WorldInfoPosition.BEFORE_CHAR"
             :options="positionOptions"
             :title="t('worldInfo.entry.positionTooltip')"
-            @update:model-value="(val) => updateValue('position', val as WorldInfoPosition)"
+            @update:model-value="updateValue('position', $event as WorldInfoPosition)"
           />
         </FormItem>
 
@@ -260,7 +260,7 @@ const logicOptions = [
             <Select
               :model-value="modelValue?.selectiveLogic ?? 0"
               :options="logicOptions"
-              @update:model-value="(val) => updateValue('selectiveLogic', Number(val))"
+              @update:model-value="updateValue('selectiveLogic', Number($event))"
             />
           </FormItem>
         </div>

@@ -1,17 +1,19 @@
-import { describe, expect, it, vi, type Mock } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { DEFAULT_FATE_CHART_DATA } from '../defaults';
-import { diceRoll, generateFullRandomEvent } from '../event-generator';
+import { generateFullRandomEvent } from '../event-generator';
 import { rollFate } from '../oracle';
 
-// Mock the event-generator module to control diceRoll
-vi.mock('../event-generator', async () => {
-  const actual = await vi.importActual('../event-generator');
-  return {
-    ...actual,
-    diceRoll: vi.fn(),
-    generateFullRandomEvent: actual.generateFullRandomEvent,
-  };
-});
+function withMockedRandom<T>(values: number[], callback: () => T): T {
+  const originalRandom = Math.random;
+  let index = 0;
+  Math.random = () => values[index++] ?? values[values.length - 1] ?? 0;
+
+  try {
+    return callback();
+  } finally {
+    Math.random = originalRandom;
+  }
+}
 
 describe('Mythic Agents Oracle', () => {
   it('should roll fate correctly for high odds', () => {
@@ -62,12 +64,14 @@ describe('Mythic Agents Oracle', () => {
       motivation_nouns: ['the village'],
     };
 
-    // Mock diceRoll calls
-    (diceRoll as Mock).mockReturnValueOnce(50); // Focus roll
-    (diceRoll as Mock).mockReturnValueOnce(0); // Action index
-    (diceRoll as Mock).mockReturnValueOnce(0); // Subject index
-
-    const result = generateFullRandomEvent(scene, eventGenerationData, uneSettings);
+    const result = withMockedRandom(
+      [
+        0.49, // Focus roll: 50
+        0, // Action index: 0
+        0, // Subject index: 0
+      ],
+      () => generateFullRandomEvent(scene, eventGenerationData, uneSettings),
+    );
     expect(result.focus).toBe('Test Focus');
     expect(result.action).toBe('action1');
     expect(result.subject).toBe('subject1');
@@ -107,15 +111,17 @@ describe('Mythic Agents Oracle', () => {
       motivation_nouns: ['the village'],
     };
 
-    // Mock diceRoll calls
-    (diceRoll as Mock).mockReturnValueOnce(50); // Focus
-    (diceRoll as Mock).mockReturnValueOnce(0); // Action index
-    (diceRoll as Mock).mockReturnValueOnce(0); // Subject index
-    (diceRoll as Mock).mockReturnValueOnce(0); // 'or' choice: 0 for left (random_pc)
-    (diceRoll as Mock).mockReturnValueOnce(0); // Random PC index
-    (diceRoll as Mock).mockReturnValueOnce(0); // Random thread index
-
-    const result = generateFullRandomEvent(scene, eventGenerationData, uneSettings);
+    const result = withMockedRandom(
+      [
+        0.49, // Focus roll: 50
+        0, // Action index: 0
+        0, // Subject index: 0
+        0, // 'or' choice: left branch (random_pc)
+        0, // Random PC index: 0
+        0, // Random thread index: 0
+      ],
+      () => generateFullRandomEvent(scene, eventGenerationData, uneSettings),
+    );
     expect(result.focus).toBe('Complex Focus');
     expect(result.characters).toHaveLength(1);
     expect(result.characters![0].name).toBe('Alice');

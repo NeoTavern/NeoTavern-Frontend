@@ -10,7 +10,7 @@
   &-selector {
     flex-grow: 1;
 
-    :deep(.form-item) {
+    .form-item {
       margin-bottom: 0;
     }
   }

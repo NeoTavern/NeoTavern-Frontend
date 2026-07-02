@@ -69,9 +69,9 @@
    If props.handleClass is passed, we expect the parent to style it.
    However, we ensure that hovering that class triggers the correct cursor.
 */
-:deep(.draggable-handle) {
+.draggable-handle {
   cursor: grab;
 }
-:deep(.draggable-handle:active) {
+.draggable-handle:active {
   cursor: grabbing;
 }

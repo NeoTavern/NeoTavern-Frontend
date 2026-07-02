@@ -255,7 +255,7 @@ onBeforeUnmount(() => {
                 :model-value="event.status"
                 :options="statusOptions"
                 title="Status"
-                @change="(value) => onStatusChange(event, value)"
+                @change="onStatusChange(event, $event)"
               />
               <input
                 v-model="dueDrafts[event.id]"
@@ -299,7 +299,7 @@ onBeforeUnmount(() => {
                 :model-value="event.status"
                 :options="statusOptions"
                 title="Status"
-                @change="(value) => onStatusChange(event, value)"
+                @change="onStatusChange(event, $event)"
               />
               <input
                 v-model="dueDrafts[event.id]"
@@ -343,7 +343,7 @@ onBeforeUnmount(() => {
                 :model-value="event.status"
                 :options="statusOptions"
                 title="Status"
-                @change="(value) => onStatusChange(event, value)"
+                @change="onStatusChange(event, $event)"
               />
               <input
                 v-model="dueDrafts[event.id]"
@@ -387,7 +387,7 @@ onBeforeUnmount(() => {
                 :model-value="event.status"
                 :options="statusOptions"
                 title="Status"
-                @change="(value) => onStatusChange(event, value)"
+                @change="onStatusChange(event, $event)"
               />
               <input
                 v-model="dueDrafts[event.id]"

@@ -101,7 +101,7 @@
   border: 1px solid var(--theme-border-color);
 }
 
-:deep(.swap-button) {
+.swap-button {
   opacity: 0.7;
 
   &:hover {
@@ -129,7 +129,7 @@
 .greeting-input-wrapper {
   flex-grow: 1;
 
-  :deep(.text-pole) {
+  .text-pole {
     margin: 0;
   }
 }

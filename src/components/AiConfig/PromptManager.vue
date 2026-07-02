@@ -203,7 +203,7 @@ function getBadgeClass(role?: StrictOmitString<MessageRole, 'tool'>) {
                   :model-value="prompt.role || 'system'"
                   :options="roleOptions"
                   @update:model-value="
-                    (v) => updatePromptField(index, 'role', v as StrictOmitString<MessageRole, 'tool'>)
+                    updatePromptField(index, 'role', $event as StrictOmitString<MessageRole, 'tool'>)
                   "
                 />
               </FormItem>

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { markRaw, ref, type Component } from 'vue';
+import { markRaw, ref, type Component, type Ref } from 'vue';
 import type { NavBarItemDefinition, SidebarDefinition } from '../types';
 import type {
   ChatFormOptionsMenuItemDefinition,
@@ -26,7 +26,32 @@ export interface ChatQuickActionGroupDefinition {
   visible?: boolean;
 }
 
-export const useComponentRegistryStore = defineStore('component-registry', () => {
+interface ComponentRegistryStoreSetup {
+  leftSidebarRegistry: Ref<Map<string, SidebarDefinition>>;
+  rightSidebarRegistry: Ref<Map<string, SidebarDefinition>>;
+  navBarRegistry: Ref<Map<string, NavBarItemDefinition>>;
+  textareaToolRegistry: Ref<Map<string, TextareaToolDefinition[]>>;
+  textareaToolRegexRegistry: Ref<RegexToolRegistration[]>;
+  chatSettingsTabRegistry: Ref<Map<string, ChatSettingsTabDefinition>>;
+  chatFormOptionsMenuRegistry: Ref<Map<string, ChatFormOptionsMenuItemDefinition>>;
+  chatQuickActionsRegistry: Ref<Map<string, ChatQuickActionGroupDefinition>>;
+  registerSidebar: (id: string, definition: Omit<SidebarDefinition, 'id'>, side: 'left' | 'right') => void;
+  unregisterSidebar: (id: string, side: 'left' | 'right') => void;
+  registerNavBarItem: (id: string, definition: Omit<NavBarItemDefinition, 'id'>) => void;
+  unregisterNavBarItem: (id: string) => void;
+  registerTextareaTool: (identifier: CodeMirrorTarget | string | RegExp, definition: TextareaToolDefinition) => void;
+  unregisterTextareaTool: (identifier: CodeMirrorTarget | string | RegExp, toolId: string) => void;
+  getTextareaTools: (identifier: string) => TextareaToolDefinition[];
+  registerChatFormOptionsMenuItem: (item: ChatFormOptionsMenuItemDefinition) => void;
+  unregisterChatFormOptionsMenuItem: (id: string) => void;
+  registerChatQuickAction: (groupId: string, groupLabel: string, action: ChatQuickActionDefinition) => void;
+  unregisterChatQuickAction: (groupId: string, actionId: string) => void;
+  registerChatSettingsTab: (id: string, title: string, component: Component) => void;
+  unregisterChatSettingsTab: (id: string) => void;
+  getNavBarItem: (id: string) => NavBarItemDefinition | undefined;
+}
+
+export const useComponentRegistryStore = defineStore('component-registry', (): ComponentRegistryStoreSetup => {
   const leftSidebarRegistry = ref<Map<string, SidebarDefinition>>(new Map());
   const rightSidebarRegistry = ref<Map<string, SidebarDefinition>>(new Map());
   const navBarRegistry = ref<Map<string, NavBarItemDefinition>>(new Map());
