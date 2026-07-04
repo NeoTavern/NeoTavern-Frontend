@@ -1,5 +1,5 @@
 import { markRaw } from 'vue';
-import type { ExtensionAPI } from '../../../types';
+import type { Character, ExtensionAPI } from '../../../types';
 import { MountableComponent, type TextareaToolDefinition } from '../../../types/ExtensionAPI';
 import type { CodeMirrorTarget } from '../../../types/settings';
 import { manifest } from './manifest';
@@ -11,6 +11,17 @@ export { manifest };
 
 export function activate(api: ExtensionAPI<RewriteSettings>) {
   const t = api.i18n.t;
+  const alternateGreetingFieldPrefix = 'alternate_greetings.';
+  type GlobalCharacterFieldId = 'description' | 'personality' | 'scenario' | 'first_mes' | 'mes_example';
+
+  const getAlternateGreetingFieldId = (index: number) => `${alternateGreetingFieldPrefix}${index + 1}`;
+
+  const getAlternateGreetingIndex = (fieldId: string) => {
+    if (!fieldId.startsWith(alternateGreetingFieldPrefix)) return null;
+
+    const position = Number(fieldId.slice(alternateGreetingFieldPrefix.length));
+    return Number.isInteger(position) && position > 0 ? position - 1 : null;
+  };
 
   const settingsContainer = document.getElementById(api.meta.containerId);
   if (settingsContainer) {
@@ -73,11 +84,18 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
     const char = api.character.getEditing();
     if (!char) return;
 
+    const alternateGreetingFields: RewriteField[] = (char.data?.alternate_greetings || []).map((greeting, index) => ({
+      id: getAlternateGreetingFieldId(index),
+      label: `Alternate Greeting ${index + 1}`,
+      value: greeting,
+    }));
+
     const fields: RewriteField[] = [
       { id: 'description', label: 'Description', value: char.description || '' },
       { id: 'personality', label: 'Personality', value: char.personality || '' },
       { id: 'scenario', label: 'Scenario', value: char.scenario || '' },
       { id: 'first_mes', label: 'First Message', value: char.first_mes || '' },
+      ...alternateGreetingFields,
       { id: 'mes_example', label: 'Example Messages', value: char.mes_example || '' },
     ];
 
@@ -85,11 +103,35 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
       {
         fields,
         onApply: (changes) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const updates: Record<string, any> = {};
+          const updates: Partial<Character> = {};
+          const alternateGreetings = [...(char.data?.alternate_greetings || [])];
+
           changes.forEach((change) => {
-            updates[change.fieldId] = change.newValue;
+            const alternateGreetingIndex = getAlternateGreetingIndex(change.fieldId);
+            if (alternateGreetingIndex !== null) {
+              alternateGreetings[alternateGreetingIndex] = change.newValue;
+              return;
+            }
+
+            const fieldId = change.fieldId as GlobalCharacterFieldId;
+            switch (fieldId) {
+              case 'description':
+              case 'personality':
+              case 'scenario':
+              case 'first_mes':
+              case 'mes_example':
+                updates[fieldId] = change.newValue;
+                break;
+            }
           });
+
+          if (changes.some((change) => getAlternateGreetingIndex(change.fieldId) !== null)) {
+            updates.data = {
+              ...char.data,
+              alternate_greetings: alternateGreetings,
+            };
+          }
+
           api.character.update(char.avatar, updates);
         },
       },

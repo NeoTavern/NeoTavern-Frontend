@@ -170,8 +170,8 @@ Initial character state is provided in the context.
 A Character Card is a blueprint for a person. It covers:
 - Description: Their look and the life they’ve lived.
 - Personality: Their hang-ups, their habits, and the "why" behind their behavior.
-- First Message: The hook that shows us who they are right now.
 - Scenario: The trouble they’re currently in.
+- First Message and Alternate Greetings: Hooks that show who they are right now.
 - Dialogue Examples: How they actually sound when they open their mouth.
 
 [Current Character Data]
@@ -193,6 +193,10 @@ First Message: {{first_mes}}
 {{/unless}}{{else}}
 First Message: {{first_mes}}
 {{/if}}
+{{/if}}
+{{#if alternate_greetings}}
+Alternate Greetings:
+{{alternate_greetings}}
 {{/if}}
 {{#if mes_example}}
 Dialogue Examples: {{mes_example}}

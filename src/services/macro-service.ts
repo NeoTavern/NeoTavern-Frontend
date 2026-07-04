@@ -66,6 +66,8 @@ export class MacroService {
       scenario: primaryChar?.scenario || '',
       mes_example: primaryChar?.mes_example || '',
       first_mes: primaryChar?.first_mes || '',
+      alternate_greetings:
+        primaryChar?.data?.alternate_greetings?.map((greeting, index) => `${index + 1}. ${greeting}`).join('\n') || '',
 
       chars: data.characters.map((c) => c.name),
     };
