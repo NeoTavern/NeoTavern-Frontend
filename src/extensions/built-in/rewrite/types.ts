@@ -57,6 +57,7 @@ export interface RewriteTemplate {
   sessionPreamble: string; // The base system prompt for chat sessions
   args?: RewriteTemplateArg[];
   ignoreInput?: boolean; // If true, the template doesn't use {{input}} and UI should hide input-related controls
+  builtIn?: boolean;
 }
 
 export type StructuredResponseFormat = 'native' | 'json' | 'xml' | 'text';
@@ -356,6 +357,7 @@ export const DEFAULT_TEMPLATES: RewriteTemplate[] = [
   {
     id: 'fix-grammar',
     name: 'Fix Grammar',
+    builtIn: true,
     prompt: 'Correct grammar, spelling, and punctuation while maintaining the original tone.',
     sessionPreamble: fixGrammarPreamble,
     template: `${fixGrammarPreamble}${ONE_SHOT_SUFFIX}`,
@@ -379,6 +381,7 @@ export const DEFAULT_TEMPLATES: RewriteTemplate[] = [
   {
     id: 'character-polisher',
     name: 'Character Card Polisher',
+    builtIn: true,
     prompt: 'Refine the text to be more evocative, show-dont-tell, and consistent with the character definition.',
     sessionPreamble: characterPolisherPreamble,
     template: `${characterPolisherPreamble}${ONE_SHOT_SUFFIX}`,
@@ -401,6 +404,7 @@ export const DEFAULT_TEMPLATES: RewriteTemplate[] = [
   {
     id: 'world-info-refiner',
     name: 'World Info Refiner',
+    builtIn: true,
     prompt: 'Improve clarity, conciseness, and formatting of the World Info entry.',
     sessionPreamble: worldInfoRefinerPreamble,
     template: `${worldInfoRefinerPreamble}${ONE_SHOT_SUFFIX}`,
@@ -423,6 +427,7 @@ export const DEFAULT_TEMPLATES: RewriteTemplate[] = [
   {
     id: 'generic',
     name: 'Generic Instruction',
+    builtIn: true,
     prompt: 'Rewrite the text following these instructions: ...',
     sessionPreamble: genericPreamble,
     template: `${genericPreamble}${ONE_SHOT_SUFFIX}`,
@@ -446,6 +451,7 @@ export const DEFAULT_TEMPLATES: RewriteTemplate[] = [
   {
     id: 'summarize-chat-history',
     name: 'Summarize Chat History',
+    builtIn: true,
     prompt: 'Condense the chat history to its key points while preserving essential information.',
     sessionPreamble: summarizePreamble,
     template: `${summarizePreamble}
@@ -470,3 +476,74 @@ Response:
     ],
   },
 ];
+
+function cloneTemplate(template: RewriteTemplate): RewriteTemplate {
+  return JSON.parse(JSON.stringify(template)) as RewriteTemplate;
+}
+
+function areTemplatesEqual(left: RewriteTemplate, right: RewriteTemplate): boolean {
+  return (
+    left.name === right.name &&
+    left.prompt === right.prompt &&
+    left.template === right.template &&
+    left.sessionPreamble === right.sessionPreamble &&
+    (left.ignoreInput ?? false) === (right.ignoreInput ?? false) &&
+    JSON.stringify(left.args ?? []) === JSON.stringify(right.args ?? [])
+  );
+}
+
+function uniqueTemplateId(baseId: string, templates: RewriteTemplate[]): string {
+  const ids = new Set(templates.map((template) => template.id));
+  if (!ids.has(baseId)) return baseId;
+
+  let index = 2;
+  while (ids.has(`${baseId}-${index}`)) index++;
+  return `${baseId}-${index}`;
+}
+
+export function migrateRewriteSettings(settings: Partial<RewriteSettings> = {}): RewriteSettings {
+  const savedTemplates = settings.templates ?? [];
+  const migratedTemplates = DEFAULT_TEMPLATES.map(cloneTemplate);
+  const idRemap = new Map<string, string>();
+
+  for (const savedTemplate of savedTemplates) {
+    const builtInTemplate = DEFAULT_TEMPLATES.find((template) => template.id === savedTemplate.id);
+
+    if (!builtInTemplate) {
+      migratedTemplates.push({ ...cloneTemplate(savedTemplate), builtIn: false });
+      continue;
+    }
+
+    if (areTemplatesEqual(savedTemplate, builtInTemplate)) continue;
+
+    const customId = uniqueTemplateId(`custom-${savedTemplate.id}`, migratedTemplates);
+    idRemap.set(savedTemplate.id, customId);
+    migratedTemplates.push({
+      ...cloneTemplate(savedTemplate),
+      id: customId,
+      name: `Custom ${savedTemplate.name}`,
+      builtIn: false,
+    });
+  }
+
+  const lastUsedTemplates = { ...(settings.lastUsedTemplates ?? {}) };
+  for (const [identifier, templateId] of Object.entries(lastUsedTemplates)) {
+    lastUsedTemplates[identifier] = idRemap.get(templateId) ?? templateId;
+  }
+
+  const templateOverrides = { ...(settings.templateOverrides ?? {}) };
+  for (const [templateId, remappedId] of idRemap.entries()) {
+    if (templateOverrides[templateId] && !templateOverrides[remappedId]) {
+      templateOverrides[remappedId] = templateOverrides[templateId];
+      delete templateOverrides[templateId];
+    }
+  }
+
+  return {
+    templates: migratedTemplates,
+    defaultConnectionProfile: settings.defaultConnectionProfile ?? '',
+    lastUsedTemplates,
+    templateOverrides,
+    disabledTools: settings.disabledTools ?? [],
+  };
+}

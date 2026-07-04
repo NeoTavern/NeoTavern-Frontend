@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
-import { FormItem, Input, Select, Textarea } from '../../../components/UI';
+import { FormItem, Input, Select } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
-import type { TextareaToolDefinition } from '../../../types/ExtensionAPI';
-import { AutoTranslateMode, type ChatTranslationSettings, DEFAULT_PROMPT } from './types';
+import PromptPresetField from '../PromptPresetField.vue';
+import {
+  AutoTranslateMode,
+  BUILT_IN_PROMPT_PRESETS,
+  type ChatTranslationSettings,
+  DEFAULT_SETTINGS,
+  migrateChatTranslationSettings,
+} from './types';
 
 const props = defineProps<{
   api: ExtensionAPI;
@@ -12,13 +18,7 @@ const props = defineProps<{
 
 const t = props.api.i18n.t;
 
-const settings = ref<ChatTranslationSettings>({
-  connectionProfile: '',
-  sourceLang: 'Auto',
-  targetLang: 'English',
-  autoMode: AutoTranslateMode.NONE,
-  prompt: DEFAULT_PROMPT,
-});
+const settings = ref<ChatTranslationSettings>({ ...DEFAULT_SETTINGS });
 
 const autoModeOptions = computed(() => [
   { label: t('extensionsBuiltin.chatTranslation.autoMode.none'), value: AutoTranslateMode.NONE },
@@ -28,10 +28,7 @@ const autoModeOptions = computed(() => [
 ]);
 
 onMounted(() => {
-  const saved = props.api.settings.get();
-  if (saved) {
-    settings.value = { ...settings.value, ...saved };
-  }
+  settings.value = migrateChatTranslationSettings(props.api.settings.get());
 });
 
 watch(
@@ -43,16 +40,7 @@ watch(
   { deep: true },
 );
 
-const promptTools = computed<TextareaToolDefinition[]>(() => [
-  {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: t('common.reset'),
-    onClick: ({ setValue }) => {
-      setValue(DEFAULT_PROMPT);
-    },
-  },
-]);
+const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 </script>
 
 <template>
@@ -81,19 +69,19 @@ const promptTools = computed<TextareaToolDefinition[]>(() => [
       <Select v-model="settings.autoMode" :options="autoModeOptions" />
     </FormItem>
 
-    <FormItem
+    <PromptPresetField
+      :api="api"
+      :active-preset-id="settings.activePromptPresetId"
+      :prompt-presets="settings.promptPresets"
+      :built-in-presets="builtInPromptPresets"
+      prompt-key="prompt"
       :label="t('extensionsBuiltin.chatTranslation.promptTemplate')"
       :description="t('extensionsBuiltin.chatTranslation.promptHint')"
-    >
-      <Textarea
-        v-model="settings.prompt"
-        allow-maximize
-        class="prompt-area"
-        :rows="10"
-        identifier="extension.chat-translation.prompt"
-        :tools="promptTools"
-      />
-    </FormItem>
+      identifier="extension.chat-translation.prompt"
+      :rows="10"
+      @update:active-preset-id="settings.activePromptPresetId = $event"
+      @update:prompt-presets="settings.promptPresets = $event"
+    />
   </div>
 </template>
 
@@ -107,10 +95,5 @@ const promptTools = computed<TextareaToolDefinition[]>(() => [
 .setting-row {
   display: flex;
   gap: 8px;
-}
-
-.prompt-area {
-  font-family: var(--font-family-mono);
-  font-size: 0.9em;
 }
 </style>

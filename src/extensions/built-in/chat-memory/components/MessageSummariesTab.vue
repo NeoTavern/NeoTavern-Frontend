@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { Button, FormItem, Input, Textarea, Toggle } from '../../../../components/UI';
+import { Button, FormItem, Input, Toggle } from '../../../../components/UI';
 import type { ExtensionAPI } from '../../../../types';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../../types';
-import type { TextareaToolDefinition } from '../../../../types/ExtensionAPI';
+import PromptPresetField from '../../PromptPresetField.vue';
 import {
-  DEFAULT_MESSAGE_SUMMARY_PROMPT,
+  BUILT_IN_PROMPT_PRESETS,
   type ChatMemoryMetadata,
   type ExtensionSettings,
   type MemoryMessageExtra,
+  migrateChatMemorySettings,
+  resolveChatMemoryPrompts,
 } from '../types';
 import TimelineVisualizer, { type TimelineSegment } from './TimelineVisualizer.vue';
 
@@ -20,13 +22,15 @@ const props = defineProps<{
 const t = props.api.i18n.t;
 
 // State
-const messageSummaryPrompt = ref<string>(DEFAULT_MESSAGE_SUMMARY_PROMPT);
 const enableMessageSummarization = ref(false);
 const autoMessageSummarize = ref(false);
 const ignoreSummaryCount = ref(100);
+const activePromptPresetId = ref<string>('default');
+const promptPresets = ref<ExtensionSettings['promptPresets']>([]);
 const bulkProgress = ref<{ current: number; total: number } | null>(null);
 const isGenerating = ref(false);
 const abortController = ref<AbortController | null>(null);
+const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 
 // Range State
 const startIndex = ref<number>(0);
@@ -140,27 +144,14 @@ const countSummarizedInRange = computed(() => {
   return count;
 });
 
-const promptTools = computed<TextareaToolDefinition[]>(() => [
-  {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: t('common.reset'),
-    onClick: ({ setValue }) => {
-      setValue(DEFAULT_MESSAGE_SUMMARY_PROMPT);
-    },
-  },
-]);
-
 // Methods
 function loadSettings() {
-  const settings = props.api.settings.get();
-  if (settings) {
-    if (settings.enableMessageSummarization !== undefined)
-      enableMessageSummarization.value = settings.enableMessageSummarization;
-    if (settings.autoMessageSummarize !== undefined) autoMessageSummarize.value = settings.autoMessageSummarize;
-    if (settings.messageSummaryPrompt) messageSummaryPrompt.value = settings.messageSummaryPrompt;
-    if (settings.ignoreSummaryCount !== undefined) ignoreSummaryCount.value = settings.ignoreSummaryCount;
-  }
+  const settings = migrateChatMemorySettings(props.api.settings.get());
+  enableMessageSummarization.value = settings.enableMessageSummarization;
+  autoMessageSummarize.value = settings.autoMessageSummarize;
+  ignoreSummaryCount.value = settings.ignoreSummaryCount;
+  activePromptPresetId.value = settings.activePromptPresetId ?? 'default';
+  promptPresets.value = settings.promptPresets ?? [];
 
   // Load Chat Metadata for Range
   const currentMetadata = props.api.chat.metadata.get();
@@ -178,10 +169,14 @@ function loadSettings() {
 
 async function saveSettings() {
   // Save Global
-  props.api.settings.set('enableMessageSummarization', enableMessageSummarization.value);
-  props.api.settings.set('autoMessageSummarize', autoMessageSummarize.value);
-  props.api.settings.set('messageSummaryPrompt', messageSummaryPrompt.value);
-  props.api.settings.set('ignoreSummaryCount', ignoreSummaryCount.value);
+  props.api.settings.set(undefined, {
+    ...migrateChatMemorySettings(props.api.settings.get()),
+    enableMessageSummarization: enableMessageSummarization.value,
+    autoMessageSummarize: autoMessageSummarize.value,
+    ignoreSummaryCount: ignoreSummaryCount.value,
+    activePromptPresetId: activePromptPresetId.value,
+    promptPresets: promptPresets.value,
+  });
   props.api.settings.save();
   // @ts-expect-error extension event
   await props.api.events.emit('chat-memory:refresh-ui');
@@ -260,7 +255,14 @@ async function summarizeRange(mode: 'missing-only' | 'force-all') {
       if (abortController.value?.signal.aborted) break;
 
       const msg = history[idx];
-      const prompt = props.api.macro.process(messageSummaryPrompt.value, undefined, { text: msg.mes });
+      const settings = migrateChatMemorySettings({
+        ...props.api.settings.get(),
+        activePromptPresetId: activePromptPresetId.value,
+        promptPresets: promptPresets.value,
+      });
+      const prompt = props.api.macro.process(resolveChatMemoryPrompts(settings).messageSummaryPrompt, undefined, {
+        text: msg.mes,
+      });
 
       const response = await props.api.llm.generate([{ role: 'system', content: prompt, name: 'System' }], {
         connectionProfile: props.connectionProfile,
@@ -385,7 +387,15 @@ onUnmounted(() => {
 });
 
 watch(
-  [enableMessageSummarization, autoMessageSummarize, messageSummaryPrompt, ignoreSummaryCount, startIndex, endIndex],
+  [
+    enableMessageSummarization,
+    autoMessageSummarize,
+    activePromptPresetId,
+    promptPresets,
+    ignoreSummaryCount,
+    startIndex,
+    endIndex,
+  ],
   () => {
     saveSettings();
   },
@@ -416,18 +426,19 @@ watch(
       >
         <Input v-model.number="ignoreSummaryCount" type="number" :min="0" />
       </FormItem>
-      <FormItem
+      <PromptPresetField
+        :api="api"
+        :active-preset-id="activePromptPresetId"
+        :prompt-presets="promptPresets"
+        :built-in-presets="builtInPromptPresets"
+        prompt-key="messageSummaryPrompt"
         :label="t('extensionsBuiltin.chatMemory.settings.promptLabel')"
         :description="t('extensionsBuiltin.chatMemory.settings.promptDesc')"
-      >
-        <Textarea
-          v-model="messageSummaryPrompt"
-          :rows="4"
-          allow-maximize
-          :tools="promptTools"
-          identifier="extension.chat-memory.message-prompt"
-        />
-      </FormItem>
+        identifier="extension.chat-memory.message-prompt"
+        :rows="4"
+        @update:active-preset-id="activePromptPresetId = $event"
+        @update:prompt-presets="promptPresets = $event"
+      />
     </div>
 
     <div class="section highlight">

@@ -1,6 +1,6 @@
 import Handlebars from 'handlebars';
 import type { ApiChatMessage, ExtensionAPI } from '../../../types';
-import { type ChatTranslationSettings, DEFAULT_PROMPT } from './types';
+import { type ChatTranslationSettings, migrateChatTranslationSettings, resolveChatTranslationPrompts } from './types';
 
 // TODO: i18n
 
@@ -8,15 +8,7 @@ export class Translator {
   constructor(private api: ExtensionAPI<ChatTranslationSettings>) {}
 
   private getSettings(): ChatTranslationSettings {
-    return (
-      this.api.settings.get() || {
-        connectionProfile: undefined,
-        sourceLang: 'Auto',
-        targetLang: 'English',
-        autoMode: 'none',
-        prompt: DEFAULT_PROMPT,
-      }
-    );
+    return migrateChatTranslationSettings(this.api.settings.get());
   }
 
   async translateMessage(messageIndex: number): Promise<void> {
@@ -47,7 +39,7 @@ export class Translator {
 
     try {
       // Compile Prompt
-      const template = Handlebars.compile(settings.prompt, { noEscape: true });
+      const template = Handlebars.compile(resolveChatTranslationPrompts(settings).prompt, { noEscape: true });
       const prompt = template({
         language: settings.targetLang, // Support legacy {{language}}
         targetLang: settings.targetLang,
@@ -130,7 +122,7 @@ export class Translator {
     this.api.ui.showToast('Translating input...', 'info');
 
     try {
-      const template = Handlebars.compile(settings.prompt, { noEscape: true });
+      const template = Handlebars.compile(resolveChatTranslationPrompts(settings).prompt, { noEscape: true });
       const prompt = template({
         language: targetLang,
         targetLang: targetLang,

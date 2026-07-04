@@ -1,6 +1,11 @@
 import Bowser from 'bowser';
 import type { ApiChatMessage, Character, ChatMessage, ExtensionAPI } from '../../../types';
-import { DEFAULT_SETTINGS, type LiveCommentarySettings, type RecentCommentary } from './types';
+import {
+  type LiveCommentarySettings,
+  type RecentCommentary,
+  migrateLiveCommentarySettings,
+  resolveLiveCommentaryPrompts,
+} from './types';
 
 // TODO: i18n
 
@@ -56,10 +61,9 @@ export class Commentator {
   constructor(private api: ExtensionAPI<LiveCommentarySettings>) {}
 
   private getSettings(): LiveCommentarySettings {
-    return {
-      ...DEFAULT_SETTINGS,
-      ...(this.api.settings.get() || {}),
-    };
+    const settings = migrateLiveCommentarySettings(this.api.settings.get());
+    this.api.settings.set(undefined, settings);
+    return settings;
   }
 
   public trigger(userInput: string): void {
@@ -238,7 +242,7 @@ export class Commentator {
       }
 
       const prompt = this.api.macro.process(
-        settings.prompt,
+        resolveLiveCommentaryPrompts(settings).prompt,
         {
           activeCharacter: character,
           characters: allActiveChars,
@@ -463,7 +467,7 @@ export class Commentator {
     const activeCharacters = this.api.character.getActives();
 
     const prompt = this.api.macro.process(
-      settings.askPrompt,
+      resolveLiveCommentaryPrompts(settings).askPrompt,
       {
         activeCharacter: activeCharacters[0],
         characters: activeCharacters,

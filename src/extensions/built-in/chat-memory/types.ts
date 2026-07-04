@@ -1,3 +1,10 @@
+import {
+  migratePromptPresetState,
+  resolvePromptPreset,
+  type PromptPreset,
+  type PromptPresetState,
+} from '../prompt-presets';
+
 export interface ChatMemoryRecord {
   bookName: string;
   entryUid: number;
@@ -23,15 +30,20 @@ export interface MemoryMessageExtra {
   };
 }
 
-export interface ExtensionSettings {
+export type ChatMemoryPrompts = {
+  prompt: string;
+  messageSummaryPrompt: string;
+};
+
+export interface ExtensionSettings extends PromptPresetState<ChatMemoryPrompts> {
   connectionProfile: string;
-  prompt: string; // Lorebook summary prompt
+  prompt?: string; // Legacy lorebook summary prompt
   autoHideMessages: boolean;
 
   // Message Summary Settings
   enableMessageSummarization: boolean;
   autoMessageSummarize: boolean;
-  messageSummaryPrompt: string;
+  messageSummaryPrompt?: string;
   ignoreSummaryCount: number;
 }
 
@@ -72,3 +84,48 @@ Example format:
 \`\`\`
 He agreed to the terms and shook hands.
 \`\`\``;
+
+export const BUILT_IN_PROMPT_PRESETS: PromptPreset<ChatMemoryPrompts>[] = [
+  {
+    id: 'default',
+    name: 'Default',
+    builtIn: true,
+    prompts: {
+      prompt: DEFAULT_PROMPT,
+      messageSummaryPrompt: DEFAULT_MESSAGE_SUMMARY_PROMPT,
+    },
+  },
+];
+
+export const DEFAULT_SETTINGS: ExtensionSettings = {
+  connectionProfile: '',
+  autoHideMessages: true,
+  enableMessageSummarization: false,
+  autoMessageSummarize: false,
+  ignoreSummaryCount: 100,
+  activePromptPresetId: 'default',
+  promptPresets: [],
+  promptPresetMigrationVersion: 1,
+};
+
+export function migrateChatMemorySettings(settings: Partial<ExtensionSettings> = {}): ExtensionSettings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...migratePromptPresetState({
+      settings: { ...DEFAULT_SETTINGS, ...settings },
+      builtInPresets: BUILT_IN_PROMPT_PRESETS,
+      legacyPrompts: {
+        prompt: settings.prompt,
+        messageSummaryPrompt: settings.messageSummaryPrompt,
+      },
+      legacyDefaults: {
+        prompt: DEFAULT_PROMPT,
+        messageSummaryPrompt: DEFAULT_MESSAGE_SUMMARY_PROMPT,
+      },
+    }),
+  };
+}
+
+export function resolveChatMemoryPrompts(settings: ExtensionSettings): ChatMemoryPrompts {
+  return resolvePromptPreset(settings, BUILT_IN_PROMPT_PRESETS).prompts;
+}

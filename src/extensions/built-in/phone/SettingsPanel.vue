@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
-import { FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
-import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
+import { FormItem, Input, Select, Toggle } from '../../../components/UI';
+import PromptPresetField from '../PromptPresetField.vue';
 import {
-  DEFAULT_CONTACT_PROMPT,
+  BUILT_IN_PROMPT_PRESETS,
   DEFAULT_SETTINGS,
-  DEFAULT_SMS_PROMPT,
   type PhoneExtensionAPI,
   type PhoneSettings,
+  migratePhoneSettings,
 } from './types';
 
 const props = defineProps<{
@@ -16,10 +16,9 @@ const props = defineProps<{
 }>();
 
 const settings = ref<PhoneSettings>({ ...DEFAULT_SETTINGS });
-const t = props.api.i18n.t;
 
 onMounted(() => {
-  settings.value = { ...DEFAULT_SETTINGS, ...props.api.settings.get() };
+  settings.value = migratePhoneSettings(props.api.settings.get());
 });
 
 watch(
@@ -37,28 +36,7 @@ const formatOptions = [
   { label: 'XML', value: 'xml' },
 ];
 
-function resetTool(defaultValue: string, label: string) {
-  return [
-    {
-      id: `reset-${label}`,
-      icon: 'fa-rotate-left',
-      title: t('common.reset'),
-      onClick: async ({ setValue }: { setValue: (value: string) => void }) => {
-        const { result } = await props.api.ui.showPopup({
-          title: `Reset ${label} Prompt?`,
-          content: `Reset the ${label.toLowerCase()} prompt to its default value?`,
-          type: POPUP_TYPE.CONFIRM,
-          okButton: 'common.reset',
-          cancelButton: 'common.cancel',
-        });
-        if (result === POPUP_RESULT.AFFIRMATIVE) setValue(defaultValue);
-      },
-    },
-  ];
-}
-
-const contactPromptTools = computed(() => resetTool(DEFAULT_CONTACT_PROMPT, 'Contact'));
-const smsPromptTools = computed(() => resetTool(DEFAULT_SMS_PROMPT, 'SMS'));
+const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 </script>
 
 <template>
@@ -86,24 +64,30 @@ const smsPromptTools = computed(() => resetTool(DEFAULT_SMS_PROMPT, 'SMS'));
     </FormItem>
 
     <div class="phone-settings__group">AI Prompts</div>
-    <FormItem label="Contact Prompt">
-      <Textarea
-        v-model="settings.contactPrompt"
-        allow-maximize
-        :rows="10"
-        identifier="extension.phone.contactPrompt"
-        :tools="contactPromptTools"
-      />
-    </FormItem>
-    <FormItem label="SMS Prompt">
-      <Textarea
-        v-model="settings.smsPrompt"
-        allow-maximize
-        :rows="12"
-        identifier="extension.phone.smsPrompt"
-        :tools="smsPromptTools"
-      />
-    </FormItem>
+    <PromptPresetField
+      :api="api"
+      :active-preset-id="settings.activePromptPresetId"
+      :prompt-presets="settings.promptPresets"
+      :built-in-presets="builtInPromptPresets"
+      prompt-key="contactPrompt"
+      label="Contact Prompt"
+      identifier="extension.phone.contactPrompt"
+      :rows="10"
+      @update:active-preset-id="settings.activePromptPresetId = $event"
+      @update:prompt-presets="settings.promptPresets = $event"
+    />
+    <PromptPresetField
+      :api="api"
+      :active-preset-id="settings.activePromptPresetId"
+      :prompt-presets="settings.promptPresets"
+      :built-in-presets="builtInPromptPresets"
+      prompt-key="smsPrompt"
+      label="SMS Prompt"
+      identifier="extension.phone.smsPrompt"
+      :rows="12"
+      @update:active-preset-id="settings.activePromptPresetId = $event"
+      @update:prompt-presets="settings.promptPresets = $event"
+    />
   </div>
 </template>
 

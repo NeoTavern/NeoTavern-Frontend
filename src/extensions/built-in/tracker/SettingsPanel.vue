@@ -11,6 +11,7 @@ import {
   type TrackerMessageExtra,
   type TrackerSchemaPreset,
   type TrackerSettings,
+  migrateTrackerSettings,
 } from './types';
 
 const props = defineProps<{
@@ -25,12 +26,7 @@ const settings = ref<TrackerSettings>({ ...DEFAULT_SETTINGS });
 const schemaError = ref<string | null>(null);
 
 onMounted(() => {
-  const saved = props.api.settings.get();
-  if (saved) {
-    // Ensure presets array exists and has content if saved settings are old/malformed
-    const presets = saved.schemaPresets && saved.schemaPresets.length > 0 ? saved.schemaPresets : DEFAULT_PRESETS;
-    settings.value = { ...DEFAULT_SETTINGS, ...saved, schemaPresets: presets };
-  }
+  settings.value = migrateTrackerSettings(props.api.settings.get());
 });
 
 watch(
@@ -45,6 +41,8 @@ watch(
 const activePreset = computed(() => {
   return settings.value.schemaPresets.find((p) => p.name === settings.value.activeSchemaPresetName);
 });
+
+const isActivePresetBuiltIn = computed(() => !!activePreset.value?.builtIn);
 
 watch(
   () => activePreset.value?.schema,
@@ -88,6 +86,7 @@ async function handlePresetCreate() {
       : JSON.parse(JSON.stringify(DEFAULT_PRESETS[0])); // Or copy default
 
     newPreset.name = value;
+    newPreset.builtIn = false;
     settings.value.schemaPresets.push(newPreset);
     settings.value.activeSchemaPresetName = value;
     props.api.ui.showToast(t('extensionsBuiltin.tracker.toasts.presetCreated'), 'success');
@@ -95,7 +94,7 @@ async function handlePresetCreate() {
 }
 
 async function handlePresetEdit() {
-  if (!activePreset.value) return;
+  if (!activePreset.value || activePreset.value.builtIn) return;
   const oldName = activePreset.value.name;
 
   const { result, value } = await props.api.ui.showPopup({
@@ -119,7 +118,7 @@ async function handlePresetEdit() {
 }
 
 async function handlePresetDelete() {
-  if (!activePreset.value || settings.value.schemaPresets.length <= 1) {
+  if (!activePreset.value || activePreset.value.builtIn || settings.value.schemaPresets.length <= 1) {
     props.api.ui.showToast(t('extensionsBuiltin.tracker.toasts.cannotDeleteLastPreset'), 'warning');
     return;
   }
@@ -178,19 +177,15 @@ const deltaModeOptions = [
   { label: 'Always', value: 'always' },
 ];
 
-const defaultActivePreset = computed(() => {
-  if (!activePreset.value) return null;
-  return DEFAULT_PRESETS.find((p) => p.name === activePreset.value?.name) ?? null;
-});
-
 const schemaTools = computed(() => [
   {
     id: 'reset',
     icon: 'fa-rotate-left',
     title: t('common.reset'),
-    disabled: !defaultActivePreset.value,
+    disabled: true,
     onClick: async ({ setValue }: { setValue: (v: string) => void }) => {
-      if (!defaultActivePreset.value) return;
+      const defaultActivePreset = DEFAULT_PRESETS.find((p) => p.name === activePreset.value?.name) ?? null;
+      if (!defaultActivePreset) return;
       const { result } = await props.api.ui.showPopup({
         title: 'Reset Schema?',
         content: `Are you sure you want to reset the schema for "${activePreset.value?.name}" to its default value?`,
@@ -198,7 +193,7 @@ const schemaTools = computed(() => [
         okButton: 'common.reset',
       });
       if (result === POPUP_RESULT.AFFIRMATIVE) {
-        setValue(defaultActivePreset.value.schema);
+        setValue(defaultActivePreset.schema);
         props.api.ui.showToast('Schema has been reset.', 'success');
       }
     },
@@ -210,9 +205,10 @@ const templateTools = computed(() => [
     id: 'reset',
     icon: 'fa-rotate-left',
     title: t('common.reset'),
-    disabled: !defaultActivePreset.value,
+    disabled: true,
     onClick: async ({ setValue }: { setValue: (v: string) => void }) => {
-      if (!defaultActivePreset.value) return;
+      const defaultActivePreset = DEFAULT_PRESETS.find((p) => p.name === activePreset.value?.name) ?? null;
+      if (!defaultActivePreset) return;
       const { result } = await props.api.ui.showPopup({
         title: 'Reset Template?',
         content: `Are you sure you want to reset the HTML template for "${activePreset.value?.name}" to its default value?`,
@@ -220,7 +216,7 @@ const templateTools = computed(() => [
         okButton: 'common.reset',
       });
       if (result === POPUP_RESULT.AFFIRMATIVE) {
-        setValue(defaultActivePreset.value.template);
+        setValue(defaultActivePreset.template);
         props.api.ui.showToast('HTML template has been reset.', 'success');
       }
     },
@@ -232,9 +228,10 @@ const promptTools = computed(() => [
     id: 'reset',
     icon: 'fa-rotate-left',
     title: t('common.reset'),
-    disabled: !defaultActivePreset.value,
+    disabled: true,
     onClick: async ({ setValue }: { setValue: (v: string) => void }) => {
-      if (!defaultActivePreset.value) return;
+      const defaultActivePreset = DEFAULT_PRESETS.find((p) => p.name === activePreset.value?.name) ?? null;
+      if (!defaultActivePreset) return;
       const { result } = await props.api.ui.showPopup({
         title: 'Reset Prompt?',
         content: `Are you sure you want to reset the prompt template for "${activePreset.value?.name}" to its default value?`,
@@ -242,7 +239,7 @@ const promptTools = computed(() => [
         okButton: 'common.reset',
       });
       if (result === POPUP_RESULT.AFFIRMATIVE) {
-        setValue(defaultActivePreset.value.prompt);
+        setValue(defaultActivePreset.prompt);
         props.api.ui.showToast('Prompt template has been reset.', 'success');
       }
     },
@@ -289,8 +286,8 @@ const promptTools = computed(() => [
       v-model="settings.activeSchemaPresetName"
       :options="presetOptions"
       allow-create
-      allow-edit
-      allow-delete
+      :allow-edit="!isActivePresetBuiltIn"
+      :allow-delete="!isActivePresetBuiltIn"
       @create="handlePresetCreate"
       @edit="handlePresetEdit"
       @delete="handlePresetDelete"
@@ -310,6 +307,7 @@ const promptTools = computed(() => [
           :rows="10"
           :identifier="`extension.tracker.schema.${activePreset.name}`"
           :tools="schemaTools"
+          :disabled="isActivePresetBuiltIn"
         />
       </FormItem>
       <FormItem label="HTML Template" description="Handlebars template to render the extracted data in the chat.">
@@ -320,6 +318,7 @@ const promptTools = computed(() => [
           :rows="6"
           :identifier="`extension.tracker.template.${activePreset.name}`"
           :tools="templateTools"
+          :disabled="isActivePresetBuiltIn"
         />
       </FormItem>
       <FormItem label="Prompt Template" description="The prompt sent to the AI for data extraction.">
@@ -330,6 +329,7 @@ const promptTools = computed(() => [
           :rows="6"
           :identifier="`extension.tracker.prompt.${activePreset.name}`"
           :tools="promptTools"
+          :disabled="isActivePresetBuiltIn"
         />
       </FormItem>
     </template>

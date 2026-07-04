@@ -4,11 +4,11 @@ import { Button } from '../../../components/UI';
 import type { ChatMessage, ExtensionAPI } from '../../../types';
 import type { ApiChatMessage } from '../../../types/generation';
 import {
-  DEFAULT_IMPERSONATE_PROMPT,
-  DEFAULT_SETTINGS,
   type RoadwayChatExtra,
   type RoadwayMessageExtra,
   type RoadwaySettings,
+  migrateRoadwaySettings,
+  resolveRoadwayPrompts,
 } from './types';
 
 const props = defineProps<{
@@ -27,8 +27,9 @@ const roadwayExtra = props.message.extra['core.roadway'];
 const choices = roadwayExtra?.choices ?? [];
 
 function getSettings(): RoadwaySettings {
-  const saved = props.api.settings.get();
-  return { ...DEFAULT_SETTINGS, ...saved };
+  const settings = migrateRoadwaySettings(props.api.settings.get());
+  props.api.settings.set(undefined, settings);
+  return settings;
 }
 
 async function markChoiceAsMade() {
@@ -63,7 +64,7 @@ async function handleImpersonate(choiceText: string) {
   }
   isImpersonating.value = true;
   impersonateAbortController.value = new AbortController();
-  const rawImpersonatePrompt = settings.impersonatePrompt || DEFAULT_IMPERSONATE_PROMPT;
+  const rawImpersonatePrompt = resolveRoadwayPrompts(settings).impersonatePrompt;
   const processedImpersonatePrompt = props.api.macro.process(rawImpersonatePrompt, undefined, {
     choice: choiceText,
   });

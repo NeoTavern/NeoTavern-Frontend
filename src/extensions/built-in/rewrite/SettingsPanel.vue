@@ -5,7 +5,13 @@ import { Button, Checkbox, FormItem, Input, Select, Textarea } from '../../../co
 import { POPUP_RESULT, POPUP_TYPE, type ExtensionAPI } from '../../../types';
 import { uuidv4 } from '../../../utils/commons';
 import { RewriteService } from './RewriteService';
-import { DEFAULT_TEMPLATES, type RewriteSettings, type RewriteTemplate, type RewriteTemplateArg } from './types';
+import {
+  DEFAULT_TEMPLATES,
+  type RewriteSettings,
+  type RewriteTemplate,
+  type RewriteTemplateArg,
+  migrateRewriteSettings,
+} from './types';
 
 const props = defineProps<{
   api: ExtensionAPI<RewriteSettings>;
@@ -25,19 +31,7 @@ const isSidebarCollapsed = ref(false);
 const service = new RewriteService(props.api);
 
 onMounted(() => {
-  const saved = props.api.settings.get();
-  if (saved) {
-    // Merge defaults if templates are missing (first run)
-    if (!saved.templates || saved.templates.length === 0) {
-      saved.templates = [...DEFAULT_TEMPLATES];
-    }
-    // Ensure maps exist
-    if (!saved.lastUsedTemplates) saved.lastUsedTemplates = {};
-    if (!saved.templateOverrides) saved.templateOverrides = {};
-    if (!saved.disabledTools) saved.disabledTools = [];
-
-    settings.value = saved;
-  }
+  settings.value = migrateRewriteSettings(props.api.settings.get());
 });
 
 watch(
@@ -55,6 +49,8 @@ const editingTemplateId = ref<string | null>(null);
 const activeTemplate = computed(() => {
   return settings.value.templates.find((t) => t.id === editingTemplateId.value);
 });
+
+const isActiveTemplateBuiltIn = computed(() => !!activeTemplate.value?.builtIn);
 
 function createTemplate() {
   const newTemplate: RewriteTemplate = {
@@ -78,6 +74,7 @@ function duplicateTemplate(id: string) {
     id: uuidv4(),
     name: `${original.name} (Copy)`,
     args: original.args ? JSON.parse(JSON.stringify(original.args)) : [],
+    builtIn: false,
   };
   settings.value.templates.push(newTemplate);
   editingTemplateId.value = newTemplate.id;
@@ -85,7 +82,7 @@ function duplicateTemplate(id: string) {
 
 async function renameTemplate(id: string) {
   const tpl = settings.value.templates.find((t) => t.id === id);
-  if (!tpl) return;
+  if (!tpl || tpl.builtIn) return;
 
   const { result, value } = await props.api.ui.showPopup({
     type: POPUP_TYPE.INPUT,
@@ -101,6 +98,9 @@ async function renameTemplate(id: string) {
 }
 
 async function deleteTemplate(id: string) {
+  const tpl = settings.value.templates.find((template) => template.id === id);
+  if (!tpl || tpl.builtIn) return;
+
   const { result } = await props.api.ui.showPopup({
     type: POPUP_TYPE.CONFIRM,
     title: t('common.delete'),
@@ -118,30 +118,15 @@ async function deleteTemplate(id: string) {
 async function resetTemplates() {
   const { result } = await props.api.ui.showPopup({
     type: POPUP_TYPE.CONFIRM,
-    title: t('common.reset'),
-    content: t('common.confirm'),
+    title: t('extensionsBuiltin.rewrite.settings.resetTemplatesTitle'),
+    content: t('extensionsBuiltin.rewrite.settings.resetTemplatesContent'),
+    okButton: 'common.reset',
+    cancelButton: 'common.cancel',
   });
 
   if (result === POPUP_RESULT.AFFIRMATIVE) {
-    // Reset only default templates, preserving user-created ones
-    settings.value.templates.forEach((template) => {
-      if (isDefaultTemplate(template.id)) {
-        const defaultTemplate = DEFAULT_TEMPLATES.find((dt) => dt.id === template.id);
-        if (defaultTemplate) {
-          const resetTemplate = JSON.parse(JSON.stringify(defaultTemplate));
-          resetTemplate.id = template.id;
-          Object.assign(template, resetTemplate);
-        }
-      }
-    });
-    // Add any missing default templates
-    DEFAULT_TEMPLATES.forEach((defaultTemplate) => {
-      const exists = settings.value.templates.some((t) => t.id === defaultTemplate.id);
-      if (!exists) {
-        const newTemplate = JSON.parse(JSON.stringify(defaultTemplate));
-        settings.value.templates.push(newTemplate);
-      }
-    });
+    const customTemplates = settings.value.templates.filter((template) => !template.builtIn);
+    settings.value.templates = [...JSON.parse(JSON.stringify(DEFAULT_TEMPLATES)), ...customTemplates];
     editingTemplateId.value = null;
   }
 }
@@ -149,34 +134,15 @@ async function resetTemplates() {
 async function deleteAllSessions() {
   const { result } = await props.api.ui.showPopup({
     type: POPUP_TYPE.CONFIRM,
-    title: t('common.delete'),
-    content: t('common.confirm'),
+    title: t('extensionsBuiltin.rewrite.settings.deleteAllSessionsTitle'),
+    content: t('extensionsBuiltin.rewrite.settings.deleteAllSessionsContent'),
+    okButton: 'common.delete',
+    cancelButton: 'common.cancel',
   });
 
   if (result === POPUP_RESULT.AFFIRMATIVE) {
     await service.clearAllSessions();
     props.api.ui.showToast(t('common.deleted'), 'success');
-  }
-}
-
-// Default Template Helpers
-function isDefaultTemplate(id: string) {
-  return DEFAULT_TEMPLATES.some((t) => t.id === id);
-}
-
-async function resetDefaultField(id: string, field: 'prompt' | 'template' | 'sessionPreamble') {
-  const def = DEFAULT_TEMPLATES.find((t) => t.id === id);
-  const current = settings.value.templates.find((t) => t.id === id);
-  if (def && current) {
-    const { result } = await props.api.ui.showPopup({
-      type: POPUP_TYPE.CONFIRM,
-      title: t('common.reset'),
-      content: t('common.confirm'),
-    });
-
-    if (result === POPUP_RESULT.AFFIRMATIVE) {
-      current[field] = def[field];
-    }
   }
 }
 
@@ -188,7 +154,7 @@ const argTypes = [
 ];
 
 function addArg() {
-  if (!activeTemplate.value) return;
+  if (!activeTemplate.value || activeTemplate.value.builtIn) return;
   if (!activeTemplate.value.args) activeTemplate.value.args = [];
   activeTemplate.value.args.push({
     key: 'newArg',
@@ -199,12 +165,13 @@ function addArg() {
 }
 
 function removeArg(index: number) {
-  if (!activeTemplate.value || !activeTemplate.value.args) return;
+  if (!activeTemplate.value || activeTemplate.value.builtIn || !activeTemplate.value.args) return;
   activeTemplate.value.args.splice(index, 1);
 }
 
 // Fix default value type when type changes
 function onArgTypeChange(arg: RewriteTemplateArg) {
+  if (isActiveTemplateBuiltIn.value) return;
   if (arg.type === 'boolean') arg.defaultValue = false;
   else if (arg.type === 'number') arg.defaultValue = 0;
   else arg.defaultValue = '';
@@ -243,6 +210,7 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
                 <span class="template-name">{{ template.name }}</span>
                 <div class="item-actions">
                   <button
+                    v-if="!template.builtIn"
                     class="action-btn"
                     :title="t('extensionsBuiltin.rewrite.settings.renameTemplate')"
                     @click.stop="renameTemplate(template.id)"
@@ -257,6 +225,7 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
                     <i class="fa-solid fa-copy"></i>
                   </button>
                   <button
+                    v-if="!template.builtIn"
                     class="action-btn delete"
                     :title="t('extensionsBuiltin.rewrite.settings.deleteTemplate')"
                     @click.stop="deleteTemplate(template.id)"
@@ -271,7 +240,7 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
           <template #main>
             <div v-if="activeTemplate" class="template-editor">
               <FormItem :label="t('extensionsBuiltin.rewrite.settings.name')">
-                <Input v-model="activeTemplate.name" />
+                <Input v-model="activeTemplate.name" :disabled="isActiveTemplateBuiltIn" />
               </FormItem>
 
               <div class="checkbox-field">
@@ -279,20 +248,17 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
                   v-model="activeTemplate.ignoreInput!"
                   :label="t('extensionsBuiltin.rewrite.settings.ignoreInput')"
                   :title="t('extensionsBuiltin.rewrite.settings.ignoreInputHint')"
+                  :disabled="isActiveTemplateBuiltIn"
                 />
               </div>
 
               <FormItem :label="t('extensionsBuiltin.rewrite.settings.instruction')">
-                <div class="input-row">
-                  <Input v-model="activeTemplate.prompt" />
-                  <Button
-                    v-if="isDefaultTemplate(activeTemplate.id)"
-                    icon="fa-rotate-left"
-                    :title="t('extensionsBuiltin.rewrite.settings.resetToDefault')"
-                    variant="ghost"
-                    @click="resetDefaultField(activeTemplate.id, 'prompt')"
-                  />
-                </div>
+                <Textarea
+                  v-model="activeTemplate.prompt"
+                  :rows="3"
+                  allow-maximize
+                  :disabled="isActiveTemplateBuiltIn"
+                />
               </FormItem>
 
               <FormItem :label="t('extensionsBuiltin.rewrite.settings.customArgs')">
@@ -302,12 +268,23 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
                   </div>
                   <div v-for="(arg, idx) in activeTemplate.args" :key="idx" class="arg-item">
                     <div class="arg-row">
-                      <Input v-model="arg.key" placeholder="Key (e.g. includeChar)" class="arg-input-sm" />
-                      <Input v-model="arg.label" placeholder="Label" class="arg-input-md" />
+                      <Input
+                        v-model="arg.key"
+                        placeholder="Key (e.g. includeChar)"
+                        class="arg-input-sm"
+                        :disabled="isActiveTemplateBuiltIn"
+                      />
+                      <Input
+                        v-model="arg.label"
+                        placeholder="Label"
+                        class="arg-input-md"
+                        :disabled="isActiveTemplateBuiltIn"
+                      />
                       <Select
                         v-model="arg.type"
                         :options="argTypes"
                         class="arg-input-sm"
+                        :disabled="isActiveTemplateBuiltIn"
                         @update:model-value="onArgTypeChange(arg)"
                       />
                       <div class="arg-default">
@@ -315,35 +292,44 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
                           v-if="arg.type === 'boolean'"
                           v-model="arg.defaultValue as boolean"
                           :label="t('common.default')"
+                          :disabled="isActiveTemplateBuiltIn"
                         />
                         <Input
                           v-else
                           v-model="arg.defaultValue as string | number"
                           :type="arg.type === 'number' ? 'number' : 'text'"
                           placeholder="Default"
+                          :disabled="isActiveTemplateBuiltIn"
                         />
                       </div>
-                      <Button icon="fa-trash" variant="ghost" class="delete-arg-btn" @click="removeArg(idx)" />
+                      <Button
+                        icon="fa-trash"
+                        variant="ghost"
+                        class="delete-arg-btn"
+                        :disabled="isActiveTemplateBuiltIn"
+                        @click="removeArg(idx)"
+                      />
                     </div>
                   </div>
-                  <Button icon="fa-plus" variant="ghost" class="add-arg-btn" @click="addArg">{{
-                    t('extensionsBuiltin.rewrite.settings.addArgument')
-                  }}</Button>
+                  <Button
+                    icon="fa-plus"
+                    variant="ghost"
+                    class="add-arg-btn"
+                    :disabled="isActiveTemplateBuiltIn"
+                    @click="addArg"
+                  >
+                    {{ t('extensionsBuiltin.rewrite.settings.addArgument') }}
+                  </Button>
                 </div>
               </FormItem>
 
               <FormItem :label="t('extensionsBuiltin.rewrite.settings.templateMacro')">
-                <div class="textarea-container">
-                  <Textarea v-model="activeTemplate.template" :rows="10" allow-maximize />
-                  <Button
-                    v-if="isDefaultTemplate(activeTemplate.id)"
-                    class="reset-macro-btn"
-                    icon="fa-rotate-left"
-                    :title="t('extensionsBuiltin.rewrite.settings.resetToDefault')"
-                    variant="ghost"
-                    @click="resetDefaultField(activeTemplate.id, 'template')"
-                  />
-                </div>
+                <Textarea
+                  v-model="activeTemplate.template"
+                  :rows="10"
+                  allow-maximize
+                  :disabled="isActiveTemplateBuiltIn"
+                />
                 <div class="help-text">
                   Available variables: <code>{{ '{' + '{input}' + '}' }}</code
                   >, <code>{{ '{' + '{prompt}' + '}' }}</code
@@ -368,17 +354,12 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
                 :label="t('extensionsBuiltin.rewrite.settings.sessionPreamble')"
                 :description="t('extensionsBuiltin.rewrite.settings.sessionPreambleHint')"
               >
-                <div class="textarea-container">
-                  <Textarea v-model="activeTemplate.sessionPreamble" :rows="5" allow-maximize />
-                  <Button
-                    v-if="isDefaultTemplate(activeTemplate.id)"
-                    class="reset-macro-btn"
-                    icon="fa-rotate-left"
-                    :title="t('extensionsBuiltin.rewrite.settings.resetToDefault')"
-                    variant="ghost"
-                    @click="resetDefaultField(activeTemplate.id, 'sessionPreamble')"
-                  />
-                </div>
+                <Textarea
+                  v-model="activeTemplate.sessionPreamble"
+                  :rows="5"
+                  allow-maximize
+                  :disabled="isActiveTemplateBuiltIn"
+                />
               </FormItem>
             </div>
             <div v-else class="empty-state">{{ t('extensionsBuiltin.rewrite.settings.selectTemplate') }}</div>
@@ -492,29 +473,6 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
   flex-direction: column;
   gap: 15px;
   height: 100%;
-}
-
-.input-row {
-  display: flex;
-  gap: 5px;
-}
-.input-row > :first-child {
-  flex: 1;
-}
-
-.textarea-container {
-  position: relative;
-}
-
-.reset-macro-btn {
-  position: absolute;
-  top: 5px;
-  right: 20px; /* Scrollbar width approx */
-  opacity: 0.5;
-  background-color: var(--black-50a);
-}
-.reset-macro-btn:hover {
-  opacity: 1;
 }
 
 .help-text {

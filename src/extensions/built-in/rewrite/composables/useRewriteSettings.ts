@@ -7,16 +7,10 @@ import type {
   RewriteTemplateOverride,
   StructuredResponseFormat,
 } from '../types';
-import { DEFAULT_TEMPLATES } from '../types';
+import { migrateRewriteSettings } from '../types';
 
 export function useRewriteSettings(api: ExtensionAPI<RewriteSettings>, identifier: string) {
-  const settings = ref<RewriteSettings>(
-    api.settings.get() || {
-      templates: [...DEFAULT_TEMPLATES],
-      lastUsedTemplates: {},
-      templateOverrides: {},
-    },
-  );
+  const settings = ref<RewriteSettings>(migrateRewriteSettings(api.settings.get()));
 
   const selectedTemplateId = ref<string>('');
   const selectedProfile = ref<string>('');

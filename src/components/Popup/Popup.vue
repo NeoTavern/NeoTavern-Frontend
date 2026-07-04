@@ -16,6 +16,7 @@ const props = defineProps({
   content: { type: String, default: '' },
   type: { type: Number as PropType<POPUP_TYPE>, default: POPUP_TYPE.TEXT },
   inputValue: { type: String, default: '' },
+  inputRequired: { type: Boolean, default: false },
   selectValue: { type: [String, Array] as PropType<string | string[]>, default: '' },
   selectOptions: { type: Array as PropType<{ label: string; value: string }[]>, default: () => [] },
   selectMultiple: { type: Boolean, default: false },
@@ -109,6 +110,12 @@ function getButtonVariant(button: CustomPopupButton): 'default' | 'confirm' | 'd
   if (button.result === POPUP_RESULT.AFFIRMATIVE) return 'confirm';
   if (button.result === POPUP_RESULT.NEGATIVE && props.type === POPUP_TYPE.CONFIRM) return 'danger';
   return 'default';
+}
+
+function isButtonDisabled(button: CustomPopupButton): boolean {
+  return props.type === POPUP_TYPE.INPUT && props.inputRequired && button.result === POPUP_RESULT.AFFIRMATIVE
+    ? !internalInputValue.value.trim()
+    : false;
 }
 
 watch(
@@ -225,6 +232,7 @@ function handleResult(result: number) {
                 :key="button.text"
                 :variant="getButtonVariant(button)"
                 :class="button.classes"
+                :disabled="isButtonDisabled(button)"
                 @click="handleResult(button.result)"
               >
                 {{ button.text }}

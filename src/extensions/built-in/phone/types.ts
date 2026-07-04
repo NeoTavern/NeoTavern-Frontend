@@ -1,4 +1,10 @@
 import type { ExtensionAPI } from '../../../types';
+import {
+  migratePromptPresetState,
+  resolvePromptPreset,
+  type PromptPreset,
+  type PromptPresetState,
+} from '../prompt-presets';
 
 export interface PhoneChatExtraData {
   contacts?: PhoneContact[];
@@ -49,15 +55,20 @@ export interface PhoneMessage {
   generationId?: string;
 }
 
-export interface PhoneSettings {
+export type PhonePrompts = {
+  contactPrompt: string;
+  smsPrompt: string;
+};
+
+export interface PhoneSettings extends PromptPresetState<PhonePrompts> {
   enabled: boolean;
   connectionProfile: string;
   structuredRequestFormat: 'native' | 'json' | 'xml';
   includeLastXMessages: number;
   includeLastXSmsMessages: number;
   maxResponseTokens: number;
-  contactPrompt: string;
-  smsPrompt: string;
+  contactPrompt?: string;
+  smsPrompt?: string;
 }
 
 export interface PhoneContactInitResponse {
@@ -94,6 +105,18 @@ Reply only as the contacted SMS participant. The message body must be plain SMS 
 
 Return strict structured SMS reply data.`;
 
+export const BUILT_IN_PROMPT_PRESETS: PromptPreset<PhonePrompts>[] = [
+  {
+    id: 'default',
+    name: 'Default',
+    builtIn: true,
+    prompts: {
+      contactPrompt: DEFAULT_CONTACT_PROMPT,
+      smsPrompt: DEFAULT_SMS_PROMPT,
+    },
+  },
+];
+
 export const DEFAULT_SETTINGS: PhoneSettings = {
   enabled: true,
   connectionProfile: '',
@@ -101,6 +124,29 @@ export const DEFAULT_SETTINGS: PhoneSettings = {
   includeLastXMessages: 80,
   includeLastXSmsMessages: 40,
   maxResponseTokens: 2048,
-  contactPrompt: DEFAULT_CONTACT_PROMPT,
-  smsPrompt: DEFAULT_SMS_PROMPT,
+  activePromptPresetId: 'default',
+  promptPresets: [],
+  promptPresetMigrationVersion: 1,
 };
+
+export function migratePhoneSettings(settings: Partial<PhoneSettings> = {}): PhoneSettings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...migratePromptPresetState({
+      settings: { ...DEFAULT_SETTINGS, ...settings },
+      builtInPresets: BUILT_IN_PROMPT_PRESETS,
+      legacyPrompts: {
+        contactPrompt: settings.contactPrompt,
+        smsPrompt: settings.smsPrompt,
+      },
+      legacyDefaults: {
+        contactPrompt: DEFAULT_CONTACT_PROMPT,
+        smsPrompt: DEFAULT_SMS_PROMPT,
+      },
+    }),
+  };
+}
+
+export function resolvePhonePrompts(settings: PhoneSettings): PhonePrompts {
+  return resolvePromptPreset(settings, BUILT_IN_PROMPT_PRESETS).prompts;
+}

@@ -1,4 +1,10 @@
 import type { ExtensionAPI } from '../../../types';
+import {
+  migratePromptPresetState,
+  resolvePromptPreset,
+  type PromptPreset,
+  type PromptPresetState,
+} from '../prompt-presets';
 
 export type TimelineEventType = 'event' | 'resource' | 'npc_action' | 'travel' | 'deadline' | 'cooldown' | 'promise';
 export type TimelineEventStatus = 'pending' | 'resolved' | 'cancelled';
@@ -42,7 +48,11 @@ export interface TimelineChatExtra {
   'core.timeline'?: TimelineChatExtraData;
 }
 
-export interface TimelineSettings {
+export type TimelinePrompts = {
+  extractionPrompt: string;
+};
+
+export interface TimelineSettings extends PromptPresetState<TimelinePrompts> {
   enabled: boolean;
   connectionProfile: string;
   structuredRequestFormat: 'native' | 'json' | 'xml';
@@ -50,7 +60,7 @@ export interface TimelineSettings {
   maxResponseTokens: number;
   maxDueInjected: number;
   maxUpcomingInjected: number;
-  extractionPrompt: string;
+  extractionPrompt?: string;
 }
 
 export interface TimelineOperation {
@@ -114,6 +124,17 @@ Rules:
 - Descriptions may be detailed when useful. Preserve concrete constraints, quotas, conditions, responsible parties, and recurring availability rules that the user or model may need later.
 - If timing cannot be expressed as dueIn or dueAtDatetime, keep the natural timing in description and omit due time fields.`;
 
+export const BUILT_IN_PROMPT_PRESETS: PromptPreset<TimelinePrompts>[] = [
+  {
+    id: 'default',
+    name: 'Default',
+    builtIn: true,
+    prompts: {
+      extractionPrompt: DEFAULT_EXTRACTION_PROMPT,
+    },
+  },
+];
+
 export const DEFAULT_SETTINGS: TimelineSettings = {
   enabled: true,
   connectionProfile: '',
@@ -122,5 +143,23 @@ export const DEFAULT_SETTINGS: TimelineSettings = {
   maxResponseTokens: 4096,
   maxDueInjected: 6,
   maxUpcomingInjected: 4,
-  extractionPrompt: DEFAULT_EXTRACTION_PROMPT,
+  activePromptPresetId: 'default',
+  promptPresets: [],
+  promptPresetMigrationVersion: 1,
 };
+
+export function migrateTimelineSettings(settings: Partial<TimelineSettings> = {}): TimelineSettings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...migratePromptPresetState({
+      settings: { ...DEFAULT_SETTINGS, ...settings },
+      builtInPresets: BUILT_IN_PROMPT_PRESETS,
+      legacyPrompts: { extractionPrompt: settings.extractionPrompt },
+      legacyDefaults: { extractionPrompt: DEFAULT_EXTRACTION_PROMPT },
+    }),
+  };
+}
+
+export function resolveTimelinePrompts(settings: TimelineSettings): TimelinePrompts {
+  return resolvePromptPreset(settings, BUILT_IN_PROMPT_PRESETS).prompts;
+}

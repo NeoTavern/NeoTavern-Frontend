@@ -36,6 +36,7 @@ export interface PopupOptions {
   selectOptions?: { label: string; value: string }[];
   selectValue?: string | string[];
   selectMultiple?: boolean;
+  inputRequired?: boolean;
   // TODO: Is there way to make type-safe...?
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   componentProps?: Record<string, any>;

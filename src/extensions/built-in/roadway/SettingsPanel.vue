@@ -1,33 +1,28 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
-import { FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
+import { FormItem, Input, Select, Toggle } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
-import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
+import PromptPresetField from '../PromptPresetField.vue';
 import {
-  DEFAULT_CHOICE_GEN_PROMPT,
-  DEFAULT_IMPERSONATE_PROMPT,
+  BUILT_IN_PROMPT_PRESETS,
   DEFAULT_SETTINGS,
   type RoadwayChatExtra,
   type RoadwayMessageExtra,
   type RoadwaySettings,
+  migrateRoadwaySettings,
 } from './types';
 
 const props = defineProps<{
   api: ExtensionAPI<RoadwaySettings, RoadwayChatExtra, RoadwayMessageExtra>;
 }>();
 
-const t = props.api.i18n.t;
-
 // TODO: i18n
 
 const settings = ref<RoadwaySettings>({ ...DEFAULT_SETTINGS });
 
 onMounted(() => {
-  const saved = props.api.settings.get();
-  if (saved) {
-    settings.value = { ...DEFAULT_SETTINGS, ...saved };
-  }
+  settings.value = migrateRoadwaySettings(props.api.settings.get());
 });
 
 watch(
@@ -41,46 +36,13 @@ watch(
   { deep: true },
 );
 
-const createResetTool = (title: string, content: string, defaultValue: string, successMessage: string) =>
-  computed(() => [
-    {
-      id: 'reset',
-      icon: 'fa-rotate-left',
-      title: t('common.reset'),
-      onClick: async ({ setValue }: { setValue: (v: string) => void }) => {
-        const { result } = await props.api.ui.showPopup({
-          title,
-          content,
-          type: POPUP_TYPE.CONFIRM,
-          okButton: 'common.reset',
-        });
-        if (result === POPUP_RESULT.AFFIRMATIVE) {
-          setValue(defaultValue);
-          props.api.ui.showToast(successMessage, 'success');
-        }
-      },
-    },
-  ]);
-
-const choiceGenPromptTools = createResetTool(
-  'Reset Choice Generation Prompt?',
-  'Are you sure you want to reset the choice generation prompt to its default value?',
-  DEFAULT_CHOICE_GEN_PROMPT,
-  'Choice generation prompt has been reset.',
-);
-
-const impersonatePromptTools = createResetTool(
-  'Reset Impersonate Prompt?',
-  'Are you sure you want to reset the impersonate prompt to its default value?',
-  DEFAULT_IMPERSONATE_PROMPT,
-  'Impersonate prompt has been reset.',
-);
-
 const formatOptions = [
   { label: 'Native', value: 'native' },
   { label: 'JSON', value: 'json' },
   { label: 'XML', value: 'xml' },
 ];
+
+const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 </script>
 
 <template>
@@ -106,18 +68,19 @@ const formatOptions = [
     <FormItem label="Request Format" description="Format to enforce for the structured response.">
       <Select v-model="settings.structuredRequestFormat" :options="formatOptions" />
     </FormItem>
-    <FormItem
+    <PromptPresetField
+      :api="api"
+      :active-preset-id="settings.activePromptPresetId"
+      :prompt-presets="settings.promptPresets"
+      :built-in-presets="builtInPromptPresets"
+      prompt-key="choiceGenPrompt"
       label="Prompt Template"
       description="The prompt sent to the AI to generate choices. Use {{choiceCount}} to reference the number of choices."
-    >
-      <Textarea
-        v-model="settings.choiceGenPrompt"
-        allow-maximize
-        :rows="6"
-        identifier="extension.roadway.choiceGenPrompt"
-        :tools="choiceGenPromptTools"
-      />
-    </FormItem>
+      identifier="extension.roadway.choiceGenPrompt"
+      :rows="6"
+      @update:active-preset-id="settings.activePromptPresetId = $event"
+      @update:prompt-presets="settings.promptPresets = $event"
+    />
 
     <div class="group-header">Impersonate Action</div>
     <FormItem
@@ -126,18 +89,19 @@ const formatOptions = [
     >
       <ConnectionProfileSelector v-model="settings.impersonateConnectionProfile" />
     </FormItem>
-    <FormItem
+    <PromptPresetField
+      :api="api"
+      :active-preset-id="settings.activePromptPresetId"
+      :prompt-presets="settings.promptPresets"
+      :built-in-presets="builtInPromptPresets"
+      prompt-key="impersonatePrompt"
       label="Prompt Template"
       description="The prompt sent to the AI to expand a choice into a full user response."
-    >
-      <Textarea
-        v-model="settings.impersonatePrompt"
-        allow-maximize
-        :rows="6"
-        identifier="extension.roadway.impersonatePrompt"
-        :tools="impersonatePromptTools"
-      />
-    </FormItem>
+      identifier="extension.roadway.impersonatePrompt"
+      :rows="6"
+      @update:active-preset-id="settings.activePromptPresetId = $event"
+      @update:prompt-presets="settings.promptPresets = $event"
+    />
   </div>
 </template>
 

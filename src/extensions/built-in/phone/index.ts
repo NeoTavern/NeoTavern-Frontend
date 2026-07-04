@@ -4,7 +4,6 @@ import { manifest } from './manifest';
 import PhonePanel from './PhonePanel.vue';
 import SettingsPanel from './SettingsPanel.vue';
 import {
-  DEFAULT_SETTINGS,
   EXTENSION_ID,
   PHONE_UPDATED_EVENT,
   type PhoneChatExtra,
@@ -18,6 +17,8 @@ import {
   type PhoneMessageExtraData,
   type PhoneSettings,
   type PhoneSmsResponse,
+  migratePhoneSettings,
+  resolvePhonePrompts,
 } from './types';
 
 export { manifest };
@@ -180,7 +181,9 @@ class PhoneManager {
   constructor(private api: PhoneExtensionAPI) {}
 
   private getSettings(): PhoneSettings {
-    return { ...DEFAULT_SETTINGS, ...this.api.settings.get() };
+    const settings = migratePhoneSettings(this.api.settings.get());
+    this.api.settings.set(undefined, settings);
+    return settings;
   }
 
   public getChatExtra(): PhoneChatExtraData {
@@ -338,6 +341,7 @@ class PhoneManager {
     }
 
     const settings = this.getSettings();
+    const prompts = resolvePhonePrompts(settings);
     if (!settings.enabled) {
       this.api.ui.showToast('Phone is disabled in settings.', 'info');
       return;
@@ -354,7 +358,7 @@ class PhoneManager {
         {
           role: 'system',
           name: 'System',
-          content: this.api.macro.process(settings.contactPrompt),
+          content: this.api.macro.process(prompts.contactPrompt),
         },
         {
           role: 'user',
@@ -419,6 +423,7 @@ class PhoneManager {
     if (!text) return;
 
     const settings = this.getSettings();
+    const prompts = resolvePhonePrompts(settings);
     if (!settings.enabled) {
       this.api.ui.showToast('Phone is disabled in settings.', 'info');
       return;
@@ -479,7 +484,7 @@ class PhoneManager {
         {
           role: 'system',
           name: 'System',
-          content: this.api.macro.process(settings.smsPrompt),
+          content: this.api.macro.process(prompts.smsPrompt),
         },
         {
           role: 'user',

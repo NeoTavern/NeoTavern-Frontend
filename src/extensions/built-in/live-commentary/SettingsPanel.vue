@@ -4,12 +4,13 @@ import { ConnectionProfileSelector } from '../../../components/common';
 import { FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
 import type { TextareaToolDefinition } from '../../../types/ExtensionAPI';
+import PromptPresetField from '../PromptPresetField.vue';
 import {
-  DEFAULT_ASK_PROMPT,
+  BUILT_IN_PROMPT_PRESETS,
   DEFAULT_INJECTION_TEMPLATE,
-  DEFAULT_PROMPT,
   DEFAULT_SETTINGS,
   type LiveCommentarySettings,
+  migrateLiveCommentarySettings,
 } from './types';
 
 const props = defineProps<{
@@ -26,10 +27,7 @@ const settings = ref<LiveCommentarySettings>({
 });
 
 onMounted(() => {
-  const saved = props.api.settings.get();
-  if (saved) {
-    settings.value = { ...DEFAULT_SETTINGS, ...saved };
-  }
+  settings.value = migrateLiveCommentarySettings(props.api.settings.get());
 });
 
 watch(
@@ -40,17 +38,6 @@ watch(
   },
   { deep: true },
 );
-
-const promptTools = computed<TextareaToolDefinition[]>(() => [
-  {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: t('common.reset'),
-    onClick: ({ setValue }) => {
-      setValue(DEFAULT_PROMPT);
-    },
-  },
-]);
 
 const injectionTools = computed<TextareaToolDefinition[]>(() => [
   {
@@ -63,21 +50,12 @@ const injectionTools = computed<TextareaToolDefinition[]>(() => [
   },
 ]);
 
-const askPromptTools = computed<TextareaToolDefinition[]>(() => [
-  {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: t('common.reset'),
-    onClick: ({ setValue }) => {
-      setValue(DEFAULT_ASK_PROMPT);
-    },
-  },
-]);
-
 const positionOptions = [
   { label: 'Before Last User Message', value: 'before_last_user_message' },
   { label: 'End of Context (System)', value: 'end_of_context' },
 ];
+
+const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 </script>
 
 <template>
@@ -123,19 +101,19 @@ const positionOptions = [
       </FormItem>
     </div>
 
-    <FormItem
+    <PromptPresetField
+      :api="api"
+      :active-preset-id="settings.activePromptPresetId"
+      :prompt-presets="settings.promptPresets"
+      :built-in-presets="builtInPromptPresets"
+      prompt-key="prompt"
       :label="t('extensionsBuiltin.liveCommentary.promptTemplate')"
       :description="t('extensionsBuiltin.liveCommentary.promptHint')"
-    >
-      <Textarea
-        v-model="settings.prompt"
-        allow-maximize
-        class="prompt-area"
-        :rows="10"
-        identifier="extension.live-commentary.prompt"
-        :tools="promptTools"
-      />
-    </FormItem>
+      identifier="extension.live-commentary.prompt"
+      :rows="10"
+      @update:active-preset-id="settings.activePromptPresetId = $event"
+      @update:prompt-presets="settings.promptPresets = $event"
+    />
 
     <div class="group-header">Context Injection</div>
     <FormItem
@@ -179,19 +157,19 @@ const positionOptions = [
     </FormItem>
 
     <div class="group-header">Ask Chat History</div>
-    <FormItem
+    <PromptPresetField
+      :api="api"
+      :active-preset-id="settings.activePromptPresetId"
+      :prompt-presets="settings.promptPresets"
+      :built-in-presets="builtInPromptPresets"
+      prompt-key="askPrompt"
       :label="t('extensionsBuiltin.liveCommentary.askPromptTemplate')"
       :description="t('extensionsBuiltin.liveCommentary.askPromptHint')"
-    >
-      <Textarea
-        v-model="settings.askPrompt"
-        allow-maximize
-        class="prompt-area"
-        :rows="10"
-        identifier="extension.live-commentary.ask"
-        :tools="askPromptTools"
-      />
-    </FormItem>
+      identifier="extension.live-commentary.ask"
+      :rows="10"
+      @update:active-preset-id="settings.activePromptPresetId = $event"
+      @update:prompt-presets="settings.promptPresets = $event"
+    />
   </div>
 </template>
 

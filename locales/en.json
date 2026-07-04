@@ -1400,7 +1400,6 @@
       "swipeNotApplicable": "Swipe is not applicable for this message.",
       "swiping": "Swiping...",
       "settings": {
-        "reset": "Reset Settings",
         "rerollEnabled": "Reroll continue",
         "deleteContinueEnabled": "Delete continue",
         "impersonateEnabled": "Impersonate",
@@ -1445,7 +1444,7 @@
         "name": "Name",
         "ignoreInput": "Ignore Input",
         "ignoreInputHint": "If enabled, this template doesn't use {'{{input}}'} and the UI will hide input-related controls",
-        "instruction": "Instruction (Prompt)",
+        "instruction": "Default Instruction",
         "customArgs": "Custom Flags / Arguments",
         "noCustomArgs": "No custom arguments defined.",
         "addArgument": "Add Argument",
@@ -1454,7 +1453,11 @@
         "resetToDefault": "Reset to default",
         "sessionPreamble": "Session Preamble",
         "sessionPreambleHint": "The system prompt used for the chat session context.",
-        "deleteAllSessions": "Delete All Sessions"
+        "deleteAllSessions": "Delete All Sessions",
+        "resetTemplatesTitle": "Reset Built-in Rewrite Templates?",
+        "resetTemplatesContent": "This restores the built-in Magic Rewrite templates from the latest app defaults. Your custom templates will be kept.",
+        "deleteAllSessionsTitle": "Delete All Rewrite Sessions?",
+        "deleteAllSessionsContent": "This permanently deletes every saved Magic Rewrite session. Templates and settings will not be changed."
       },
       "popup": {
         "template": "Template",

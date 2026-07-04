@@ -14,12 +14,12 @@ import { getLatestTrackerStoryTime } from './story-time';
 import TrackerDisplay from './TrackerDisplay.vue';
 import TrackerIcon from './TrackerIcon.vue';
 import {
-  DEFAULT_SETTINGS,
   type TrackerChatExtra,
   type TrackerData,
   type TrackerMessageExtra,
   type TrackerService,
   type TrackerSettings,
+  migrateTrackerSettings,
 } from './types';
 
 export { manifest };
@@ -86,12 +86,9 @@ class TrackerManager {
   constructor(private api: TrackerExtensionAPI) {}
 
   public getSettings(): TrackerSettings {
-    const saved = this.api.settings.get();
-    return {
-      ...DEFAULT_SETTINGS,
-      ...saved,
-      schemaPresets: saved?.schemaPresets?.length ? saved.schemaPresets : DEFAULT_SETTINGS.schemaPresets,
-    };
+    const settings = migrateTrackerSettings(this.api.settings.get());
+    this.api.settings.set(undefined, settings);
+    return settings;
   }
 
   public getLatestTrackerValue(schemaName: string, path: string): unknown {

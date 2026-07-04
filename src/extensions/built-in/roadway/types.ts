@@ -1,14 +1,26 @@
-export interface RoadwaySettings {
+import {
+  migratePromptPresetState,
+  resolvePromptPreset,
+  type PromptPreset,
+  type PromptPresetState,
+} from '../prompt-presets';
+
+export type RoadwayPrompts = {
+  choiceGenPrompt: string;
+  impersonatePrompt: string;
+};
+
+export interface RoadwaySettings extends PromptPresetState<RoadwayPrompts> {
   enabled: boolean;
   autoMode: boolean;
 
   choiceGenConnectionProfile: string;
-  choiceGenPrompt: string;
+  choiceGenPrompt?: string;
   choiceCount: number;
   structuredRequestFormat: 'native' | 'json' | 'xml';
 
   impersonateConnectionProfile: string;
-  impersonatePrompt: string;
+  impersonatePrompt?: string;
 }
 
 export type RoadwayChatExtraData = Record<string, never>;
@@ -52,13 +64,48 @@ export const DEFAULT_IMPERSONATE_PROMPT = `Based on the chat history and the {{u
 
 Directive: {{choice}}`;
 
+export const BUILT_IN_PROMPT_PRESETS: PromptPreset<RoadwayPrompts>[] = [
+  {
+    id: 'default',
+    name: 'Default',
+    builtIn: true,
+    prompts: {
+      choiceGenPrompt: DEFAULT_CHOICE_GEN_PROMPT,
+      impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
+    },
+  },
+];
+
 export const DEFAULT_SETTINGS: RoadwaySettings = {
   enabled: true,
   autoMode: false,
   choiceGenConnectionProfile: '',
-  choiceGenPrompt: DEFAULT_CHOICE_GEN_PROMPT,
   choiceCount: 5,
   structuredRequestFormat: 'native',
   impersonateConnectionProfile: '',
-  impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
+  activePromptPresetId: 'default',
+  promptPresets: [],
+  promptPresetMigrationVersion: 1,
 };
+
+export function migrateRoadwaySettings(settings: Partial<RoadwaySettings> = {}): RoadwaySettings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...migratePromptPresetState({
+      settings: { ...DEFAULT_SETTINGS, ...settings },
+      builtInPresets: BUILT_IN_PROMPT_PRESETS,
+      legacyPrompts: {
+        choiceGenPrompt: settings.choiceGenPrompt,
+        impersonatePrompt: settings.impersonatePrompt,
+      },
+      legacyDefaults: {
+        choiceGenPrompt: DEFAULT_CHOICE_GEN_PROMPT,
+        impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
+      },
+    }),
+  };
+}
+
+export function resolveRoadwayPrompts(settings: RoadwaySettings): RoadwayPrompts {
+  return resolvePromptPreset(settings, BUILT_IN_PROMPT_PRESETS).prompts;
+}

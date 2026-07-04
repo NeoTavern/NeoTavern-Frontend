@@ -1403,7 +1403,6 @@ export interface MessageSchema {
       swipeNotApplicable: string;
       swiping: string;
       settings: {
-        reset: string;
         rerollEnabled: string;
         deleteContinueEnabled: string;
         impersonateEnabled: string;
@@ -1458,6 +1457,10 @@ export interface MessageSchema {
         sessionPreamble: string;
         sessionPreambleHint: string;
         deleteAllSessions: string;
+        resetTemplatesTitle: string;
+        resetTemplatesContent: string;
+        deleteAllSessionsTitle: string;
+        deleteAllSessionsContent: string;
       };
       popup: {
         template: string;

@@ -17,6 +17,7 @@ import type {
   RewriteTemplate,
   StructuredResponseFormat,
 } from './types';
+import { migrateRewriteSettings } from './types';
 
 export class RewriteService {
   private store: LocalForage;
@@ -37,7 +38,7 @@ export class RewriteService {
       disabledTools: [],
     };
     const current = this.api.settings.get() || defaults;
-    return current;
+    return migrateRewriteSettings(current);
   }
 
   public getTemplates(): RewriteTemplate[] {

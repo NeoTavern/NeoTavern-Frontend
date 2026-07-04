@@ -5,7 +5,6 @@ import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
 import TimelinePanel from './TimelinePanel.vue';
 import {
-  DEFAULT_SETTINGS,
   EXTENSION_ID,
   TIMELINE_UPDATED_EVENT,
   type TimelineChatExtra,
@@ -17,6 +16,8 @@ import {
   type TimelineRecurrenceUnit,
   type TimelineSettings,
   type TimelineTimeRef,
+  migrateTimelineSettings,
+  resolveTimelinePrompts,
 } from './types';
 
 export { manifest };
@@ -275,7 +276,9 @@ class TimelineManager {
   constructor(private api: TimelineExtensionAPI) {}
 
   private getSettings(): TimelineSettings {
-    return { ...DEFAULT_SETTINGS, ...this.api.settings.get() };
+    const settings = migrateTimelineSettings(this.api.settings.get());
+    this.api.settings.set(undefined, settings);
+    return settings;
   }
 
   public async getCurrentStoryTime(): Promise<TimelineTimeRef | undefined> {
@@ -314,7 +317,7 @@ class TimelineManager {
       {
         role: 'system',
         name: 'System',
-        content: this.api.macro.process(settings.extractionPrompt),
+        content: this.api.macro.process(resolveTimelinePrompts(settings).extractionPrompt),
       },
       {
         role: 'user',

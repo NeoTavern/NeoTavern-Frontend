@@ -1,33 +1,26 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
-import { CollapsibleSection, FormItem, Textarea, Toggle } from '../../../components/UI';
+import { CollapsibleSection, FormItem, Toggle } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
-import type { TextareaToolDefinition } from '../../../types/ExtensionAPI';
-import { DEFAULT_GENERATE_PROMPT, DEFAULT_IMPERSONATE_PROMPT, type ExtensionSettings } from './types';
+import PromptPresetField from '../PromptPresetField.vue';
+import {
+  BUILT_IN_PROMPT_PRESETS,
+  DEFAULT_SETTINGS,
+  type ExtensionSettings,
+  migrateGenerationToolsSettings,
+} from './types';
 
 const props = defineProps<{
   api: ExtensionAPI<ExtensionSettings>;
 }>();
 
-const settings = ref<ExtensionSettings>({
-  rerollContinueEnabled: true,
-  deleteContinueEnabled: true,
-  swipeEnabled: true,
-  impersonateEnabled: true,
-  impersonateConnectionProfile: '',
-  impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
-  generateEnabled: true,
-  generatePrompt: DEFAULT_GENERATE_PROMPT,
-});
+const settings = ref<ExtensionSettings>({ ...DEFAULT_SETTINGS });
 
 const t = props.api.i18n.t;
 
 onMounted(() => {
-  const saved = props.api.settings.get();
-  if (saved) {
-    settings.value = { ...settings.value, ...saved };
-  }
+  settings.value = migrateGenerationToolsSettings(props.api.settings.get());
 });
 
 watch(
@@ -41,27 +34,7 @@ watch(
   { deep: true },
 );
 
-const impersonatePromptTools = computed<TextareaToolDefinition[]>(() => [
-  {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: t('extensionsBuiltin.generationTools.settings.reset'),
-    onClick: ({ setValue }) => {
-      setValue(DEFAULT_IMPERSONATE_PROMPT);
-    },
-  },
-]);
-
-const generatePromptTools = computed<TextareaToolDefinition[]>(() => [
-  {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: t('extensionsBuiltin.generationTools.settings.reset'),
-    onClick: ({ setValue }) => {
-      setValue(DEFAULT_GENERATE_PROMPT);
-    },
-  },
-]);
+const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 </script>
 
 <template>
@@ -94,35 +67,35 @@ const generatePromptTools = computed<TextareaToolDefinition[]>(() => [
         <ConnectionProfileSelector v-model="settings.impersonateConnectionProfile" />
       </FormItem>
 
-      <FormItem
+      <PromptPresetField
+        :api="api"
+        :active-preset-id="settings.activePromptPresetId"
+        :prompt-presets="settings.promptPresets"
+        :built-in-presets="builtInPromptPresets"
+        prompt-key="impersonatePrompt"
         :label="t('extensionsBuiltin.generationTools.settings.promptLabel')"
         :description="t('extensionsBuiltin.generationTools.settings.promptDesc')"
-      >
-        <Textarea
-          v-model="settings.impersonatePrompt"
-          allow-maximize
-          class="prompt-area"
-          :rows="8"
-          identifier="extension.generation-tools.impersonate-prompt"
-          :tools="impersonatePromptTools"
-        />
-      </FormItem>
+        identifier="extension.generation-tools.impersonate-prompt"
+        :rows="8"
+        @update:active-preset-id="settings.activePromptPresetId = $event"
+        @update:prompt-presets="settings.promptPresets = $event"
+      />
     </CollapsibleSection>
 
     <CollapsibleSection :title="t('extensionsBuiltin.generationTools.settings.generateTitle')" :is-open="false">
-      <FormItem
+      <PromptPresetField
+        :api="api"
+        :active-preset-id="settings.activePromptPresetId"
+        :prompt-presets="settings.promptPresets"
+        :built-in-presets="builtInPromptPresets"
+        prompt-key="generatePrompt"
         :label="t('extensionsBuiltin.generationTools.settings.promptLabel')"
         :description="t('extensionsBuiltin.generationTools.settings.generatePromptDesc')"
-      >
-        <Textarea
-          v-model="settings.generatePrompt"
-          allow-maximize
-          class="prompt-area"
-          :rows="8"
-          identifier="extension.generation-tools.generate-prompt"
-          :tools="generatePromptTools"
-        />
-      </FormItem>
+        identifier="extension.generation-tools.generate-prompt"
+        :rows="8"
+        @update:active-preset-id="settings.activePromptPresetId = $event"
+        @update:prompt-presets="settings.promptPresets = $event"
+      />
     </CollapsibleSection>
   </div>
 </template>
@@ -133,10 +106,5 @@ const generatePromptTools = computed<TextareaToolDefinition[]>(() => [
   flex-direction: column;
   gap: 1rem;
   padding: 1rem;
-}
-
-.prompt-area {
-  font-family: var(--font-family-mono);
-  font-size: 0.9em;
 }
 </style>

@@ -6,11 +6,12 @@ import { MountableComponent } from '../../../types/ExtensionAPI';
 import { manifest } from './manifest';
 import MemoryPopup from './MemoryPopup.vue';
 import {
-  DEFAULT_MESSAGE_SUMMARY_PROMPT,
   EXTENSION_KEY,
   type ChatMemoryMetadata,
   type ExtensionSettings,
   type MemoryMessageExtra,
+  migrateChatMemorySettings,
+  resolveChatMemoryPrompts,
 } from './types';
 
 export { manifest };
@@ -71,8 +72,9 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
     const message = history[messageIndex];
     if (!message) return;
 
-    const settings = api.settings.get();
-    const promptTemplate = settings?.messageSummaryPrompt || DEFAULT_MESSAGE_SUMMARY_PROMPT;
+    const settings = migrateChatMemorySettings(api.settings.get());
+    api.settings.set(undefined, settings);
+    const promptTemplate = resolveChatMemoryPrompts(settings).messageSummaryPrompt;
     const connectionProfile = settings?.connectionProfile || api.settings.getGlobal('api.selectedConnectionProfile');
 
     if (!connectionProfile) {

@@ -4,14 +4,16 @@ import { Button, FormItem, Input, Select, Textarea, Toggle } from '../../../../c
 import { WorldInfoPosition } from '../../../../constants';
 import type { ApiChatMessage, ExtensionAPI } from '../../../../types';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../../types';
-import type { TextareaToolDefinition } from '../../../../types/ExtensionAPI';
+import PromptPresetField from '../../PromptPresetField.vue';
 import type { WorldInfoEntry } from '../../../../types/world-info';
 import {
-  DEFAULT_PROMPT,
+  BUILT_IN_PROMPT_PRESETS,
   type ChatMemoryMetadata,
   type ChatMemoryRecord,
   type ExtensionSettings,
   type MemoryMessageExtra,
+  migrateChatMemorySettings,
+  resolveChatMemoryPrompts,
 } from '../types';
 import TimelineVisualizer, { type TimelineSegment } from './TimelineVisualizer.vue';
 
@@ -25,14 +27,16 @@ const t = props.api.i18n.t;
 // State
 const startIndex = ref<number>(0);
 const endIndex = ref<number>(0);
-const lorebookPrompt = ref<string>(DEFAULT_PROMPT);
 const summaryResult = ref<string>('');
 const isGenerating = ref(false);
 const isSaving = ref(false);
 const autoHideMessages = ref(true);
 const selectedLorebook = ref<string>('');
+const activePromptPresetId = ref<string>('default');
+const promptPresets = ref<ExtensionSettings['promptPresets']>([]);
 const availableLorebooks = ref<{ label: string; value: string }[]>([]);
 const abortController = ref<AbortController | null>(null);
+const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 
 // Computed
 const chatHistory = computed(() => props.api.chat.getHistory());
@@ -110,17 +114,6 @@ const timelineSegments = computed<TimelineSegment[]>(() => {
   return segments;
 });
 
-const promptTools = computed<TextareaToolDefinition[]>(() => [
-  {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: t('common.reset'),
-    onClick: ({ setValue }) => {
-      setValue(DEFAULT_PROMPT);
-    },
-  },
-]);
-
 // Methods
 function refreshLorebooks() {
   const books = props.api.worldInfo.getAllBookNames();
@@ -132,11 +125,10 @@ function refreshLorebooks() {
 
 function loadState() {
   // Load Global Settings
-  const settings = props.api.settings.get();
-  if (settings) {
-    if (settings.prompt) lorebookPrompt.value = settings.prompt;
-    if (settings.autoHideMessages !== undefined) autoHideMessages.value = settings.autoHideMessages;
-  }
+  const settings = migrateChatMemorySettings(props.api.settings.get());
+  activePromptPresetId.value = settings.activePromptPresetId ?? 'default';
+  promptPresets.value = settings.promptPresets ?? [];
+  autoHideMessages.value = settings.autoHideMessages;
 
   // Load Chat Metadata (Persisted State)
   const currentMetadata = props.api.chat.metadata.get();
@@ -176,8 +168,12 @@ function loadState() {
 
 function saveState() {
   // Save Global Settings
-  props.api.settings.set('prompt', lorebookPrompt.value);
-  props.api.settings.set('autoHideMessages', autoHideMessages.value);
+  props.api.settings.set(undefined, {
+    ...migrateChatMemorySettings(props.api.settings.get()),
+    activePromptPresetId: activePromptPresetId.value,
+    promptPresets: promptPresets.value,
+    autoHideMessages: autoHideMessages.value,
+  });
   props.api.settings.save();
 
   // Save Chat Metadata
@@ -219,7 +215,12 @@ async function handleLorebookSummarize() {
     const messagesSlice = chatHistory.value.slice(startIndex.value, endIndex.value + 1);
     const textToSummarize = messagesSlice.map((m) => `${m.name}: ${m.mes}`).join('\n\n');
 
-    const compiledPrompt = props.api.macro.process(lorebookPrompt.value, undefined, {
+    const settings = migrateChatMemorySettings({
+      ...props.api.settings.get(),
+      activePromptPresetId: activePromptPresetId.value,
+      promptPresets: promptPresets.value,
+    });
+    const compiledPrompt = props.api.macro.process(resolveChatMemoryPrompts(settings).prompt, undefined, {
       text: textToSummarize,
     });
     const messages: Array<ApiChatMessage> = [{ role: 'system', content: compiledPrompt, name: 'System' }];
@@ -274,7 +275,12 @@ async function handleContinue() {
     const messagesSlice = chatHistory.value.slice(startIndex.value, endIndex.value + 1);
     const textToSummarize = messagesSlice.map((m) => `${m.name}: ${m.mes}`).join('\n\n');
 
-    const compiledPrompt = props.api.macro.process(lorebookPrompt.value, undefined, {
+    const settings = migrateChatMemorySettings({
+      ...props.api.settings.get(),
+      activePromptPresetId: activePromptPresetId.value,
+      promptPresets: promptPresets.value,
+    });
+    const compiledPrompt = props.api.macro.process(resolveChatMemoryPrompts(settings).prompt, undefined, {
       text: textToSummarize,
     });
 
@@ -468,7 +474,7 @@ onUnmounted(() => {
 });
 
 watch(
-  [lorebookPrompt, autoHideMessages, selectedLorebook, startIndex, endIndex],
+  [activePromptPresetId, promptPresets, autoHideMessages, selectedLorebook, startIndex, endIndex],
   () => {
     saveState();
   },
@@ -497,15 +503,18 @@ watch(
 
     <div class="section">
       <div class="section-title">2. Summarize</div>
-      <FormItem :label="t('extensionsBuiltin.chatMemory.labels.prompt')">
-        <Textarea
-          v-model="lorebookPrompt"
-          :rows="4"
-          allow-maximize
-          :tools="promptTools"
-          identifier="extension.chat-memory.prompt"
-        />
-      </FormItem>
+      <PromptPresetField
+        :api="api"
+        :active-preset-id="activePromptPresetId"
+        :prompt-presets="promptPresets"
+        :built-in-presets="builtInPromptPresets"
+        prompt-key="prompt"
+        :label="t('extensionsBuiltin.chatMemory.labels.prompt')"
+        identifier="extension.chat-memory.prompt"
+        :rows="4"
+        @update:active-preset-id="activePromptPresetId = $event"
+        @update:prompt-presets="promptPresets = $event"
+      />
       <div class="actions">
         <Button v-if="isGenerating" variant="danger" icon="fa-stop" @click="cancelGeneration">
           {{ t('common.cancel') }}

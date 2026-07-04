@@ -3,6 +3,7 @@ export interface TrackerSchemaPreset {
   schema: string; // JSON schema as a string
   template: string; // Handlebars HTML template as a string
   prompt: string;
+  builtIn?: boolean;
 }
 
 export interface TrackerSettings {
@@ -237,6 +238,7 @@ export const DEFAULT_PRESETS: TrackerSchemaPreset[] = [
     schema: JSON.stringify(DEFAULT_SCHEMA_VALUE, null, 2),
     template: DEFAULT_TEMPLATE,
     prompt: DEFAULT_PROMPT,
+    builtIn: true,
   },
 ];
 
@@ -253,3 +255,48 @@ export const DEFAULT_SETTINGS: TrackerSettings = {
   includeLastXTrackers: 3,
   parallelRequestLimit: 2,
 };
+
+function isSamePreset(left: TrackerSchemaPreset, right: TrackerSchemaPreset): boolean {
+  return left.schema === right.schema && left.template === right.template && left.prompt === right.prompt;
+}
+
+function uniqueTrackerPresetName(baseName: string, presets: TrackerSchemaPreset[]): string {
+  const names = new Set(presets.map((preset) => preset.name));
+  if (!names.has(baseName)) return baseName;
+
+  let index = 2;
+  while (names.has(`${baseName} ${index}`)) index++;
+  return `${baseName} ${index}`;
+}
+
+export function migrateTrackerSettings(settings: Partial<TrackerSettings> = {}): TrackerSettings {
+  const savedPresets = settings.schemaPresets ?? [];
+  const userPresets = savedPresets.filter((preset) => {
+    const builtIn = DEFAULT_PRESETS.find((defaultPreset) => defaultPreset.name === preset.name);
+    return !builtIn;
+  });
+  const migratedPresets = [...DEFAULT_PRESETS.map((preset) => ({ ...preset })), ...userPresets];
+  let activeSchemaPresetName = settings.activeSchemaPresetName || DEFAULT_SETTINGS.activeSchemaPresetName;
+
+  for (const savedPreset of savedPresets) {
+    const builtIn = DEFAULT_PRESETS.find((defaultPreset) => defaultPreset.name === savedPreset.name);
+    if (!builtIn || isSamePreset(savedPreset, builtIn)) continue;
+
+    const customPreset: TrackerSchemaPreset = {
+      ...savedPreset,
+      name: uniqueTrackerPresetName(`Custom ${savedPreset.name}`, migratedPresets),
+      builtIn: false,
+    };
+    migratedPresets.push(customPreset);
+    if (activeSchemaPresetName === savedPreset.name) activeSchemaPresetName = customPreset.name;
+  }
+
+  return {
+    ...DEFAULT_SETTINGS,
+    ...settings,
+    schemaPresets: migratedPresets,
+    activeSchemaPresetName: migratedPresets.some((preset) => preset.name === activeSchemaPresetName)
+      ? activeSchemaPresetName
+      : DEFAULT_SETTINGS.activeSchemaPresetName,
+  };
+}

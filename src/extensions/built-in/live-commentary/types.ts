@@ -1,13 +1,25 @@
-export interface LiveCommentarySettings {
+import {
+  migratePromptPresetState,
+  resolvePromptPreset,
+  type PromptPreset,
+  type PromptPresetState,
+} from '../prompt-presets';
+
+export type LiveCommentaryPrompts = {
+  prompt: string;
+  askPrompt: string;
+};
+
+export interface LiveCommentarySettings extends PromptPresetState<LiveCommentaryPrompts> {
   enabled: boolean;
   connectionProfile: string;
   debounceMs: number;
   maxWaitMs: number; // Maximum time between triggers during continuous typing
   minIntervalMs: number;
   displayDurationMs: number;
-  prompt: string;
+  prompt?: string;
   maxCommentaryHistory: number;
-  askPrompt: string;
+  askPrompt?: string;
 
   // Injection settings
   injectionEnabled: boolean;
@@ -108,6 +120,18 @@ Use the chat history as the primary context, but you may also use reasonable gen
 4. If a needed chat detail is missing, say what is missing, then still give a useful answer if possible.
 5. Do not continue the roleplay scene unless the user explicitly asks you to.`;
 
+export const BUILT_IN_PROMPT_PRESETS: PromptPreset<LiveCommentaryPrompts>[] = [
+  {
+    id: 'default',
+    name: 'Default',
+    builtIn: true,
+    prompts: {
+      prompt: DEFAULT_PROMPT,
+      askPrompt: DEFAULT_ASK_PROMPT,
+    },
+  },
+];
+
 export const DEFAULT_SETTINGS: LiveCommentarySettings = {
   enabled: false,
   connectionProfile: '',
@@ -115,11 +139,34 @@ export const DEFAULT_SETTINGS: LiveCommentarySettings = {
   maxWaitMs: 8000,
   minIntervalMs: 5000,
   displayDurationMs: 15000,
-  prompt: DEFAULT_PROMPT,
   maxCommentaryHistory: 10,
-  askPrompt: DEFAULT_ASK_PROMPT,
   injectionEnabled: true,
   injectionDepth: 10,
   injectionPosition: 'end_of_context',
   injectionTemplate: DEFAULT_INJECTION_TEMPLATE,
+  activePromptPresetId: 'default',
+  promptPresets: [],
+  promptPresetMigrationVersion: 1,
 };
+
+export function migrateLiveCommentarySettings(settings: Partial<LiveCommentarySettings> = {}): LiveCommentarySettings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...migratePromptPresetState({
+      settings: { ...DEFAULT_SETTINGS, ...settings },
+      builtInPresets: BUILT_IN_PROMPT_PRESETS,
+      legacyPrompts: {
+        prompt: settings.prompt,
+        askPrompt: settings.askPrompt,
+      },
+      legacyDefaults: {
+        prompt: DEFAULT_PROMPT,
+        askPrompt: DEFAULT_ASK_PROMPT,
+      },
+    }),
+  };
+}
+
+export function resolveLiveCommentaryPrompts(settings: LiveCommentarySettings): LiveCommentaryPrompts {
+  return resolvePromptPreset(settings, BUILT_IN_PROMPT_PRESETS).prompts;
+}

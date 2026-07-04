@@ -3,32 +3,18 @@ import type { ApiChatMessage, ExtensionAPI, GenerationContext } from '../../../t
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
 import {
-  DEFAULT_GENERATE_PROMPT,
-  DEFAULT_IMPERSONATE_PROMPT,
   type ExtensionSettings,
+  migrateGenerationToolsSettings,
   type RerollSnapshot,
+  resolveGenerationToolsPrompts,
 } from './types';
 
 export { manifest };
 
-const DEFAULT_SETTINGS: ExtensionSettings = {
-  rerollContinueEnabled: true,
-  deleteContinueEnabled: true,
-  swipeEnabled: true,
-  impersonateEnabled: true,
-  impersonateConnectionProfile: '',
-  impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
-  generateEnabled: true,
-  generatePrompt: DEFAULT_GENERATE_PROMPT,
-};
-
 function getSettings(api: ExtensionAPI<ExtensionSettings>): ExtensionSettings {
-  const existing = api.settings.get();
-  if (!existing) {
-    api.settings.set(undefined, DEFAULT_SETTINGS);
-    return DEFAULT_SETTINGS;
-  }
-  return existing;
+  const settings = migrateGenerationToolsSettings(api.settings.get());
+  api.settings.set(undefined, settings);
+  return settings;
 }
 
 export function activate(api: ExtensionAPI<ExtensionSettings>) {
@@ -181,8 +167,9 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
   const onPromptBuilt = (messages: ApiChatMessage[], context: { generationId: string }) => {
     if (generateInputs.has(context.generationId)) {
       const settings = getSettings(api);
+      const prompts = resolveGenerationToolsPrompts(settings);
       const userInput = generateInputs.get(context.generationId)!;
-      const processedPrompt = api.macro.process(settings.generatePrompt, undefined, { input: userInput });
+      const processedPrompt = api.macro.process(prompts.generatePrompt, undefined, { input: userInput });
 
       messages.push({
         role: 'system',
@@ -364,8 +351,9 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     const chatInputValue = api.chat.getChatInput()?.value.trim() ?? '';
 
     const genMessages: ApiChatMessage[] = [...contextMessages];
-    if (settings.impersonatePrompt) {
-      const impersonateContent = api.macro.process(settings.impersonatePrompt);
+    const prompts = resolveGenerationToolsPrompts(settings);
+    if (prompts.impersonatePrompt) {
+      const impersonateContent = api.macro.process(prompts.impersonatePrompt);
       genMessages.push({
         role: 'system',
         content: impersonateContent,

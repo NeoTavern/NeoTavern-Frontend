@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
-import { FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
-import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
-import { DEFAULT_EXTRACTION_PROMPT, DEFAULT_SETTINGS, type TimelineExtensionAPI, type TimelineSettings } from './types';
+import { FormItem, Input, Select, Toggle } from '../../../components/UI';
+import PromptPresetField from '../PromptPresetField.vue';
+import {
+  BUILT_IN_PROMPT_PRESETS,
+  DEFAULT_SETTINGS,
+  type TimelineExtensionAPI,
+  type TimelineSettings,
+  migrateTimelineSettings,
+} from './types';
 
 const props = defineProps<{
   api: TimelineExtensionAPI;
 }>();
 
 const settings = ref<TimelineSettings>({ ...DEFAULT_SETTINGS });
-const t = props.api.i18n.t;
 
 onMounted(() => {
-  settings.value = { ...DEFAULT_SETTINGS, ...props.api.settings.get() };
+  settings.value = migrateTimelineSettings(props.api.settings.get());
 });
 
 watch(
@@ -31,26 +36,7 @@ const formatOptions = [
   { label: 'XML', value: 'xml' },
 ];
 
-const resetPromptTools = computed(() => [
-  {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: t('common.reset'),
-    onClick: async ({ setValue }: { setValue: (value: string) => void }) => {
-      const { result } = await props.api.ui.showPopup({
-        title: 'Reset Timeline Prompt?',
-        content: 'Reset the timeline extraction prompt to its default value?',
-        type: POPUP_TYPE.CONFIRM,
-        okButton: 'common.reset',
-        cancelButton: 'common.cancel',
-      });
-      if (result === POPUP_RESULT.AFFIRMATIVE) {
-        setValue(DEFAULT_EXTRACTION_PROMPT);
-        props.api.ui.showToast('Timeline prompt reset.', 'success');
-      }
-    },
-  },
-]);
+const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 </script>
 
 <template>
@@ -86,15 +72,18 @@ const resetPromptTools = computed(() => [
     </div>
 
     <div class="timeline-settings__group">AI Prompt</div>
-    <FormItem label="Extraction Prompt">
-      <Textarea
-        v-model="settings.extractionPrompt"
-        allow-maximize
-        :rows="14"
-        identifier="extension.timeline.extractionPrompt"
-        :tools="resetPromptTools"
-      />
-    </FormItem>
+    <PromptPresetField
+      :api="api"
+      :active-preset-id="settings.activePromptPresetId"
+      :prompt-presets="settings.promptPresets"
+      :built-in-presets="builtInPromptPresets"
+      prompt-key="extractionPrompt"
+      label="Extraction Prompt"
+      identifier="extension.timeline.extractionPrompt"
+      :rows="14"
+      @update:active-preset-id="settings.activePromptPresetId = $event"
+      @update:prompt-presets="settings.promptPresets = $event"
+    />
   </div>
 </template>
 

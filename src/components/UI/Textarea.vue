@@ -68,13 +68,14 @@ const isCodeMirrorActive = computed(() => {
 });
 
 const activeTools = computed(() => {
+  if (props.disabled) return [];
   const registryTools =
     props.identifier && typeof props.identifier === 'string' ? registryStore.getTextareaTools(props.identifier) : [];
   return [...registryTools, ...(props.tools || [])];
 });
 
 const showHeader = computed(() => {
-  return !!props.label || !!props.allowMaximize || activeTools.value.length > 0;
+  return !!props.label || (!props.disabled && props.allowMaximize) || activeTools.value.length > 0;
 });
 
 function onInput(event: Event) {
@@ -164,7 +165,7 @@ const textareaStyle = computed<StyleValue>(() => ({
         </button>
 
         <button
-          v-if="props.allowMaximize"
+          v-if="props.allowMaximize && !props.disabled"
           class="tool-btn"
           :aria-label="t('common.expandedEditor')"
           :title="t('common.expandedEditor')"

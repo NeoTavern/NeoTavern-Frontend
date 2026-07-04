@@ -7,11 +7,12 @@ import { manifest } from './manifest';
 import RoadwayChoices from './RoadwayChoices.vue';
 import SettingsPanel from './SettingsPanel.vue';
 import {
-  DEFAULT_SETTINGS,
   type RoadwayChatExtra,
   type RoadwayMessageExtra,
   type RoadwayMessageExtraData,
   type RoadwaySettings,
+  migrateRoadwaySettings,
+  resolveRoadwayPrompts,
 } from './types';
 
 export { manifest };
@@ -33,8 +34,9 @@ class RoadwayManager {
   constructor(private api: RoadwayExtensionAPI) {}
 
   private getSettings(): RoadwaySettings {
-    const saved = this.api.settings.get();
-    return { ...DEFAULT_SETTINGS, ...saved };
+    const settings = migrateRoadwaySettings(this.api.settings.get());
+    this.api.settings.set(undefined, settings);
+    return settings;
   }
 
   public manualGenerateChoicesForLastMessage(): void {
@@ -100,7 +102,7 @@ class RoadwayManager {
       const contextMessages = itemizedPrompt.messages;
 
       const chatInput = this.api.chat.getChatInput()?.value.trim() ?? '';
-      const choicePrompt = this.api.macro.process(settings.choiceGenPrompt, undefined, {
+      const choicePrompt = this.api.macro.process(resolveRoadwayPrompts(settings).choiceGenPrompt, undefined, {
         choiceCount: settings.choiceCount,
         input: chatInput,
       });
