@@ -5,6 +5,7 @@ import { ToolService } from '../services/tool.service';
 import { useApiStore } from '../stores/api.store';
 import { useSettingsStore } from '../stores/settings.store';
 import type {
+  ApiChatContentPart,
   ApiChatMessage,
   ApiChatToolCall,
   ApiChatToolCallDelta,
@@ -26,6 +27,7 @@ import { convertMessagesToInstructString } from '../utils/instruct';
 import { parseResponse } from '../utils/structured-response';
 import {
   extractMessageGeneric,
+  getModelCapabilities,
   getProviderHandler,
   MODEL_INJECTIONS,
   PARAMETER_DEFINITIONS,
@@ -34,6 +36,33 @@ import {
   PROVIDER_INJECTIONS,
   type ParamHandling,
 } from './provider-definitions';
+
+function filterUnsupportedMediaParts(
+  messages: ApiChatMessage[],
+  capabilities: { vision: boolean; video: boolean; audio: boolean },
+): ApiChatMessage[] {
+  return messages.map((message) => {
+    if (!Array.isArray(message.content)) {
+      return message;
+    }
+
+    const content = message.content.filter((part) => {
+      if (part.type === 'image_url') return capabilities.vision;
+      if (part.type === 'video_url') return capabilities.video;
+      if (part.type === 'audio_url') return capabilities.audio;
+      return true;
+    });
+
+    if (content.length === message.content.length) {
+      return message;
+    }
+
+    return {
+      ...message,
+      content: content.length > 0 ? (content as ApiChatContentPart[]) : '',
+    } as ApiChatMessage;
+  });
+}
 
 export interface ResolvedConnectionProfileSettings {
   provider: ApiProvider;
@@ -324,7 +353,7 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
     include_reasoning: !!samplerSettings.show_thoughts,
   };
 
-  const finalMessages = [...messages];
+  const finalMessages = filterUnsupportedMediaParts(messages, getModelCapabilities(provider, model, options.modelList));
 
   // Handle Structured Response
   if (structuredResponse) {

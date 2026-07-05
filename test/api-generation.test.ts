@@ -1,9 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChatCompletionService, processMessagesWithPrefill } from '../src/api/generation';
-import { CustomPromptPostProcessing } from '../src/constants';
+import { ChatCompletionService, buildChatCompletionPayload, processMessagesWithPrefill } from '../src/api/generation';
+import { CustomPromptPostProcessing, defaultSamplerSettings } from '../src/constants';
 import { useAuthStore } from '../src/stores/auth.store';
+import { api_providers } from '../src/types';
 import type { ApiChatMessage, ChatCompletionPayload } from '../src/types/generation';
+import type { Settings } from '../src/types/settings';
 
 describe('processMessagesWithPrefill', () => {
   afterEach(() => {
@@ -90,5 +92,28 @@ describe('processMessagesWithPrefill', () => {
     }
 
     expect(generated).toBe(' "Local');
+  });
+
+  it('removes media parts when building a payload for a text-only provider', () => {
+    const payload = buildChatCompletionPayload({
+      messages: [
+        {
+          role: 'user',
+          name: 'User',
+          content: [
+            { type: 'text', text: 'describe this' },
+            { type: 'image_url', image_url: { url: 'data:image/png;base64,abc', detail: 'low' } },
+          ],
+        },
+      ],
+      model: 'deepseek-reasoner',
+      provider: api_providers.DEEPSEEK,
+      providerSpecific: {} as Settings['api']['providerSpecific'],
+      samplerSettings: defaultSamplerSettings,
+      customPromptPostProcessing: CustomPromptPostProcessing.NONE,
+      formatter: 'chat',
+    });
+
+    expect(payload.messages?.[0].content).toEqual([{ type: 'text', text: 'describe this' }]);
   });
 });

@@ -262,6 +262,17 @@ export function getModelCapabilities(
   if (!modelId) return capabilities;
 
   const currentModel = modelList?.find((m) => m.id === modelId);
+  const hasInputModality = (modality: string) => !!currentModel?.architecture?.input_modalities?.includes(modality);
+  const explicitVisionCapability =
+    hasInputModality('image') ||
+    !!currentModel?.capabilities?.vision ||
+    !!currentModel?.features?.includes('openai/chat-completion.vision') ||
+    !!currentModel?.metadata?.vision ||
+    !!currentModel?.vision;
+  const explicitAudioCapability =
+    hasInputModality('audio') || !!currentModel?.capabilities?.audio || !!currentModel?.metadata?.audio;
+  const explicitVideoCapability =
+    hasInputModality('video') || !!currentModel?.capabilities?.video || !!currentModel?.metadata?.video;
 
   // Vision Capability
   switch (provider) {
@@ -299,8 +310,10 @@ export function getModelCapabilities(
       capabilities.vision = !!currentModel?.capabilities?.vision;
       break;
     case api_providers.CUSTOM:
+      capabilities.vision = explicitVisionCapability;
+      break;
     case api_providers.COMETAPI:
-      capabilities.vision = true;
+      capabilities.vision = explicitVisionCapability || visionSupportedModels.some((m) => modelId.includes(m));
       break;
   }
 
@@ -313,6 +326,9 @@ export function getModelCapabilities(
       break;
     case api_providers.OPENROUTER:
       capabilities.video = !!currentModel?.architecture?.input_modalities?.includes('video');
+      break;
+    case api_providers.CUSTOM:
+      capabilities.video = explicitVideoCapability;
       break;
   }
 
@@ -327,7 +343,7 @@ export function getModelCapabilities(
       capabilities.audio = !!currentModel?.architecture?.input_modalities?.includes('audio');
       break;
     case api_providers.CUSTOM:
-      capabilities.audio = true;
+      capabilities.audio = explicitAudioCapability;
       break;
   }
 
