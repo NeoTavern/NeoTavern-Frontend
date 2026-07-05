@@ -1,8 +1,9 @@
-export const manifest = {
+import type { ExtensionManifest } from '../../../types';
+
+export const manifest: ExtensionManifest = {
   name: 'core.text-to-speech',
-  display_name: 'Text to Speech',
-  description:
-    'Read chat messages aloud with system voices, OpenAI, ElevenLabs, Kokoro-FastAPI, or local OpenAI-compatible TTS.',
+  display_name: 'extensionsBuiltin.manifests.textToSpeech.name',
+  description: 'extensionsBuiltin.manifests.textToSpeech.description',
   version: '1.0.0',
   author: 'NeoTavern Team',
   icon: 'fa-solid fa-volume-high',

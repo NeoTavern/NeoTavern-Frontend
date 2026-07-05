@@ -20,16 +20,16 @@ const prompts = computed({
 
 const expandedPrompts = ref(new Set<string>());
 
-const roleOptions = [
-  { label: 'System', value: 'system' },
-  { label: 'User', value: 'user' },
-  { label: 'Assistant', value: 'assistant' },
-];
+const roleOptions = computed(() => [
+  { label: t('aiConfig.promptManager.roles.system'), value: 'system' },
+  { label: t('aiConfig.promptManager.roles.user'), value: 'user' },
+  { label: t('aiConfig.promptManager.roles.assistant'), value: 'assistant' },
+]);
 
 function createNewPrompt() {
   const id = `global-${Date.now()}`;
   const newPrompt: Prompt = {
-    name: 'New Global Prompt',
+    name: t('aiConfig.promptManager.newGlobalPrompt'),
     identifier: id as KnownPromptIdentifiers,
     role: 'system',
     content: '',
@@ -81,7 +81,7 @@ function getBadgeClass(role?: StrictOmitString<MessageRole, 'tool'>) {
       <h3>{{ t('aiConfig.promptManager.globalPrompts') }}</h3>
       <div class="actions">
         <Button icon="fa-plus" @click="createNewPrompt">
-          {{ t('aiConfig.promptManager.newPrompt') }}
+          {{ t('aiConfig.promptManager.newGlobalPrompt') }}
         </Button>
         <Button icon="fa-xmark" variant="ghost" @click="props.closePopup?.()" />
       </div>

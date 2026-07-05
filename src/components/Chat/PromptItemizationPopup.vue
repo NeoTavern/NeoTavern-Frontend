@@ -54,8 +54,8 @@ function toggleWorldInfo() {
 }
 
 function getEntryState(entry: WorldInfoEntry) {
-  if (entry.constant) return { label: 'Constant', class: 'constant' };
-  return { label: 'Normal', class: 'normal' };
+  if (entry.constant) return { label: t('chat.itemization.constant'), class: 'constant' };
+  return { label: t('chat.itemization.normal'), class: 'normal' };
 }
 
 // Helper to format token count
@@ -87,14 +87,26 @@ const fmt = (n: number) => n.toLocaleString();
       <!-- Bar Chart -->
       <div class="pi-graph-section">
         <div class="pi-graph-bar">
-          <div class="pi-bar-segment system" :style="{ height: percentages.graphSystem + '%' }" title="System"></div>
-          <div class="pi-bar-segment wi" :style="{ height: percentages.graphWI + '%' }" title="World Info"></div>
+          <div
+            class="pi-bar-segment system"
+            :style="{ height: percentages.graphSystem + '%' }"
+            :title="t('chat.itemization.system')"
+          ></div>
+          <div
+            class="pi-bar-segment wi"
+            :style="{ height: percentages.graphWI + '%' }"
+            :title="t('chat.itemization.worldInfo')"
+          ></div>
           <div
             class="pi-bar-segment history"
             :style="{ height: percentages.graphHistory + '%' }"
-            title="Chat History"
+            :title="t('chat.itemization.chatHistory')"
           ></div>
-          <div class="pi-bar-segment other" :style="{ height: percentages.graphOther + '%' }" title="Other"></div>
+          <div
+            class="pi-bar-segment other"
+            :style="{ height: percentages.graphOther + '%' }"
+            :title="t('chat.itemization.other')"
+          ></div>
         </div>
       </div>
 
@@ -189,7 +201,7 @@ const fmt = (n: number) => n.toLocaleString();
           <li v-for="entry in entries" :key="entry.uid">
             <div class="pi-wi-entry-header">
               <span class="uid">[{{ entry.uid }}]</span>
-              <span class="title">{{ entry.comment || 'Untitled' }}</span>
+              <span class="title">{{ entry.comment || t('common.untitled') }}</span>
               <span class="badge" :class="getEntryState(entry).class">{{ getEntryState(entry).label }}</span>
             </div>
             <div class="pi-wi-keys">

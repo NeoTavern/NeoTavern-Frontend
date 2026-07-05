@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, nextTick, ref } from 'vue';
 import { discoverExtensions, fetchManifest } from '../api/extensions';
+import { useStrictI18n } from '../composables/useStrictI18n';
 import { builtInExtensions } from '../extensions/built-in';
 import type { BuiltInExtensionModule, ExtensionManifest } from '../types';
 import { sanitizeSelector } from '../utils/client';
@@ -25,12 +26,21 @@ export function getExtensionContainerId(extensionId: string): string {
 
 export const useExtensionStore = defineStore('extension', () => {
   const settingsStore = useSettingsStore();
+  const { t } = useStrictI18n();
   const extensions = ref<Record<string, Extension>>({});
   const searchTerm = ref('');
   const selectedExtensionId = ref<string | null>(null);
   const cleanupFunctions = new Map<string, () => void>();
 
   const disabledExtensions = computed(() => settingsStore.settings.disabledExtensions);
+
+  function getExtensionDisplayName(extension: Extension): string {
+    return t(extension.manifest.display_name);
+  }
+
+  function getExtensionDescription(extension: Extension): string {
+    return t(extension.manifest.description);
+  }
 
   const filteredExtensions = computed(() => {
     const lowerSearch = searchTerm.value.toLowerCase();
@@ -39,11 +49,11 @@ export const useExtensionStore = defineStore('extension', () => {
         if (!lowerSearch) return true;
         return (
           ext.id.toLowerCase().includes(lowerSearch) ||
-          ext.manifest.display_name?.toLowerCase().includes(lowerSearch) ||
+          getExtensionDisplayName(ext).toLowerCase().includes(lowerSearch) ||
           ext.manifest.author?.toLowerCase().includes(lowerSearch)
         );
       })
-      .sort((a, b) => (a.manifest.display_name ?? a.id).localeCompare(b.manifest.display_name ?? b.id));
+      .sort((a, b) => getExtensionDisplayName(a).localeCompare(getExtensionDisplayName(b)));
   });
 
   const selectedExtension = computed<Extension | null>(() => {
@@ -200,6 +210,8 @@ export const useExtensionStore = defineStore('extension', () => {
     selectExtension,
     initializeExtensions,
     getExtensionContainerId,
+    getExtensionDisplayName,
+    getExtensionDescription,
     toggleExtension,
   };
 });

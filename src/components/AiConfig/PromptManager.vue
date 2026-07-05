@@ -21,11 +21,11 @@ const presetPrompts = computed<Prompt[]>({
   set: (val) => (settingsStore.settings.api.samplers.prompts = val),
 });
 
-const roleOptions = [
-  { label: 'System', value: 'system' },
-  { label: 'User', value: 'user' },
-  { label: 'Assistant', value: 'assistant' },
-];
+const roleOptions = computed(() => [
+  { label: t('aiConfig.promptManager.roles.system'), value: 'system' },
+  { label: t('aiConfig.promptManager.roles.user'), value: 'user' },
+  { label: t('aiConfig.promptManager.roles.assistant'), value: 'assistant' },
+]);
 
 const selectedLibraryPrompt = ref<string>('');
 
@@ -71,7 +71,7 @@ function addFromLibrary(identifier: string | string[]) {
 function createNewPrompt() {
   const id = `custom-${Date.now()}`;
   const newPrompt: Prompt = {
-    name: 'New Prompt',
+    name: t('aiConfig.promptManager.newPrompt'),
     identifier: id as KnownPromptIdentifiers,
     content: '',
     role: 'system',

@@ -13,7 +13,7 @@ const { t } = useStrictI18n();
 
     <div class="formatting-drawer-content">
       <!-- Placeholder for future formatting options -->
-      <p>Formatting options will be available here in a future update.</p>
+      <p>{{ t('formatting.placeholder') }}</p>
     </div>
   </div>
 </template>

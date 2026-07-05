@@ -96,8 +96,8 @@ async function handleFormSubmit() {
           <Input
             v-if="isDiscreet || !selectedUser"
             v-model="handleInput"
-            label="Username"
-            placeholder="Username"
+            :label="t('login.username')"
+            :placeholder="t('login.username')"
             :disabled="isLoading"
             required
           />
@@ -105,8 +105,8 @@ async function handleFormSubmit() {
           <Input
             v-model="passwordInput"
             type="password"
-            label="Password"
-            placeholder="Password"
+            :label="t('login.password')"
+            :placeholder="t('login.password')"
             :disabled="isLoading"
             autofocus
           />

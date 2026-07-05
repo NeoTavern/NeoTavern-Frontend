@@ -24,9 +24,9 @@ const settingsStore = useSettingsStore();
 const { t } = useStrictI18n();
 
 const themeOptions = computed(() => {
-  const list = [{ label: 'Default', value: 'Default' }];
-  themeStore.themes.forEach((t) => {
-    list.push({ label: t.name, value: t.name });
+  const list = [{ label: t('common.default'), value: 'Default' }];
+  themeStore.themes.forEach((theme) => {
+    list.push({ label: theme.name, value: theme.name });
   });
   return list;
 });
@@ -85,7 +85,7 @@ async function onDelete() {
   const { result } = await popupStore.show({
     type: POPUP_TYPE.CONFIRM,
     title: t('common.delete'),
-    content: `Delete theme "${themeStore.activeThemeName}"?`,
+    content: t('themes.deleteConfirmContent', { name: themeStore.activeThemeName }),
   });
 
   if (result) {
@@ -102,7 +102,7 @@ function onImport(files: File[]) {
 
 <template>
   <div class="theme-drawer">
-    <SidebarHeader title="Themes" />
+    <SidebarHeader :title="t('themes.title')" />
 
     <div class="theme-drawer-content">
       <!-- Preset Control -->
@@ -129,7 +129,7 @@ function onImport(files: File[]) {
       <!-- Variable Editors -->
       <div class="theme-editor">
         <!-- Custom CSS Section -->
-        <CollapsibleSection title="Custom CSS">
+        <CollapsibleSection :title="t('themes.customCss')">
           <div class="theme-vars-list">
             <Textarea
               :model-value="themeStore.customCss"

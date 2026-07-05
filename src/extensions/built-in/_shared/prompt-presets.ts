@@ -52,9 +52,10 @@ function uniquePresetId<TPrompts extends Record<string, string>>(
 export function getPromptPresetOptions<TPrompts extends Record<string, string>>(
   builtInPresets: PromptPreset<TPrompts>[],
   userPresets: PromptPreset<TPrompts>[] = [],
+  defaultLabel = 'Default',
 ): Array<{ label: string; value: string }> {
   return [...builtInPresets, ...userPresets].map((preset) => ({
-    label: preset.builtIn && preset.name.toLowerCase() !== 'default' ? `${preset.name} (Default)` : preset.name,
+    label: preset.builtIn && preset.name.toLowerCase() !== 'default' ? `${preset.name} (${defaultLabel})` : preset.name,
     value: preset.id,
   }));
 }

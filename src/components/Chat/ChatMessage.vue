@@ -136,7 +136,7 @@ function handleAvatarClick() {
   if (isSelectionMode.value) return; // Disable zoom in selection mode
   uiStore.toggleZoomedAvatar({
     src: avatarUrls.value.full,
-    charName: charNameForAvatar.value || 'Avatar',
+    charName: charNameForAvatar.value || t('chat.media.avatar'),
   });
 }
 
@@ -227,7 +227,7 @@ function handleAttachmentClick(mediaItem: (typeof attachmentMediaItems.value)[0]
 
     uiStore.toggleZoomedAvatar({
       src: mediaItem.fullSrc,
-      charName: mediaItem.title || 'Image',
+      charName: mediaItem.title || t('common.image'),
       tools,
     });
   }
@@ -264,7 +264,7 @@ function handleContentClick(event: MouseEvent) {
   if (target.tagName === 'IMG' && target.classList.contains('message-content-image')) {
     const imgElement = target as HTMLImageElement;
     const src = imgElement.src;
-    const alt = imgElement.alt || 'Inline Image';
+    const alt = imgElement.alt || t('chat.media.inlineImage');
 
     const tools = computed<ZoomedAvatarTool[]>(() => {
       const currentIgnored = props.message.extra.ignored_media ?? [];
@@ -576,7 +576,7 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
             :title="message.is_system ? t('chat.buttons.showInPrompt') : t('chat.buttons.hideFromPrompt')"
             @click="toggleHidden"
           />
-          <Button v-if="!isSmallSys" variant="ghost" icon="fa-pencil" title="Edit" @click="startEditing" />
+          <Button v-if="!isSmallSys" variant="ghost" icon="fa-pencil" :title="t('common.edit')" @click="startEditing" />
           <Button
             icon="fa-trash-can"
             variant="danger"
@@ -624,10 +624,10 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
                 @keydown.space.prevent="toggleToolStep(step.index)"
               >
                 <div class="tool-step-info">
-                  <i v-if="step.isAssistant" class="fa-solid fa-code-branch" title="Tool Call"></i>
-                  <i v-else class="fa-solid fa-terminal" title="Tool Output"></i>
+                  <i v-if="step.isAssistant" class="fa-solid fa-code-branch" :title="t('chat.toolSteps.call')"></i>
+                  <i v-else class="fa-solid fa-terminal" :title="t('chat.toolSteps.output')"></i>
                   <span v-if="step.isAssistant && step.toolNames" class="tool-names">{{ step.toolNames }}</span>
-                  <span v-else-if="!step.isAssistant" class="tool-names">Output</span>
+                  <span v-else-if="!step.isAssistant" class="tool-names">{{ t('chat.toolSteps.outputShort') }}</span>
                 </div>
                 <i
                   class="fa-solid"
@@ -711,12 +711,12 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
           class="media-item"
           role="button"
           tabindex="0"
-          :aria-label="`View media: ${item.title || item.type}`"
+          :aria-label="t('chat.media.viewMedia', { title: item.title || item.type })"
           @click.stop="handleAttachmentClick(item)"
           @keydown.enter.stop.prevent="handleAttachmentClick(item)"
           @keydown.space.stop.prevent="handleAttachmentClick(item)"
         >
-          <img v-if="item.type === 'image'" :src="item.src" :alt="item.title || 'Image content'" />
+          <img v-if="item.type === 'image'" :src="item.src" :alt="item.title || t('chat.media.imageContent')" />
           <div v-else class="media-placeholder">
             <i v-if="item.type === 'video'" class="fa-solid fa-film"></i>
             <i v-else-if="item.type === 'audio'" class="fa-solid fa-volume-high"></i>

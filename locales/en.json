@@ -12,7 +12,8 @@
   },
   "formatting": {
     "title": "AI Response Formatting",
-    "description": "Text completion."
+    "description": "Text completion.",
+    "placeholder": "Formatting options will be available here in a future update."
   },
   "chatManagement": {
     "newChat": "New Chat",
@@ -94,6 +95,7 @@
     "create": "Create",
     "activated": "Persona {name} activated.",
     "noDescription": "[No description]",
+    "noPersonaSelected": "No Persona Selected",
     "currentPersona": "Current Persona",
     "importSuccess": "Imported {count} persona(s)",
     "description": {
@@ -348,8 +350,14 @@
       "description": "Control how the final prompt is constructed before being sent to the AI.",
       "noPrompts": "No prompts created yet.",
       "newPrompt": "New Prompt",
+      "newGlobalPrompt": "New Global Prompt",
       "role": "Role",
       "content": "Content",
+      "roles": {
+        "system": "System",
+        "user": "User",
+        "assistant": "Assistant"
+      },
       "selectFromLibrary": "Select from Prompt Library",
       "addFromLibrary": "Add from Library",
       "globalPrompts": "Global Prompts",
@@ -590,7 +598,14 @@
     "reload": "Reload",
     "abort": "Abort",
     "newVersionAvailable": "New version available",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "untitled": "Untitled",
+    "advanced": "Advanced",
+    "toggleFullScreen": "Toggle Full Screen"
+  },
+  "colorPicker": {
+    "hex": "Hex",
+    "alpha": "Alpha"
   },
   "popup": {
     "cropAvatar": {
@@ -705,9 +720,17 @@
       "maxContext": "Max Context",
       "showRaw": "Show Raw Prompt",
       "showWorldInfo": "Show World Info",
-      "copy": "Copy Prompt"
+      "copy": "Copy Prompt",
+      "system": "System",
+      "other": "Other",
+      "constant": "Constant",
+      "normal": "Normal"
     },
     "media": {
+      "avatar": "Avatar",
+      "inlineImage": "Inline Image",
+      "imageContent": "Image content",
+      "viewMedia": "View media: {title}",
       "videoTooLong": "Video '{name}' is too long. It must be under 1 minute.",
       "metadataError": "Failed to read media metadata.",
       "tooLarge": "File '{name}' is too large.",
@@ -730,7 +753,10 @@
       }
     },
     "toolSteps": {
-      "title": "Tool Execution Steps"
+      "title": "Tool Execution Steps",
+      "call": "Tool Call",
+      "output": "Tool Output",
+      "outputShort": "Output"
     },
     "quickActions": {
       "title": "Quick Actions",
@@ -933,6 +959,8 @@
   },
   "themes": {
     "title": "Themes",
+    "customCss": "Custom CSS",
+    "deleteConfirmContent": "Delete theme \"{name}\"?",
     "errors": {
       "loadFailed": "Failed to load themes",
       "saveFailed": "Failed to save theme",
@@ -1325,6 +1353,92 @@
     }
   },
   "extensionsBuiltin": {
+    "manifests": {
+      "chatBranching": {
+        "name": "Chat Branching",
+        "description": "Adds an option to branch the chat from a specific message."
+      },
+      "chatMemory": {
+        "name": "Chat Memory",
+        "description": "Summarize long conversations into World Info entries, or generate concise summaries for individual messages to optimize context."
+      },
+      "chatTranslation": {
+        "name": "Chat Translation",
+        "description": "Translate chat messages using an LLM connection profile."
+      },
+      "generationTools": {
+        "name": "Generation Tools",
+        "description": "Adds Reroll continue, Delete continue, Swipe, Impersonate, and special Generate buttons."
+      },
+      "groupChat": {
+        "name": "Group Chat",
+        "description": "Enables group chat functionality with multiple characters."
+      },
+      "liveCommentary": {
+        "name": "Live Commentary",
+        "description": "Shows characters' thoughts as you type in the chat."
+      },
+      "modelRandomizer": {
+        "name": "Model Randomizer",
+        "description": "Randomize model and sampler settings for each generation to create varied responses."
+      },
+      "mythicAgents": {
+        "name": "Mythic Agents (GME)",
+        "description": "Full Mythic GME 2e oracle, scenes, and UNE NPCs."
+      },
+      "notebook": {
+        "name": "Notebook",
+        "description": "A rich text editor for taking notes."
+      },
+      "phone": {
+        "name": "Phone",
+        "description": "Adds message-scoped SMS conversations for roleplay chats."
+      },
+      "rewrite": {
+        "name": "Magic Rewrite",
+        "description": "Rewrite and enhance text in input, chat, and other fields using LLM."
+      },
+      "roadway": {
+        "name": "Roadway",
+        "description": "Provides AI-generated choices for user replies, creating a CYOA experience."
+      },
+      "standardTools": {
+        "name": "Standard Tools",
+        "description": "A collection of essential tools for LLMs, including Web Search and URL Inspection."
+      },
+      "textToSpeech": {
+        "name": "Text to Speech",
+        "description": "Read chat messages aloud with system voices, OpenAI, ElevenLabs, Kokoro-FastAPI, or local OpenAI-compatible TTS."
+      },
+      "timeline": {
+        "name": "Timeline",
+        "description": "Tracks scheduled RP reminders and recurring events."
+      },
+      "tracker": {
+        "name": "Tracker",
+        "description": "Tracks RP for consistent results."
+      },
+      "usageTracker": {
+        "name": "Usage Tracker",
+        "description": "Tracks LLM token usage and statistics across the application and other extensions."
+      },
+      "worldMap": {
+        "name": "World Map",
+        "description": "Creates and updates a structured chat map."
+      }
+    },
+    "shared": {
+      "promptPresets": {
+        "createTitle": "Create prompt preset",
+        "createContent": "Enter a name for the new prompt preset:",
+        "customName": "Custom",
+        "deleteTitle": "Delete prompt preset",
+        "deleteContent": "Delete prompt preset \"{name}\"?",
+        "renameTitle": "Rename prompt preset",
+        "renameContent": "Enter a new name for this prompt preset:",
+        "duplicateName": "A prompt preset with that name already exists."
+      }
+    },
     "textToSpeech": {
       "enabled": "Enabled",
       "provider": "Provider",
@@ -2375,6 +2489,8 @@
     "authenticating": "Authenticating...",
     "enterPassword": "Enter Password",
     "selectAccount": "Select an Account",
+    "username": "Username",
+    "password": "Password",
     "errors": {
       "enterUsername": "Please enter a username",
       "loginFailed": "Login failed"
@@ -2393,6 +2509,28 @@
       "none": "None",
       "force": "Force",
       "include": "Include"
+    },
+    "template": {
+      "newTitle": "New Instruct Template",
+      "editTitle": "Edit Instruct Template",
+      "name": "Template Name",
+      "inputSequence": "Input Sequence (User)",
+      "inputSuffix": "Input Suffix",
+      "outputSequence": "Output Sequence (Assistant)",
+      "outputSuffix": "Output Suffix",
+      "systemSequence": "System Sequence",
+      "systemSuffix": "System Suffix",
+      "stopSequence": "Stop Sequence",
+      "stopSequencePlaceholder": "e.g. <|im_end|>",
+      "namesBehavior": "Names Behavior",
+      "sequencesAsStopStrings": "Sequences as Stop Strings",
+      "wrap": "Wrap",
+      "macro": "Macro",
+      "skipExamples": "Skip Examples",
+      "firstOutputSequence": "First Output Sequence",
+      "lastOutputSequence": "Last Output Sequence",
+      "lastSystemSequence": "Last System Sequence",
+      "userAlignmentMessage": "User Alignment Message"
     }
   },
   "a11y": {

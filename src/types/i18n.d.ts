@@ -16,6 +16,7 @@ export interface MessageSchema {
   formatting: {
     title: string;
     description: string;
+    placeholder: string;
   };
   chatManagement: {
     newChat: string;
@@ -97,6 +98,7 @@ export interface MessageSchema {
     create: string;
     activated: string;
     noDescription: string;
+    noPersonaSelected: string;
     currentPersona: string;
     importSuccess: string;
     description: {
@@ -351,8 +353,14 @@ export interface MessageSchema {
       description: string;
       noPrompts: string;
       newPrompt: string;
+      newGlobalPrompt: string;
       role: string;
       content: string;
+      roles: {
+        system: string;
+        user: string;
+        assistant: string;
+      };
       selectFromLibrary: string;
       addFromLibrary: string;
       globalPrompts: string;
@@ -594,6 +602,13 @@ export interface MessageSchema {
     abort: string;
     newVersionAvailable: string;
     unknown: string;
+    untitled: string;
+    advanced: string;
+    toggleFullScreen: string;
+  };
+  colorPicker: {
+    hex: string;
+    alpha: string;
   };
   popup: {
     cropAvatar: {
@@ -709,8 +724,16 @@ export interface MessageSchema {
       showRaw: string;
       showWorldInfo: string;
       copy: string;
+      system: string;
+      other: string;
+      constant: string;
+      normal: string;
     };
     media: {
+      avatar: string;
+      inlineImage: string;
+      imageContent: string;
+      viewMedia: string;
       videoTooLong: string;
       metadataError: string;
       tooLarge: string;
@@ -734,6 +757,9 @@ export interface MessageSchema {
     };
     toolSteps: {
       title: string;
+      call: string;
+      output: string;
+      outputShort: string;
     };
     quickActions: {
       title: string;
@@ -936,6 +962,8 @@ export interface MessageSchema {
   };
   themes: {
     title: string;
+    customCss: string;
+    deleteConfirmContent: string;
     errors: {
       loadFailed: string;
       saveFailed: string;
@@ -1328,6 +1356,92 @@ export interface MessageSchema {
     };
   };
   extensionsBuiltin: {
+    manifests: {
+      chatBranching: {
+        name: string;
+        description: string;
+      };
+      chatMemory: {
+        name: string;
+        description: string;
+      };
+      chatTranslation: {
+        name: string;
+        description: string;
+      };
+      generationTools: {
+        name: string;
+        description: string;
+      };
+      groupChat: {
+        name: string;
+        description: string;
+      };
+      liveCommentary: {
+        name: string;
+        description: string;
+      };
+      modelRandomizer: {
+        name: string;
+        description: string;
+      };
+      mythicAgents: {
+        name: string;
+        description: string;
+      };
+      notebook: {
+        name: string;
+        description: string;
+      };
+      phone: {
+        name: string;
+        description: string;
+      };
+      rewrite: {
+        name: string;
+        description: string;
+      };
+      roadway: {
+        name: string;
+        description: string;
+      };
+      standardTools: {
+        name: string;
+        description: string;
+      };
+      textToSpeech: {
+        name: string;
+        description: string;
+      };
+      timeline: {
+        name: string;
+        description: string;
+      };
+      tracker: {
+        name: string;
+        description: string;
+      };
+      usageTracker: {
+        name: string;
+        description: string;
+      };
+      worldMap: {
+        name: string;
+        description: string;
+      };
+    };
+    shared: {
+      promptPresets: {
+        createTitle: string;
+        createContent: string;
+        customName: string;
+        deleteTitle: string;
+        deleteContent: string;
+        renameTitle: string;
+        renameContent: string;
+        duplicateName: string;
+      };
+    };
     textToSpeech: {
       enabled: string;
       provider: string;
@@ -2378,6 +2492,8 @@ export interface MessageSchema {
     authenticating: string;
     enterPassword: string;
     selectAccount: string;
+    username: string;
+    password: string;
     errors: {
       enterUsername: string;
       loginFailed: string;
@@ -2396,6 +2512,28 @@ export interface MessageSchema {
       none: string;
       force: string;
       include: string;
+    };
+    template: {
+      newTitle: string;
+      editTitle: string;
+      name: string;
+      inputSequence: string;
+      inputSuffix: string;
+      outputSequence: string;
+      outputSuffix: string;
+      systemSequence: string;
+      systemSuffix: string;
+      stopSequence: string;
+      stopSequencePlaceholder: string;
+      namesBehavior: string;
+      sequencesAsStopStrings: string;
+      wrap: string;
+      macro: string;
+      skipExamples: string;
+      firstOutputSequence: string;
+      lastOutputSequence: string;
+      lastSystemSequence: string;
+      userAlignmentMessage: string;
     };
   };
   a11y: {

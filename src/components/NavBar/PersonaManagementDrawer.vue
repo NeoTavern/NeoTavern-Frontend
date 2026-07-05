@@ -433,7 +433,7 @@ function handleClose() {
             </div>
           </div>
 
-          <EmptyState v-else title="No Persona Selected" icon="fa-user-slash" />
+          <EmptyState v-else :title="t('personaManagement.noPersonaSelected')" icon="fa-user-slash" />
         </div>
       </template>
     </PanelLayout>

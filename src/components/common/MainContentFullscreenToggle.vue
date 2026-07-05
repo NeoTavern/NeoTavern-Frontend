@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useSettingsStore } from '../../stores/settings.store';
 import { Button } from '../UI';
 
 const settingsStore = useSettingsStore();
+const { t } = useStrictI18n();
 const isFullScreen = computed(() => settingsStore.settings.account.chatFullScreen);
 
 function toggleFullScreen() {
@@ -16,7 +18,7 @@ function toggleFullScreen() {
     variant="ghost"
     :icon="isFullScreen ? 'fa-compress' : 'fa-expand'"
     :active="isFullScreen"
-    title="Toggle Full Screen"
+    :title="t('common.toggleFullScreen')"
     @click="toggleFullScreen"
   />
 </template>

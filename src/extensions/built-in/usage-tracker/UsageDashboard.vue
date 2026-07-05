@@ -100,7 +100,8 @@ const sortedSources = computed(() => {
 function formatSource(source: string): string {
   if (source === 'core') return t('extensionsBuiltin.usageTracker.core');
   if (source === 'unknown') return t('common.unknown');
-  return extensionStore.extensions[source]?.manifest.display_name ?? source;
+  const extension = extensionStore.extensions[source];
+  return extension ? extensionStore.getExtensionDisplayName(extension) : source;
 }
 
 // --- Methods ---

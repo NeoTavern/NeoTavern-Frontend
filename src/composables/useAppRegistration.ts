@@ -24,7 +24,7 @@ export function useAppRegistration() {
       'recent-chats',
       {
         component: RecentChats,
-        title: 'Recent Chats',
+        title: t('navbar.recentChats'),
         icon: 'fa-comments',
       },
       'left',
@@ -183,7 +183,7 @@ export function useAppRegistration() {
 
     registryStore.registerNavBarItem('themes-nav', {
       icon: 'fa-palette',
-      title: 'Themes',
+      title: t('themes.title'),
       targetSidebarId: 'themes',
     });
 

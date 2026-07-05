@@ -16,7 +16,7 @@ type AnyPromptPreset = PromptPreset<any>;
 
 const props = withDefaults(
   defineProps<{
-    api: Pick<ExtensionAPI, 'ui'>;
+    api: Pick<ExtensionAPI, 'ui' | 'i18n'>;
     activePresetId?: string;
     promptPresets?: AnyPromptPreset[];
     builtInPresets: AnyPromptPreset[];
@@ -33,6 +33,8 @@ const props = withDefaults(
     rows: 8,
   },
 );
+
+const t = props.api.i18n.t;
 
 const emit = defineEmits<{
   'update:activePresetId': [value: string];
@@ -51,7 +53,9 @@ const activePreset = computed(() =>
 
 const isActiveBuiltIn = computed(() => !!activePreset.value.builtIn);
 
-const presetOptions = computed(() => getPromptPresetOptions(props.builtInPresets, props.promptPresets));
+const presetOptions = computed(() =>
+  getPromptPresetOptions(props.builtInPresets, props.promptPresets, t('common.default')),
+);
 
 const promptValue = computed({
   get: () => activePreset.value.prompts[props.promptKey] ?? '',
@@ -71,9 +75,9 @@ const promptValue = computed({
 async function createPreset() {
   const { result, value } = await props.api.ui.showPopup({
     type: POPUP_TYPE.INPUT,
-    title: 'Create prompt preset',
-    content: 'Enter a name for the new prompt preset:',
-    inputValue: 'Custom',
+    title: t('extensionsBuiltin.shared.promptPresets.createTitle'),
+    content: t('extensionsBuiltin.shared.promptPresets.createContent'),
+    inputValue: t('extensionsBuiltin.shared.promptPresets.customName'),
     inputRequired: true,
     okButton: 'common.create',
     cancelButton: 'common.cancel',
@@ -92,8 +96,8 @@ async function deletePreset() {
 
   const { result } = await props.api.ui.showPopup({
     type: POPUP_TYPE.CONFIRM,
-    title: 'Delete prompt preset',
-    content: `Delete prompt preset "${activePreset.value.name}"?`,
+    title: t('extensionsBuiltin.shared.promptPresets.deleteTitle'),
+    content: t('extensionsBuiltin.shared.promptPresets.deleteContent', { name: activePreset.value.name }),
     okButton: 'common.delete',
     cancelButton: 'common.cancel',
   });
@@ -112,8 +116,8 @@ async function renamePreset() {
 
   const { result, value } = await props.api.ui.showPopup({
     type: POPUP_TYPE.INPUT,
-    title: 'Rename prompt preset',
-    content: 'Enter a new name for this prompt preset:',
+    title: t('extensionsBuiltin.shared.promptPresets.renameTitle'),
+    content: t('extensionsBuiltin.shared.promptPresets.renameContent'),
     inputValue: activePreset.value.name,
     inputRequired: true,
     okButton: 'common.rename',
@@ -127,7 +131,7 @@ async function renamePreset() {
 
   const allPresets = getAllPromptPresets(props.builtInPresets, props.promptPresets);
   if (allPresets.some((preset) => preset.id !== activePreset.value.id && preset.name === name)) {
-    props.api.ui.showToast('A prompt preset with that name already exists.', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.shared.promptPresets.duplicateName'), 'error');
     return;
   }
 

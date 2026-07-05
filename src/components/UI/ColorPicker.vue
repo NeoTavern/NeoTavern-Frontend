@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useStrictI18n } from '../../composables/useStrictI18n';
 import { hsvToRgb, parseColor, rgbToHex, rgbToHsv, rgbaToString } from '../../utils/color';
 
 const props = defineProps<{
@@ -11,6 +12,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void;
 }>();
+
+const { t } = useStrictI18n();
 
 // Dragging Logic
 const dragging = ref(false);
@@ -240,11 +243,11 @@ const hexInputValue = computed({
       <!-- Input -->
       <div class="input-area">
         <div class="input-group">
-          <label>Hex</label>
+          <label>{{ t('colorPicker.hex') }}</label>
           <input v-model.lazy="hexInputValue" type="text" maxlength="9" />
         </div>
         <div class="input-group">
-          <label>Alpha</label>
+          <label>{{ t('colorPicker.alpha') }}</label>
           <input v-model.number="alpha" type="number" min="0" max="1" step="0.01" @input="updateColor" />
         </div>
       </div>

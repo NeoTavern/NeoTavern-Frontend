@@ -1,11 +1,12 @@
 import type { ExtensionAPI } from './ExtensionAPI';
+import type { I18nKey } from './i18n';
 
 export interface ExtensionManifest {
   name: string;
-  display_name: string;
+  display_name: I18nKey;
   version?: string;
   author?: string;
-  description?: string;
+  description: I18nKey;
   loading_order?: number;
   requires?: string[]; // extras modules
   dependencies?: string[]; // other extensions

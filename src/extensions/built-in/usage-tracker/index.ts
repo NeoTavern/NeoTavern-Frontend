@@ -68,7 +68,8 @@ async function showCapturesPopup(
   const formatSource = (source: string) => {
     if (source === 'core') return api.i18n.t('extensionsBuiltin.usageTracker.core');
     if (source === 'unknown') return api.i18n.t('common.unknown');
-    return extensionStore.extensions[source]?.manifest.display_name ?? source;
+    const extension = extensionStore.extensions[source];
+    return extension ? extensionStore.getExtensionDisplayName(extension) : source;
   };
 
   await api.ui.showPopup({

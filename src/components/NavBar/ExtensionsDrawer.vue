@@ -88,7 +88,7 @@ function handleClose() {
               <i :class="extension.manifest.icon ?? 'fa-solid fa-puzzle-piece'" style="opacity: 0.7"></i>
             </template>
             <template #default>
-              <div class="font-bold">{{ extension.manifest.display_name || extension.id }}</div>
+              <div class="font-bold">{{ extensionStore.getExtensionDisplayName(extension) }}</div>
               <div v-if="extension.manifest.author" style="font-size: 0.8em; opacity: 0.7">
                 {{ t('common.by') }} {{ extension.manifest.author }}
               </div>
@@ -120,12 +120,12 @@ function handleClose() {
             <div class="extension-content">
               <div class="extension-content-header">
                 <h3>
-                  <span>{{ extension.manifest.display_name || extension.id }}</span>
+                  <span>{{ extensionStore.getExtensionDisplayName(extension) }}</span>
                   <span v-if="extension.manifest.version" class="version">v{{ extension.manifest.version }}</span>
                 </h3>
               </div>
-              <p v-if="extension.manifest.description" class="extension-content-description">
-                {{ extension.manifest.description }}
+              <p v-if="extensionStore.getExtensionDescription(extension)" class="extension-content-description">
+                {{ extensionStore.getExtensionDescription(extension) }}
               </p>
 
               <div :id="extension.containerId"></div>

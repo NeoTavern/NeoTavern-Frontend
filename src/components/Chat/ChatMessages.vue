@@ -111,7 +111,12 @@ const displayMessages = computed<GroupedMessageItem[]>(() => {
       :index="item.index"
       :tool-steps="item.toolSteps"
     />
-    <div v-show="chatStore.isGenerating" class="chat-interface-typing-indicator" role="status" aria-label="Typing">
+    <div
+      v-show="chatStore.isGenerating"
+      class="chat-interface-typing-indicator"
+      role="status"
+      :aria-label="t('chat.typingIndicator')"
+    >
       <span>{{ t('chat.typingIndicator') }}</span>
       <div class="dot dot1"></div>
       <div class="dot dot2"></div>

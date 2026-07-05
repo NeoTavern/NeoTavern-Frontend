@@ -4,7 +4,7 @@ import {
   resolvePromptPreset,
   type PromptPreset,
   type PromptPresetState,
-} from '../src/extensions/built-in/prompt-presets';
+} from '../src/extensions/built-in/_shared/prompt-presets';
 import {
   DEFAULT_SETTINGS as GROUP_CHAT_DEFAULT_SETTINGS,
   migrateGroupChatSettings,
