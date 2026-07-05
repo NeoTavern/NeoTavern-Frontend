@@ -537,8 +537,10 @@ export enum WorldInfoSortOption {
 export const defaultAccountSettings: Settings['account'] = {
   characterBrowserExpanded: false,
   characterBrowserWidth: 300,
+  characterPageSize: 25,
   worldinfoBrowserWidth: 300,
   personaBrowserWidth: 300,
+  personaPageSize: 10,
   personaBrowserExpanded: false,
   characterSortOrder: CharacterSortOption.NAME_ASC,
   worldInfoSortOrder: WorldInfoSortOption.ORDER_ASC,

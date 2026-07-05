@@ -35,7 +35,6 @@ const layoutStore = useLayoutStore();
 
 // --- Local UI State ---
 const currentPage = ref(1);
-const itemsPerPage = ref(10);
 const descriptionTokenCount = ref(0);
 
 const sortOptions = [
@@ -44,8 +43,8 @@ const sortOptions = [
 ];
 
 const paginatedPersonas = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
+  const start = (currentPage.value - 1) * personaUiStore.itemsPerPage;
+  const end = start + personaUiStore.itemsPerPage;
   return personaUiStore.filteredPersonas.slice(start, end);
 });
 
@@ -281,7 +280,7 @@ function handleClose() {
           <Pagination
             v-if="personaUiStore.filteredPersonas.length > 0"
             v-model:current-page="currentPage"
-            v-model:items-per-page="itemsPerPage"
+            v-model:items-per-page="personaUiStore.itemsPerPage"
             :total-items="personaUiStore.filteredPersonas.length"
             :items-per-page-options="[5, 10, 25, 50, 100]"
           />

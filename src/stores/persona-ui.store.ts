@@ -11,6 +11,10 @@ export const usePersonaUiStore = defineStore('persona-ui', () => {
   const sortOrder = ref('asc');
   const viewMode = ref<'editor' | 'settings'>('editor');
   const isGridView = ref(false);
+  const itemsPerPage = computed({
+    get: () => settingsStore.settings.account.personaPageSize ?? 10,
+    set: (value) => (settingsStore.settings.account.personaPageSize = value),
+  });
 
   const filteredPersonas = computed(() => {
     let list = [...personaStore.personas];
@@ -40,6 +44,7 @@ export const usePersonaUiStore = defineStore('persona-ui', () => {
     sortOrder,
     viewMode,
     isGridView,
+    itemsPerPage,
     filteredPersonas,
     isBrowserExpanded,
   };

@@ -458,8 +458,10 @@ export interface Settings {
   account: {
     characterBrowserExpanded: boolean;
     characterBrowserWidth: number;
+    characterPageSize: number;
     worldinfoBrowserWidth: number;
     personaBrowserWidth: number;
+    personaPageSize: number;
     personaBrowserExpanded: boolean;
     characterSortOrder: CharacterSortOption;
     worldInfoSortOrder: WorldInfoSortOption;

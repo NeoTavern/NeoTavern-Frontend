@@ -13,7 +13,10 @@ export const useCharacterUiStore = defineStore('character-ui', () => {
   const tagStore = useTagStore();
 
   const currentPage = ref(1);
-  const itemsPerPage = ref(25);
+  const itemsPerPage = computed({
+    get: () => settingsStore.settings.account.characterPageSize ?? 25,
+    set: (value) => (settingsStore.settings.account.characterPageSize = value),
+  });
   const highlightedAvatar = ref<string | null>(null);
   const searchTerm = ref('');
   const filterTags = ref<string[]>([]);
