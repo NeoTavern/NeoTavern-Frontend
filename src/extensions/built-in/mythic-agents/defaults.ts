@@ -1,5 +1,12 @@
 import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT } from './prompts';
-import type { EventGenerationData, FateChartData, MythicSettings, UNESettings } from './types';
+import type {
+  EventGenerationData,
+  FateChartData,
+  MythicPreset,
+  MythicPresetData,
+  MythicSettings,
+  UNESettings,
+} from './types';
 
 export const DEFAULT_FATE_CHART_DATA: FateChartData = {
   '9': {
@@ -2001,6 +2008,7 @@ export const DEFAULT_BASE_SETTINGS: MythicSettings = {
   presets: [
     {
       name: 'Default',
+      builtIn: true,
       data: {
         fateChart: DEFAULT_FATE_CHART_DATA,
         eventGeneration: DEFAULT_EVENT_GENERATION_DATA,
@@ -2010,3 +2018,66 @@ export const DEFAULT_BASE_SETTINGS: MythicSettings = {
     },
   ],
 };
+
+export function cloneDefaultMythicSettings(): MythicSettings {
+  return JSON.parse(JSON.stringify(DEFAULT_BASE_SETTINGS)) as MythicSettings;
+}
+
+function isDefaultPresetChanged(preset: MythicPreset | undefined): boolean {
+  if (!preset) return false;
+  return JSON.stringify(preset.data) !== JSON.stringify(DEFAULT_BASE_SETTINGS.presets[0].data);
+}
+
+function makeUniquePresetName(presets: MythicPreset[], preferredName: string): string {
+  const existingNames = new Set(presets.map((preset) => preset.name));
+  if (!existingNames.has(preferredName)) return preferredName;
+
+  let index = 2;
+  while (existingNames.has(`${preferredName} ${index}`)) {
+    index += 1;
+  }
+  return `${preferredName} ${index}`;
+}
+
+export function migrateMythicSettings(saved?: Partial<MythicSettings> | null): MythicSettings {
+  const defaults = cloneDefaultMythicSettings();
+  if (!saved) return defaults;
+
+  const merged = {
+    ...defaults,
+    ...saved,
+    prompts: {
+      ...defaults.prompts,
+      ...saved.prompts,
+    },
+  };
+
+  const savedPresets = Array.isArray(saved.presets) ? saved.presets : [];
+  const savedDefault = savedPresets.find((preset) => preset.name === 'Default');
+  const customPresets = savedPresets
+    .filter((preset) => preset.name !== 'Default')
+    .map((preset) => ({ ...preset, builtIn: false }));
+  const presets = [defaults.presets[0], ...customPresets];
+
+  if (savedDefault && isDefaultPresetChanged(savedDefault)) {
+    const migratedName = makeUniquePresetName(presets, 'Default Copy');
+    presets.push({
+      name: migratedName,
+      builtIn: false,
+      data: JSON.parse(JSON.stringify(savedDefault.data)) as MythicPresetData,
+    });
+
+    if (!saved.selectedPreset || saved.selectedPreset === 'Default') {
+      merged.selectedPreset = migratedName;
+    }
+  }
+
+  if (!presets.some((preset) => preset.name === merged.selectedPreset)) {
+    merged.selectedPreset = 'Default';
+  }
+
+  return {
+    ...merged,
+    presets,
+  };
+}

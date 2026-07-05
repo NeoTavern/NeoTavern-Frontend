@@ -1,11 +1,17 @@
 import { h } from 'vue';
 import { EventPriority, GenerationMode } from '../../../constants';
 import type { Character, ExtensionAPI } from '../../../types';
-import { DEFAULT_SUMMARY_INJECTION_TEMPLATE, GroupChatService } from './GroupChatService';
+import { GroupChatService } from './GroupChatService';
 import GroupSettingsTab from './GroupSettingsTab.vue';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
-import { GroupGenerationHandlingMode, GroupReplyStrategy, type GroupExtensionSettings } from './types';
+import {
+  GroupGenerationHandlingMode,
+  GroupReplyStrategy,
+  migrateGroupChatSettings,
+  resolveGroupChatPrompts,
+  type GroupExtensionSettings,
+} from './types';
 
 export { manifest };
 
@@ -124,9 +130,8 @@ export function activate(api: ExtensionAPI<GroupExtensionSettings>) {
                 .map((m) => `${m.name}: ${m.summary || 'No summary available.'}`)
                 .join('\n');
 
-              const extensionSettings = api.settings.get();
-              const injectionTemplate =
-                extensionSettings?.summaryInjectionTemplate || DEFAULT_SUMMARY_INJECTION_TEMPLATE;
+              const extensionSettings = migrateGroupChatSettings(api.settings.get());
+              const injectionTemplate = resolveGroupChatPrompts(extensionSettings).summaryInjectionTemplate;
               const newDescription = api.macro.process(
                 injectionTemplate,
                 { activeCharacter: activeChar },

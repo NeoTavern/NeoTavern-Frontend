@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
-import { FormItem, Textarea } from '../../../components/UI';
+import { FormItem } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
-import type { TextareaToolDefinition } from '../../../types/ExtensionAPI';
-import {
-  DEFAULT_DECISION_TEMPLATE,
-  DEFAULT_SUMMARY_INJECTION_TEMPLATE,
-  DEFAULT_SUMMARY_TEMPLATE,
-} from './GroupChatService';
+import PromptPresetField from '../PromptPresetField.vue';
+import { BUILT_IN_PROMPT_PRESETS, DEFAULT_SETTINGS, migrateGroupChatSettings, type GroupChatPrompts } from './types';
 import type { GroupExtensionSettings } from './types';
 
 const props = defineProps<{
@@ -17,23 +13,10 @@ const props = defineProps<{
 
 const t = props.api.i18n.t;
 
-const settings = ref<GroupExtensionSettings>({
-  defaultDecisionPromptTemplate: DEFAULT_DECISION_TEMPLATE,
-  defaultSummaryPromptTemplate: DEFAULT_SUMMARY_TEMPLATE,
-  summaryInjectionTemplate: DEFAULT_SUMMARY_INJECTION_TEMPLATE,
-  defaultConnectionProfile: '',
-});
+const settings = ref<GroupExtensionSettings>({ ...DEFAULT_SETTINGS });
 
 onMounted(() => {
-  const saved = props.api.settings.get();
-  if (saved) {
-    settings.value = {
-      defaultDecisionPromptTemplate: saved.defaultDecisionPromptTemplate || DEFAULT_DECISION_TEMPLATE,
-      defaultSummaryPromptTemplate: saved.defaultSummaryPromptTemplate || DEFAULT_SUMMARY_TEMPLATE,
-      summaryInjectionTemplate: saved.summaryInjectionTemplate || DEFAULT_SUMMARY_INJECTION_TEMPLATE,
-      defaultConnectionProfile: saved.defaultConnectionProfile,
-    };
-  }
+  settings.value = migrateGroupChatSettings(props.api.settings.get());
 });
 
 watch(
@@ -45,38 +28,53 @@ watch(
   { deep: true },
 );
 
-const decisionPromptTools = computed<TextareaToolDefinition[]>(() => [
-  {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: 'Reset to default',
-    onClick: ({ setValue }) => {
-      setValue(DEFAULT_DECISION_TEMPLATE);
-    },
-  },
-]);
+const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 
-const summaryPromptTools = computed<TextareaToolDefinition[]>(() => [
-  {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: 'Reset to default',
-    onClick: ({ setValue }) => {
-      setValue(DEFAULT_SUMMARY_TEMPLATE);
-    },
-  },
-]);
+function updatePromptPresets(presets: GroupExtensionSettings['promptPresets']) {
+  settings.value.promptPresets = presets;
+}
 
-const summaryInjectionTools = computed<TextareaToolDefinition[]>(() => [
+function updateActivePreset(id: string) {
+  settings.value.activePromptPresetId = id;
+}
+
+function formatMacro(macro: string): string {
+  return `{{${macro}}}`;
+}
+
+const promptFields: Array<{
+  key: keyof GroupChatPrompts;
+  label: string;
+  description: string;
+  identifier: string;
+  rows: number;
+  helpMacros: string[];
+}> = [
   {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: 'Reset to default',
-    onClick: ({ setValue }) => {
-      setValue(DEFAULT_SUMMARY_INJECTION_TEMPLATE);
-    },
+    key: 'defaultDecisionPromptTemplate',
+    label: t('extensionsBuiltin.groupChat.settings.llmDecisionPrompt'),
+    description: t('extensionsBuiltin.groupChat.settings.llmDecisionPromptDesc'),
+    identifier: 'extension.group-chat.decision',
+    rows: 8,
+    helpMacros: ['user', 'memberNames', 'recentMessages', 'firstCharName'],
   },
-]);
+  {
+    key: 'defaultSummaryPromptTemplate',
+    label: t('extensionsBuiltin.groupChat.settings.aiSummaryPrompt'),
+    description: t('extensionsBuiltin.groupChat.settings.aiSummaryPromptDesc'),
+    identifier: 'extension.group-chat.summary',
+    rows: 6,
+    helpMacros: ['name', 'description', 'personality'],
+  },
+  {
+    key: 'summaryInjectionTemplate',
+    label: t('extensionsBuiltin.groupChat.settings.summaryInjectionTemplate'),
+    description: t('extensionsBuiltin.groupChat.settings.summaryInjectionTemplateDesc'),
+    identifier: 'extension.group-chat.injection',
+    rows: 4,
+    helpMacros: ['summaries', 'description', 'personality', 'scenario'],
+  },
+];
 </script>
 
 <template>
@@ -97,68 +95,27 @@ const summaryInjectionTools = computed<TextareaToolDefinition[]>(() => [
         {{ t('extensionsBuiltin.groupChat.settings.defaultTemplatesDesc') }}
       </p>
 
-      <FormItem
-        :label="t('extensionsBuiltin.groupChat.settings.llmDecisionPrompt')"
-        :description="t('extensionsBuiltin.groupChat.settings.llmDecisionPromptDesc')"
-      >
-        <div class="textarea-container">
-          <Textarea
-            v-model="settings.defaultDecisionPromptTemplate"
-            :rows="8"
-            allow-maximize
-            identifier="extension.group-chat.decision"
-            :tools="decisionPromptTools"
-          />
-        </div>
+      <div v-for="field in promptFields" :key="field.key">
+        <PromptPresetField
+          :api="api"
+          :active-preset-id="settings.activePromptPresetId"
+          :prompt-presets="settings.promptPresets"
+          :built-in-presets="builtInPromptPresets"
+          :prompt-key="field.key"
+          :label="field.label"
+          :description="field.description"
+          :identifier="field.identifier"
+          :rows="field.rows"
+          @update:active-preset-id="updateActivePreset"
+          @update:prompt-presets="updatePromptPresets"
+        />
         <div class="help-text">
-          Available macros: <code>{{ '{' + '{user}' + '}' }}</code
-          >, <code>{{ '{' + '{memberNames}' + '}' }}</code
-          >, <code>{{ '{' + '{recentMessages}' + '}' }}</code
-          >, <code>{{ '{' + '{firstCharName}' + '}' }}</code>
+          Available macros:
+          <template v-for="(macro, index) in field.helpMacros" :key="macro">
+            <span v-if="index > 0">, </span><code>{{ formatMacro(macro) }}</code>
+          </template>
         </div>
-      </FormItem>
-
-      <FormItem
-        :label="t('extensionsBuiltin.groupChat.settings.aiSummaryPrompt')"
-        :description="t('extensionsBuiltin.groupChat.settings.aiSummaryPromptDesc')"
-      >
-        <div class="textarea-container">
-          <Textarea
-            v-model="settings.defaultSummaryPromptTemplate"
-            :rows="6"
-            allow-maximize
-            identifier="extension.group-chat.summary"
-            :tools="summaryPromptTools"
-          />
-        </div>
-        <div class="help-text">
-          Available macros: <code>{{ '{' + '{name}' + '}' }}</code
-          >, <code>{{ '{' + '{description}' + '}' }}</code
-          >, <code>{{ '{' + '{personality}' + '}' }}</code>
-        </div>
-      </FormItem>
-
-      <FormItem
-        :label="t('extensionsBuiltin.groupChat.settings.summaryInjectionTemplate')"
-        :description="t('extensionsBuiltin.groupChat.settings.summaryInjectionTemplateDesc')"
-      >
-        <div class="textarea-container">
-          <Textarea
-            v-model="settings.summaryInjectionTemplate"
-            :rows="4"
-            allow-maximize
-            identifier="extension.group-chat.injection"
-            :tools="summaryInjectionTools"
-          />
-        </div>
-        <div class="help-text">
-          Available macros: <code>{{ '{' + '{summaries}' + '}' }}</code> (formatted member summaries),
-          <code>{{ '{' + '{description}' + '}' }}</code
-          >, <code>{{ '{' + '{personality}' + '}' }}</code
-          >, <code>{{ '{' + '{scenario}' + '}' }}</code
-          >, and other character fields
-        </div>
-      </FormItem>
+      </div>
     </div>
   </div>
 </template>

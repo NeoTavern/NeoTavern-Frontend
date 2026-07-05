@@ -170,6 +170,7 @@ export type MythicPresetData = z.infer<typeof MythicPresetDataSchema>;
 
 export const MythicPresetSchema = z.object({
   name: z.string(),
+  builtIn: z.boolean().optional(),
   data: MythicPresetDataSchema,
 });
 

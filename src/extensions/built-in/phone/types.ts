@@ -133,7 +133,11 @@ export function migratePhoneSettings(settings: Partial<PhoneSettings> = {}): Pho
   return {
     ...DEFAULT_SETTINGS,
     ...migratePromptPresetState({
-      settings: { ...DEFAULT_SETTINGS, ...settings },
+      settings: {
+        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
+        promptPresets: [],
+        ...settings,
+      },
       builtInPresets: BUILT_IN_PROMPT_PRESETS,
       legacyPrompts: {
         contactPrompt: settings.contactPrompt,

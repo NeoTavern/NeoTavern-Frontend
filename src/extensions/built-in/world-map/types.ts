@@ -1,4 +1,10 @@
 import type { ExtensionAPI } from '../../../types';
+import {
+  migratePromptPresetState,
+  resolvePromptPreset,
+  type PromptPreset,
+  type PromptPresetState,
+} from '../prompt-presets';
 
 export type WorldMapNodeKind =
   | 'world'
@@ -213,7 +219,11 @@ export interface WorldMapMessageExtra {
   'core.world-map'?: WorldMapMessageExtraData;
 }
 
-export interface WorldMapSettings {
+export type WorldMapPrompts = {
+  updatePrompt: string;
+};
+
+export interface WorldMapSettings extends PromptPresetState<WorldMapPrompts> {
   enabled: boolean;
   autoMode: 'none' | 'responses' | 'inputs' | 'both';
   connectionProfile: string;
@@ -224,7 +234,7 @@ export interface WorldMapSettings {
   maxNodesPerDelta: number;
   maxRoutesPerDelta: number;
   maxVisualAssetsPerDelta: number;
-  updatePrompt: string;
+  updatePrompt?: string;
 }
 
 export type WorldMapExtensionAPI = ExtensionAPI<WorldMapSettings, WorldMapChatExtra, WorldMapMessageExtra>;
@@ -272,6 +282,17 @@ Rules:
 
 Existing map data and recent chat messages are already in context.`;
 
+export const BUILT_IN_PROMPT_PRESETS: PromptPreset<WorldMapPrompts>[] = [
+  {
+    id: 'default',
+    name: 'Default',
+    builtIn: true,
+    prompts: {
+      updatePrompt: DEFAULT_UPDATE_PROMPT,
+    },
+  },
+];
+
 export const DEFAULT_SETTINGS: WorldMapSettings = {
   enabled: true,
   autoMode: 'none',
@@ -283,5 +304,27 @@ export const DEFAULT_SETTINGS: WorldMapSettings = {
   maxNodesPerDelta: 240,
   maxRoutesPerDelta: 360,
   maxVisualAssetsPerDelta: 90,
-  updatePrompt: DEFAULT_UPDATE_PROMPT,
+  activePromptPresetId: 'default',
+  promptPresets: [],
+  promptPresetMigrationVersion: 1,
 };
+
+export function migrateWorldMapSettings(settings: Partial<WorldMapSettings> = {}): WorldMapSettings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...migratePromptPresetState({
+      settings: {
+        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
+        promptPresets: [],
+        ...settings,
+      },
+      builtInPresets: BUILT_IN_PROMPT_PRESETS,
+      legacyPrompts: { updatePrompt: settings.updatePrompt },
+      legacyDefaults: { updatePrompt: DEFAULT_UPDATE_PROMPT },
+    }),
+  };
+}
+
+export function resolveWorldMapPrompts(settings: WorldMapSettings): WorldMapPrompts {
+  return resolvePromptPreset(settings, BUILT_IN_PROMPT_PRESETS).prompts;
+}

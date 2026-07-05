@@ -1,3 +1,10 @@
+import {
+  migratePromptPresetState,
+  resolvePromptPreset,
+  type PromptPreset,
+  type PromptPresetState,
+} from '../prompt-presets';
+
 export enum GroupReplyStrategy {
   MANUAL = 0,
   NATURAL_ORDER = 1,
@@ -29,9 +36,99 @@ export interface GroupChatConfig {
   members: Record<string, GroupMemberStatus>;
 }
 
-export interface GroupExtensionSettings {
+export type GroupChatPrompts = {
+  defaultDecisionPromptTemplate: string;
+  defaultSummaryPromptTemplate: string;
+  summaryInjectionTemplate: string;
+};
+
+export interface GroupExtensionSettings extends PromptPresetState<GroupChatPrompts> {
   defaultDecisionPromptTemplate: string;
   defaultSummaryPromptTemplate: string;
   summaryInjectionTemplate: string;
   defaultConnectionProfile: string;
+}
+
+export const DEFAULT_DECISION_TEMPLATE = `You are an AI assistant orchestrating a roleplay group chat.
+Your task is to determine who should speak next based on the recent conversation context.
+
+[Active Members]
+{{memberNames}}
+{{user}} (The User)
+
+[Recent Conversation]
+{{recentMessages}}
+
+[Instructions]
+1. Analyze the conversation flow to decide who should reply.
+2. If it is {{user}}'s turn to speak, output "{{user}}".
+3. If a character should speak, output their exact name.
+4. Output only the name inside a code block. Do not output anything else.
+
+Example Response:
+\`\`\`
+{{firstCharName}}
+\`\`\``;
+
+export const DEFAULT_SUMMARY_TEMPLATE = `Summarize the following character in 2-3 sentences. Focus on their personality and role to help other characters interact with them.
+
+Name: {{name}}
+Description: {{description}}
+Personality: {{personality}}`;
+
+export const DEFAULT_SUMMARY_INJECTION_TEMPLATE = `{{description}}
+
+[Other Group Members]
+{{summaries}}`;
+
+export const BUILT_IN_PROMPT_PRESETS: PromptPreset<GroupChatPrompts>[] = [
+  {
+    id: 'default',
+    name: 'Default',
+    builtIn: true,
+    prompts: {
+      defaultDecisionPromptTemplate: DEFAULT_DECISION_TEMPLATE,
+      defaultSummaryPromptTemplate: DEFAULT_SUMMARY_TEMPLATE,
+      summaryInjectionTemplate: DEFAULT_SUMMARY_INJECTION_TEMPLATE,
+    },
+  },
+];
+
+export const DEFAULT_SETTINGS: GroupExtensionSettings = {
+  defaultDecisionPromptTemplate: DEFAULT_DECISION_TEMPLATE,
+  defaultSummaryPromptTemplate: DEFAULT_SUMMARY_TEMPLATE,
+  summaryInjectionTemplate: DEFAULT_SUMMARY_INJECTION_TEMPLATE,
+  defaultConnectionProfile: '',
+  activePromptPresetId: 'default',
+  promptPresets: [],
+  promptPresetMigrationVersion: 1,
+};
+
+export function migrateGroupChatSettings(settings: Partial<GroupExtensionSettings> = {}): GroupExtensionSettings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...settings,
+    ...migratePromptPresetState({
+      settings: {
+        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
+        promptPresets: [],
+        ...settings,
+      },
+      builtInPresets: BUILT_IN_PROMPT_PRESETS,
+      legacyPrompts: {
+        defaultDecisionPromptTemplate: settings.defaultDecisionPromptTemplate,
+        defaultSummaryPromptTemplate: settings.defaultSummaryPromptTemplate,
+        summaryInjectionTemplate: settings.summaryInjectionTemplate,
+      },
+      legacyDefaults: {
+        defaultDecisionPromptTemplate: DEFAULT_DECISION_TEMPLATE,
+        defaultSummaryPromptTemplate: DEFAULT_SUMMARY_TEMPLATE,
+        summaryInjectionTemplate: DEFAULT_SUMMARY_INJECTION_TEMPLATE,
+      },
+    }),
+  };
+}
+
+export function resolveGroupChatPrompts(settings: GroupExtensionSettings): GroupChatPrompts {
+  return resolvePromptPreset(settings, BUILT_IN_PROMPT_PRESETS).prompts;
 }

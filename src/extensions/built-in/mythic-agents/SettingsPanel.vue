@@ -12,10 +12,11 @@ import Textarea from '../../../components/UI/Textarea.vue';
 import { usePopupStore } from '../../../stores/popup.store';
 import { POPUP_TYPE } from '../../../types';
 import {
-  DEFAULT_BASE_SETTINGS,
+  cloneDefaultMythicSettings,
   DEFAULT_EVENT_GENERATION_DATA,
   DEFAULT_FATE_CHART_DATA,
   DEFAULT_UNE_SETTINGS,
+  migrateMythicSettings,
 } from './defaults';
 import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT } from './prompts';
 import type { EventFocus, FateChartData, MythicExtensionAPI, MythicPreset, MythicSettings } from './types';
@@ -24,7 +25,7 @@ const props = defineProps<{
   api: MythicExtensionAPI;
 }>();
 
-const initial: MythicSettings = { ...DEFAULT_BASE_SETTINGS };
+const initial: MythicSettings = cloneDefaultMythicSettings();
 
 const settings = ref<MythicSettings>(JSON.parse(JSON.stringify(initial)));
 const popupStore = usePopupStore();
@@ -37,6 +38,16 @@ const importMode = ref<'array' | 'single'>('array');
 const currentPreset = computed(() => {
   return settings.value.presets.find((p) => p.name === selectedPreset.value) || settings.value.presets[0];
 });
+
+const isCurrentPresetBuiltIn = computed(() => currentPreset.value?.builtIn === true);
+
+function isPresetContentEditable(): boolean {
+  if (isCurrentPresetBuiltIn.value) {
+    props.api.ui.showToast('Built-in Mythic Agents presets are read-only. Create a preset to customize them.', 'error');
+    return false;
+  }
+  return true;
+}
 
 const mainTabs = [
   { label: 'General', value: 'general' },
@@ -231,6 +242,7 @@ function validateCurrentPreset(): string[] {
 }
 
 async function saveFateChart() {
+  if (!isPresetContentEditable()) return;
   try {
     const data = JSON.parse(fateChartJson.value);
     const errors = validateFateChart(data);
@@ -251,11 +263,13 @@ async function saveFateChart() {
 }
 
 async function resetFateChart() {
+  if (!isPresetContentEditable()) return;
   fateChartJson.value = JSON.stringify(DEFAULT_FATE_CHART_DATA, null, 2);
   saveFateChart();
 }
 
 async function saveEventFocuses() {
+  if (!isPresetContentEditable()) return;
   try {
     const data = JSON.parse(eventFocusesJson.value);
     const errors = validateFocuses(data);
@@ -276,11 +290,13 @@ async function saveEventFocuses() {
 }
 
 function resetEventFocuses() {
+  if (!isPresetContentEditable()) return;
   eventFocusesJson.value = JSON.stringify(DEFAULT_EVENT_GENERATION_DATA.focuses, null, 2);
   saveEventFocuses();
 }
 
 function saveStringArray(target: 'actions' | 'subjects', jsonValue: string) {
+  if (!isPresetContentEditable()) return;
   const data = jsonValue
     .split('\n')
     .map((s) => s.trim())
@@ -290,12 +306,14 @@ function saveStringArray(target: 'actions' | 'subjects', jsonValue: string) {
 }
 
 function resetStringArray(target: 'actions' | 'subjects') {
+  if (!isPresetContentEditable()) return;
   const def = DEFAULT_EVENT_GENERATION_DATA[target];
   if (target === 'actions') eventActionsJson.value = def.join('\n');
   if (target === 'subjects') eventSubjectsJson.value = def.join('\n');
 }
 
 async function saveUNE() {
+  if (!isPresetContentEditable()) return;
   const modifiers = modifiersJson.value
     .split('\n')
     .map((s) => s.trim())
@@ -317,6 +335,7 @@ async function saveUNE() {
 }
 
 function resetUNE() {
+  if (!isPresetContentEditable()) return;
   modifiersJson.value = DEFAULT_UNE_SETTINGS.modifiers.join('\n');
   nounsJson.value = DEFAULT_UNE_SETTINGS.nouns.join('\n');
   motivationVerbsJson.value = DEFAULT_UNE_SETTINGS.motivation_verbs.join('\n');
@@ -325,6 +344,7 @@ function resetUNE() {
 }
 
 async function saveCharacterTypes() {
+  if (!isPresetContentEditable()) return;
   const data = characterTypesJson.value
     .split('\n')
     .map((s) => s.trim())
@@ -334,6 +354,7 @@ async function saveCharacterTypes() {
 }
 
 function resetCharacterTypes() {
+  if (!isPresetContentEditable()) return;
   characterTypesJson.value = 'NPC\nPC';
   saveCharacterTypes();
 }
@@ -344,6 +365,7 @@ async function handleCreatePreset() {
   const result = await popupStore.show({
     type: POPUP_TYPE.INPUT,
     content: 'Enter preset name:',
+    inputRequired: true,
     okButton: true,
     cancelButton: true,
   });
@@ -374,10 +396,15 @@ async function handleEditPreset() {
     type: POPUP_TYPE.INPUT,
     content: 'Enter new preset name:',
     inputValue: selectedPreset.value,
+    inputRequired: true,
     okButton: true,
     cancelButton: true,
   });
   if (result.result === 1 && result.value && typeof result.value === 'string' && result.value.trim()) {
+    if (isCurrentPresetBuiltIn.value) {
+      props.api.ui.showToast('Built-in Mythic Agents presets cannot be renamed', 'error');
+      return;
+    }
     const presetName = result.value.trim();
     if (settings.value.presets.some((p) => p.name === presetName && p.name !== selectedPreset.value)) {
       props.api.ui.showToast('Preset name already exists', 'error');
@@ -393,6 +420,10 @@ async function handleEditPreset() {
 
 async function handleDeletePreset() {
   if (!selectedPreset.value) return;
+  if (isCurrentPresetBuiltIn.value) {
+    props.api.ui.showToast('Built-in Mythic Agents presets cannot be deleted', 'error');
+    return;
+  }
   if (settings.value.presets.length <= 1) {
     props.api.ui.showToast('Cannot delete the last preset', 'error');
     return;
@@ -458,6 +489,7 @@ function handleFileImport(event: Event) {
         const importedPreset: MythicPreset = JSON.parse(e.target?.result as string);
         if (typeof importedPreset === 'object' && importedPreset.name) {
           if (!settings.value.presets.some((p) => p.name === importedPreset.name)) {
+            importedPreset.builtIn = false;
             settings.value.presets.push(importedPreset);
             props.api.ui.showToast('Preset imported', 'success');
           } else {
@@ -471,6 +503,7 @@ function handleFileImport(event: Event) {
         if (Array.isArray(importedPresets)) {
           for (const preset of importedPresets) {
             if (!settings.value.presets.some((p) => p.name === preset.name)) {
+              preset.builtIn = false;
               settings.value.presets.push(preset);
             }
           }
@@ -495,7 +528,7 @@ async function handleResetAllPresets() {
     cancelButton: true,
   });
   if (confirm) {
-    const defaults = JSON.parse(JSON.stringify(initial)) as MythicSettings;
+    const defaults = cloneDefaultMythicSettings();
     settings.value.prompts = defaults.prompts;
     settings.value.presets = defaults.presets;
     selectedPreset.value = 'Default';
@@ -509,9 +542,7 @@ async function handleResetAllPresets() {
 
 onMounted(async () => {
   const saved = props.api.settings.get();
-  if (saved) {
-    settings.value = { ...initial, ...saved };
-  }
+  settings.value = migrateMythicSettings(saved);
   selectedPreset.value = settings.value.selectedPreset;
   try {
     loadJsonFromSettings();
@@ -700,8 +731,8 @@ const customActions: CustomAction[] = [
         v-model="selectedPreset"
         :options="settings.presets.map((p) => ({ label: p.name, value: p.name }))"
         :allow-create="true"
-        :allow-edit="true"
-        :allow-delete="settings.presets.length > 1"
+        :allow-edit="!isCurrentPresetBuiltIn"
+        :allow-delete="!isCurrentPresetBuiltIn && settings.presets.length > 1"
         :allow-import="true"
         :allow-export="true"
         :allow-save="false"
@@ -769,9 +800,10 @@ const customActions: CustomAction[] = [
           <Textarea
             v-model="settings.prompts[prompt.key]"
             :rows="20"
+            :disabled="isCurrentPresetBuiltIn"
             allow-maximize
             :identifier="`extension.mythic-agents.${prompt.key}`"
-            :tools="getPromptTools(prompt.key)"
+            :tools="isCurrentPresetBuiltIn ? [] : getPromptTools(prompt.key)"
           />
         </div>
       </div>
@@ -781,8 +813,9 @@ const customActions: CustomAction[] = [
       <Textarea
         v-model="fateChartJson"
         :rows="20"
+        :disabled="isCurrentPresetBuiltIn"
         :identifier="'extension.mythic-agents.fateChart'"
-        :tools="fateChartTools"
+        :tools="isCurrentPresetBuiltIn ? [] : fateChartTools"
       />
     </div>
 
@@ -795,8 +828,9 @@ const customActions: CustomAction[] = [
         <Textarea
           v-model="eventFocusesJson"
           :rows="15"
+          :disabled="isCurrentPresetBuiltIn"
           :identifier="'extension.mythic-agents.eventFocuses'"
-          :tools="eventFocusesTools"
+          :tools="isCurrentPresetBuiltIn ? [] : eventFocusesTools"
         />
       </CollapsibleSection>
 
@@ -804,8 +838,9 @@ const customActions: CustomAction[] = [
         <Textarea
           v-model="eventActionsJson"
           :rows="10"
+          :disabled="isCurrentPresetBuiltIn"
           :identifier="'extension.mythic-agents.eventActions'"
-          :tools="eventActionsTools"
+          :tools="isCurrentPresetBuiltIn ? [] : eventActionsTools"
         />
       </CollapsibleSection>
 
@@ -813,8 +848,9 @@ const customActions: CustomAction[] = [
         <Textarea
           v-model="eventSubjectsJson"
           :rows="10"
+          :disabled="isCurrentPresetBuiltIn"
           :identifier="'extension.mythic-agents.eventSubjects'"
-          :tools="eventSubjectsTools"
+          :tools="isCurrentPresetBuiltIn ? [] : eventSubjectsTools"
         />
       </CollapsibleSection>
 
@@ -822,8 +858,9 @@ const customActions: CustomAction[] = [
         <Textarea
           v-model="characterTypesJson"
           :rows="5"
+          :disabled="isCurrentPresetBuiltIn"
           :identifier="'extension.mythic-agents.characterTypes'"
-          :tools="characterTypesTools"
+          :tools="isCurrentPresetBuiltIn ? [] : characterTypesTools"
         />
       </CollapsibleSection>
     </div>
@@ -833,21 +870,29 @@ const customActions: CustomAction[] = [
         <Textarea
           v-model="modifiersJson"
           :rows="5"
+          :disabled="isCurrentPresetBuiltIn"
           :identifier="'extension.mythic-agents.modifiers'"
-          :tools="uneTools"
+          :tools="isCurrentPresetBuiltIn ? [] : uneTools"
         />
       </CollapsibleSection>
 
       <CollapsibleSection title="Nouns">
-        <Textarea v-model="nounsJson" :rows="5" :identifier="'extension.mythic-agents.nouns'" :tools="uneTools" />
+        <Textarea
+          v-model="nounsJson"
+          :rows="5"
+          :disabled="isCurrentPresetBuiltIn"
+          :identifier="'extension.mythic-agents.nouns'"
+          :tools="isCurrentPresetBuiltIn ? [] : uneTools"
+        />
       </CollapsibleSection>
 
       <CollapsibleSection title="Motivation Verbs">
         <Textarea
           v-model="motivationVerbsJson"
           :rows="5"
+          :disabled="isCurrentPresetBuiltIn"
           :identifier="'extension.mythic-agents.motivationVerbs'"
-          :tools="uneTools"
+          :tools="isCurrentPresetBuiltIn ? [] : uneTools"
         />
       </CollapsibleSection>
 
@@ -855,8 +900,9 @@ const customActions: CustomAction[] = [
         <Textarea
           v-model="motivationNounsJson"
           :rows="5"
+          :disabled="isCurrentPresetBuiltIn"
           :identifier="'extension.mythic-agents.motivationNouns'"
-          :tools="uneTools"
+          :tools="isCurrentPresetBuiltIn ? [] : uneTools"
         />
       </CollapsibleSection>
     </div>

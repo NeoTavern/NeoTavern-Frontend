@@ -5,6 +5,11 @@ import {
   type PromptPreset,
   type PromptPresetState,
 } from '../src/extensions/built-in/prompt-presets';
+import {
+  DEFAULT_SETTINGS as GROUP_CHAT_DEFAULT_SETTINGS,
+  migrateGroupChatSettings,
+  resolveGroupChatPrompts,
+} from '../src/extensions/built-in/group-chat/types';
 
 type TestPrompts = {
   prompt: string;
@@ -98,5 +103,30 @@ describe('prompt presets', () => {
 
     expect(resolvePromptPreset(migrated, builtIns).prompts.prompt).toBe('custom prompt');
     expect(migrated.promptPresets).toHaveLength(1);
+  });
+});
+
+describe('group chat prompt preset migration', () => {
+  it('keeps the built-in group chat default read-only', () => {
+    const migrated = migrateGroupChatSettings();
+
+    expect(migrated.activePromptPresetId).toBe('default');
+    expect(resolveGroupChatPrompts(migrated)).toEqual({
+      defaultDecisionPromptTemplate: GROUP_CHAT_DEFAULT_SETTINGS.defaultDecisionPromptTemplate,
+      defaultSummaryPromptTemplate: GROUP_CHAT_DEFAULT_SETTINGS.defaultSummaryPromptTemplate,
+      summaryInjectionTemplate: GROUP_CHAT_DEFAULT_SETTINGS.summaryInjectionTemplate,
+    });
+  });
+
+  it('moves changed legacy group chat templates into a custom preset', () => {
+    const migrated = migrateGroupChatSettings({
+      defaultDecisionPromptTemplate: 'custom decision',
+      defaultSummaryPromptTemplate: GROUP_CHAT_DEFAULT_SETTINGS.defaultSummaryPromptTemplate,
+      summaryInjectionTemplate: GROUP_CHAT_DEFAULT_SETTINGS.summaryInjectionTemplate,
+    });
+
+    expect(migrated.activePromptPresetId).toBe('custom');
+    expect(migrated.promptPresets).toHaveLength(1);
+    expect(resolveGroupChatPrompts(migrated).defaultDecisionPromptTemplate).toBe('custom decision');
   });
 });

@@ -63,7 +63,11 @@ export function migrateGenerationToolsSettings(settings: Partial<ExtensionSettin
   return {
     ...DEFAULT_SETTINGS,
     ...migratePromptPresetState({
-      settings: { ...DEFAULT_SETTINGS, ...settings },
+      settings: {
+        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
+        promptPresets: [],
+        ...settings,
+      },
       builtInPresets: BUILT_IN_PROMPT_PRESETS,
       legacyPrompts: {
         impersonatePrompt: settings.impersonatePrompt,

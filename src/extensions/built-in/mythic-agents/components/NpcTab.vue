@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { Button, Input, Select } from '../../../../components/UI';
 import { useMythicState } from '../composables/useMythicState';
-import { DEFAULT_UNE_SETTINGS } from '../defaults';
+import { DEFAULT_UNE_SETTINGS, migrateMythicSettings } from '../defaults';
 import type { MythicCharacter, MythicExtensionAPI } from '../types';
 import { genUNENpc } from '../une';
 
@@ -16,14 +16,14 @@ const { state: extra, getLatestMythicMessageIndex } = useMythicState(props.api);
 const scene = computed(() => extra.value?.scene);
 
 const typeOptions = computed(() => {
-  const settings = props.api.settings.get();
+  const settings = migrateMythicSettings(props.api.settings.get());
   const currentPreset = settings.presets.find((p) => p.name === settings.selectedPreset) || settings.presets[0];
   const types = currentPreset?.data?.characterTypes || ['NPC'];
   return types.map((type) => ({ label: type, value: type }));
 });
 
 function getCurrentUNE() {
-  const settings = props.api.settings.get();
+  const settings = migrateMythicSettings(props.api.settings.get());
   const currentPreset = settings.presets.find((p) => p.name === settings.selectedPreset) || settings.presets[0];
   return currentPreset?.data?.une || DEFAULT_UNE_SETTINGS;
 }

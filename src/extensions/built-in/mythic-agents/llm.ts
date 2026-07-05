@@ -1,7 +1,7 @@
 import type { StructuredResponseOptions } from '../../../types';
 import type { ChatMessage } from '../../../types/chat';
 import { uuidv4 } from '../../../utils/commons';
-import { DEFAULT_UNE_SETTINGS } from './defaults';
+import { DEFAULT_UNE_SETTINGS, migrateMythicSettings } from './defaults';
 import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT } from './prompts';
 import type {
   AnalysisOutput,
@@ -15,19 +15,19 @@ import { AnalysisOutputSchema, SceneSchema, SceneUpdateSchema } from './types';
 import { genUNENpc } from './une';
 
 function getCurrentUNE(api: MythicExtensionAPI) {
-  const settings = api.settings.get();
+  const settings = migrateMythicSettings(api.settings.get());
   const currentPreset = settings.presets.find((p) => p.name === settings.selectedPreset) || settings.presets[0];
   return currentPreset?.data?.une || DEFAULT_UNE_SETTINGS;
 }
 
 function getCurrentCharacterTypes(api: MythicExtensionAPI) {
-  const settings = api.settings.get();
+  const settings = migrateMythicSettings(api.settings.get());
   const currentPreset = settings.presets.find((p) => p.name === settings.selectedPreset) || settings.presets[0];
   return currentPreset?.data?.characterTypes || ['NPC'];
 }
 
 function getStructuredRequestFormat(api: MythicExtensionAPI) {
-  return api.settings.get().structuredRequestFormat ?? 'native';
+  return migrateMythicSettings(api.settings.get()).structuredRequestFormat;
 }
 
 export async function analyzeUserAction(
@@ -36,7 +36,7 @@ export async function analyzeUserAction(
   chatHistory?: ChatMessage[],
   signal?: AbortSignal,
 ): Promise<AnalysisOutput> {
-  const settings = api.settings.get();
+  const settings = migrateMythicSettings(api.settings.get());
   const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
 
   const processedPrompt = api.macro.process(settings.prompts.analysis || ANALYSIS_PROMPT, undefined, {
@@ -88,7 +88,7 @@ export async function genInitialScene(
   signal?: AbortSignal,
   generateUNEProfiles = false,
 ): Promise<Scene> {
-  const settings = api.settings.get();
+  const settings = migrateMythicSettings(api.settings.get());
   const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
 
   const characterTypes = getCurrentCharacterTypes(api);
@@ -159,7 +159,7 @@ export async function generateNarration(
   fateRollResults: FateRollResult[] = [],
   randomEvents: EventMeaningResult[] = [],
 ): Promise<string> {
-  const settings = api.settings.get();
+  const settings = migrateMythicSettings(api.settings.get());
   const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
 
   const characterTypes = getCurrentCharacterTypes(api);
@@ -211,7 +211,7 @@ export async function generateNarrationAndSceneUpdate(
   fateRollResults: FateRollResult[] = [],
   randomEvents: EventMeaningResult[] = [],
 ): Promise<{ narration: string; sceneUpdate: SceneUpdate }> {
-  const settings = api.settings.get();
+  const settings = migrateMythicSettings(api.settings.get());
   const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
 
   const characterTypes = getCurrentCharacterTypes(api);

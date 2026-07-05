@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
-import { FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
-import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
-import { DEFAULT_SETTINGS, DEFAULT_UPDATE_PROMPT, type WorldMapExtensionAPI, type WorldMapSettings } from './types';
+import { FormItem, Input, Select, Toggle } from '../../../components/UI';
+import PromptPresetField from '../PromptPresetField.vue';
+import {
+  BUILT_IN_PROMPT_PRESETS,
+  DEFAULT_SETTINGS,
+  type WorldMapExtensionAPI,
+  type WorldMapSettings,
+  migrateWorldMapSettings,
+} from './types';
 
 const props = defineProps<{
   api: WorldMapExtensionAPI;
 }>();
 
 const settings = ref<WorldMapSettings>({ ...DEFAULT_SETTINGS });
-const t = props.api.i18n.t;
 
 onMounted(() => {
-  settings.value = { ...DEFAULT_SETTINGS, ...props.api.settings.get() };
+  settings.value = migrateWorldMapSettings(props.api.settings.get());
 });
 
 watch(
@@ -38,26 +43,7 @@ const formatOptions = [
   { label: 'XML', value: 'xml' },
 ];
 
-const resetPromptTools = computed(() => [
-  {
-    id: 'reset',
-    icon: 'fa-rotate-left',
-    title: t('common.reset'),
-    onClick: async ({ setValue }: { setValue: (value: string) => void }) => {
-      const { result } = await props.api.ui.showPopup({
-        title: 'Reset World Map Prompt?',
-        content: 'Reset the world map update prompt to its default value?',
-        type: POPUP_TYPE.CONFIRM,
-        okButton: 'common.reset',
-        cancelButton: 'common.cancel',
-      });
-      if (result === POPUP_RESULT.AFFIRMATIVE) {
-        setValue(DEFAULT_UPDATE_PROMPT);
-        props.api.ui.showToast('World map prompt reset.', 'success');
-      }
-    },
-  },
-]);
+const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 </script>
 
 <template>
@@ -109,15 +95,18 @@ const resetPromptTools = computed(() => [
     </FormItem>
 
     <div class="world-map-settings__group">AI Prompt</div>
-    <FormItem label="Update Prompt">
-      <Textarea
-        v-model="settings.updatePrompt"
-        allow-maximize
-        :rows="12"
-        identifier="extension.world-map.updatePrompt"
-        :tools="resetPromptTools"
-      />
-    </FormItem>
+    <PromptPresetField
+      :api="api"
+      :active-preset-id="settings.activePromptPresetId"
+      :prompt-presets="settings.promptPresets"
+      :built-in-presets="builtInPromptPresets"
+      prompt-key="updatePrompt"
+      label="Update Prompt"
+      identifier="extension.world-map.updatePrompt"
+      :rows="12"
+      @update:active-preset-id="settings.activePromptPresetId = $event"
+      @update:prompt-presets="settings.promptPresets = $event"
+    />
   </div>
 </template>
 

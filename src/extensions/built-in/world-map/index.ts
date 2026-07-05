@@ -8,7 +8,6 @@ import MapMessageButton from './MapMessageButton.vue';
 import SettingsPanel from './SettingsPanel.vue';
 import { smartShuffleWorldMap, type WorldMapShuffleMode } from './smart-shuffle';
 import {
-  DEFAULT_SETTINGS,
   WORLD_MAP_UPDATED_EVENT,
   type WorldMapAccessPoint,
   type WorldMapBounds,
@@ -21,6 +20,8 @@ import {
   type WorldMapRollbackSnapshot,
   type WorldMapRoute,
   type WorldMapSettings,
+  migrateWorldMapSettings,
+  resolveWorldMapPrompts,
 } from './types';
 import WorldMapPanel from './WorldMapPanel.vue';
 
@@ -1243,8 +1244,9 @@ class WorldMapManager {
   constructor(private api: WorldMapExtensionAPI) {}
 
   private getSettings(): WorldMapSettings {
-    const saved = this.api.settings.get();
-    return { ...DEFAULT_SETTINGS, ...saved };
+    const settings = migrateWorldMapSettings(this.api.settings.get());
+    this.api.settings.set(undefined, settings);
+    return settings;
   }
 
   private getMap(): WorldMapDocument | null {
@@ -1603,7 +1605,7 @@ class WorldMapManager {
       contextMessages.push({
         role: 'system',
         name: 'System',
-        content: this.api.macro.process(settings.updatePrompt),
+        content: this.api.macro.process(resolveWorldMapPrompts(settings).updatePrompt),
       });
       const trimmedInstructions = instructions?.trim();
       if (trimmedInstructions) {

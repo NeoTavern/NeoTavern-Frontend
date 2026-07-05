@@ -2,44 +2,15 @@ import { ref } from 'vue';
 import { GenerationMode } from '../../../constants';
 import type { ApiChatMessage, Character, ChatMessage, ExtensionAPI } from '../../../types';
 import {
+  DEFAULT_SUMMARY_TEMPLATE,
   GroupGenerationHandlingMode,
   GroupReplyStrategy,
+  migrateGroupChatSettings,
+  resolveGroupChatPrompts,
   type GroupChatConfig,
   type GroupExtensionSettings,
 } from './types';
 import { determineNextSpeaker } from './utils';
-
-export const DEFAULT_DECISION_TEMPLATE = `You are an AI assistant orchestrating a roleplay group chat.
-Your task is to determine who should speak next based on the recent conversation context.
-
-[Active Members]
-{{memberNames}}
-{{user}} (The User)
-
-[Recent Conversation]
-{{recentMessages}}
-
-[Instructions]
-1. Analyze the conversation flow to decide who should reply.
-2. If it is {{user}}'s turn to speak, output "{{user}}".
-3. If a character should speak, output their exact name.
-4. Output only the name inside a code block. Do not output anything else.
-
-Example Response:
-\`\`\`
-{{firstCharName}}
-\`\`\``;
-
-export const DEFAULT_SUMMARY_TEMPLATE = `Summarize the following character in 2-3 sentences. Focus on their personality and role to help other characters interact with them.
-
-Name: {{name}}
-Description: {{description}}
-Personality: {{personality}}`;
-
-export const DEFAULT_SUMMARY_INJECTION_TEMPLATE = `{{description}}
-
-[Other Group Members]
-{{summaries}}`;
 
 export class GroupChatService {
   private api: ExtensionAPI<GroupExtensionSettings>;
@@ -218,8 +189,9 @@ export class GroupChatService {
     const char = this.api.character.get(avatar);
     if (!char) return;
 
-    const extensionSettings = this.api.settings.get();
-    const template = extensionSettings?.defaultSummaryPromptTemplate || DEFAULT_SUMMARY_TEMPLATE;
+    const extensionSettings = migrateGroupChatSettings(this.api.settings.get());
+    const template =
+      resolveGroupChatPrompts(extensionSettings).defaultSummaryPromptTemplate || DEFAULT_SUMMARY_TEMPLATE;
     const connectionProfile =
       extensionSettings?.defaultConnectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
     if (!connectionProfile) {
@@ -410,8 +382,8 @@ export class GroupChatService {
     const playerName = persona?.name || 'User';
 
     const config = this.groupConfig.value?.config;
-    const extensionSettings = this.api.settings.get();
-    const template = extensionSettings?.defaultDecisionPromptTemplate || DEFAULT_DECISION_TEMPLATE;
+    const extensionSettings = migrateGroupChatSettings(this.api.settings.get());
+    const template = resolveGroupChatPrompts(extensionSettings).defaultDecisionPromptTemplate;
     const contextSize = config?.decisionContextSize ?? 15;
     const connectionProfile =
       extensionSettings?.defaultConnectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');

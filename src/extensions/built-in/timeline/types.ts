@@ -152,7 +152,11 @@ export function migrateTimelineSettings(settings: Partial<TimelineSettings> = {}
   return {
     ...DEFAULT_SETTINGS,
     ...migratePromptPresetState({
-      settings: { ...DEFAULT_SETTINGS, ...settings },
+      settings: {
+        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
+        promptPresets: [],
+        ...settings,
+      },
       builtInPresets: BUILT_IN_PROMPT_PRESETS,
       legacyPrompts: { extractionPrompt: settings.extractionPrompt },
       legacyDefaults: { extractionPrompt: DEFAULT_EXTRACTION_PROMPT },

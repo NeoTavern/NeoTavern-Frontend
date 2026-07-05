@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_FATE_CHART_DATA } from '../defaults';
+import { DEFAULT_BASE_SETTINGS, DEFAULT_FATE_CHART_DATA, migrateMythicSettings } from '../defaults';
 import { generateFullRandomEvent } from '../event-generator';
 import { rollFate } from '../oracle';
 
@@ -127,5 +127,34 @@ describe('Mythic Agents Oracle', () => {
     expect(result.characters![0].name).toBe('Alice');
     expect(result.threads).toHaveLength(1);
     expect(result.threads![0]).toBe('thread1');
+  });
+});
+
+describe('Mythic Agents settings migration', () => {
+  it('keeps the built-in default preset read-only', () => {
+    const migrated = migrateMythicSettings();
+
+    expect(migrated.selectedPreset).toBe('Default');
+    expect(migrated.presets[0]).toMatchObject({
+      name: 'Default',
+      builtIn: true,
+    });
+  });
+
+  it('moves a modified legacy default preset into a custom preset', () => {
+    const saved = JSON.parse(JSON.stringify(DEFAULT_BASE_SETTINGS));
+    saved.presets[0].data.characterTypes = ['NPC', 'Companion'];
+
+    const migrated = migrateMythicSettings(saved);
+
+    expect(migrated.presets[0].builtIn).toBe(true);
+    expect(migrated.presets[0].data.characterTypes).toEqual(['NPC', 'PC']);
+    expect(migrated.selectedPreset).toBe('Default Copy');
+    expect(migrated.presets.find((preset) => preset.name === 'Default Copy')).toMatchObject({
+      builtIn: false,
+      data: {
+        characterTypes: ['NPC', 'Companion'],
+      },
+    });
   });
 });

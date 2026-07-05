@@ -2,7 +2,7 @@ import { GenerationMode } from '../../../constants';
 import type { TypedChatMessage } from '../../../types/ExtensionAPI';
 import { uuidv4 } from '../../../utils/commons';
 import { eventEmitter } from '../../../utils/extensions';
-import { DEFAULT_BASE_SETTINGS } from './defaults';
+import { migrateMythicSettings } from './defaults';
 import { analyzeUserAction, generateNarration, generateNarrationAndSceneUpdate } from './llm';
 import { manifest } from './manifest';
 import MythicPanel from './MythicPanel.vue';
@@ -16,7 +16,6 @@ import type {
   MythicExtensionAPI,
   MythicMessageExtra,
   MythicMessageExtraData,
-  MythicSettings,
 } from './types';
 import { genUNENpc } from './une';
 
@@ -30,8 +29,6 @@ function getCurrentMythicData(api: MythicExtensionAPI): MythicMessageExtraData |
   }
   return undefined;
 }
-
-const DEFAULT_SETTINGS: MythicSettings = { ...DEFAULT_BASE_SETTINGS };
 
 export function activate(api: MythicExtensionAPI) {
   const settingsContainer = document.getElementById(api.meta.containerId);
@@ -58,7 +55,7 @@ export function activate(api: MythicExtensionAPI) {
   });
 
   api.events.on('chat:generation-requested', async (payload, context) => {
-    const settings = { ...DEFAULT_SETTINGS, ...api.settings.get() };
+    const settings = migrateMythicSettings(api.settings.get());
     if (!settings.enabled || !settings.autoAnalyze) return;
 
     if (![GenerationMode.NEW, GenerationMode.REGENERATE, GenerationMode.ADD_SWIPE].includes(payload.mode)) {
