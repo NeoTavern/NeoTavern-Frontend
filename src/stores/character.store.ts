@@ -8,7 +8,7 @@ import { characterService } from '../services/character.service';
 import { chatService } from '../services/chat.service';
 import { type Character, type CropData } from '../types';
 import { getCharacterDifferences } from '../utils/character';
-import { mergeWithUndefinedMulti, onlyUnique } from '../utils/commons';
+import { mergeWithUndefinedMulti, onlyUnique, uuidv4 } from '../utils/commons';
 import { eventEmitter } from '../utils/extensions';
 import { useSettingsStore } from './settings.store';
 
@@ -186,6 +186,14 @@ export const useCharacterStore = defineStore('character', () => {
     delete characterImageTimestamps.value[avatar];
   }
 
+  async function clearDeletedChatReferences(chatFile: string) {
+    const linkedCharacters = characters.value.filter((character) => character.chat === chatFile);
+
+    for (const character of linkedCharacters) {
+      await updateAndSaveCharacter(character.avatar, { chat: uuidv4() });
+    }
+  }
+
   async function updateCharacterImage(avatar: string, imageFile: File, cropData?: CropData) {
     await characterService.updateImage(avatar, imageFile, cropData);
     if (characters.value.find((c) => c.avatar === avatar)) {
@@ -230,6 +238,7 @@ export const useCharacterStore = defineStore('character', () => {
     deleteCharacter,
     updateCharacterImage,
     updateAndSaveCharacter,
+    clearDeletedChatReferences,
     duplicateCharacter,
     setActiveCharacterAvatars,
   };

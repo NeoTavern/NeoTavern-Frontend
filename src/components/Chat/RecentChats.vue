@@ -3,6 +3,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
 import { chatService } from '../../services/chat.service';
+import { useCharacterStore } from '../../stores/character.store';
 import { useChatStore } from '../../stores/chat.store';
 import { useLayoutStore } from '../../stores/layout.store';
 import { usePopupStore } from '../../stores/popup.store';
@@ -16,6 +17,7 @@ import { Button, ListItem } from '../UI';
 
 const { t } = useStrictI18n();
 const chatStore = useChatStore();
+const characterStore = useCharacterStore();
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
 const layoutStore = useLayoutStore();
@@ -127,6 +129,9 @@ async function deleteSelected() {
       const idsToDelete = Array.from(selectedChats.value);
       for (const id of idsToDelete) {
         await chatService.delete(id);
+      }
+      for (const id of idsToDelete) {
+        await characterStore.clearDeletedChatReferences(id);
       }
       chatStore.chatInfos = chatStore.chatInfos.filter((c) => !selectedChats.value.has(c.file_id));
       if (chatStore.activeChatFile && selectedChats.value.has(chatStore.activeChatFile)) {

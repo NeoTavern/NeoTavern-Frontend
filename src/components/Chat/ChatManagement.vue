@@ -56,7 +56,7 @@ const chats = computed<ChatInfo[]>(() => {
 
 async function selectChat(chatFile: string) {
   try {
-    chatStore.setActiveChatFile(chatFile);
+    await chatStore.setActiveChatFile(chatFile);
     layoutStore.autoCloseSidebarsOnMobile();
   } catch {
     toast.error(t('chat.loadError'));
@@ -121,9 +121,10 @@ async function deleteChat(chatFile: string) {
           const newChatFile = chats.value[newIndex].file_id;
           await selectChat(newChatFile);
         } else {
-          await createNewChat(false);
+          await chatStore.clearChat(false);
         }
       }
+      await characterStore.clearDeletedChatReferences(chatFile);
       chatStore.chatInfos = chatStore.chatInfos.filter((chat) => chat.file_id !== chatFile);
       nextTick().then(async () => {
         await eventEmitter.emit('chat:deleted', chatFile);
