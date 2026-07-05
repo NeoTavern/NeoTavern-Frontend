@@ -1,4 +1,5 @@
 import type { MessageRole } from '../../../types';
+import { cloneJson } from '../_shared/data-utils';
 
 export interface RewriteField {
   id: string; // e.g., 'character.description' or 'world_info.entry.content'
@@ -478,7 +479,7 @@ Response:
 ];
 
 export function cloneRewriteTemplate(template: RewriteTemplate): RewriteTemplate {
-  return JSON.parse(JSON.stringify(template)) as RewriteTemplate;
+  return cloneJson(template);
 }
 
 export function cloneDefaultRewriteTemplates(): RewriteTemplate[] {

@@ -1,5 +1,6 @@
 import { GenerationMode } from '../../../constants';
 import type { ApiChatMessage, ExtensionAPI, GenerationContext } from '../../../types';
+import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
 import {
@@ -149,8 +150,6 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
           contentBefore: lastMessage.mes,
           swipeId: lastMessage.swipe_id ?? 0,
         };
-
-        console.debug('[Generation Tools] Snapshot taken for message', index);
       }
     } else if (
       context.mode === GenerationMode.NEW ||
@@ -362,8 +361,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
     }
 
     // Determine formatter to decide the role of the impersonation message
-    const connectionProfileId =
-      settings.impersonateConnectionProfile || api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfileId = resolveConnectionProfile(api, settings.impersonateConnectionProfile);
     let formatter = api.settings.getGlobal('api.formatter') as string;
 
     // Check if connection profile overrides formatter

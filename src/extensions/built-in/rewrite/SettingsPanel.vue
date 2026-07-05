@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector, SplitPane } from '../../../components/common';
+import { computed, ref } from 'vue';
+import { EmptyState, SplitPane } from '../../../components/common';
 import { Button, Checkbox, FormItem, Input, Select, Textarea } from '../../../components/UI';
 import { POPUP_RESULT, POPUP_TYPE, type ExtensionAPI } from '../../../types';
 import { uuidv4 } from '../../../utils/commons';
+import ConnectionProfileField from '../_shared/components/ConnectionProfileField.vue';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import { RewriteService } from './RewriteService';
 import {
   cloneDefaultRewriteTemplates,
@@ -20,29 +22,20 @@ const props = defineProps<{
 
 const t = props.api.i18n.t;
 
-const settings = ref<RewriteSettings>({
-  templates: cloneDefaultRewriteTemplates(),
-  defaultConnectionProfile: '',
-  lastUsedTemplates: {},
-  templateOverrides: {},
-  disabledTools: [],
-});
+const settings = useExtensionSettings<RewriteSettings>(
+  props.api,
+  {
+    templates: cloneDefaultRewriteTemplates(),
+    defaultConnectionProfile: '',
+    lastUsedTemplates: {},
+    templateOverrides: {},
+    disabledTools: [],
+  },
+  migrateRewriteSettings,
+);
 const isSidebarCollapsed = ref(false);
 
 const service = new RewriteService(props.api);
-
-onMounted(() => {
-  settings.value = migrateRewriteSettings(props.api.settings.get());
-});
-
-watch(
-  settings,
-  (newSettings) => {
-    props.api.settings.set(undefined, newSettings);
-    props.api.settings.save();
-  },
-  { deep: true },
-);
 
 // Template Management
 const editingTemplateId = ref<string | null>(null);
@@ -182,9 +175,10 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
   <div class="rewrite-settings">
     <div class="settings-section">
       <h3>{{ t('common.general') }}</h3>
-      <FormItem :label="t('extensionsBuiltin.rewrite.settings.defaultConnectionProfile')">
-        <ConnectionProfileSelector v-model="settings.defaultConnectionProfile" />
-      </FormItem>
+      <ConnectionProfileField
+        v-model="settings.defaultConnectionProfile"
+        :label="t('extensionsBuiltin.rewrite.settings.defaultConnectionProfile')"
+      />
     </div>
 
     <div class="settings-section">
@@ -362,7 +356,7 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
                 />
               </FormItem>
             </div>
-            <div v-else class="empty-state">{{ t('extensionsBuiltin.rewrite.settings.selectTemplate') }}</div>
+            <EmptyState v-else :description="t('extensionsBuiltin.rewrite.settings.selectTemplate')" />
           </template>
         </SplitPane>
       </div>
@@ -479,14 +473,6 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
   font-size: 0.85em;
   opacity: 0.8;
   margin-top: 5px;
-}
-
-.empty-state {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.5;
 }
 
 /* Args Editor */

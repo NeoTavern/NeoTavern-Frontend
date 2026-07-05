@@ -1,44 +1,16 @@
 import type { ChatMessage, ExtensionAPI } from '../../../types';
 import { MountableComponent } from '../../../types/ExtensionAPI';
+import { findChatMessageIndex, isFinishedAssistantMessage } from '../_shared/runtime/chat-message';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
 import { Translator } from './translator';
-import { AutoTranslateMode, type ChatTranslationSettings } from './types';
+import { AutoTranslateMode, type ChatTranslationMessageExtra, type ChatTranslationSettings } from './types';
 
 export { manifest };
 
-function isFinishedAssistantMessage(message: ChatMessage | null): message is ChatMessage {
-  return Boolean(message && !message.is_user && !message.is_system && message.gen_finished);
-}
-
-function findMessageIndex(history: ChatMessage[], message: ChatMessage, generationId?: string): number {
-  if (generationId) {
-    for (let index = history.length - 1; index >= 0; index--) {
-      const candidate = history[index];
-      if (candidate.swipe_info?.some((swipe) => swipe.generation_id === generationId)) return index;
-    }
-  }
-
-  const identityIndex = history.lastIndexOf(message);
-  if (identityIndex !== -1) return identityIndex;
-
-  for (let index = history.length - 1; index >= 0; index--) {
-    const candidate = history[index];
-    if (
-      candidate.name === message.name &&
-      candidate.send_date === message.send_date &&
-      candidate.gen_started === message.gen_started &&
-      candidate.gen_finished === message.gen_finished &&
-      candidate.mes === message.mes
-    ) {
-      return index;
-    }
-  }
-
-  return -1;
-}
-
-export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
+export function activate(
+  api: ExtensionAPI<ChatTranslationSettings, Record<string, unknown>, ChatTranslationMessageExtra>,
+) {
   const t = api.i18n.t;
   const translator = new Translator(api);
   let settingsApp: {
@@ -122,7 +94,7 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
   };
 
   const getMessageIndex = (message: ChatMessage, generationId?: string): number =>
-    findMessageIndex(api.chat.getHistory(), message, generationId);
+    findChatMessageIndex(api.chat.getHistory(), message, generationId);
 
   const unbinds: Array<() => void> = [];
 

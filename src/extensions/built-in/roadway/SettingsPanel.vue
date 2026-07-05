@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/common';
-import { FormItem, Input, Select, Toggle } from '../../../components/UI';
+import { FormItem, Select, Toggle } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
-import PromptPresetField from '../PromptPresetField.vue';
+import ConnectionProfileField from '../_shared/components/ConnectionProfileField.vue';
+import NumberSettingField from '../_shared/components/NumberSettingField.vue';
+import PromptPresetField from '../_shared/components/PromptPresetField.vue';
+import { createStructuredRequestFormatOptions } from '../_shared/runtime/structured-request-format';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import {
   BUILT_IN_PROMPT_PRESETS,
   DEFAULT_SETTINGS,
@@ -18,29 +20,18 @@ const props = defineProps<{
 }>();
 
 const t = props.api.i18n.t;
-
-const settings = ref<RoadwaySettings>({ ...DEFAULT_SETTINGS });
-
-onMounted(() => {
-  settings.value = migrateRoadwaySettings(props.api.settings.get());
-});
-
-watch(
-  settings,
-  (newSettings) => {
-    props.api.settings.set(undefined, newSettings);
+const settings = useExtensionSettings<RoadwaySettings>(props.api, { ...DEFAULT_SETTINGS }, migrateRoadwaySettings, {
+  onBeforeSave: () => {
     // @ts-expect-error custom event
     props.api.events.emit('roadway:settings-changed');
-    props.api.settings.save();
   },
-  { deep: true },
-);
+});
 
-const formatOptions = [
-  { label: t('extensionsBuiltin.roadway.requestFormats.native'), value: 'native' },
-  { label: t('extensionsBuiltin.roadway.requestFormats.json'), value: 'json' },
-  { label: t('extensionsBuiltin.roadway.requestFormats.xml'), value: 'xml' },
-];
+const formatOptions = createStructuredRequestFormatOptions({
+  native: t('extensionsBuiltin.roadway.requestFormats.native'),
+  json: t('extensionsBuiltin.roadway.requestFormats.json'),
+  xml: t('extensionsBuiltin.roadway.requestFormats.xml'),
+});
 
 const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 </script>
@@ -59,18 +50,18 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
     </FormItem>
 
     <div class="group-header">{{ t('extensionsBuiltin.roadway.choiceGeneration') }}</div>
-    <FormItem
+    <ConnectionProfileField
+      v-model="settings.choiceGenConnectionProfile"
       :label="t('extensionsBuiltin.roadway.connectionProfile')"
       :description="t('extensionsBuiltin.roadway.choiceConnectionProfileHint')"
-    >
-      <ConnectionProfileSelector v-model="settings.choiceGenConnectionProfile" />
-    </FormItem>
-    <FormItem
+    />
+    <NumberSettingField
+      v-model="settings.choiceCount"
       :label="t('extensionsBuiltin.roadway.numberOfChoices')"
       :description="t('extensionsBuiltin.roadway.numberOfChoicesHint')"
-    >
-      <Input v-model.number="settings.choiceCount" type="number" :min="1" :max="20" />
-    </FormItem>
+      :min="1"
+      :max="20"
+    />
     <FormItem
       :label="t('extensionsBuiltin.roadway.requestFormat')"
       :description="t('extensionsBuiltin.roadway.requestFormatHint')"
@@ -92,12 +83,11 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
     />
 
     <div class="group-header">{{ t('extensionsBuiltin.roadway.impersonateAction') }}</div>
-    <FormItem
+    <ConnectionProfileField
+      v-model="settings.impersonateConnectionProfile"
       :label="t('extensionsBuiltin.roadway.connectionProfile')"
       :description="t('extensionsBuiltin.roadway.impersonateConnectionProfileHint')"
-    >
-      <ConnectionProfileSelector v-model="settings.impersonateConnectionProfile" />
-    </FormItem>
+    />
     <PromptPresetField
       :api="api"
       :active-preset-id="settings.activePromptPresetId"

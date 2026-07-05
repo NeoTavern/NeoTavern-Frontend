@@ -3,6 +3,9 @@ import { GenerationMode } from '../../../constants';
 import type { ChatMessage, ExtensionAPI } from '../../../types';
 import type { ChatFormOptionsMenuItemDefinition, ChatQuickActionDefinition } from '../../../types/ExtensionAPI';
 import type { StructuredResponseOptions } from '../../../types/generation';
+import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
+import { mergeMessageExtra } from '../_shared/runtime/extension-extra';
+import { createStructuredResponse } from '../_shared/runtime/structured-request-format';
 import { manifest } from './manifest';
 import RoadwayChoices from './RoadwayChoices.vue';
 import SettingsPanel from './SettingsPanel.vue';
@@ -59,8 +62,7 @@ class RoadwayManager {
     const settings = this.getSettings();
     if (!settings.enabled) return;
 
-    const connectionProfile =
-      settings.choiceGenConnectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile = resolveConnectionProfile(this.api, settings.choiceGenConnectionProfile);
     if (!connectionProfile) {
       this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.roadway.toasts.noChoiceProfile'), 'error');
       return;
@@ -77,24 +79,20 @@ class RoadwayManager {
       const chatHistory = this.api.chat.getHistory().slice(0, index + 1);
       const generationId = `roadway-choices-${index}-${Date.now()}`;
 
-      const structuredResponse: StructuredResponseOptions = {
-        format: settings.structuredRequestFormat,
-        schema: {
-          name: 'roadway_choices',
-          strict: true,
-          value: {
-            type: 'object',
-            properties: {
-              choices: {
-                type: 'array',
-                items: { type: 'string' },
-                description: `An array of ${settings.choiceCount} user reply options.`,
-              },
+      const structuredResponse: StructuredResponseOptions = createStructuredResponse(settings.structuredRequestFormat, {
+        name: 'roadway_choices',
+        value: {
+          type: 'object',
+          properties: {
+            choices: {
+              type: 'array',
+              items: { type: 'string' },
+              description: `An array of ${settings.choiceCount} user reply options.`,
             },
-            required: ['choices'],
           },
+          required: ['choices'],
         },
-      };
+      });
 
       const itemizedPrompt = await this.api.chat.buildPrompt({ chatHistory, generationId, structuredResponse });
       const contextMessages = itemizedPrompt.messages;
@@ -207,16 +205,7 @@ class RoadwayManager {
     const message = this.api.chat.getHistory()[index];
     if (!message) return;
 
-    const existingExtra = message.extra['core.roadway'] ?? {};
-
-    await this.api.chat.updateMessageObject(index, {
-      extra: {
-        'core.roadway': {
-          ...existingExtra,
-          ...data,
-        },
-      },
-    });
+    await mergeMessageExtra<RoadwayMessageExtra>(this.api, index, 'core.roadway', data);
   }
 
   public handleGenerationFinished(

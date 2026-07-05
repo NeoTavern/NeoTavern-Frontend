@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector, PresetControl } from '../../../components/common';
+import { computed, ref, watch } from 'vue';
+import { PresetControl } from '../../../components/common';
 import { Button, FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
+import ConnectionProfileField from '../_shared/components/ConnectionProfileField.vue';
+import { cloneJson } from '../_shared/data-utils';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import {
   DEFAULT_PRESETS,
   DEFAULT_SETTINGS,
@@ -20,21 +23,8 @@ const props = defineProps<{
 
 const t = props.api.i18n.t;
 
-const settings = ref<TrackerSettings>({ ...DEFAULT_SETTINGS });
+const settings = useExtensionSettings<TrackerSettings>(props.api, { ...DEFAULT_SETTINGS }, migrateTrackerSettings);
 const schemaError = ref<string | null>(null);
-
-onMounted(() => {
-  settings.value = migrateTrackerSettings(props.api.settings.get());
-});
-
-watch(
-  settings,
-  (newSettings) => {
-    props.api.settings.set(undefined, newSettings);
-    props.api.settings.save();
-  },
-  { deep: true },
-);
 
 const activePreset = computed(() => {
   return settings.value.schemaPresets.find((p) => p.name === settings.value.activeSchemaPresetName);
@@ -80,8 +70,8 @@ async function handlePresetCreate() {
       return;
     }
     const newPreset: TrackerSchemaPreset = activePreset.value
-      ? JSON.parse(JSON.stringify(activePreset.value)) // Deep copy current
-      : JSON.parse(JSON.stringify(DEFAULT_PRESETS[0])); // Or copy default
+      ? cloneJson(activePreset.value)
+      : cloneJson(DEFAULT_PRESETS[0]);
 
     newPreset.name = value;
     newPreset.builtIn = false;
@@ -150,7 +140,7 @@ async function handleResetAll() {
   });
 
   if (result === POPUP_RESULT.AFFIRMATIVE) {
-    settings.value.schemaPresets = JSON.parse(JSON.stringify(DEFAULT_PRESETS));
+    settings.value.schemaPresets = cloneJson(DEFAULT_PRESETS);
     settings.value.activeSchemaPresetName = DEFAULT_PRESETS[0].name;
     props.api.ui.showToast(t('extensionsBuiltin.tracker.toasts.presetsReset'), 'success');
   }
@@ -252,12 +242,11 @@ const promptTools = computed(() => [
       <Toggle v-model="settings.enabled" />
     </FormItem>
 
-    <FormItem
+    <ConnectionProfileField
+      v-model="settings.connectionProfile"
       :label="t('extensionsBuiltin.tracker.settings.connectionProfile')"
       :description="t('extensionsBuiltin.tracker.settings.connectionProfileHint')"
-    >
-      <ConnectionProfileSelector v-model="settings.connectionProfile" />
-    </FormItem>
+    />
 
     <div class="setting-row">
       <FormItem

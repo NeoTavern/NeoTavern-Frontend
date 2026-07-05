@@ -1,5 +1,6 @@
 import Bowser from 'bowser';
 import type { ApiChatMessage, Character, ChatMessage, ExtensionAPI } from '../../../types';
+import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
 import {
   type LiveCommentarySettings,
   type RecentCommentary,
@@ -173,8 +174,7 @@ export class Commentator {
 
   private async generateForCharacter(character: Character, userInput: string): Promise<void> {
     const settings = this.getSettings();
-    const connectionProfile =
-      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile = resolveConnectionProfile(this.api, settings.connectionProfile);
     if (!connectionProfile) {
       if (this.ongoingControllers.size === 0) {
         this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.liveCommentary.noConnectionProfile'), 'warning');
@@ -450,8 +450,7 @@ export class Commentator {
 
   public async askQuestion(question: string, signal?: AbortSignal): Promise<string> {
     const settings = this.getSettings();
-    const connectionProfile =
-      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile = resolveConnectionProfile(this.api, settings.connectionProfile);
     if (!connectionProfile) {
       throw new Error(this.api.i18n.t('extensionsBuiltin.liveCommentary.noConnectionProfile'));
     }

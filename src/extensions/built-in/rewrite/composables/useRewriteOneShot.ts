@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import type { Character, ExtensionAPI, Persona } from '../../../../types';
+import { resolveConnectionProfile } from '../../_shared/runtime/connection-profile';
 import { RewriteService } from '../RewriteService';
 import type { RewriteSettings } from '../types';
 import { deepToRaw } from '../utils';
@@ -50,7 +51,7 @@ export function useRewriteOneShot(api: ExtensionAPI<RewriteSettings>) {
       const response = await service.generateRewrite(
         inputToProcess,
         selectedTemplateId,
-        selectedProfile || api.settings.getGlobal('api.selectedConnectionProfile'),
+        resolveConnectionProfile(api, selectedProfile),
         promptToUse,
         deepToRaw(contextData),
         deepToRaw(additionalMacros),

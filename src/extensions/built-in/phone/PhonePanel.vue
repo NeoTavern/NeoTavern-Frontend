@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { EmptyState } from '../../../components/common';
 import { Button, Select, Textarea } from '../../../components/UI';
 import type { PhoneManager } from './index';
 import {
@@ -256,10 +257,11 @@ watch(messageIndex, () => {
                   </span>
                 </button>
 
-                <div v-if="contacts.length === 0" class="phone-empty">
-                  <i class="fa-solid fa-address-book"></i>
-                  <span>{{ t('extensionsBuiltin.phone.initializeContacts') }}</span>
-                </div>
+                <EmptyState
+                  v-if="contacts.length === 0"
+                  icon="fa-address-book"
+                  :description="t('extensionsBuiltin.phone.initializeContacts')"
+                />
               </div>
             </section>
 
@@ -284,10 +286,11 @@ watch(messageIndex, () => {
               </header>
 
               <div class="message-list">
-                <div v-if="threadMessages.length === 0" class="phone-empty">
-                  <i class="fa-solid fa-comment-sms"></i>
-                  <span>{{ t('extensionsBuiltin.phone.startSmsConversation') }}</span>
-                </div>
+                <EmptyState
+                  v-if="threadMessages.length === 0"
+                  icon="fa-comment-sms"
+                  :description="t('extensionsBuiltin.phone.startSmsConversation')"
+                />
                 <article
                   v-for="message in threadMessages"
                   :key="message.id"
@@ -640,15 +643,6 @@ watch(messageIndex, () => {
   min-height: 42px;
   max-height: 120px;
   border-radius: 22px;
-}
-
-.phone-empty {
-  display: grid;
-  place-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-lg);
-  color: var(--theme-emphasis-color);
-  text-align: center;
 }
 
 .typing-indicator {

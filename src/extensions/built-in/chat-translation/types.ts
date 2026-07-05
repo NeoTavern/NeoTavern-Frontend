@@ -1,9 +1,9 @@
 import {
-  migratePromptPresetState,
+  migratePromptPresetSettings,
   resolvePromptPreset,
   type PromptPreset,
   type PromptPresetState,
-} from '../prompt-presets';
+} from '../_shared/prompt-presets';
 
 export enum AutoTranslateMode {
   NONE = 'none',
@@ -22,6 +22,10 @@ export interface ChatTranslationSettings extends PromptPresetState<ChatTranslati
   targetLang: string;
   autoMode: AutoTranslateMode;
   prompt?: string;
+}
+
+export interface ChatTranslationMessageExtra {
+  display_text?: string;
 }
 
 export const DEFAULT_PROMPT = `# Task: Translate Text
@@ -74,19 +78,13 @@ export const DEFAULT_SETTINGS: ChatTranslationSettings = {
 export function migrateChatTranslationSettings(
   settings: Partial<ChatTranslationSettings> = {},
 ): ChatTranslationSettings {
-  return {
-    ...DEFAULT_SETTINGS,
-    ...migratePromptPresetState({
-      settings: {
-        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
-        promptPresets: [],
-        ...settings,
-      },
-      builtInPresets: BUILT_IN_PROMPT_PRESETS,
-      legacyPrompts: { prompt: settings.prompt },
-      legacyDefaults: { prompt: DEFAULT_PROMPT },
-    }),
-  };
+  return migratePromptPresetSettings({
+    settings,
+    defaultSettings: DEFAULT_SETTINGS,
+    builtInPresets: BUILT_IN_PROMPT_PRESETS,
+    legacyPrompts: { prompt: settings.prompt },
+    legacyDefaults: { prompt: DEFAULT_PROMPT },
+  });
 }
 
 export function resolveChatTranslationPrompts(settings: ChatTranslationSettings): ChatTranslationPrompts {

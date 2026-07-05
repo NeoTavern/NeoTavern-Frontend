@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/common';
+import { computed } from 'vue';
 import { FormItem, Input, Select } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
-import PromptPresetField from '../PromptPresetField.vue';
+import ConnectionProfileField from '../_shared/components/ConnectionProfileField.vue';
+import PromptPresetField from '../_shared/components/PromptPresetField.vue';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import {
   AutoTranslateMode,
   BUILT_IN_PROMPT_PRESETS,
@@ -13,12 +14,15 @@ import {
 } from './types';
 
 const props = defineProps<{
-  api: ExtensionAPI;
+  api: ExtensionAPI<ChatTranslationSettings>;
 }>();
 
 const t = props.api.i18n.t;
-
-const settings = ref<ChatTranslationSettings>({ ...DEFAULT_SETTINGS });
+const settings = useExtensionSettings<ChatTranslationSettings>(
+  props.api,
+  { ...DEFAULT_SETTINGS },
+  migrateChatTranslationSettings,
+);
 
 const autoModeOptions = computed(() => [
   { label: t('extensionsBuiltin.chatTranslation.autoMode.none'), value: AutoTranslateMode.NONE },
@@ -27,30 +31,16 @@ const autoModeOptions = computed(() => [
   { label: t('extensionsBuiltin.chatTranslation.autoMode.both'), value: AutoTranslateMode.BOTH },
 ]);
 
-onMounted(() => {
-  settings.value = migrateChatTranslationSettings(props.api.settings.get());
-});
-
-watch(
-  settings,
-  (newSettings) => {
-    props.api.settings.set(undefined, newSettings);
-    props.api.settings.save();
-  },
-  { deep: true },
-);
-
 const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 </script>
 
 <template>
   <div class="translation-settings">
-    <FormItem
+    <ConnectionProfileField
+      v-model="settings.connectionProfile"
       :label="t('extensionsBuiltin.chatTranslation.connectionProfile')"
       :description="t('extensionsBuiltin.chatTranslation.connectionProfileHint')"
-    >
-      <ConnectionProfileSelector v-model="settings.connectionProfile" />
-    </FormItem>
+    />
 
     <div class="setting-row">
       <div style="flex: 1">

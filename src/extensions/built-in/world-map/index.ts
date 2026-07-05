@@ -1,7 +1,20 @@
 import type { Component } from 'vue';
 import type { ChatMessage } from '../../../types';
-import type { ApiChatMessage, GenerationResponse, StructuredResponseOptions } from '../../../types/generation';
+import type { ApiChatMessage, StructuredResponseOptions } from '../../../types/generation';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
+import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
+import { cloneJson } from '../_shared/data-utils';
+import { findChatMessageIndex, isFinishedAssistantMessage } from '../_shared/runtime/chat-message';
+import {
+  clearChatExtra,
+  clearMessageExtra,
+  getChatExtra,
+  mergeChatExtra,
+  mergeMessageExtra,
+  setChatExtra,
+} from '../_shared/runtime/extension-extra';
+import { generateStructuredResult } from '../_shared/runtime/structured-generation';
+import { createStructuredResponse } from '../_shared/runtime/structured-request-format';
 import { manifest } from './manifest';
 import { getMapFromMetadata, mergeWorldMapDelta, serializeWorldMapForPrompt } from './map-utils';
 import MapMessageButton from './MapMessageButton.vue';
@@ -11,6 +24,7 @@ import {
   WORLD_MAP_UPDATED_EVENT,
   type WorldMapAccessPoint,
   type WorldMapBounds,
+  type WorldMapChatExtra,
   type WorldMapDelta,
   type WorldMapDocument,
   type WorldMapExtensionAPI,
@@ -42,37 +56,6 @@ interface WorldMapGenerationResult {
   rawContent: string;
   parseError?: string;
   messages?: ApiChatMessage[];
-}
-
-function isFinishedAssistantMessage(message: ChatMessage | null): message is ChatMessage {
-  return Boolean(message && !message.is_user && !message.is_system && message.gen_finished);
-}
-
-function findMessageIndex(history: ChatMessage[], message: ChatMessage, generationId?: string): number {
-  if (generationId) {
-    for (let index = history.length - 1; index >= 0; index--) {
-      const candidate = history[index];
-      if (candidate.swipe_info?.some((swipe) => swipe.generation_id === generationId)) return index;
-    }
-  }
-
-  const identityIndex = history.lastIndexOf(message);
-  if (identityIndex !== -1) return identityIndex;
-
-  for (let index = history.length - 1; index >= 0; index--) {
-    const candidate = history[index];
-    if (
-      candidate.name === message.name &&
-      candidate.send_date === message.send_date &&
-      candidate.gen_started === message.gen_started &&
-      candidate.gen_finished === message.gen_finished &&
-      candidate.mes === message.mes
-    ) {
-      return index;
-    }
-  }
-
-  return -1;
 }
 
 export interface QualityIssue {
@@ -353,10 +336,6 @@ function hasInitialMapAnchor(delta: WorldMapDelta): boolean {
   return nodes.some((node) => !node.parentId && node.view);
 }
 
-function cloneValue<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
 function collectNodeIdsWithDescendants(
   nodes: Record<string, WorldMapNode> | undefined,
   nodeIds: Set<string>,
@@ -383,7 +362,7 @@ function snapshotVisualPackAsset<T>(
   assets: Record<string, T> | undefined,
 ): void {
   if (Object.prototype.hasOwnProperty.call(target, id)) return;
-  target[id] = assets?.[id] ? cloneValue(assets[id]) : null;
+  target[id] = assets?.[id] ? cloneJson(assets[id]) : null;
 }
 
 function ensureVisualPackRollback(
@@ -416,21 +395,21 @@ export function createRollbackSnapshot(
   const snapshotNode = (nodeId: string) => {
     snapshot.nodes ??= {};
     if (Object.prototype.hasOwnProperty.call(snapshot.nodes, nodeId)) return;
-    snapshot.nodes[nodeId] = map?.nodes[nodeId] ? cloneValue(map.nodes[nodeId]) : null;
+    snapshot.nodes[nodeId] = map?.nodes[nodeId] ? cloneJson(map.nodes[nodeId]) : null;
   };
 
   const snapshotRoute = (routeId: string) => {
     snapshot.routes ??= {};
     if (Object.prototype.hasOwnProperty.call(snapshot.routes, routeId)) return;
     const route = map?.routes.find((item) => item.id === routeId);
-    snapshot.routes[routeId] = route ? cloneValue(route) : null;
+    snapshot.routes[routeId] = route ? cloneJson(route) : null;
   };
 
   const snapshotAccessPoint = (accessPointId: string) => {
     snapshot.accessPoints ??= {};
     if (Object.prototype.hasOwnProperty.call(snapshot.accessPoints, accessPointId)) return;
     const accessPoint = map?.accessPoints.find((item) => item.id === accessPointId);
-    snapshot.accessPoints[accessPointId] = accessPoint ? cloneValue(accessPoint) : null;
+    snapshot.accessPoints[accessPointId] = accessPoint ? cloneJson(accessPoint) : null;
   };
 
   for (const delta of deltas) {
@@ -486,7 +465,7 @@ export function createRollbackSnapshot(
 function restoreRecord<T>(target: Record<string, T>, snapshots: Record<string, T | null> | undefined): void {
   for (const [id, value] of Object.entries(snapshots ?? {})) {
     if (value === null) delete target[id];
-    else target[id] = cloneValue(value);
+    else target[id] = cloneJson(value);
   }
 }
 
@@ -495,7 +474,7 @@ export function applyRollbackSnapshot(
   rollback: WorldMapRollbackSnapshot,
 ): WorldMapDocument | null {
   if (!currentMap) return null;
-  const map = cloneValue(currentMap);
+  const map = cloneJson(currentMap);
 
   if (rollback.rootNodeId !== undefined) {
     if (rollback.rootNodeId === null) delete map.rootNodeId;
@@ -539,9 +518,9 @@ export function applyRollbackSnapshot(
     if (route === null) {
       if (index !== -1) map.routes.splice(index, 1);
     } else if (index === -1) {
-      map.routes.push(cloneValue(route));
+      map.routes.push(cloneJson(route));
     } else {
-      map.routes[index] = cloneValue(route);
+      map.routes[index] = cloneJson(route);
     }
   }
 
@@ -550,9 +529,9 @@ export function applyRollbackSnapshot(
     if (accessPoint === null) {
       if (index !== -1) map.accessPoints.splice(index, 1);
     } else if (index === -1) {
-      map.accessPoints.push(cloneValue(accessPoint));
+      map.accessPoints.push(cloneJson(accessPoint));
     } else {
-      map.accessPoints[index] = cloneValue(accessPoint);
+      map.accessPoints[index] = cloneJson(accessPoint);
     }
   }
 
@@ -940,155 +919,113 @@ export function validateWorldMapDeltaQuality(
 }
 
 function getWorldMapStructuredResponse(format: WorldMapSettings['structuredRequestFormat']): StructuredResponseOptions {
-  return {
-    format,
-    schema: {
-      name: 'world_map_delta',
-      strict: true,
-      value: {
-        type: 'object',
-        properties: {
-          rootNodeId: { type: 'string' },
-          createOrUpdateNodes: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                name: { type: 'string' },
-                kind: {
-                  type: 'string',
-                  enum: ['world', 'region', 'settlement', 'district', 'building', 'floor', 'room', 'landmark', 'poi'],
+  return createStructuredResponse(format, {
+    name: 'world_map_delta',
+    value: {
+      type: 'object',
+      properties: {
+        rootNodeId: { type: 'string' },
+        createOrUpdateNodes: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              name: { type: 'string' },
+              kind: {
+                type: 'string',
+                enum: ['world', 'region', 'settlement', 'district', 'building', 'floor', 'room', 'landmark', 'poi'],
+              },
+              subkind: { type: 'string' },
+              parentId: { type: 'string' },
+              floorIndex: { type: 'number' },
+              bounds: {
+                type: 'object',
+                properties: {
+                  x: { type: 'number' },
+                  y: { type: 'number' },
+                  width: { type: 'number', minimum: 8 },
+                  height: { type: 'number', minimum: 8 },
                 },
-                subkind: { type: 'string' },
-                parentId: { type: 'string' },
-                floorIndex: { type: 'number' },
-                bounds: {
+                required: ['x', 'y', 'width', 'height'],
+              },
+              view: {
+                type: 'object',
+                properties: {
+                  width: { type: 'number', minimum: 600 },
+                  height: { type: 'number', minimum: 400 },
+                  background: { type: 'string' },
+                },
+                required: ['width', 'height'],
+              },
+              areas: {
+                type: 'array',
+                items: {
                   type: 'object',
                   properties: {
-                    x: { type: 'number' },
-                    y: { type: 'number' },
-                    width: { type: 'number', minimum: 8 },
-                    height: { type: 'number', minimum: 8 },
-                  },
-                  required: ['x', 'y', 'width', 'height'],
-                },
-                view: {
-                  type: 'object',
-                  properties: {
-                    width: { type: 'number', minimum: 600 },
-                    height: { type: 'number', minimum: 400 },
-                    background: { type: 'string' },
-                  },
-                  required: ['width', 'height'],
-                },
-                areas: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      id: { type: 'string' },
-                      label: { type: 'string' },
-                      kind: {
-                        type: 'string',
-                        enum: [
-                          'terrain',
-                          'water',
-                          'woods',
-                          'garden',
-                          'courtyard',
-                          'field',
-                          'cliff',
-                          'interior',
-                          'other',
-                        ],
-                      },
-                      points: {
-                        type: 'array',
-                        minItems: 3,
-                        maxItems: 40,
-                        items: {
-                          type: 'object',
-                          properties: {
-                            x: { type: 'number' },
-                            y: { type: 'number' },
-                          },
-                          required: ['x', 'y'],
-                        },
-                      },
-                      visual: {
+                    id: { type: 'string' },
+                    label: { type: 'string' },
+                    kind: {
+                      type: 'string',
+                      enum: ['terrain', 'water', 'woods', 'garden', 'courtyard', 'field', 'cliff', 'interior', 'other'],
+                    },
+                    points: {
+                      type: 'array',
+                      minItems: 3,
+                      maxItems: 40,
+                      items: {
                         type: 'object',
                         properties: {
-                          areaStyleId: { type: 'string' },
-                          fill: { type: 'string' },
-                          stroke: { type: 'string' },
-                          opacity: { type: 'number', minimum: 0.05, maximum: 1 },
+                          x: { type: 'number' },
+                          y: { type: 'number' },
                         },
+                        required: ['x', 'y'],
                       },
                     },
-                    required: ['id', 'points'],
-                  },
-                },
-                visual: {
-                  type: 'object',
-                  properties: {
-                    iconId: { type: 'string' },
-                    areaStyleId: { type: 'string' },
-                    footprintStyleId: { type: 'string' },
-                    labelStyleId: { type: 'string' },
-                  },
-                },
-              },
-              required: ['id', 'name', 'kind'],
-            },
-          },
-          removeNodeIds: { type: 'array', items: { type: 'string' } },
-          createOrUpdateRoutes: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                parentId: { type: 'string' },
-                kind: {
-                  type: 'string',
-                  enum: ['road', 'path', 'corridor', 'door', 'stairs', 'elevator', 'portal', 'adjacent', 'unknown'],
-                },
-                label: { type: 'string' },
-                points: {
-                  type: 'array',
-                  minItems: 2,
-                  maxItems: 40,
-                  items: {
-                    type: 'object',
-                    properties: {
-                      x: { type: 'number' },
-                      y: { type: 'number' },
+                    visual: {
+                      type: 'object',
+                      properties: {
+                        areaStyleId: { type: 'string' },
+                        fill: { type: 'string' },
+                        stroke: { type: 'string' },
+                        opacity: { type: 'number', minimum: 0.05, maximum: 1 },
+                      },
                     },
-                    required: ['x', 'y'],
                   },
-                },
-                smoothPath: { type: 'boolean' },
-                visual: {
-                  type: 'object',
-                  properties: {
-                    styleId: { type: 'string' },
-                  },
+                  required: ['id', 'points'],
                 },
               },
-              required: ['id', 'parentId', 'kind', 'points'],
+              visual: {
+                type: 'object',
+                properties: {
+                  iconId: { type: 'string' },
+                  areaStyleId: { type: 'string' },
+                  footprintStyleId: { type: 'string' },
+                  labelStyleId: { type: 'string' },
+                },
+              },
             },
+            required: ['id', 'name', 'kind'],
           },
-          removeRouteIds: { type: 'array', items: { type: 'string' } },
-          createOrUpdateAccessPoints: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string' },
-                routeId: { type: 'string' },
-                nodeId: { type: 'string' },
-                point: {
+        },
+        removeNodeIds: { type: 'array', items: { type: 'string' } },
+        createOrUpdateRoutes: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              parentId: { type: 'string' },
+              kind: {
+                type: 'string',
+                enum: ['road', 'path', 'corridor', 'door', 'stairs', 'elevator', 'portal', 'adjacent', 'unknown'],
+              },
+              label: { type: 'string' },
+              points: {
+                type: 'array',
+                minItems: 2,
+                maxItems: 40,
+                items: {
                   type: 'object',
                   properties: {
                     x: { type: 'number' },
@@ -1096,143 +1033,161 @@ function getWorldMapStructuredResponse(format: WorldMapSettings['structuredReque
                   },
                   required: ['x', 'y'],
                 },
-                label: { type: 'string' },
-                kind: {
-                  type: 'string',
-                  enum: ['entrance', 'door', 'gate', 'stairs', 'elevator', 'dock', 'trailhead', 'portal', 'other'],
+              },
+              smoothPath: { type: 'boolean' },
+              visual: {
+                type: 'object',
+                properties: {
+                  styleId: { type: 'string' },
                 },
               },
-              required: ['id', 'routeId', 'nodeId', 'point'],
             },
+            required: ['id', 'parentId', 'kind', 'points'],
           },
-          removeAccessPointIds: { type: 'array', items: { type: 'string' } },
-          visualPackDelta: {
+        },
+        removeRouteIds: { type: 'array', items: { type: 'string' } },
+        createOrUpdateAccessPoints: {
+          type: 'array',
+          items: {
             type: 'object',
             properties: {
-              packId: { type: 'string' },
-              packName: { type: 'string' },
-              removeIconIds: { type: 'array', items: { type: 'string' } },
-              removeAreaStyleIds: { type: 'array', items: { type: 'string' } },
-              removeRouteStyleIds: { type: 'array', items: { type: 'string' } },
-              removeLabelStyleIds: { type: 'array', items: { type: 'string' } },
-              icons: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'string' },
-                    label: { type: 'string' },
-                    svgSymbol: { type: 'string' },
-                    fallbackKind: {
-                      type: 'string',
-                      enum: [
-                        'world',
-                        'region',
-                        'settlement',
-                        'district',
-                        'building',
-                        'floor',
-                        'room',
-                        'landmark',
-                        'poi',
-                      ],
-                    },
-                    color: { type: 'string' },
-                  },
-                  required: ['id', 'label'],
+              id: { type: 'string' },
+              routeId: { type: 'string' },
+              nodeId: { type: 'string' },
+              point: {
+                type: 'object',
+                properties: {
+                  x: { type: 'number' },
+                  y: { type: 'number' },
                 },
+                required: ['x', 'y'],
               },
-              areaStyles: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'string' },
-                    label: { type: 'string' },
-                    fill: { type: 'string' },
-                    stroke: { type: 'string' },
-                    pattern: {
-                      type: 'string',
-                      enum: ['solid', 'grid', 'dots', 'diagonal', 'water', 'grass', 'stone'],
-                    },
-                    opacity: { type: 'number', minimum: 0.05, maximum: 1 },
-                  },
-                  required: ['id', 'label'],
-                },
-              },
-              routeStyles: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'string' },
-                    label: { type: 'string' },
-                    stroke: { type: 'string' },
-                    width: { type: 'number', minimum: 1, maximum: 18 },
-                    dash: { type: 'string', pattern: '^[0-9 .]{1,40}$' },
-                    linecap: {
-                      type: 'string',
-                      enum: ['butt', 'round', 'square'],
-                    },
-                  },
-                  required: ['id', 'label'],
-                },
-              },
-              labelStyles: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    id: { type: 'string' },
-                    label: { type: 'string' },
-                    color: { type: 'string' },
-                    background: { type: 'string' },
-                  },
-                  required: ['id', 'label'],
-                },
-              },
-              assignNodeVisuals: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    nodeId: { type: 'string' },
-                    visual: {
-                      type: 'object',
-                      properties: {
-                        iconId: { type: 'string' },
-                        areaStyleId: { type: 'string' },
-                        footprintStyleId: { type: 'string' },
-                        labelStyleId: { type: 'string' },
-                      },
-                    },
-                  },
-                  required: ['nodeId', 'visual'],
-                },
-              },
-              assignRouteVisuals: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    routeId: { type: 'string' },
-                    visual: {
-                      type: 'object',
-                      properties: {
-                        styleId: { type: 'string' },
-                      },
-                    },
-                  },
-                  required: ['routeId', 'visual'],
-                },
+              label: { type: 'string' },
+              kind: {
+                type: 'string',
+                enum: ['entrance', 'door', 'gate', 'stairs', 'elevator', 'dock', 'trailhead', 'portal', 'other'],
               },
             },
-            required: ['packId', 'packName'],
+            required: ['id', 'routeId', 'nodeId', 'point'],
           },
+        },
+        removeAccessPointIds: { type: 'array', items: { type: 'string' } },
+        visualPackDelta: {
+          type: 'object',
+          properties: {
+            packId: { type: 'string' },
+            packName: { type: 'string' },
+            removeIconIds: { type: 'array', items: { type: 'string' } },
+            removeAreaStyleIds: { type: 'array', items: { type: 'string' } },
+            removeRouteStyleIds: { type: 'array', items: { type: 'string' } },
+            removeLabelStyleIds: { type: 'array', items: { type: 'string' } },
+            icons: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  label: { type: 'string' },
+                  svgSymbol: { type: 'string' },
+                  fallbackKind: {
+                    type: 'string',
+                    enum: ['world', 'region', 'settlement', 'district', 'building', 'floor', 'room', 'landmark', 'poi'],
+                  },
+                  color: { type: 'string' },
+                },
+                required: ['id', 'label'],
+              },
+            },
+            areaStyles: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  label: { type: 'string' },
+                  fill: { type: 'string' },
+                  stroke: { type: 'string' },
+                  pattern: {
+                    type: 'string',
+                    enum: ['solid', 'grid', 'dots', 'diagonal', 'water', 'grass', 'stone'],
+                  },
+                  opacity: { type: 'number', minimum: 0.05, maximum: 1 },
+                },
+                required: ['id', 'label'],
+              },
+            },
+            routeStyles: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  label: { type: 'string' },
+                  stroke: { type: 'string' },
+                  width: { type: 'number', minimum: 1, maximum: 18 },
+                  dash: { type: 'string', pattern: '^[0-9 .]{1,40}$' },
+                  linecap: {
+                    type: 'string',
+                    enum: ['butt', 'round', 'square'],
+                  },
+                },
+                required: ['id', 'label'],
+              },
+            },
+            labelStyles: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string' },
+                  label: { type: 'string' },
+                  color: { type: 'string' },
+                  background: { type: 'string' },
+                },
+                required: ['id', 'label'],
+              },
+            },
+            assignNodeVisuals: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  nodeId: { type: 'string' },
+                  visual: {
+                    type: 'object',
+                    properties: {
+                      iconId: { type: 'string' },
+                      areaStyleId: { type: 'string' },
+                      footprintStyleId: { type: 'string' },
+                      labelStyleId: { type: 'string' },
+                    },
+                  },
+                },
+                required: ['nodeId', 'visual'],
+              },
+            },
+            assignRouteVisuals: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  routeId: { type: 'string' },
+                  visual: {
+                    type: 'object',
+                    properties: {
+                      styleId: { type: 'string' },
+                    },
+                  },
+                },
+                required: ['routeId', 'visual'],
+              },
+            },
+          },
+          required: ['packId', 'packName'],
         },
       },
     },
-  };
+  });
 }
 
 class WorldMapManager {
@@ -1254,30 +1209,21 @@ class WorldMapManager {
   }
 
   private async setMap(map: WorldMapDocument): Promise<void> {
-    const metadata = this.api.chat.metadata.get();
-    if (!metadata) return;
-    const extra = { ...(metadata.extra ?? {}) };
-    const extensionExtra = { ...((extra[EXTENSION_ID] as Record<string, unknown> | undefined) ?? {}) };
-    extra[EXTENSION_ID] = { ...extensionExtra, map };
-    this.api.chat.metadata.set({ ...metadata, extra });
+    mergeChatExtra<WorldMapChatExtra>(this.api, EXTENSION_ID, { map });
     await this.api.events.emit(WORLD_MAP_UPDATED_EVENT);
   }
 
   private async removeChatMapMetadata(): Promise<void> {
-    const metadata = this.api.chat.metadata.get();
-    if (!metadata?.extra?.[EXTENSION_ID]) return;
-
-    const extra = { ...metadata.extra };
-    const extensionExtra = { ...(extra[EXTENSION_ID] as Record<string, unknown>) };
+    const extensionExtra = { ...(getChatExtra<Record<string, unknown>>(this.api, EXTENSION_ID) ?? {}) };
+    if (Object.keys(extensionExtra).length === 0) return;
     delete extensionExtra.map;
 
     if (Object.keys(extensionExtra).length === 0) {
-      delete extra[EXTENSION_ID];
+      clearChatExtra<WorldMapChatExtra>(this.api, EXTENSION_ID);
     } else {
-      extra[EXTENSION_ID] = extensionExtra;
+      setChatExtra<WorldMapChatExtra>(this.api, EXTENSION_ID, extensionExtra);
     }
 
-    this.api.chat.metadata.set({ ...metadata, extra });
     await this.api.events.emit(WORLD_MAP_UPDATED_EVENT);
   }
 
@@ -1330,11 +1276,7 @@ class WorldMapManager {
     await Promise.all(
       history.map(async (message, index) => {
         if (message.extra[EXTENSION_ID] === undefined) return;
-        await this.api.chat.updateMessageObject(index, {
-          extra: {
-            [EXTENSION_ID]: undefined,
-          } as WorldMapMessageExtra,
-        });
+        await clearMessageExtra<WorldMapMessageExtra>(this.api, index, EXTENSION_ID);
       }),
     );
   }
@@ -1354,15 +1296,7 @@ class WorldMapManager {
   private async updateMessageExtra(index: number, data: Partial<WorldMapMessageExtraData>): Promise<void> {
     const message = this.api.chat.getHistory()[index];
     if (!message) return;
-    const existing = message.extra[EXTENSION_ID] ?? {};
-    await this.api.chat.updateMessageObject(index, {
-      extra: {
-        [EXTENSION_ID]: {
-          ...existing,
-          ...data,
-        },
-      },
-    });
+    await mergeMessageExtra<WorldMapMessageExtra>(this.api, index, EXTENSION_ID, data);
   }
 
   private async clearMessageExtra(index: number): Promise<void> {
@@ -1372,11 +1306,7 @@ class WorldMapManager {
     const remainingDeltas = this.getReplayableMessageDeltas(index);
     const rollback = this.getMessageRollback(index);
     const isLatestMapProducingMessage = this.getLatestMapProducingMessageIndex() === index;
-    await this.api.chat.updateMessageObject(index, {
-      extra: {
-        [EXTENSION_ID]: undefined,
-      } as WorldMapMessageExtra,
-    });
+    await clearMessageExtra<WorldMapMessageExtra>(this.api, index, EXTENSION_ID);
     if (rollback && isLatestMapProducingMessage) {
       const rolledBackMap = applyRollbackSnapshot(this.getMap(), rollback);
       if (rolledBackMap) await this.setMap(rolledBackMap);
@@ -1467,37 +1397,23 @@ class WorldMapManager {
     structuredResponse: StructuredResponseOptions,
     captureMessageIndex?: number,
   ): Promise<WorldMapGenerationResult> {
-    let completionStructuredContent: object | undefined;
-    let completionParseError: Error | undefined;
-    const response = await this.api.llm.generate(messages, {
-      connectionProfile,
-      samplerOverrides: { max_tokens: settings.maxResponseTokens, stream: false },
-      structuredResponse,
-      captureMessageIndex,
-      onCompletion({ structured_content, parse_error }) {
-        completionStructuredContent = structured_content;
-        completionParseError = parse_error;
+    const generation = await generateStructuredResult<WorldMapDelta>(this.api, {
+      messages,
+      options: {
+        connectionProfile,
+        samplerOverrides: { max_tokens: settings.maxResponseTokens, stream: false },
+        structuredResponse,
+        captureMessageIndex,
       },
+      streamErrorMessage: 'World map generation unexpectedly returned a stream.',
+      missingStructuredContentMessage: 'World map generation returned no structured content.',
+      collectStreamContent: true,
     });
 
-    if (Symbol.asyncIterator in response) {
-      let rawContent = '';
-      for await (const chunk of response) rawContent += chunk.delta;
-      return { rawContent, parseError: 'World map generation unexpectedly returned a stream.' };
-    }
-
-    const generationResponse = response as GenerationResponse;
-    const structuredContent = generationResponse.structured_content ?? completionStructuredContent;
-    const parseError = completionParseError?.message;
-
-    console.debug('[World Map] AI structured response:', structuredContent ?? { parseError });
-
     return {
-      delta: structuredContent as WorldMapDelta | undefined,
-      rawContent: generationResponse.content,
-      parseError: structuredContent
-        ? undefined
-        : (parseError ?? 'World map generation returned no structured content.'),
+      delta: generation.structuredContent,
+      rawContent: generation.rawContent,
+      parseError: generation.parseError,
     };
   }
 
@@ -1520,53 +1436,30 @@ class WorldMapManager {
       },
     ];
 
-    let completionStructuredContent: object | undefined;
-    let completionParseError: Error | undefined;
-    const response = await this.api.llm.generate(repairMessages, {
-      connectionProfile,
-      samplerOverrides: { max_tokens: settings.maxResponseTokens, stream: false },
-      structuredResponse,
-      captureMessageIndex,
-      onCompletion({ structured_content, parse_error }) {
-        completionStructuredContent = structured_content;
-        completionParseError = parse_error;
+    const generation = await generateStructuredResult<WorldMapDelta>(this.api, {
+      messages: repairMessages,
+      options: {
+        connectionProfile,
+        samplerOverrides: { max_tokens: settings.maxResponseTokens, stream: false },
+        structuredResponse,
+        captureMessageIndex,
       },
+      streamErrorMessage: 'World map repair unexpectedly returned a stream.',
+      missingStructuredContentMessage: 'World map repair returned no structured content.',
     });
 
-    if (Symbol.asyncIterator in response) {
-      for await (const chunk of response) {
-        void chunk;
-        // Non-streamed repair is required so the parsed structured content is available.
-      }
-      return {
-        rawContent: '',
-        messages: repairMessages,
-        parseError: 'World map repair unexpectedly returned a stream.',
-      };
-    }
-
-    const generationResponse = response as GenerationResponse;
-    const structuredContent = generationResponse.structured_content ?? completionStructuredContent;
-    const repairedParseError = completionParseError?.message;
-    console.debug(
-      '[World Map] AI repaired structured response:',
-      structuredContent ?? { parseError: repairedParseError },
-    );
-
     return {
-      delta: structuredContent as WorldMapDelta | undefined,
-      rawContent: generationResponse.content,
+      delta: generation.structuredContent,
+      rawContent: generation.rawContent,
       messages: [
         ...repairMessages,
         {
           role: 'assistant',
           name: 'Assistant',
-          content: generationResponse.content,
+          content: generation.rawContent,
         },
       ],
-      parseError: structuredContent
-        ? undefined
-        : (repairedParseError ?? 'World map repair returned no structured content.'),
+      parseError: generation.parseError,
     };
   }
 
@@ -1589,8 +1482,7 @@ class WorldMapManager {
       return;
     }
 
-    const connectionProfile =
-      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile = resolveConnectionProfile(this.api, settings.connectionProfile);
     if (!connectionProfile) {
       this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.worldMap.toasts.noConnectionProfile'), 'error');
       return;
@@ -1825,7 +1717,7 @@ class WorldMapManager {
     const message = result.message;
     if (!shouldTrackBot || !isFinishedAssistantMessage(message)) return;
 
-    const index = findMessageIndex(this.api.chat.getHistory(), message, generationId);
+    const index = findChatMessageIndex(this.api.chat.getHistory(), message, generationId);
     if (index === -1) return;
     window.setTimeout(() => this.runMapUpdate(index), 200);
   }

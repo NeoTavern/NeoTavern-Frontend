@@ -19,6 +19,18 @@ interface MigratePromptPresetStateOptions<TPrompts extends Record<string, string
   customPresetName?: string;
 }
 
+interface MigratePromptPresetSettingsOptions<
+  TSettings extends PromptPresetState<TPrompts>,
+  TPrompts extends Record<string, string>,
+> {
+  settings?: Partial<TSettings>;
+  defaultSettings: TSettings;
+  builtInPresets: PromptPreset<TPrompts>[];
+  legacyPrompts: Partial<TPrompts>;
+  legacyDefaults: TPrompts;
+  customPresetName?: string;
+}
+
 const PROMPT_PRESET_MIGRATION_VERSION = 1;
 
 function isUserPreset<TPrompts extends Record<string, string>>(preset: PromptPreset<TPrompts>): boolean {
@@ -133,4 +145,31 @@ export function migratePromptPresetState<TPrompts extends Record<string, string>
     promptPresets: [...userPresets, customPreset],
     promptPresetMigrationVersion: PROMPT_PRESET_MIGRATION_VERSION,
   };
+}
+
+export function migratePromptPresetSettings<
+  TSettings extends PromptPresetState<TPrompts>,
+  TPrompts extends Record<string, string>,
+>({
+  settings = {},
+  defaultSettings,
+  builtInPresets,
+  legacyPrompts,
+  legacyDefaults,
+  customPresetName,
+}: MigratePromptPresetSettingsOptions<TSettings, TPrompts>): TSettings {
+  return {
+    ...defaultSettings,
+    ...migratePromptPresetState({
+      settings: {
+        activePromptPresetId: defaultSettings.activePromptPresetId,
+        promptPresets: [],
+        ...settings,
+      },
+      builtInPresets,
+      legacyPrompts,
+      legacyDefaults,
+      customPresetName,
+    }),
+  } as TSettings;
 }

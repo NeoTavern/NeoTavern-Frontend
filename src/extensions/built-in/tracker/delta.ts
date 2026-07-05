@@ -1,4 +1,5 @@
 import Ajv, { type ErrorObject } from 'ajv';
+import { cloneJson } from '../_shared/data-utils';
 
 type JsonObject = Record<string, unknown>;
 
@@ -40,10 +41,6 @@ function isObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
 function getSchemaType(schema: JsonObject): string | undefined {
   const type = schema.type;
   if (Array.isArray(type)) return type.find((entry) => entry !== 'null');
@@ -70,7 +67,7 @@ function stripExtensionFields(schema: unknown): unknown {
 }
 
 function relaxSchema(schema: JsonObject): JsonObject {
-  const relaxed = stripExtensionFields(clone(schema)) as JsonObject;
+  const relaxed = stripExtensionFields(cloneJson(schema)) as JsonObject;
   const type = getSchemaType(relaxed);
 
   if (type === 'object') {
@@ -127,7 +124,7 @@ function deriveObjectDeltaSchema(schema: JsonObject, forceAllowChildren: boolean
       const itemDelta = deriveSchema(rawPropertySchema.items, false)?.schema;
       if (itemDelta) {
         const childDeltaSchema: JsonObject = {
-          ...(stripExtensionFields(clone(rawPropertySchema)) as JsonObject),
+          ...(stripExtensionFields(cloneJson(rawPropertySchema)) as JsonObject),
           items: itemDelta,
         };
         delete childDeltaSchema.required;
@@ -163,7 +160,7 @@ function deriveObjectDeltaSchema(schema: JsonObject, forceAllowChildren: boolean
 
   if (!hasDeltaFields) return null;
 
-  const deltaSchema = stripExtensionFields(clone(schema)) as JsonObject;
+  const deltaSchema = stripExtensionFields(cloneJson(schema)) as JsonObject;
   deltaSchema.properties = deltaProperties;
   delete deltaSchema.required;
   return { schema: deltaSchema, hasDeltaFields };
@@ -214,7 +211,7 @@ export function buildTrackerDeltaSchema(schema: unknown): TrackerDeltaBuildResul
 
   return {
     schema: {
-      ...(stripExtensionFields(clone(schema)) as JsonObject),
+      ...(stripExtensionFields(cloneJson(schema)) as JsonObject),
       properties: {},
       required: [],
       additionalProperties: false,
@@ -229,7 +226,7 @@ function formatAjvErrors(errors: ErrorObject[] | null | undefined): string {
 
 export function validateAgainstSchema(value: unknown, schema: unknown, label: string): void {
   if (!isObject(schema)) throw new Error(`${label} schema must be a JSON object.`);
-  const cleanSchema = stripExtensionFields(clone(schema));
+  const cleanSchema = stripExtensionFields(cloneJson(schema));
   const validate = ajv.compile(cleanSchema as object);
   const valid = validate(value);
   if (!valid) {
@@ -337,9 +334,9 @@ function stripDeleteKey(item: JsonObject, annotation: TrackerDeltaAnnotation): J
 
 function mergeByKey(base: unknown[], delta: unknown[], annotation: TrackerDeltaAnnotation): unknown[] {
   const key = annotation.key;
-  if (!key) return clone(delta);
+  if (!key) return cloneJson(delta);
 
-  const result = base.map((item) => clone(item));
+  const result = base.map((item) => cloneJson(item));
   const indexByKey = new Map<unknown, number>();
 
   result.forEach((item, index) => {
@@ -348,7 +345,7 @@ function mergeByKey(base: unknown[], delta: unknown[], annotation: TrackerDeltaA
 
   for (const deltaItem of delta) {
     if (!isObject(deltaItem) || !(key in deltaItem)) {
-      result.push(clone(deltaItem));
+      result.push(cloneJson(deltaItem));
       continue;
     }
 
@@ -367,7 +364,7 @@ function mergeByKey(base: unknown[], delta: unknown[], annotation: TrackerDeltaA
     const cleanDeltaItem = stripDeleteKey(deltaItem, annotation);
     if (existingIndex === undefined) {
       indexByKey.set(cleanDeltaItem[key], result.length);
-      result.push(clone(cleanDeltaItem));
+      result.push(cloneJson(cleanDeltaItem));
       continue;
     }
 
@@ -393,11 +390,11 @@ function unsetPath(target: JsonObject, path: string): void {
 }
 
 function mergeTrackerDelta(base: unknown, delta: unknown, schema?: unknown): unknown {
-  if (Array.isArray(delta)) return clone(delta);
-  if (!isObject(delta)) return clone(delta);
-  if (!isObject(base)) return clone(delta);
+  if (Array.isArray(delta)) return cloneJson(delta);
+  if (!isObject(delta)) return cloneJson(delta);
+  if (!isObject(base)) return cloneJson(delta);
 
-  const result = clone(base) as JsonObject;
+  const result = cloneJson(base) as JsonObject;
   for (const [key, value] of Object.entries(delta)) {
     if (key === UNSET_KEY) {
       if (Array.isArray(value)) {
@@ -418,7 +415,7 @@ function mergeTrackerDelta(base: unknown, delta: unknown, schema?: unknown): unk
     if (isObject(value) && isObject(result[key])) {
       result[key] = mergeTrackerDelta(result[key], value, childSchema);
     } else {
-      result[key] = clone(value);
+      result[key] = cloneJson(value);
     }
   }
 

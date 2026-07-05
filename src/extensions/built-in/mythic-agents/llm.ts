@@ -1,6 +1,7 @@
-import type { StructuredResponseOptions } from '../../../types';
 import type { ChatMessage } from '../../../types/chat';
 import { uuidv4 } from '../../../utils/commons';
+import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
+import { createStructuredResponse } from '../_shared/runtime/structured-request-format';
 import { DEFAULT_UNE_SETTINGS, migrateMythicSettings } from './defaults';
 import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT } from './prompts';
 import type {
@@ -37,16 +38,16 @@ export async function analyzeUserAction(
   signal?: AbortSignal,
 ): Promise<AnalysisOutput> {
   const settings = migrateMythicSettings(api.settings.get());
-  const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
+  const connectionProfile = resolveConnectionProfile(api, settings?.connectionProfileId);
 
   const processedPrompt = api.macro.process(settings.prompts.analysis || ANALYSIS_PROMPT, undefined, {
     scene,
     language_name: settings?.language || 'English',
   });
-  const structuredResponse: StructuredResponseOptions = {
-    schema: { name: 'analysis_output', strict: true, value: AnalysisOutputSchema.toJSONSchema() },
-    format: getStructuredRequestFormat(api),
-  };
+  const structuredResponse = createStructuredResponse(getStructuredRequestFormat(api), {
+    name: 'analysis_output',
+    value: AnalysisOutputSchema.toJSONSchema(),
+  });
   const itemizedPrompt = await api.chat.buildPrompt({ structuredResponse, chatHistory });
   const messages = itemizedPrompt.messages;
   messages.push({ role: 'user', name: 'User', content: processedPrompt });
@@ -89,7 +90,7 @@ export async function genInitialScene(
   generateUNEProfiles = false,
 ): Promise<Scene> {
   const settings = migrateMythicSettings(api.settings.get());
-  const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
+  const connectionProfile = resolveConnectionProfile(api, settings?.connectionProfileId);
 
   const characterTypes = getCurrentCharacterTypes(api);
   const processedPrompt = api.macro.process(settings.prompts.initialScene || INITIAL_SCENE_PROMPT, undefined, {
@@ -97,10 +98,10 @@ export async function genInitialScene(
     character_types: characterTypes.join(', '),
     generate_une_profiles: generateUNEProfiles,
   });
-  const structuredResponse: StructuredResponseOptions = {
-    schema: { name: 'initial_scene', strict: true, value: SceneSchema.toJSONSchema() },
-    format: getStructuredRequestFormat(api),
-  };
+  const structuredResponse = createStructuredResponse(getStructuredRequestFormat(api), {
+    name: 'initial_scene',
+    value: SceneSchema.toJSONSchema(),
+  });
   const itemizedPrompt = await api.chat.buildPrompt({ structuredResponse });
   const messages = itemizedPrompt.messages;
   messages.push({ role: 'user', name: 'User', content: processedPrompt });
@@ -160,7 +161,7 @@ export async function generateNarration(
   randomEvents: EventMeaningResult[] = [],
 ): Promise<string> {
   const settings = migrateMythicSettings(api.settings.get());
-  const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
+  const connectionProfile = resolveConnectionProfile(api, settings?.connectionProfileId);
 
   const characterTypes = getCurrentCharacterTypes(api);
   const processedPrompt = api.macro.process(settings.prompts.narration || NARRATION_PROMPT, undefined, {
@@ -212,7 +213,7 @@ export async function generateNarrationAndSceneUpdate(
   randomEvents: EventMeaningResult[] = [],
 ): Promise<{ narration: string; sceneUpdate: SceneUpdate }> {
   const settings = migrateMythicSettings(api.settings.get());
-  const connectionProfile = settings?.connectionProfileId || api.settings.getGlobal('api.selectedConnectionProfile');
+  const connectionProfile = resolveConnectionProfile(api, settings?.connectionProfileId);
 
   const characterTypes = getCurrentCharacterTypes(api);
   const processedPrompt = api.macro.process(settings.prompts.narration || NARRATION_PROMPT, undefined, {
@@ -227,21 +228,17 @@ export async function generateNarrationAndSceneUpdate(
   });
 
   const generationId = uuidv4();
-  const structuredResponse: StructuredResponseOptions = {
-    schema: {
-      name: 'narration_and_scene_update',
-      strict: true,
-      value: {
-        type: 'object',
-        properties: {
-          narration: { type: 'string' },
-          sceneUpdate: SceneUpdateSchema.toJSONSchema(),
-        },
-        required: ['narration', 'sceneUpdate'],
+  const structuredResponse = createStructuredResponse(getStructuredRequestFormat(api), {
+    name: 'narration_and_scene_update',
+    value: {
+      type: 'object',
+      properties: {
+        narration: { type: 'string' },
+        sceneUpdate: SceneUpdateSchema.toJSONSchema(),
       },
+      required: ['narration', 'sceneUpdate'],
     },
-    format: getStructuredRequestFormat(api),
-  };
+  });
 
   const itemizedPrompt = await api.chat.buildPrompt({
     generationId,

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/common';
 import { CollapsibleSection, FormItem, Toggle } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
-import PromptPresetField from '../PromptPresetField.vue';
+import ConnectionProfileField from '../_shared/components/ConnectionProfileField.vue';
+import PromptPresetField from '../_shared/components/PromptPresetField.vue';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import {
   BUILT_IN_PROMPT_PRESETS,
   DEFAULT_SETTINGS,
@@ -15,23 +15,17 @@ const props = defineProps<{
   api: ExtensionAPI<ExtensionSettings>;
 }>();
 
-const settings = ref<ExtensionSettings>({ ...DEFAULT_SETTINGS });
-
 const t = props.api.i18n.t;
-
-onMounted(() => {
-  settings.value = migrateGenerationToolsSettings(props.api.settings.get());
-});
-
-watch(
-  settings,
-  (newSettings) => {
-    props.api.settings.set(undefined, newSettings);
-    // @ts-expect-error - Custom event for settings change
-    props.api.events.emit('generation-tools:settings-changed');
-    props.api.settings.save();
+const settings = useExtensionSettings<ExtensionSettings>(
+  props.api,
+  { ...DEFAULT_SETTINGS },
+  migrateGenerationToolsSettings,
+  {
+    onBeforeSave: () => {
+      // @ts-expect-error - Custom event for settings change
+      props.api.events.emit('generation-tools:settings-changed');
+    },
   },
-  { deep: true },
 );
 
 const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
@@ -60,12 +54,11 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
     </FormItem>
 
     <CollapsibleSection :title="t('extensionsBuiltin.generationTools.settings.impersonateTitle')" :is-open="false">
-      <FormItem
+      <ConnectionProfileField
+        v-model="settings.impersonateConnectionProfile"
         :label="t('extensionsBuiltin.generationTools.settings.connectionProfileLabel')"
         :description="t('extensionsBuiltin.generationTools.settings.connectionProfileDesc')"
-      >
-        <ConnectionProfileSelector v-model="settings.impersonateConnectionProfile" />
-      </FormItem>
+      />
 
       <PromptPresetField
         :api="api"

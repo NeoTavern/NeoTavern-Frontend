@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/common';
+import { computed, ref } from 'vue';
 import { FormItem, Input, Select, Textarea, Toggle } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
 import type { TextareaToolDefinition } from '../../../types/ExtensionAPI';
-import PromptPresetField from '../PromptPresetField.vue';
+import ConnectionProfileField from '../_shared/components/ConnectionProfileField.vue';
+import PromptPresetField from '../_shared/components/PromptPresetField.vue';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import {
   BUILT_IN_PROMPT_PRESETS,
   DEFAULT_INJECTION_TEMPLATE,
@@ -14,28 +15,16 @@ import {
 } from './types';
 
 const props = defineProps<{
-  api: ExtensionAPI;
+  api: ExtensionAPI<LiveCommentarySettings>;
 }>();
 
 const t = props.api.i18n.t;
 
 const showNote = ref(true);
-
-const settings = ref<LiveCommentarySettings>({
-  ...DEFAULT_SETTINGS,
-});
-
-onMounted(() => {
-  settings.value = migrateLiveCommentarySettings(props.api.settings.get());
-});
-
-watch(
-  settings,
-  (newSettings) => {
-    props.api.settings.set(undefined, newSettings);
-    props.api.settings.save();
-  },
-  { deep: true },
+const settings = useExtensionSettings<LiveCommentarySettings>(
+  props.api,
+  { ...DEFAULT_SETTINGS },
+  migrateLiveCommentarySettings,
 );
 
 const injectionTools = computed<TextareaToolDefinition[]>(() => [
@@ -81,12 +70,11 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
       <Toggle v-model="settings.enabled" />
     </FormItem>
 
-    <FormItem
+    <ConnectionProfileField
+      v-model="settings.connectionProfile"
       :label="t('extensionsBuiltin.liveCommentary.connectionProfile')"
       :description="t('extensionsBuiltin.liveCommentary.connectionProfileHint')"
-    >
-      <ConnectionProfileSelector v-model="settings.connectionProfile" />
-    </FormItem>
+    />
 
     <div class="setting-row">
       <FormItem :label="t('extensionsBuiltin.liveCommentary.debounceMs')" style="flex: 1">

@@ -2,6 +2,7 @@ import { GenerationMode } from '../../../constants';
 import type { TypedChatMessage } from '../../../types/ExtensionAPI';
 import { uuidv4 } from '../../../utils/commons';
 import { eventEmitter } from '../../../utils/extensions';
+import { MYTHIC_EXTRA_KEY } from './composables/useMythicState';
 import { migrateMythicSettings } from './defaults';
 import { analyzeUserAction, generateNarration, generateNarrationAndSceneUpdate } from './llm';
 import { manifest } from './manifest';
@@ -23,8 +24,8 @@ function getCurrentMythicData(api: MythicExtensionAPI): MythicMessageExtraData |
   const history = api.chat.getHistory();
   for (let i = history.length - 1; i >= 0; i--) {
     const msg = history[i];
-    if (msg.extra?.['core.mythic-agents']) {
-      return msg.extra['core.mythic-agents'] as MythicMessageExtraData;
+    if (msg.extra?.[MYTHIC_EXTRA_KEY]) {
+      return msg.extra[MYTHIC_EXTRA_KEY] as MythicMessageExtraData;
     }
   }
   return undefined;
@@ -251,6 +252,11 @@ export function activate(api: MythicExtensionAPI) {
           fateRollResults,
           randomEvents,
         };
+        const mythicExtra = {
+          action: actionData,
+          scene: updatedScene,
+          chaos: updatedScene.chaos_rank,
+        };
 
         const currentActionHistory = api.chat.metadata.get()?.extra?.actionHistory ?? [];
         api.chat.metadata.update({
@@ -279,11 +285,7 @@ export function activate(api: MythicExtensionAPI) {
               gen_finished: genFinished,
               generation_id: payload.generationId,
               extra: {
-                'core.mythic-agents': {
-                  action: actionData,
-                  scene: updatedScene,
-                  chaos: updatedScene.chaos_rank,
-                },
+                [MYTHIC_EXTRA_KEY]: mythicExtra,
               },
             },
           ];
@@ -294,11 +296,7 @@ export function activate(api: MythicExtensionAPI) {
             swipe_id: newSwipes.length - 1,
             extra: {
               ...lastMsg.extra,
-              'core.mythic-agents': {
-                action: actionData,
-                scene: updatedScene,
-                chaos: updatedScene.chaos_rank,
-              },
+              [MYTHIC_EXTRA_KEY]: mythicExtra,
             },
           });
           await eventEmitter.emit('message:swipe-changed', lastMsgIndex, lastMsg.swipe_id);
@@ -312,20 +310,12 @@ export function activate(api: MythicExtensionAPI) {
           assistantMsg.gen_finished = genFinished;
 
           assistantMsg.extra = {
-            'core.mythic-agents': {
-              action: actionData,
-              scene: updatedScene,
-              chaos: updatedScene.chaos_rank,
-            },
+            [MYTHIC_EXTRA_KEY]: mythicExtra,
           };
           if (assistantMsg.swipe_info && assistantMsg.swipe_info[0]) {
             assistantMsg.swipe_info[0].extra = {
               ...assistantMsg.swipe_info[0].extra,
-              'core.mythic-agents': {
-                action: actionData,
-                scene: updatedScene,
-                chaos: updatedScene.chaos_rank,
-              },
+              [MYTHIC_EXTRA_KEY]: mythicExtra,
             };
           }
 

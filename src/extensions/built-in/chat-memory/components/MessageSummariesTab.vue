@@ -3,9 +3,11 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Button, FormItem, Input, Toggle } from '../../../../components/UI';
 import type { ExtensionAPI } from '../../../../types';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../../types';
-import PromptPresetField from '../../PromptPresetField.vue';
+import { mergeChatExtra, mergeMessageExtra } from '../../_shared/runtime/extension-extra';
+import PromptPresetField from '../../_shared/components/PromptPresetField.vue';
 import {
   BUILT_IN_PROMPT_PRESETS,
+  EXTENSION_KEY,
   type ChatMemoryMetadata,
   type ExtensionSettings,
   type MemoryMessageExtra,
@@ -186,13 +188,9 @@ async function saveSettings() {
   if (!currentMetadata) return;
   const memoryExtra = currentMetadata.extra?.['core.chat-memory'] || { memories: [] };
 
-  props.api.chat.metadata.update({
-    extra: {
-      'core.chat-memory': {
-        memories: memoryExtra.memories,
-        summaryRange: [startIndex.value, endIndex.value],
-      },
-    },
+  mergeChatExtra<ChatMemoryMetadata>(props.api, EXTENSION_KEY, {
+    memories: memoryExtra.memories,
+    summaryRange: [startIndex.value, endIndex.value],
   });
 }
 
@@ -282,13 +280,7 @@ async function summarizeRange(mode: 'missing-only' | 'force-all') {
       const match = fullContent.match(codeBlockRegex);
       const text = match && match[1] ? match[1].trim() : fullContent.trim();
 
-      await props.api.chat.updateMessageObject(idx, {
-        extra: {
-          'core.chat-memory': {
-            summary: text,
-          },
-        },
-      });
+      await mergeMessageExtra<MemoryMessageExtra>(props.api, idx, EXTENSION_KEY, { summary: text });
 
       bulkProgress.value.current++;
     }
@@ -332,13 +324,7 @@ async function clearRange() {
     const msg = history[i];
     const extra = msg.extra['core.chat-memory'];
     if (extra?.summary) {
-      await props.api.chat.updateMessageObject(i, {
-        extra: {
-          'core.chat-memory': {
-            summary: undefined,
-          },
-        },
-      });
+      await mergeMessageExtra<MemoryMessageExtra>(props.api, i, EXTENSION_KEY, { summary: undefined });
       deletedCount++;
     }
   }
@@ -363,13 +349,7 @@ async function handleDeleteAll() {
     const msg = history[i];
     const extra = msg.extra?.['core.chat-memory'];
     if (extra?.summary) {
-      await props.api.chat.updateMessageObject(i, {
-        extra: {
-          'core.chat-memory': {
-            summary: undefined,
-          },
-        },
-      });
+      await mergeMessageExtra<MemoryMessageExtra>(props.api, i, EXTENSION_KEY, { summary: undefined });
       count++;
     }
   }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { autoUpdate, flip, offset, shift, useFloating, type Placement } from '@floating-ui/vue';
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { EmptyState } from '../../../../components/common';
 import { Button, Checkbox, Textarea } from '../../../../components/UI';
 import { useStrictI18n } from '../../../../composables/useStrictI18n';
 import { useToolStore } from '../../../../stores/tool.store';
@@ -411,9 +412,7 @@ onUnmounted(() => {
       role="dialog"
       :aria-label="t('chat.tools.title')"
     >
-      <div v-if="toolStore.toolList.length === 0" class="empty-state">
-        {{ t('chat.tools.noTools') }}
-      </div>
+      <EmptyState v-if="toolStore.toolList.length === 0" :description="t('chat.tools.noTools')" />
       <div v-else class="tools-list">
         <div
           v-for="tool in toolStore.toolList"

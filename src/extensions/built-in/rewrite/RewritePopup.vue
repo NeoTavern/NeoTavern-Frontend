@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, markRaw, onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/common';
 import { FormItem, Select, Tabs } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
+import ConnectionProfileField from '../_shared/components/ConnectionProfileField.vue';
 import ContextPromptSection from './components/ContextPromptSection.vue';
 import OneShotTab from './components/OneShotTab.vue';
 import RewriteView from './components/RewriteView.vue';
@@ -282,9 +282,10 @@ function handleGeneralDiff() {
         </FormItem>
       </div>
       <div style="flex: 1">
-        <FormItem :label="t('extensionsBuiltin.rewrite.popup.connectionProfile')">
-          <ConnectionProfileSelector v-model="selectedProfile" />
-        </FormItem>
+        <ConnectionProfileField
+          v-model="selectedProfile"
+          :label="t('extensionsBuiltin.rewrite.popup.connectionProfile')"
+        />
       </div>
     </div>
 

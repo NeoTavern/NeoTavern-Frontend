@@ -1,9 +1,18 @@
 import Handlebars from 'handlebars';
 import type { ApiChatMessage, ExtensionAPI } from '../../../types';
-import { type ChatTranslationSettings, migrateChatTranslationSettings, resolveChatTranslationPrompts } from './types';
+import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
+import { setMessageExtra } from '../_shared/runtime/extension-extra';
+import {
+  type ChatTranslationMessageExtra,
+  type ChatTranslationSettings,
+  migrateChatTranslationSettings,
+  resolveChatTranslationPrompts,
+} from './types';
 
 export class Translator {
-  constructor(private api: ExtensionAPI<ChatTranslationSettings>) {}
+  constructor(
+    private api: ExtensionAPI<ChatTranslationSettings, Record<string, unknown>, ChatTranslationMessageExtra>,
+  ) {}
 
   private getSettings(): ChatTranslationSettings {
     return migrateChatTranslationSettings(this.api.settings.get());
@@ -17,17 +26,14 @@ export class Translator {
 
     // Toggle Off Logic
     if (message.extra?.display_text) {
-      await this.api.chat.updateMessageObject(messageIndex, {
-        extra: { display_text: undefined },
-      });
+      await setMessageExtra(this.api, messageIndex, 'display_text', undefined);
       this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.translationRemoved'), 'info');
       return;
     }
 
     const settings = this.getSettings();
 
-    const connectionProfile =
-      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile = resolveConnectionProfile(this.api, settings.connectionProfile);
     if (!connectionProfile) {
       this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.noConnectionProfile'), 'error');
       return;
@@ -76,9 +82,7 @@ export class Translator {
       }
 
       // Update Message
-      await this.api.chat.updateMessageObject(messageIndex, {
-        extra: { display_text: translatedText },
-      });
+      await setMessageExtra(this.api, messageIndex, 'display_text', translatedText);
 
       this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.translationComplete'), 'success');
     } catch (error) {
@@ -99,8 +103,7 @@ export class Translator {
 
     const settings = this.getSettings();
 
-    const connectionProfile =
-      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile = resolveConnectionProfile(this.api, settings.connectionProfile);
     if (!connectionProfile) {
       this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.noConnectionProfile'), 'error');
       return;

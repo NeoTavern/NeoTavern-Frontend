@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { EmptyState } from '../../../components/common';
 import { Button, Select, Tabs } from '../../../components/UI';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
+import { getChatExtra, mergeChatExtra } from '../_shared/runtime/extension-extra';
 import { parseStoryDatetime } from '../tracker/story-time';
 import {
   EXTENSION_ID,
@@ -42,7 +44,7 @@ const statusOptions: Array<{ label: string; value: TimelineEvent['status'] }> = 
 ];
 
 function getTimelineExtra(): TimelineChatExtraData {
-  return props.api.chat.metadata.get()?.extra?.[EXTENSION_ID] ?? {};
+  return getChatExtra<TimelineChatExtraData>(props.api, EXTENSION_ID) ?? {};
 }
 
 async function refresh(): Promise<void> {
@@ -76,16 +78,7 @@ const recurringEvents = computed(() => events.value.filter((event) => event.stat
 const historyEvents = computed(() => events.value.filter((event) => event.status !== 'pending'));
 
 async function setEvents(nextEvents: TimelineEvent[]): Promise<void> {
-  const currentExtra = props.api.chat.metadata.get()?.extra ?? {};
-  props.api.chat.metadata.update({
-    extra: {
-      ...currentExtra,
-      [EXTENSION_ID]: {
-        ...((currentExtra[EXTENSION_ID] as TimelineChatExtraData | undefined) ?? {}),
-        events: nextEvents,
-      },
-    } as Record<string, unknown> & TimelineChatExtra,
-  });
+  mergeChatExtra<TimelineChatExtra>(props.api, EXTENSION_ID, { events: nextEvents });
   await props.api.events.emit(TIMELINE_UPDATED_EVENT);
 }
 
@@ -239,9 +232,7 @@ onBeforeUnmount(() => {
 
     <div class="timeline-panel__content">
       <div v-if="activeTab === 'due'" class="timeline-list">
-        <div v-if="dueEvents.length === 0" class="timeline-empty">
-          {{ t('extensionsBuiltin.timeline.noDueEvents') }}
-        </div>
+        <EmptyState v-if="dueEvents.length === 0" :description="t('extensionsBuiltin.timeline.noDueEvents')" />
         <article v-for="event in dueEvents" :key="event.id" class="timeline-item timeline-item--due">
           <button class="timeline-item__summary" type="button" @click="toggleExpanded(event.id)">
             <span>
@@ -298,9 +289,10 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-if="activeTab === 'upcoming'" class="timeline-list">
-        <div v-if="upcomingEvents.length === 0" class="timeline-empty">
-          {{ t('extensionsBuiltin.timeline.noUpcomingEvents') }}
-        </div>
+        <EmptyState
+          v-if="upcomingEvents.length === 0"
+          :description="t('extensionsBuiltin.timeline.noUpcomingEvents')"
+        />
         <article v-for="event in upcomingEvents" :key="event.id" class="timeline-item">
           <button class="timeline-item__summary" type="button" @click="toggleExpanded(event.id)">
             <span>
@@ -357,9 +349,10 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-if="activeTab === 'recurring'" class="timeline-list">
-        <div v-if="recurringEvents.length === 0" class="timeline-empty">
-          {{ t('extensionsBuiltin.timeline.noRecurringEvents') }}
-        </div>
+        <EmptyState
+          v-if="recurringEvents.length === 0"
+          :description="t('extensionsBuiltin.timeline.noRecurringEvents')"
+        />
         <article v-for="event in recurringEvents" :key="event.id" class="timeline-item">
           <button class="timeline-item__summary" type="button" @click="toggleExpanded(event.id)">
             <span>
@@ -416,9 +409,7 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-if="activeTab === 'history'" class="timeline-list">
-        <div v-if="historyEvents.length === 0" class="timeline-empty">
-          {{ t('extensionsBuiltin.timeline.noHistoryEvents') }}
-        </div>
+        <EmptyState v-if="historyEvents.length === 0" :description="t('extensionsBuiltin.timeline.noHistoryEvents')" />
         <article v-for="event in historyEvents" :key="event.id" class="timeline-item timeline-item--muted">
           <button class="timeline-item__summary" type="button" @click="toggleExpanded(event.id)">
             <span>
@@ -537,12 +528,6 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
-}
-
-.timeline-empty {
-  color: var(--theme-text-color-secondary);
-  padding: var(--spacing-md);
-  text-align: center;
 }
 
 .timeline-item {

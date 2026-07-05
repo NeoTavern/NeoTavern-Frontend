@@ -3,6 +3,8 @@ import type { StrictT } from '../../../composables/useStrictI18n';
 import i18n from '../../../i18n';
 import type { ChatMessage, ExtensionAPI } from '../../../types';
 import { MountableComponent } from '../../../types/ExtensionAPI';
+import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
+import { mergeMessageExtra } from '../_shared/runtime/extension-extra';
 import { manifest } from './manifest';
 import MemoryPopup from './MemoryPopup.vue';
 import {
@@ -75,7 +77,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
     const settings = migrateChatMemorySettings(api.settings.get());
     api.settings.set(undefined, settings);
     const promptTemplate = resolveChatMemoryPrompts(settings).messageSummaryPrompt;
-    const connectionProfile = settings?.connectionProfile || api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile = resolveConnectionProfile(api, settings?.connectionProfile);
 
     if (!connectionProfile) {
       api.ui.showToast(t('extensionsBuiltin.chatMemory.noProfile'), 'error');
@@ -117,13 +119,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
       const match = fullContent.match(codeBlockRegex);
       const summaryText = match && match[1] ? match[1].trim() : fullContent.trim();
 
-      await api.chat.updateMessageObject(messageIndex, {
-        extra: {
-          'core.chat-memory': {
-            summary: summaryText,
-          },
-        },
-      });
+      await mergeMessageExtra<MemoryMessageExtra>(api, messageIndex, EXTENSION_KEY, { summary: summaryText });
 
       api.ui.showToast(t('extensionsBuiltin.chatMemory.summarized'), 'success');
     } catch (error) {

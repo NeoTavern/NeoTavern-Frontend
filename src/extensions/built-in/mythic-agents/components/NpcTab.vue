@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { EmptyState } from '../../../../components/common';
 import { Button, Input, Select } from '../../../../components/UI';
 import { useMythicState } from '../composables/useMythicState';
 import { DEFAULT_UNE_SETTINGS, migrateMythicSettings } from '../defaults';
@@ -13,7 +14,7 @@ interface Props {
 const props = defineProps<Props>();
 const t = props.api.i18n.t;
 
-const { state: extra, getLatestMythicMessageIndex } = useMythicState(props.api);
+const { state: extra, updateLatestExtra } = useMythicState(props.api);
 const scene = computed(() => extra.value?.scene);
 
 const typeOptions = computed(() => {
@@ -27,23 +28,6 @@ function getCurrentUNE() {
   const settings = migrateMythicSettings(props.api.settings.get());
   const currentPreset = settings.presets.find((p) => p.name === settings.selectedPreset) || settings.presets[0];
   return currentPreset?.data?.une || DEFAULT_UNE_SETTINGS;
-}
-
-function updateLatestExtra(update: Record<string, unknown>) {
-  const mythicIndex = getLatestMythicMessageIndex();
-  if (mythicIndex === null) return;
-  const history = props.api.chat.getHistory();
-  const msg = history[mythicIndex];
-  const currentExtra = msg.extra?.['core.mythic-agents'];
-  if (!currentExtra) return;
-  const newExtra = { ...currentExtra, ...update };
-  msg.extra = {
-    ...msg.extra,
-    'core.mythic-agents': newExtra,
-  };
-  props.api.chat.updateMessageObject(mythicIndex, {
-    extra: msg.extra,
-  });
 }
 
 const editingNpcId = ref<string | null>(null);
@@ -141,9 +125,10 @@ function removeNpc(id: string) {
       </Button>
     </div>
 
-    <div v-if="!scene?.characters?.length" class="empty-state">
-      {{ t('extensionsBuiltin.mythicAgents.panel.noCharacters') }}
-    </div>
+    <EmptyState
+      v-if="!scene?.characters?.length"
+      :description="t('extensionsBuiltin.mythicAgents.panel.noCharacters')"
+    />
 
     <div class="npc-list">
       <div v-for="npc in scene?.characters || []" :key="npc.id" class="npc-card">
@@ -330,14 +315,5 @@ function removeNpc(id: string) {
 
 .value {
   color: var(--theme-text-color);
-}
-
-.empty-state {
-  text-align: center;
-  padding: var(--spacing-xl);
-  color: var(--theme-emphasis-color);
-  font-style: italic;
-  background-color: var(--black-30a);
-  border-radius: var(--base-border-radius);
 }
 </style>

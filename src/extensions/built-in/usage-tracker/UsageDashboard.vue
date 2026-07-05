@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, markRaw, onMounted, ref, watch } from 'vue';
 import { Button, Input, Select } from '../../../components/UI';
-import { Pagination } from '../../../components/common';
+import { EmptyState, Pagination } from '../../../components/common';
 import { useExtensionStore } from '../../../stores/extension.store';
 import { POPUP_TYPE, type ExtensionAPI } from '../../../types';
 import CaptureViewer from './CaptureViewer.vue';
@@ -549,7 +549,7 @@ const chartYLabels = computed(() => {
               </g>
             </svg>
           </div>
-          <div v-else class="empty-chart">{{ t('extensionsBuiltin.usageTracker.notEnoughData') }}</div>
+          <EmptyState v-else :description="t('extensionsBuiltin.usageTracker.notEnoughData')" />
         </div>
 
         <div class="charts-row">
@@ -866,15 +866,6 @@ const chartYLabels = computed(() => {
 .usage-chart {
   width: 100%;
   height: 100%;
-}
-
-.empty-chart {
-  height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--theme-emphasis-color);
-  font-style: italic;
 }
 
 .charts-row {

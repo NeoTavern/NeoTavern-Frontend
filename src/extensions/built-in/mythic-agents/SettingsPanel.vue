@@ -2,7 +2,6 @@
 import type { Expression } from 'jsep';
 import jsep from 'jsep';
 import { computed, onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/common';
 import type { CustomAction } from '../../../components/common/PresetControl.vue';
 import PresetControl from '../../../components/common/PresetControl.vue';
 import { FormItem, Input, Select, Toggle } from '../../../components/UI';
@@ -11,6 +10,10 @@ import Tabs from '../../../components/UI/Tabs.vue';
 import Textarea from '../../../components/UI/Textarea.vue';
 import { usePopupStore } from '../../../stores/popup.store';
 import { POPUP_TYPE } from '../../../types';
+import ConnectionProfileField from '../_shared/components/ConnectionProfileField.vue';
+import NumberSettingField from '../_shared/components/NumberSettingField.vue';
+import { cloneJson } from '../_shared/data-utils';
+import { createStructuredRequestFormatOptions } from '../_shared/runtime/structured-request-format';
 import {
   cloneDefaultMythicSettings,
   DEFAULT_EVENT_GENERATION_DATA,
@@ -28,7 +31,7 @@ const props = defineProps<{
 const t = props.api.i18n.t;
 const initial: MythicSettings = cloneDefaultMythicSettings();
 
-const settings = ref<MythicSettings>(JSON.parse(JSON.stringify(initial)));
+const settings = ref<MythicSettings>(cloneJson(initial));
 const popupStore = usePopupStore();
 const activeTab = ref('general');
 const activePromptTab = ref('initialScene');
@@ -64,11 +67,11 @@ const promptTypes: { key: keyof NonNullable<MythicSettings['prompts']>; label: s
   { key: 'narration', label: t('extensionsBuiltin.mythicAgents.prompts.narration') },
 ];
 
-const formatOptions = [
-  { label: t('extensionsBuiltin.mythicAgents.requestFormats.native'), value: 'native' },
-  { label: t('extensionsBuiltin.mythicAgents.requestFormats.json'), value: 'json' },
-  { label: t('extensionsBuiltin.mythicAgents.requestFormats.xml'), value: 'xml' },
-];
+const formatOptions = createStructuredRequestFormatOptions({
+  native: t('extensionsBuiltin.mythicAgents.requestFormats.native'),
+  json: t('extensionsBuiltin.mythicAgents.requestFormats.json'),
+  xml: t('extensionsBuiltin.mythicAgents.requestFormats.xml'),
+});
 
 // JSON Editors State
 const fateChartJson = ref('');
@@ -388,9 +391,9 @@ async function handleCreatePreset() {
     const newPreset: MythicPreset = {
       name: presetName,
       data: {
-        fateChart: JSON.parse(JSON.stringify(currentPreset.value.data.fateChart)),
-        eventGeneration: JSON.parse(JSON.stringify(currentPreset.value.data.eventGeneration)),
-        une: JSON.parse(JSON.stringify(currentPreset.value.data.une)),
+        fateChart: cloneJson(currentPreset.value.data.fateChart),
+        eventGeneration: cloneJson(currentPreset.value.data.eventGeneration),
+        une: cloneJson(currentPreset.value.data.une),
         characterTypes: [...currentPreset.value.data.characterTypes],
       },
     };
@@ -794,18 +797,18 @@ const customActions: CustomAction[] = [
       >
         <Toggle v-model="settings.autoSceneUpdate" />
       </FormItem>
-      <FormItem
+      <ConnectionProfileField
+        v-model="settings.connectionProfileId"
         :label="t('extensionsBuiltin.mythicAgents.connectionProfile')"
         :description="t('extensionsBuiltin.mythicAgents.connectionProfileHint')"
-      >
-        <ConnectionProfileSelector v-model="settings.connectionProfileId" />
-      </FormItem>
-      <FormItem
+      />
+      <NumberSettingField
+        v-model="settings.chaos"
         :label="t('extensionsBuiltin.mythicAgents.defaultChaosRank')"
         :description="t('extensionsBuiltin.mythicAgents.defaultChaosRankHint')"
-      >
-        <Input v-model.number="settings.chaos" type="number" :min="1" :max="9" />
-      </FormItem>
+        :min="1"
+        :max="9"
+      />
       <FormItem
         :label="t('extensionsBuiltin.mythicAgents.language')"
         :description="t('extensionsBuiltin.mythicAgents.languageHint')"

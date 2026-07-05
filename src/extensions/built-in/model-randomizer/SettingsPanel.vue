@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
+import { EmptyState } from '../../../components/common';
 import { Button, FormItem, Input, RangeControl, Select, Toggle } from '../../../components/UI';
 import type { ApiProvider } from '../../../types';
 import { api_providers, type ExtensionAPI } from '../../../types';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
 import { uuidv4 } from '../../../utils/commons';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import { DEFAULT_SETTINGS, type ModelGroup, type RandomizerProfile, type RandomizerSettings } from './types';
 
 const props = defineProps<{
@@ -13,7 +15,6 @@ const props = defineProps<{
 
 const t = props.api.i18n.t;
 
-const settings = ref<RandomizerSettings>({ ...DEFAULT_SETTINGS });
 const selectedProfileId = ref<string>('');
 const editingGroupId = ref<string | null>(null);
 const modelOptions = ref<{ label: string; value: string }[]>([]);
@@ -21,23 +22,17 @@ const loadingModels = ref(false);
 const modelsLoadedOnce = ref(false);
 const manualModelInput = ref<Record<string, string>>({});
 
-onMounted(() => {
-  const saved = props.api.settings.get();
-  if (saved) {
-    settings.value = { ...DEFAULT_SETTINGS, ...saved };
-  }
-  if (settings.value.profiles.length > 0) {
-    selectedProfileId.value = settings.value.activeProfileId || settings.value.profiles[0].id;
-  }
-});
-
-watch(
-  settings,
-  (newSettings) => {
-    props.api.settings.set(undefined, newSettings);
-    props.api.settings.save();
+const settings = useExtensionSettings<RandomizerSettings>(
+  props.api,
+  { ...DEFAULT_SETTINGS },
+  (saved) => ({ ...DEFAULT_SETTINGS, ...(saved ?? {}) }),
+  {
+    onLoaded: (loadedSettings) => {
+      if (loadedSettings.profiles.length > 0) {
+        selectedProfileId.value = loadedSettings.activeProfileId || loadedSettings.profiles[0].id;
+      }
+    },
   },
-  { deep: true },
 );
 
 const profileOptions = computed(() => {
@@ -423,15 +418,11 @@ const isProfileActive = computed(() => {
           </div>
         </div>
 
-        <div v-else class="empty-state">
-          <p>{{ t('extensionsBuiltin.modelRandomizer.noGroups') }}</p>
-        </div>
+        <EmptyState v-else :description="t('extensionsBuiltin.modelRandomizer.noGroups')" />
       </div>
     </div>
 
-    <div v-else class="empty-state">
-      <p>{{ t('extensionsBuiltin.modelRandomizer.noProfiles') }}</p>
-    </div>
+    <EmptyState v-else :description="t('extensionsBuiltin.modelRandomizer.noProfiles')" />
   </div>
 </template>
 
@@ -610,18 +601,5 @@ const isProfileActive = computed(() => {
   color: var(--theme-emphasis-color);
   background: var(--black-20a);
   border-radius: var(--base-border-radius);
-}
-
-.empty-state {
-  padding: 2rem;
-  text-align: center;
-  color: var(--theme-emphasis-color);
-  background: var(--black-20a);
-  border-radius: var(--base-border-radius);
-  border: 1px dashed var(--black-50a);
-
-  p {
-    margin: 0;
-  }
 }
 </style>

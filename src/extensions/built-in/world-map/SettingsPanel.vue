@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/common';
-import { FormItem, Input, Select, Toggle } from '../../../components/UI';
-import PromptPresetField from '../PromptPresetField.vue';
+import { FormItem, Select, Toggle } from '../../../components/UI';
+import ConnectionProfileField from '../_shared/components/ConnectionProfileField.vue';
+import NumberSettingField from '../_shared/components/NumberSettingField.vue';
+import PromptPresetField from '../_shared/components/PromptPresetField.vue';
+import { createStructuredRequestFormatOptions } from '../_shared/runtime/structured-request-format';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import {
   BUILT_IN_PROMPT_PRESETS,
   DEFAULT_SETTINGS,
@@ -15,21 +17,8 @@ const props = defineProps<{
   api: WorldMapExtensionAPI;
 }>();
 
-const settings = ref<WorldMapSettings>({ ...DEFAULT_SETTINGS });
 const t = props.api.i18n.t;
-
-onMounted(() => {
-  settings.value = migrateWorldMapSettings(props.api.settings.get());
-});
-
-watch(
-  settings,
-  (value) => {
-    props.api.settings.set(undefined, value);
-    props.api.settings.save();
-  },
-  { deep: true },
-);
+const settings = useExtensionSettings<WorldMapSettings>(props.api, { ...DEFAULT_SETTINGS }, migrateWorldMapSettings);
 
 const autoModeOptions = [
   { label: t('extensionsBuiltin.worldMap.autoModes.none'), value: 'none' },
@@ -38,11 +27,11 @@ const autoModeOptions = [
   { label: t('extensionsBuiltin.worldMap.autoModes.both'), value: 'both' },
 ];
 
-const formatOptions = [
-  { label: t('extensionsBuiltin.worldMap.requestFormats.native'), value: 'native' },
-  { label: t('extensionsBuiltin.worldMap.requestFormats.json'), value: 'json' },
-  { label: t('extensionsBuiltin.worldMap.requestFormats.xml'), value: 'xml' },
-];
+const formatOptions = createStructuredRequestFormatOptions({
+  native: t('extensionsBuiltin.worldMap.requestFormats.native'),
+  json: t('extensionsBuiltin.worldMap.requestFormats.json'),
+  xml: t('extensionsBuiltin.worldMap.requestFormats.xml'),
+});
 
 const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 </script>
@@ -59,12 +48,11 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
     >
       <Select v-model="settings.autoMode" :options="autoModeOptions" />
     </FormItem>
-    <FormItem
+    <ConnectionProfileField
+      v-model="settings.connectionProfile"
       :label="t('extensionsBuiltin.worldMap.connectionProfile')"
       :description="t('extensionsBuiltin.worldMap.connectionProfileHint')"
-    >
-      <ConnectionProfileSelector v-model="settings.connectionProfile" />
-    </FormItem>
+    />
     <FormItem :label="t('extensionsBuiltin.worldMap.structuredRequestFormat')">
       <Select v-model="settings.structuredRequestFormat" :options="formatOptions" />
     </FormItem>
@@ -88,18 +76,30 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
     >
       <Toggle v-model="settings.includeActiveLorebookEntriesOnCreate" />
     </FormItem>
-    <FormItem :label="t('extensionsBuiltin.worldMap.maxResponseTokens')">
-      <Input v-model.number="settings.maxResponseTokens" type="number" :min="512" :max="64000" />
-    </FormItem>
-    <FormItem :label="t('extensionsBuiltin.worldMap.maxNodesPerDelta')">
-      <Input v-model.number="settings.maxNodesPerDelta" type="number" :min="4" :max="900" />
-    </FormItem>
-    <FormItem :label="t('extensionsBuiltin.worldMap.maxRoutesPerDelta')">
-      <Input v-model.number="settings.maxRoutesPerDelta" type="number" :min="4" :max="1500" />
-    </FormItem>
-    <FormItem :label="t('extensionsBuiltin.worldMap.maxVisualAssetsPerDelta')">
-      <Input v-model.number="settings.maxVisualAssetsPerDelta" type="number" :min="0" :max="300" />
-    </FormItem>
+    <NumberSettingField
+      v-model="settings.maxResponseTokens"
+      :label="t('extensionsBuiltin.worldMap.maxResponseTokens')"
+      :min="512"
+      :max="64000"
+    />
+    <NumberSettingField
+      v-model="settings.maxNodesPerDelta"
+      :label="t('extensionsBuiltin.worldMap.maxNodesPerDelta')"
+      :min="4"
+      :max="900"
+    />
+    <NumberSettingField
+      v-model="settings.maxRoutesPerDelta"
+      :label="t('extensionsBuiltin.worldMap.maxRoutesPerDelta')"
+      :min="4"
+      :max="1500"
+    />
+    <NumberSettingField
+      v-model="settings.maxVisualAssetsPerDelta"
+      :label="t('extensionsBuiltin.worldMap.maxVisualAssetsPerDelta')"
+      :min="0"
+      :max="300"
+    />
 
     <div class="world-map-settings__group">{{ t('extensionsBuiltin.worldMap.aiPrompt') }}</div>
     <PromptPresetField

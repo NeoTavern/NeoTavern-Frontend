@@ -1,4 +1,9 @@
-import type { ApiChatMessage, GenerationResponse, StructuredResponseOptions } from '../../../types/generation';
+import type { ApiChatMessage, StructuredResponseOptions } from '../../../types/generation';
+import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
+import { cloneJson } from '../_shared/data-utils';
+import { getChatExtra, mergeChatExtra } from '../_shared/runtime/extension-extra';
+import { generateStructuredResult, repairStructuredGeneration } from '../_shared/runtime/structured-generation';
+import { createStructuredResponse } from '../_shared/runtime/structured-request-format';
 import { parseStoryDatetime } from '../tracker/story-time';
 import type { TrackerService } from '../tracker/types';
 import { manifest } from './manifest';
@@ -39,10 +44,6 @@ interface TimelineGenerationResult {
   messages?: ApiChatMessage[];
 }
 
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
 function normalizeEventId(value: string): string {
   const normalized = value
     .toLowerCase()
@@ -71,24 +72,17 @@ function formatTime(comparable: number, precision: TimelineTimeRef['precision'] 
 }
 
 function getTimelineExtra(api: TimelineExtensionAPI): TimelineChatExtraData {
-  return api.chat.metadata.get()?.extra?.[EXTENSION_ID] ?? {};
+  return getChatExtra<TimelineChatExtraData>(api, EXTENSION_ID) ?? {};
 }
 
 function getEvents(api: TimelineExtensionAPI): TimelineEvent[] {
-  return clone(getTimelineExtra(api).events ?? []);
+  return cloneJson(getTimelineExtra(api).events ?? []);
 }
 
 async function setEvents(api: TimelineExtensionAPI, events: TimelineEvent[]): Promise<void> {
-  const currentExtra = api.chat.metadata.get()?.extra ?? {};
-  api.chat.metadata.update({
-    extra: {
-      ...currentExtra,
-      [EXTENSION_ID]: {
-        ...((currentExtra[EXTENSION_ID] as TimelineChatExtraData | undefined) ?? {}),
-        events,
-        lastExtractionAt: new Date().toISOString(),
-      },
-    } as Record<string, unknown> & TimelineChatExtra,
+  mergeChatExtra<TimelineChatExtra>(api, EXTENSION_ID, {
+    events,
+    lastExtractionAt: new Date().toISOString(),
   });
   await api.events.emit(TIMELINE_UPDATED_EVENT);
 }
@@ -146,7 +140,7 @@ function mergeOperations(
   currentStoryTime?: TimelineTimeRef,
 ): TimelineEvent[] {
   const now = new Date().toISOString();
-  const eventsById = new Map(existingEvents.map((event) => [event.id, clone(event)]));
+  const eventsById = new Map(existingEvents.map((event) => [event.id, cloneJson(event)]));
 
   for (const operation of operations) {
     const id = normalizeEventId(operation.id);
@@ -191,81 +185,77 @@ function mergeOperations(
 }
 
 function getTimelineStructuredResponse(format: TimelineSettings['structuredRequestFormat']): StructuredResponseOptions {
-  return {
-    format,
-    schema: {
-      name: 'timeline_operations',
-      strict: true,
-      value: {
-        type: 'object',
-        required: ['operations'],
-        additionalProperties: false,
-        properties: {
-          operations: {
-            type: 'array',
-            items: {
-              type: 'object',
-              required: [
-                'operation',
-                'id',
-                'type',
-                'title',
-                'description',
-                'inject',
-                'importance',
-                'relatedCharacters',
-                'tags',
-              ],
-              additionalProperties: false,
-              properties: {
-                operation: { type: 'string', enum: ['create', 'update', 'resolve', 'cancel'] },
-                id: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' },
-                type: {
-                  type: 'string',
-                  enum: ['event', 'resource', 'npc_action', 'travel', 'deadline', 'cooldown', 'promise'],
-                },
-                title: { type: 'string' },
-                description: { type: 'string' },
-                dueIn: {
-                  type: 'object',
-                  required: ['amount', 'unit'],
-                  additionalProperties: false,
-                  properties: {
-                    amount: { type: 'integer', minimum: 0 },
-                    unit: { type: 'string', enum: ['minute', 'hour', 'day', 'week', 'month'] },
-                  },
-                },
-                dueAtDatetime: {
-                  type: 'string',
-                  pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$',
-                  description:
-                    'Concrete in-world due datetime when it can be derived without guessing. Use the same story calendar as the Tracker time. Format: YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss.',
-                },
-                recurrence: {
-                  type: 'object',
-                  required: ['interval', 'unit'],
-                  additionalProperties: false,
-                  properties: {
-                    interval: { type: 'integer', minimum: 1 },
-                    unit: { type: 'string', enum: ['minute', 'hour', 'day', 'week', 'month'] },
-                    limit: { type: 'integer', minimum: 1 },
-                  },
-                },
-                inject: {
-                  type: 'boolean',
-                  description:
-                    'Whether this event should be injected into narrator/AI prompt context when due/upcoming. Use true only if it should affect story, narration, character decisions, available options, consequences, or scene state when its time arrives. Use false for reference notes, bookkeeping, low-impact reminders, uncertain usefulness, or anything helpful to track but not needed for the AI response. If unsure, use false.',
-                },
-                importance: { type: 'string', enum: ['low', 'normal', 'high'] },
-                relatedCharacters: { type: 'array', items: { type: 'string' } },
-                tags: { type: 'array', items: { type: 'string' } },
+  return createStructuredResponse(format, {
+    name: 'timeline_operations',
+    value: {
+      type: 'object',
+      required: ['operations'],
+      additionalProperties: false,
+      properties: {
+        operations: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: [
+              'operation',
+              'id',
+              'type',
+              'title',
+              'description',
+              'inject',
+              'importance',
+              'relatedCharacters',
+              'tags',
+            ],
+            additionalProperties: false,
+            properties: {
+              operation: { type: 'string', enum: ['create', 'update', 'resolve', 'cancel'] },
+              id: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' },
+              type: {
+                type: 'string',
+                enum: ['event', 'resource', 'npc_action', 'travel', 'deadline', 'cooldown', 'promise'],
               },
+              title: { type: 'string' },
+              description: { type: 'string' },
+              dueIn: {
+                type: 'object',
+                required: ['amount', 'unit'],
+                additionalProperties: false,
+                properties: {
+                  amount: { type: 'integer', minimum: 0 },
+                  unit: { type: 'string', enum: ['minute', 'hour', 'day', 'week', 'month'] },
+                },
+              },
+              dueAtDatetime: {
+                type: 'string',
+                pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?$',
+                description:
+                  'Concrete in-world due datetime when it can be derived without guessing. Use the same story calendar as the Tracker time. Format: YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss.',
+              },
+              recurrence: {
+                type: 'object',
+                required: ['interval', 'unit'],
+                additionalProperties: false,
+                properties: {
+                  interval: { type: 'integer', minimum: 1 },
+                  unit: { type: 'string', enum: ['minute', 'hour', 'day', 'week', 'month'] },
+                  limit: { type: 'integer', minimum: 1 },
+                },
+              },
+              inject: {
+                type: 'boolean',
+                description:
+                  'Whether this event should be injected into narrator/AI prompt context when due/upcoming. Use true only if it should affect story, narration, character decisions, available options, consequences, or scene state when its time arrives. Use false for reference notes, bookkeeping, low-impact reminders, uncertain usefulness, or anything helpful to track but not needed for the AI response. If unsure, use false.',
+              },
+              importance: { type: 'string', enum: ['low', 'normal', 'high'] },
+              relatedCharacters: { type: 'array', items: { type: 'string' } },
+              tags: { type: 'array', items: { type: 'string' } },
             },
           },
         },
       },
     },
-  };
+  });
 }
 
 class TimelineManager {
@@ -334,34 +324,24 @@ class TimelineManager {
     structuredResponse: StructuredResponseOptions,
   ): Promise<TimelineGenerationResult> {
     const settings = this.getSettings();
-    const connectionProfile =
-      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile = resolveConnectionProfile(this.api, settings.connectionProfile);
     if (!connectionProfile) throw new Error('No connection profile selected for Timeline.');
 
-    let completionStructuredContent: object | undefined;
-    let completionParseError: Error | undefined;
-    const response = await this.api.llm.generate(messages, {
-      connectionProfile,
-      samplerOverrides: { max_tokens: settings.maxResponseTokens, stream: false },
-      structuredResponse,
-      onCompletion({ structured_content, parse_error }) {
-        completionStructuredContent = structured_content;
-        completionParseError = parse_error;
+    const generation = await generateStructuredResult<TimelineOperationResponse>(this.api, {
+      messages,
+      options: {
+        connectionProfile,
+        samplerOverrides: { max_tokens: settings.maxResponseTokens, stream: false },
+        structuredResponse,
       },
+      streamErrorMessage: 'Timeline extraction unexpectedly returned a stream.',
+      missingStructuredContentMessage: 'Timeline extraction returned no structured content.',
     });
 
-    if (Symbol.asyncIterator in response) {
-      for await (const chunk of response) void chunk;
-      return { rawContent: '', parseError: 'Timeline extraction unexpectedly returned a stream.' };
-    }
-
-    const generationResponse = response as GenerationResponse;
-    const structuredContent = generationResponse.structured_content ?? completionStructuredContent;
-    const parseError = completionParseError?.message;
     return {
-      operations: (structuredContent as TimelineOperationResponse | undefined)?.operations,
-      rawContent: generationResponse.content,
-      parseError: structuredContent ? undefined : (parseError ?? 'Timeline extraction returned no structured content.'),
+      operations: generation.structuredContent?.operations,
+      rawContent: generation.rawContent,
+      parseError: generation.parseError,
     };
   }
 
@@ -406,31 +386,20 @@ class TimelineManager {
       const structuredResponse = getTimelineStructuredResponse(settings.structuredRequestFormat);
       const messages = await this.buildExtractionContext(structuredResponse);
       let generation = await this.generateOperations(messages, structuredResponse);
-      let repairMessages = messages;
-      let repairCount = 0;
-
-      while (
-        !generation.operations &&
-        generation.parseError &&
-        generation.rawContent.trim() &&
-        repairCount < MAX_SCHEMA_REPAIRS
-      ) {
-        repairCount += 1;
-        this.api.ui.showToast(
-          this.api.i18n.t('extensionsBuiltin.timeline.toasts.schemaRepair', {
-            count: repairCount,
-            max: MAX_SCHEMA_REPAIRS,
-          }),
-          'info',
-        );
-        generation = await this.repairOperations(
-          repairMessages,
-          generation.rawContent,
-          generation.parseError,
-          structuredResponse,
-        );
-        repairMessages = generation.messages ?? repairMessages;
-      }
+      generation = await repairStructuredGeneration({
+        generation,
+        messages,
+        maxRepairs: MAX_SCHEMA_REPAIRS,
+        getValue: (result) => result.operations,
+        onRepair: (count, max) => {
+          this.api.ui.showToast(
+            this.api.i18n.t('extensionsBuiltin.timeline.toasts.schemaRepair', { count, max }),
+            'info',
+          );
+        },
+        repair: ({ messages: repairMessages, rawContent, parseError }) =>
+          this.repairOperations(repairMessages, rawContent, parseError, structuredResponse),
+      });
 
       if (!generation.operations) {
         throw new Error(generation.parseError ?? 'Timeline extraction returned no operations.');

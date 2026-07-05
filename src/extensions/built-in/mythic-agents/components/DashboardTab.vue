@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { EmptyState } from '../../../../components/common';
 import { Button } from '../../../../components/UI';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../../types/popup';
-import { useMythicState } from '../composables/useMythicState';
+import { stripMythicExtra, useMythicState } from '../composables/useMythicState';
 import type { EventMeaningResult, FateQuestion, FateRollResult, MythicExtensionAPI, MythicOdds } from '../types';
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
 const props = defineProps<Props>();
 const t = props.api.i18n.t;
 
-const { state: extra, getLatestMythicMessageIndex } = useMythicState(props.api);
+const { state: extra, updateLatestExtra } = useMythicState(props.api);
 const chaos = computed(() => extra.value?.chaos ?? 5);
 const scene = computed(() => extra.value?.scene);
 const actionHistory = computed(() => props.api.chat.metadata.get()?.extra?.actionHistory ?? []);
@@ -31,32 +32,13 @@ type DisplayAction = {
   randomEvent?: EventMeaningResult;
 };
 
-function stripMythicExtra<T extends Record<string, unknown> | undefined>(extra: T): T {
-  if (!extra?.['core.mythic-agents']) return extra;
-  const nextExtra = { ...extra, 'core.mythic-agents': undefined };
-  return nextExtra as T;
-}
-
 function adjustChaos(delta: number) {
-  const mythicIndex = getLatestMythicMessageIndex();
-  if (mythicIndex === null) return;
-  const history = props.api.chat.getHistory();
-  const msg = history[mythicIndex];
-  const currentExtra = msg.extra?.['core.mythic-agents'];
-  if (!currentExtra) return;
-  const newChaos = Math.max(1, Math.min(9, (currentExtra.chaos ?? 5) + delta));
-  const newScene = currentExtra.scene ? { ...currentExtra.scene, chaos_rank: newChaos } : undefined;
-  const newExtra = {
-    ...currentExtra,
-    chaos: newChaos,
-    scene: newScene,
-  };
-  msg.extra = {
-    ...msg.extra,
-    'core.mythic-agents': newExtra,
-  };
-  props.api.chat.updateMessageObject(mythicIndex, {
-    extra: msg.extra,
+  updateLatestExtra((currentExtra) => {
+    const newChaos = Math.max(1, Math.min(9, (currentExtra.chaos ?? 5) + delta));
+    return {
+      chaos: newChaos,
+      scene: currentExtra.scene ? { ...currentExtra.scene, chaos_rank: newChaos } : undefined,
+    };
   });
 }
 
@@ -180,9 +162,10 @@ function getRandomEvents(action: DisplayAction): EventMeaningResult[] {
     <!-- Recent Actions -->
     <div class="recent-activity">
       <div class="section-header">{{ t('extensionsBuiltin.mythicAgents.panel.recentActions') }}</div>
-      <div v-if="actionHistory.length === 0" class="empty-state">
-        {{ t('extensionsBuiltin.mythicAgents.panel.noActionsRecorded') }}
-      </div>
+      <EmptyState
+        v-if="actionHistory.length === 0"
+        :description="t('extensionsBuiltin.mythicAgents.panel.noActionsRecorded')"
+      />
       <ul v-else class="activity-list">
         <li v-for="(action, index) in actionHistory.slice().reverse().slice(0, 5)" :key="index" class="activity-item">
           <div v-for="(question, questionIndex) in getQuestions(action)" :key="questionIndex" class="activity-main">
@@ -347,12 +330,5 @@ function getRandomEvents(action: DisplayAction): EventMeaningResult[] {
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.empty-state {
-  text-align: center;
-  color: var(--theme-emphasis-color);
-  font-style: italic;
-  padding: var(--spacing-md);
 }
 </style>

@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue';
 import { ToolService } from '../../../../services/tool.service';
 import type { Character, ExtensionAPI, Persona } from '../../../../types';
+import { resolveConnectionProfile } from '../../_shared/runtime/connection-profile';
 import { RewriteService } from '../RewriteService';
 import type {
   RewriteField,
@@ -139,7 +140,7 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
           activeSession.value.messages,
           structuredResponseFormat,
           deepToRaw(availableFields),
-          selectedProfile || api.settings.getGlobal('api.selectedConnectionProfile'),
+          resolveConnectionProfile(api, selectedProfile),
           abortController.value?.signal,
           referenceMessageIndex,
         );

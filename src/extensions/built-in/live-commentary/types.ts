@@ -1,9 +1,9 @@
 import {
-  migratePromptPresetState,
+  migratePromptPresetSettings,
   resolvePromptPreset,
   type PromptPreset,
   type PromptPresetState,
-} from '../prompt-presets';
+} from '../_shared/prompt-presets';
 
 export type LiveCommentaryPrompts = {
   prompt: string;
@@ -150,25 +150,19 @@ export const DEFAULT_SETTINGS: LiveCommentarySettings = {
 };
 
 export function migrateLiveCommentarySettings(settings: Partial<LiveCommentarySettings> = {}): LiveCommentarySettings {
-  return {
-    ...DEFAULT_SETTINGS,
-    ...migratePromptPresetState({
-      settings: {
-        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
-        promptPresets: [],
-        ...settings,
-      },
-      builtInPresets: BUILT_IN_PROMPT_PRESETS,
-      legacyPrompts: {
-        prompt: settings.prompt,
-        askPrompt: settings.askPrompt,
-      },
-      legacyDefaults: {
-        prompt: DEFAULT_PROMPT,
-        askPrompt: DEFAULT_ASK_PROMPT,
-      },
-    }),
-  };
+  return migratePromptPresetSettings({
+    settings,
+    defaultSettings: DEFAULT_SETTINGS,
+    builtInPresets: BUILT_IN_PROMPT_PRESETS,
+    legacyPrompts: {
+      prompt: settings.prompt,
+      askPrompt: settings.askPrompt,
+    },
+    legacyDefaults: {
+      prompt: DEFAULT_PROMPT,
+      askPrompt: DEFAULT_ASK_PROMPT,
+    },
+  });
 }
 
 export function resolveLiveCommentaryPrompts(settings: LiveCommentarySettings): LiveCommentaryPrompts {

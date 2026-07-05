@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { EmptyState } from '../../../../components/common';
 import { Button, Input } from '../../../../components/UI';
 import { useMythicState } from '../composables/useMythicState';
 import type { MythicExtensionAPI } from '../types';
@@ -13,26 +14,9 @@ const t = props.api.i18n.t;
 
 const newThread = ref('');
 
-const { state: extra, getLatestMythicMessageIndex } = useMythicState(props.api);
+const { state: extra, updateLatestExtra } = useMythicState(props.api);
 const scene = computed(() => extra.value?.scene);
 const resolvedThreads = computed(() => props.api.chat.metadata.get()?.extra?.resolved_threads ?? []);
-
-function updateLatestExtra(update: Record<string, unknown>) {
-  const mythicIndex = getLatestMythicMessageIndex();
-  if (mythicIndex === null) return;
-  const history = props.api.chat.getHistory();
-  const msg = history[mythicIndex];
-  const currentExtra = msg.extra?.['core.mythic-agents'];
-  if (!currentExtra) return;
-  const newExtra = { ...currentExtra, ...update };
-  msg.extra = {
-    ...msg.extra,
-    'core.mythic-agents': newExtra,
-  };
-  props.api.chat.updateMessageObject(mythicIndex, {
-    extra: msg.extra,
-  });
-}
 
 function addThread() {
   const trimmed = newThread.value.trim();
@@ -69,9 +53,7 @@ function removeThread(index: number) {
       </Button>
     </div>
 
-    <div v-if="!scene?.threads.length" class="empty-state">
-      {{ t('extensionsBuiltin.mythicAgents.panel.noOpenThreads') }}
-    </div>
+    <EmptyState v-if="!scene?.threads.length" :description="t('extensionsBuiltin.mythicAgents.panel.noOpenThreads')" />
 
     <ul class="thread-list">
       <li v-for="(thread, index) in scene?.threads || []" :key="index" class="thread-item">

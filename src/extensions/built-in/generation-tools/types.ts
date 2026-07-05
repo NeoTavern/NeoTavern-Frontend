@@ -1,9 +1,9 @@
 import {
-  migratePromptPresetState,
+  migratePromptPresetSettings,
   resolvePromptPreset,
   type PromptPreset,
   type PromptPresetState,
-} from '../prompt-presets';
+} from '../_shared/prompt-presets';
 
 export interface RerollSnapshot {
   messageIndex: number;
@@ -60,25 +60,19 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
 };
 
 export function migrateGenerationToolsSettings(settings: Partial<ExtensionSettings> = {}): ExtensionSettings {
-  return {
-    ...DEFAULT_SETTINGS,
-    ...migratePromptPresetState({
-      settings: {
-        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
-        promptPresets: [],
-        ...settings,
-      },
-      builtInPresets: BUILT_IN_PROMPT_PRESETS,
-      legacyPrompts: {
-        impersonatePrompt: settings.impersonatePrompt,
-        generatePrompt: settings.generatePrompt,
-      },
-      legacyDefaults: {
-        impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
-        generatePrompt: DEFAULT_GENERATE_PROMPT,
-      },
-    }),
-  };
+  return migratePromptPresetSettings({
+    settings,
+    defaultSettings: DEFAULT_SETTINGS,
+    builtInPresets: BUILT_IN_PROMPT_PRESETS,
+    legacyPrompts: {
+      impersonatePrompt: settings.impersonatePrompt,
+      generatePrompt: settings.generatePrompt,
+    },
+    legacyDefaults: {
+      impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
+      generatePrompt: DEFAULT_GENERATE_PROMPT,
+    },
+  });
 }
 
 export function resolveGenerationToolsPrompts(settings: ExtensionSettings): GenerationToolsPrompts {

@@ -1,5 +1,10 @@
 import type { ChatMessage } from '../../../types';
-import type { ApiChatMessage, GenerationResponse, StructuredResponseOptions } from '../../../types/generation';
+import type { ApiChatMessage, StructuredResponseOptions } from '../../../types/generation';
+import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
+import { cloneJson } from '../_shared/data-utils';
+import { getChatExtra, setChatExtra, setMessageExtra } from '../_shared/runtime/extension-extra';
+import { generateStructuredResult, repairStructuredGeneration } from '../_shared/runtime/structured-generation';
+import { createStructuredResponse } from '../_shared/runtime/structured-request-format';
 import { manifest } from './manifest';
 import PhonePanel from './PhonePanel.vue';
 import SettingsPanel from './SettingsPanel.vue';
@@ -34,10 +39,6 @@ interface StructuredGenerationResult<T> {
   messages?: ApiChatMessage[];
 }
 
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
 function normalizeHandle(value: string): string {
   const normalized = value
     .trim()
@@ -63,72 +64,64 @@ function formatNamePair(userName: string, contact: PhoneContact): string {
 }
 
 function getContactStructuredResponse(format: PhoneSettings['structuredRequestFormat']): StructuredResponseOptions {
-  return {
-    format,
-    schema: {
-      name: 'phone_contacts',
-      strict: true,
-      value: {
-        type: 'object',
-        required: ['contacts'],
-        additionalProperties: false,
-        properties: {
-          contacts: {
-            type: 'array',
-            items: {
-              type: 'object',
-              required: ['displayName', 'handle'],
-              additionalProperties: false,
-              properties: {
-                displayName: { type: 'string', minLength: 1 },
-                handle: { type: 'string', minLength: 1 },
-                relationship: { type: 'string' },
-                avatarColor: {
-                  type: 'string',
-                  pattern: '^#[0-9a-fA-F]{6}$',
-                  description: 'Optional hex color for the contact avatar.',
-                },
+  return createStructuredResponse(format, {
+    name: 'phone_contacts',
+    value: {
+      type: 'object',
+      required: ['contacts'],
+      additionalProperties: false,
+      properties: {
+        contacts: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['displayName', 'handle'],
+            additionalProperties: false,
+            properties: {
+              displayName: { type: 'string', minLength: 1 },
+              handle: { type: 'string', minLength: 1 },
+              relationship: { type: 'string' },
+              avatarColor: {
+                type: 'string',
+                pattern: '^#[0-9a-fA-F]{6}$',
+                description: 'Optional hex color for the contact avatar.',
               },
             },
           },
         },
       },
     },
-  };
+  });
 }
 
 function getSmsStructuredResponse(format: PhoneSettings['structuredRequestFormat']): StructuredResponseOptions {
-  return {
-    format,
-    schema: {
-      name: 'phone_sms_replies',
-      strict: true,
-      value: {
-        type: 'object',
-        required: ['messages'],
-        additionalProperties: false,
-        properties: {
-          messages: {
-            type: 'array',
-            items: {
-              type: 'object',
-              required: ['contactId', 'body', 'delaySeconds'],
-              additionalProperties: false,
-              properties: {
-                contactId: { type: 'string' },
-                body: { type: 'string' },
-                delaySeconds: { type: 'integer', minimum: 0, maximum: 120 },
-              },
+  return createStructuredResponse(format, {
+    name: 'phone_sms_replies',
+    value: {
+      type: 'object',
+      required: ['messages'],
+      additionalProperties: false,
+      properties: {
+        messages: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['contactId', 'body', 'delaySeconds'],
+            additionalProperties: false,
+            properties: {
+              contactId: { type: 'string' },
+              body: { type: 'string' },
+              delaySeconds: { type: 'integer', minimum: 0, maximum: 120 },
             },
           },
         },
       },
     },
-  };
+  });
 }
 
 function getPhoneExtraFromMessage(message: ChatMessage): PhoneMessageExtraData {
-  return clone((message.extra?.[EXTENSION_ID] as PhoneMessageExtraData | undefined) ?? {});
+  return cloneJson((message.extra?.[EXTENSION_ID] as PhoneMessageExtraData | undefined) ?? {});
 }
 
 function getMessagesForConversation(data: PhoneMessageExtraData, conversationId: string): PhoneMessage[] {
@@ -187,7 +180,7 @@ class PhoneManager {
   }
 
   public getChatExtra(): PhoneChatExtraData {
-    return clone(this.api.chat.metadata.get()?.extra?.[EXTENSION_ID] ?? {});
+    return cloneJson(getChatExtra<PhoneChatExtraData>(this.api, EXTENSION_ID) ?? {});
   }
 
   public getContacts(): PhoneContact[] {
@@ -195,13 +188,7 @@ class PhoneManager {
   }
 
   private async setChatExtra(data: PhoneChatExtraData): Promise<void> {
-    const currentExtra = this.api.chat.metadata.get()?.extra ?? {};
-    this.api.chat.metadata.update({
-      extra: {
-        ...currentExtra,
-        [EXTENSION_ID]: data,
-      } as Record<string, unknown> & PhoneChatExtra,
-    });
+    setChatExtra<PhoneChatExtra>(this.api, EXTENSION_ID, data);
     await this.api.events.emit(PHONE_UPDATED_EVENT);
   }
 
@@ -213,12 +200,7 @@ class PhoneManager {
   private async setMessageExtra(messageIndex: number, data: PhoneMessageExtraData): Promise<void> {
     const message = this.api.chat.getHistory()[messageIndex];
     if (!message) throw new Error('Selected chat message was not found.');
-    await this.api.chat.updateMessageObject(messageIndex, {
-      extra: {
-        ...message.extra,
-        [EXTENSION_ID]: data,
-      } as ChatMessage['extra'] & PhoneMessageExtra,
-    });
+    await setMessageExtra<PhoneMessageExtra>(this.api, messageIndex, EXTENSION_ID, data);
     await this.api.events.emit(PHONE_UPDATED_EVENT);
   }
 
@@ -248,36 +230,25 @@ class PhoneManager {
     captureMessageIndex?: number,
   ): Promise<StructuredGenerationResult<T>> {
     const settings = this.getSettings();
-    const connectionProfile =
-      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile = resolveConnectionProfile(this.api, settings.connectionProfile);
     if (!connectionProfile) throw new Error('No connection profile selected for Phone.');
 
-    let completionStructuredContent: object | undefined;
-    let completionParseError: Error | undefined;
-    const response = await this.api.llm.generate(messages, {
-      connectionProfile,
-      samplerOverrides: { max_tokens: settings.maxResponseTokens, stream: false },
-      structuredResponse,
-      captureMessageIndex,
-      onCompletion({ structured_content, parse_error }) {
-        completionStructuredContent = structured_content;
-        completionParseError = parse_error;
+    const generation = await generateStructuredResult<T>(this.api, {
+      messages,
+      options: {
+        connectionProfile,
+        samplerOverrides: { max_tokens: settings.maxResponseTokens, stream: false },
+        structuredResponse,
+        captureMessageIndex,
       },
+      streamErrorMessage: 'Phone generation unexpectedly returned a stream.',
+      missingStructuredContentMessage: 'Phone generation returned no structured content.',
     });
 
-    if (Symbol.asyncIterator in response) {
-      for await (const chunk of response) void chunk;
-      return { rawContent: '', parseError: 'Phone generation unexpectedly returned a stream.' };
-    }
-
-    const generationResponse = response as GenerationResponse;
-    const structured = (generationResponse.structured_content ?? completionStructuredContent) as T | undefined;
     return {
-      structured,
-      rawContent: generationResponse.content,
-      parseError: structured
-        ? undefined
-        : (completionParseError?.message ?? 'Phone generation returned no structured content.'),
+      structured: generation.structuredContent,
+      rawContent: generation.rawContent,
+      parseError: generation.parseError,
     };
   }
 
@@ -309,26 +280,21 @@ class PhoneManager {
     captureMessageIndex?: number,
   ): Promise<T> {
     let generation = await this.generateStructured<T>(messages, structuredResponse, captureMessageIndex);
-    let repairMessages = messages;
-    let repairCount = 0;
-
-    while (
-      !generation.structured &&
-      generation.parseError &&
-      generation.rawContent.trim() &&
-      repairCount < MAX_SCHEMA_REPAIRS
-    ) {
-      repairCount += 1;
-      generation = await this.repairStructured<T>(
-        repairMessages,
-        generation.rawContent,
-        generation.parseError,
-        structuredResponse,
-        label,
-        captureMessageIndex,
-      );
-      repairMessages = generation.messages ?? repairMessages;
-    }
+    generation = await repairStructuredGeneration({
+      generation,
+      messages,
+      maxRepairs: MAX_SCHEMA_REPAIRS,
+      getValue: (result) => result.structured,
+      repair: ({ messages: repairMessages, rawContent, parseError }) =>
+        this.repairStructured<T>(
+          repairMessages,
+          rawContent,
+          parseError,
+          structuredResponse,
+          label,
+          captureMessageIndex,
+        ),
+    });
 
     if (!generation.structured) throw new Error(generation.parseError ?? `Phone ${label} returned no structured data.`);
     return generation.structured;

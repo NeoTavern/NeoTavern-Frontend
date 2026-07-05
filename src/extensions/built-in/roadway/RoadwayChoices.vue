@@ -3,6 +3,8 @@ import { ref } from 'vue';
 import { Button } from '../../../components/UI';
 import type { ChatMessage, ExtensionAPI } from '../../../types';
 import type { ApiChatMessage } from '../../../types/generation';
+import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
+import { mergeMessageExtra } from '../_shared/runtime/extension-extra';
 import {
   type RoadwayChatExtra,
   type RoadwayMessageExtra,
@@ -34,13 +36,7 @@ function getSettings(): RoadwaySettings {
 
 async function markChoiceAsMade() {
   choiceMade.value = true;
-  await props.api.chat.updateMessageObject(props.index, {
-    extra: {
-      'core.roadway': {
-        choiceMade: true,
-      },
-    },
-  });
+  await mergeMessageExtra<RoadwayMessageExtra>(props.api, props.index, 'core.roadway', { choiceMade: true });
 }
 
 async function handleSend(choiceText: string) {
@@ -56,8 +52,7 @@ async function handleEdit(choiceText: string) {
 
 async function handleImpersonate(choiceText: string) {
   const settings = getSettings();
-  const connectionProfile =
-    settings.impersonateConnectionProfile || props.api.settings.getGlobal('api.selectedConnectionProfile');
+  const connectionProfile = resolveConnectionProfile(props.api, settings.impersonateConnectionProfile);
   if (!connectionProfile) {
     props.api.ui.showToast(t('extensionsBuiltin.roadway.toasts.noImpersonateProfile'), 'error');
     return;

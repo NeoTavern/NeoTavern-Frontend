@@ -1,10 +1,10 @@
 import type { ExtensionAPI } from '../../../types';
 import {
-  migratePromptPresetState,
+  migratePromptPresetSettings,
   resolvePromptPreset,
   type PromptPreset,
   type PromptPresetState,
-} from '../prompt-presets';
+} from '../_shared/prompt-presets';
 
 export type TimelineEventType = 'event' | 'resource' | 'npc_action' | 'travel' | 'deadline' | 'cooldown' | 'promise';
 export type TimelineEventStatus = 'pending' | 'resolved' | 'cancelled';
@@ -149,19 +149,13 @@ export const DEFAULT_SETTINGS: TimelineSettings = {
 };
 
 export function migrateTimelineSettings(settings: Partial<TimelineSettings> = {}): TimelineSettings {
-  return {
-    ...DEFAULT_SETTINGS,
-    ...migratePromptPresetState({
-      settings: {
-        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
-        promptPresets: [],
-        ...settings,
-      },
-      builtInPresets: BUILT_IN_PROMPT_PRESETS,
-      legacyPrompts: { extractionPrompt: settings.extractionPrompt },
-      legacyDefaults: { extractionPrompt: DEFAULT_EXTRACTION_PROMPT },
-    }),
-  };
+  return migratePromptPresetSettings({
+    settings,
+    defaultSettings: DEFAULT_SETTINGS,
+    builtInPresets: BUILT_IN_PROMPT_PRESETS,
+    legacyPrompts: { extractionPrompt: settings.extractionPrompt },
+    legacyDefaults: { extractionPrompt: DEFAULT_EXTRACTION_PROMPT },
+  });
 }
 
 export function resolveTimelinePrompts(settings: TimelineSettings): TimelinePrompts {

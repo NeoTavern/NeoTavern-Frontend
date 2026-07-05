@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { EmptyState } from '../../../../components/common';
 import Pagination from '../../../../components/common/Pagination.vue';
 import type { EventMeaningResult, FateQuestion, FateRollResult, MythicExtensionAPI, MythicOdds } from '../types';
 
@@ -75,9 +76,10 @@ function getJustification(action: DisplayAction) {
 
 <template>
   <div class="log">
-    <div v-if="reversedHistory.length === 0" class="empty-state">
-      {{ t('extensionsBuiltin.mythicAgents.panel.noHistoryRecorded') }}
-    </div>
+    <EmptyState
+      v-if="reversedHistory.length === 0"
+      :description="t('extensionsBuiltin.mythicAgents.panel.noHistoryRecorded')"
+    />
     <div v-for="(action, index) in paginatedHistory" :key="index" class="log-card">
       <div v-for="(question, questionIndex) in getQuestions(action)" :key="questionIndex" class="question-block">
         <div class="log-header">
@@ -271,11 +273,5 @@ function getJustification(action: DisplayAction) {
   i {
     margin-top: 3px;
   }
-}
-
-.empty-state {
-  text-align: center;
-  padding: var(--spacing-xl);
-  color: var(--theme-emphasis-color);
 }
 </style>

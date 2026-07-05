@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { PresetControl } from '../../components/common';
-import { FormItem, Textarea } from '../../components/UI';
-import { POPUP_RESULT, POPUP_TYPE, type ExtensionAPI } from '../../types';
+import { PresetControl } from '../../../../components/common';
+import { FormItem, Textarea } from '../../../../components/UI';
+import { POPUP_RESULT, POPUP_TYPE, type ExtensionAPI } from '../../../../types';
 import {
   duplicatePromptPreset,
   getAllPromptPresets,
   getPromptPresetOptions,
   resolvePromptPreset,
   type PromptPreset,
-} from './prompt-presets';
+} from '../prompt-presets';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyPromptPreset = PromptPreset<any>;

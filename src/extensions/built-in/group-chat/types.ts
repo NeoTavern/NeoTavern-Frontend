@@ -1,9 +1,9 @@
 import {
-  migratePromptPresetState,
+  migratePromptPresetSettings,
   resolvePromptPreset,
   type PromptPreset,
   type PromptPresetState,
-} from '../prompt-presets';
+} from '../_shared/prompt-presets';
 
 export enum GroupReplyStrategy {
   MANUAL = 0,
@@ -105,28 +105,21 @@ export const DEFAULT_SETTINGS: GroupExtensionSettings = {
 };
 
 export function migrateGroupChatSettings(settings: Partial<GroupExtensionSettings> = {}): GroupExtensionSettings {
-  return {
-    ...DEFAULT_SETTINGS,
-    ...settings,
-    ...migratePromptPresetState({
-      settings: {
-        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
-        promptPresets: [],
-        ...settings,
-      },
-      builtInPresets: BUILT_IN_PROMPT_PRESETS,
-      legacyPrompts: {
-        defaultDecisionPromptTemplate: settings.defaultDecisionPromptTemplate,
-        defaultSummaryPromptTemplate: settings.defaultSummaryPromptTemplate,
-        summaryInjectionTemplate: settings.summaryInjectionTemplate,
-      },
-      legacyDefaults: {
-        defaultDecisionPromptTemplate: DEFAULT_DECISION_TEMPLATE,
-        defaultSummaryPromptTemplate: DEFAULT_SUMMARY_TEMPLATE,
-        summaryInjectionTemplate: DEFAULT_SUMMARY_INJECTION_TEMPLATE,
-      },
-    }),
-  };
+  return migratePromptPresetSettings({
+    settings,
+    defaultSettings: DEFAULT_SETTINGS,
+    builtInPresets: BUILT_IN_PROMPT_PRESETS,
+    legacyPrompts: {
+      defaultDecisionPromptTemplate: settings.defaultDecisionPromptTemplate,
+      defaultSummaryPromptTemplate: settings.defaultSummaryPromptTemplate,
+      summaryInjectionTemplate: settings.summaryInjectionTemplate,
+    },
+    legacyDefaults: {
+      defaultDecisionPromptTemplate: DEFAULT_DECISION_TEMPLATE,
+      defaultSummaryPromptTemplate: DEFAULT_SUMMARY_TEMPLATE,
+      summaryInjectionTemplate: DEFAULT_SUMMARY_INJECTION_TEMPLATE,
+    },
+  });
 }
 
 export function resolveGroupChatPrompts(settings: GroupExtensionSettings): GroupChatPrompts {

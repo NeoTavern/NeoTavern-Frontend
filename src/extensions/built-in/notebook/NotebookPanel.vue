@@ -3,7 +3,7 @@ import Image from '@tiptap/extension-image';
 import StarterKit from '@tiptap/starter-kit';
 import { EditorContent, useEditor } from '@tiptap/vue-3';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { SplitPane } from '../../../components/common';
+import { EmptyState, SplitPane } from '../../../components/common';
 import { Button } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
 import './style.scss';
@@ -284,11 +284,7 @@ const toolbarActions: ToolbarItem[] = [
           </div>
           <EditorContent class="notebook-panel__editor" :editor="editor" />
         </div>
-        <div v-else>
-          <p style="text-align: center; padding: 20px">
-            {{ t('extensionsBuiltin.notebook.emptyState') }}
-          </p>
-        </div>
+        <EmptyState v-else :description="t('extensionsBuiltin.notebook.emptyState')" />
       </template>
     </SplitPane>
   </div>

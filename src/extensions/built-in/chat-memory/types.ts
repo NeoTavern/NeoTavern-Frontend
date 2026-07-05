@@ -1,9 +1,9 @@
 import {
-  migratePromptPresetState,
+  migratePromptPresetSettings,
   resolvePromptPreset,
   type PromptPreset,
   type PromptPresetState,
-} from '../prompt-presets';
+} from '../_shared/prompt-presets';
 
 export interface ChatMemoryRecord {
   bookName: string;
@@ -109,25 +109,19 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
 };
 
 export function migrateChatMemorySettings(settings: Partial<ExtensionSettings> = {}): ExtensionSettings {
-  return {
-    ...DEFAULT_SETTINGS,
-    ...migratePromptPresetState({
-      settings: {
-        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
-        promptPresets: [],
-        ...settings,
-      },
-      builtInPresets: BUILT_IN_PROMPT_PRESETS,
-      legacyPrompts: {
-        prompt: settings.prompt,
-        messageSummaryPrompt: settings.messageSummaryPrompt,
-      },
-      legacyDefaults: {
-        prompt: DEFAULT_PROMPT,
-        messageSummaryPrompt: DEFAULT_MESSAGE_SUMMARY_PROMPT,
-      },
-    }),
-  };
+  return migratePromptPresetSettings({
+    settings,
+    defaultSettings: DEFAULT_SETTINGS,
+    builtInPresets: BUILT_IN_PROMPT_PRESETS,
+    legacyPrompts: {
+      prompt: settings.prompt,
+      messageSummaryPrompt: settings.messageSummaryPrompt,
+    },
+    legacyDefaults: {
+      prompt: DEFAULT_PROMPT,
+      messageSummaryPrompt: DEFAULT_MESSAGE_SUMMARY_PROMPT,
+    },
+  });
 }
 
 export function resolveChatMemoryPrompts(settings: ExtensionSettings): ChatMemoryPrompts {

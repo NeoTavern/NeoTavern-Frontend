@@ -1,7 +1,11 @@
 import type { Component } from 'vue';
 import type { ChatMessage, ExtensionAPI } from '../../../types';
-import type { ApiChatMessage, GenerationResponse, StructuredResponseOptions } from '../../../types/generation';
+import type { ApiChatMessage, StructuredResponseOptions } from '../../../types/generation';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
+import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
+import { findChatMessageIndex, isFinishedAssistantMessage } from '../_shared/runtime/chat-message';
+import { getChatExtra, mergeChatExtra, mergeMessageExtra } from '../_shared/runtime/extension-extra';
+import { generateStructuredResult } from '../_shared/runtime/structured-generation';
 import {
   buildTrackerDeltaSchema,
   validateAgainstSchema,
@@ -15,6 +19,7 @@ import TrackerDisplay from './TrackerDisplay.vue';
 import TrackerIcon from './TrackerIcon.vue';
 import {
   type TrackerChatExtra,
+  type TrackerChatExtraData,
   type TrackerData,
   type TrackerMessageExtra,
   type TrackerService,
@@ -43,37 +48,6 @@ interface ProcessedTrackerResult {
   trackerJson: Record<string, unknown>;
   trackerDelta?: Record<string, unknown>;
   trackerHtml: string;
-}
-
-function isFinishedAssistantMessage(message: ChatMessage | null): message is ChatMessage {
-  return Boolean(message && !message.is_user && !message.is_system && message.gen_finished);
-}
-
-function findMessageIndex(history: ChatMessage[], message: ChatMessage, generationId?: string): number {
-  if (generationId) {
-    for (let index = history.length - 1; index >= 0; index--) {
-      const candidate = history[index];
-      if (candidate.swipe_info?.some((swipe) => swipe.generation_id === generationId)) return index;
-    }
-  }
-
-  const identityIndex = history.lastIndexOf(message);
-  if (identityIndex !== -1) return identityIndex;
-
-  for (let index = history.length - 1; index >= 0; index--) {
-    const candidate = history[index];
-    if (
-      candidate.name === message.name &&
-      candidate.send_date === message.send_date &&
-      candidate.gen_started === message.gen_started &&
-      candidate.gen_finished === message.gen_finished &&
-      candidate.mes === message.mes
-    ) {
-      return index;
-    }
-  }
-
-  return -1;
 }
 
 class TrackerManager {
@@ -173,33 +147,23 @@ class TrackerManager {
     structuredResponse: StructuredResponseOptions,
     captureMessageIndex?: number,
   ): Promise<TrackerGenerationResult> {
-    let completionStructuredContent: object | undefined;
-    let completionParseError: Error | undefined;
-    const response = await this.api.llm.generate(messages, {
-      connectionProfile,
-      samplerOverrides: { max_tokens: maxResponseTokens, stream: false },
-      structuredResponse,
-      source: 'core.tracker',
-      captureMessageIndex,
-      onCompletion({ structured_content, parse_error }) {
-        completionStructuredContent = structured_content;
-        completionParseError = parse_error;
+    const generation = await generateStructuredResult<object>(this.api, {
+      messages,
+      options: {
+        connectionProfile,
+        samplerOverrides: { max_tokens: maxResponseTokens, stream: false },
+        structuredResponse,
+        source: 'core.tracker',
+        captureMessageIndex,
       },
+      streamErrorMessage: 'Tracker generation unexpectedly returned a stream.',
+      missingStructuredContentMessage: 'Tracker generation returned no structured content.',
     });
 
-    if (Symbol.asyncIterator in response) {
-      for await (const chunk of response) void chunk;
-      return { rawContent: '', parseError: 'Tracker generation unexpectedly returned a stream.' };
-    }
-
-    const generationResponse = response as GenerationResponse;
-    const structuredContent = generationResponse.structured_content ?? completionStructuredContent;
-    const parseError = completionParseError?.message;
-
     return {
-      rawContent: generationResponse.content,
-      structuredContent,
-      parseError: structuredContent ? undefined : (parseError ?? 'Tracker generation returned no structured content.'),
+      rawContent: generation.rawContent,
+      structuredContent: generation.structuredContent,
+      parseError: generation.parseError,
     };
   }
 
@@ -243,8 +207,7 @@ class TrackerManager {
     const chat = this.api.chat.getHistory();
     const message = chat[index];
     if (!message) return;
-    const connectionProfile =
-      settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile = resolveConnectionProfile(this.api, settings.connectionProfile);
     if (!connectionProfile) {
       this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.tracker.toasts.noConnectionProfile'), 'error');
       return;
@@ -432,13 +395,7 @@ class TrackerManager {
   public async manageChatSchemas(): Promise<void> {
     const { result, value } = await this.promptForSchemaSelection();
     if (result === POPUP_RESULT.AFFIRMATIVE && Array.isArray(value)) {
-      this.api.chat.metadata.update({
-        extra: {
-          'core.tracker': {
-            schemaNames: value,
-          },
-        },
-      });
+      mergeChatExtra<TrackerChatExtra>(this.api, 'core.tracker', { schemaNames: value });
       const toastMessage =
         value.length > 0
           ? `This chat now uses: ${value.join(', ')}`
@@ -449,7 +406,7 @@ class TrackerManager {
 
   private async promptForSchemaSelection(): Promise<{ result: number; value: string[] }> {
     const settings = this.getSettings();
-    const currentSelection = this.api.chat.metadata.get()?.extra?.['core.tracker']?.schemaNames || [];
+    const currentSelection = getChatExtra<TrackerChatExtraData>(this.api, 'core.tracker')?.schemaNames || [];
 
     return await this.api.ui.showPopup({
       title: this.api.i18n.t('extensionsBuiltin.tracker.popups.selectSchemaTitle'),
@@ -497,13 +454,10 @@ class TrackerManager {
 
     const newTrackerData: TrackerData = { ...existingTracker, ...partialData };
 
-    await this.api.chat.updateMessageObject(index, {
-      extra: {
-        'core.tracker': {
-          trackers: {
-            [schemaName]: newTrackerData,
-          },
-        },
+    await mergeMessageExtra<TrackerMessageExtra>(this.api, index, 'core.tracker', {
+      trackers: {
+        ...existingTrackers,
+        [schemaName]: newTrackerData,
       },
     });
   }
@@ -532,7 +486,7 @@ class TrackerManager {
     const message = result.message;
     if (!shouldTrackBot || !isFinishedAssistantMessage(message)) return;
 
-    const index = findMessageIndex(this.api.chat.getHistory(), message, generationId);
+    const index = findChatMessageIndex(this.api.chat.getHistory(), message, generationId);
     if (index === -1) return;
     setTimeout(() => this.runTracker(index), 200);
   }

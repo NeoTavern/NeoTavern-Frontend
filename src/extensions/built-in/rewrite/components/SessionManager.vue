@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { EmptyState } from '../../../../components/common';
 import { Button } from '../../../../components/UI';
 import { useStrictI18n } from '../../../../composables/useStrictI18n';
 import type { RewriteSession } from '../types';
@@ -24,9 +25,7 @@ const { t } = useStrictI18n();
       <Button icon="fa-plus" @click="emit('new-session')">{{ t('common.new') }}</Button>
     </div>
     <div class="session-list">
-      <div v-if="sessions.length === 0" class="empty-state">
-        {{ t('extensionsBuiltin.rewrite.session.noSessions') }}
-      </div>
+      <EmptyState v-if="sessions.length === 0" :description="t('extensionsBuiltin.rewrite.session.noSessions')" />
       <div
         v-for="session in sessions"
         :key="session.id"
@@ -110,13 +109,5 @@ const { t } = useStrictI18n();
 .delete-btn {
   color: var(--color-warning);
   padding: 4px;
-}
-
-.empty-state {
-  font-size: 0.9em;
-  font-style: italic;
-  opacity: 0.7;
-  padding: 10px;
-  text-align: center;
 }
 </style>

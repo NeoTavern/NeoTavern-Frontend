@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { GenerationMode } from '../../../constants';
 import type { ApiChatMessage, Character, ChatMessage, ExtensionAPI } from '../../../types';
+import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
 import {
   DEFAULT_SUMMARY_TEMPLATE,
   GroupGenerationHandlingMode,
@@ -192,8 +193,7 @@ export class GroupChatService {
     const extensionSettings = migrateGroupChatSettings(this.api.settings.get());
     const template =
       resolveGroupChatPrompts(extensionSettings).defaultSummaryPromptTemplate || DEFAULT_SUMMARY_TEMPLATE;
-    const connectionProfile =
-      extensionSettings?.defaultConnectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile = resolveConnectionProfile(this.api, extensionSettings?.defaultConnectionProfile);
     if (!connectionProfile) {
       this.api.ui.showToast(this.t('extensionsBuiltin.groupChat.errors.noConnectionProfile'), 'error');
       return;
@@ -385,8 +385,7 @@ export class GroupChatService {
     const extensionSettings = migrateGroupChatSettings(this.api.settings.get());
     const template = resolveGroupChatPrompts(extensionSettings).defaultDecisionPromptTemplate;
     const contextSize = config?.decisionContextSize ?? 15;
-    const connectionProfile =
-      extensionSettings?.defaultConnectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
+    const connectionProfile = resolveConnectionProfile(this.api, extensionSettings?.defaultConnectionProfile);
     if (!connectionProfile) {
       this.api.ui.showToast(this.t('extensionsBuiltin.groupChat.errors.noConnectionProfile'), 'error');
       return null;

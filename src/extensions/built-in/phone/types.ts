@@ -1,10 +1,10 @@
 import type { ExtensionAPI } from '../../../types';
 import {
-  migratePromptPresetState,
+  migratePromptPresetSettings,
   resolvePromptPreset,
   type PromptPreset,
   type PromptPresetState,
-} from '../prompt-presets';
+} from '../_shared/prompt-presets';
 
 export interface PhoneChatExtraData {
   contacts?: PhoneContact[];
@@ -130,25 +130,19 @@ export const DEFAULT_SETTINGS: PhoneSettings = {
 };
 
 export function migratePhoneSettings(settings: Partial<PhoneSettings> = {}): PhoneSettings {
-  return {
-    ...DEFAULT_SETTINGS,
-    ...migratePromptPresetState({
-      settings: {
-        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
-        promptPresets: [],
-        ...settings,
-      },
-      builtInPresets: BUILT_IN_PROMPT_PRESETS,
-      legacyPrompts: {
-        contactPrompt: settings.contactPrompt,
-        smsPrompt: settings.smsPrompt,
-      },
-      legacyDefaults: {
-        contactPrompt: DEFAULT_CONTACT_PROMPT,
-        smsPrompt: DEFAULT_SMS_PROMPT,
-      },
-    }),
-  };
+  return migratePromptPresetSettings({
+    settings,
+    defaultSettings: DEFAULT_SETTINGS,
+    builtInPresets: BUILT_IN_PROMPT_PRESETS,
+    legacyPrompts: {
+      contactPrompt: settings.contactPrompt,
+      smsPrompt: settings.smsPrompt,
+    },
+    legacyDefaults: {
+      contactPrompt: DEFAULT_CONTACT_PROMPT,
+      smsPrompt: DEFAULT_SMS_PROMPT,
+    },
+  });
 }
 
 export function resolvePhonePrompts(settings: PhoneSettings): PhonePrompts {

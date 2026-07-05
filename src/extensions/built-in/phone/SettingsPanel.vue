@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/common';
-import { FormItem, Input, Select, Toggle } from '../../../components/UI';
-import PromptPresetField from '../PromptPresetField.vue';
+import { FormItem, Select, Toggle } from '../../../components/UI';
+import ConnectionProfileField from '../_shared/components/ConnectionProfileField.vue';
+import NumberSettingField from '../_shared/components/NumberSettingField.vue';
+import PromptPresetField from '../_shared/components/PromptPresetField.vue';
+import { createStructuredRequestFormatOptions } from '../_shared/runtime/structured-request-format';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import {
   BUILT_IN_PROMPT_PRESETS,
   DEFAULT_SETTINGS,
@@ -16,26 +18,13 @@ const props = defineProps<{
 }>();
 
 const t = props.api.i18n.t;
-const settings = ref<PhoneSettings>({ ...DEFAULT_SETTINGS });
+const settings = useExtensionSettings<PhoneSettings>(props.api, { ...DEFAULT_SETTINGS }, migratePhoneSettings);
 
-onMounted(() => {
-  settings.value = migratePhoneSettings(props.api.settings.get());
+const formatOptions = createStructuredRequestFormatOptions({
+  native: t('extensionsBuiltin.phone.requestFormats.native'),
+  json: t('extensionsBuiltin.phone.requestFormats.json'),
+  xml: t('extensionsBuiltin.phone.requestFormats.xml'),
 });
-
-watch(
-  settings,
-  (value) => {
-    props.api.settings.set(undefined, value);
-    props.api.settings.save();
-  },
-  { deep: true },
-);
-
-const formatOptions = [
-  { label: t('extensionsBuiltin.phone.requestFormats.native'), value: 'native' },
-  { label: t('extensionsBuiltin.phone.requestFormats.json'), value: 'json' },
-  { label: t('extensionsBuiltin.phone.requestFormats.xml'), value: 'xml' },
-];
 
 const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 </script>
@@ -46,32 +35,36 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
     <FormItem :label="t('extensionsBuiltin.phone.enable')">
       <Toggle v-model="settings.enabled" />
     </FormItem>
-    <FormItem
+    <ConnectionProfileField
+      v-model="settings.connectionProfile"
       :label="t('extensionsBuiltin.phone.connectionProfile')"
       :description="t('extensionsBuiltin.phone.connectionProfileHint')"
-    >
-      <ConnectionProfileSelector v-model="settings.connectionProfile" />
-    </FormItem>
+    />
     <FormItem :label="t('extensionsBuiltin.phone.structuredRequestFormat')">
       <Select v-model="settings.structuredRequestFormat" :options="formatOptions" />
     </FormItem>
 
     <div class="phone-settings__group">{{ t('extensionsBuiltin.phone.limits') }}</div>
-    <FormItem
+    <NumberSettingField
+      v-model="settings.includeLastXMessages"
       :label="t('extensionsBuiltin.phone.recentChatMessages')"
       :description="t('extensionsBuiltin.phone.recentChatMessagesHint')"
-    >
-      <Input v-model.number="settings.includeLastXMessages" type="number" :min="-1" :max="500" />
-    </FormItem>
-    <FormItem
+      :min="-1"
+      :max="500"
+    />
+    <NumberSettingField
+      v-model="settings.includeLastXSmsMessages"
       :label="t('extensionsBuiltin.phone.recentSmsMessages')"
       :description="t('extensionsBuiltin.phone.recentSmsMessagesHint')"
-    >
-      <Input v-model.number="settings.includeLastXSmsMessages" type="number" :min="-1" :max="200" />
-    </FormItem>
-    <FormItem :label="t('extensionsBuiltin.phone.maxResponseTokens')">
-      <Input v-model.number="settings.maxResponseTokens" type="number" :min="512" :max="32000" />
-    </FormItem>
+      :min="-1"
+      :max="200"
+    />
+    <NumberSettingField
+      v-model="settings.maxResponseTokens"
+      :label="t('extensionsBuiltin.phone.maxResponseTokens')"
+      :min="512"
+      :max="32000"
+    />
 
     <div class="phone-settings__group">{{ t('extensionsBuiltin.phone.aiPrompts') }}</div>
     <PromptPresetField

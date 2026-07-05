@@ -4,10 +4,12 @@ import { Button, FormItem, Input, Select, Textarea, Toggle } from '../../../../c
 import { WorldInfoPosition } from '../../../../constants';
 import type { ApiChatMessage, ExtensionAPI } from '../../../../types';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../../types';
-import PromptPresetField from '../../PromptPresetField.vue';
+import PromptPresetField from '../../_shared/components/PromptPresetField.vue';
+import { mergeChatExtra } from '../../_shared/runtime/extension-extra';
 import type { WorldInfoEntry } from '../../../../types/world-info';
 import {
   BUILT_IN_PROMPT_PRESETS,
+  EXTENSION_KEY,
   type ChatMemoryMetadata,
   type ChatMemoryRecord,
   type ExtensionSettings,
@@ -180,14 +182,10 @@ function saveState() {
   const currentMetadata = props.api.chat.metadata.get();
   if (!currentMetadata) return;
 
-  props.api.chat.metadata.update({
-    extra: {
-      'core.chat-memory': {
-        memories: currentMetadata.extra?.['core.chat-memory']?.memories || [],
-        targetLorebook: selectedLorebook.value,
-        lorebookRange: [startIndex.value, endIndex.value],
-      },
-    },
+  mergeChatExtra<ChatMemoryMetadata>(props.api, EXTENSION_KEY, {
+    memories: currentMetadata.extra?.[EXTENSION_KEY]?.memories || [],
+    targetLorebook: selectedLorebook.value,
+    lorebookRange: [startIndex.value, endIndex.value],
   });
 }
 
@@ -360,14 +358,10 @@ async function createEntry() {
         range: [startIndex.value, endIndex.value],
         timestamp: Date.now(),
       };
-      props.api.chat.metadata.update({
-        extra: {
-          'core.chat-memory': {
-            memories: [...memoryExtra.memories, memoryRecord],
-            targetLorebook: selectedLorebook.value,
-            lorebookRange: [startIndex.value, endIndex.value],
-          },
-        },
+      mergeChatExtra<ChatMemoryMetadata>(props.api, EXTENSION_KEY, {
+        memories: [...memoryExtra.memories, memoryRecord],
+        targetLorebook: selectedLorebook.value,
+        lorebookRange: [startIndex.value, endIndex.value],
       });
     }
 
@@ -423,13 +417,7 @@ async function handleLorebookReset() {
           console.warn('Failed to cleanup memory entry', record, err);
         }
       }
-      props.api.chat.metadata.update({
-        extra: {
-          'core.chat-memory': {
-            memories: [],
-          },
-        },
-      });
+      mergeChatExtra<ChatMemoryMetadata>(props.api, EXTENSION_KEY, { memories: [] });
     }
 
     const history = chatHistory.value;

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { EmptyState } from '../../../../components/common';
 import { Button, Checkbox } from '../../../../components/UI';
 import { useMythicState } from '../composables/useMythicState';
 import { generateInitialScene as sceneManagerGenerateInitialScene } from '../scene-manager';
@@ -12,7 +13,7 @@ interface Props {
 const props = defineProps<Props>();
 const t = props.api.i18n.t;
 
-const { state: extra, getLatestMythicMessageIndex } = useMythicState(props.api);
+const { state: extra, upsertLatestOrLastExtra } = useMythicState(props.api);
 const scene = computed(() => extra.value?.scene);
 const activeNpcCount = computed(() => scene.value?.characters.length || 0);
 
@@ -46,39 +47,10 @@ async function generateInitialScene() {
     const newScene = await sceneManagerGenerateInitialScene(props.api, signal, generateIdentities.value);
     if (signal.aborted || requestId !== activeRequestId.value) return;
 
-    const history = props.api.chat.getHistory();
-    if (history.length === 0) return;
-    const mythicIndex = getLatestMythicMessageIndex();
-    if (mythicIndex === null) {
-      // If no mythic data, add to last message
-      const lastMsg = history[history.length - 1];
-      const newExtra = {
-        scene: newScene,
-        chaos: newScene.chaos_rank,
-      };
-      lastMsg.extra = {
-        ...lastMsg.extra,
-        'core.mythic-agents': newExtra,
-      };
-      props.api.chat.updateMessageObject(history.length - 1, {
-        extra: lastMsg.extra,
-      });
-    } else {
-      const msg = history[mythicIndex];
-      const currentExtra = msg.extra?.['core.mythic-agents'];
-      const newExtra = {
-        ...currentExtra,
-        scene: newScene,
-        chaos: newScene.chaos_rank,
-      };
-      msg.extra = {
-        ...msg.extra,
-        'core.mythic-agents': newExtra,
-      };
-      props.api.chat.updateMessageObject(mythicIndex, {
-        extra: msg.extra,
-      });
-    }
+    upsertLatestOrLastExtra({
+      scene: newScene,
+      chaos: newScene.chaos_rank,
+    });
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.sceneAborted'), 'info');
@@ -134,10 +106,7 @@ async function generateInitialScene() {
       </div>
     </div>
 
-    <div v-else class="empty-state">
-      <i class="fas fa-ghost"></i>
-      <p>{{ t('extensionsBuiltin.mythicAgents.panel.noSceneData') }}</p>
-    </div>
+    <EmptyState v-else icon="fa-ghost" :description="t('extensionsBuiltin.mythicAgents.panel.noSceneData')" />
   </div>
 </template>
 
@@ -210,26 +179,5 @@ async function generateInitialScene() {
   font-size: 1.2rem;
   font-weight: bold;
   color: var(--theme-text-color);
-}
-
-.empty-state {
-  text-align: center;
-  padding: var(--spacing-xl);
-  color: var(--theme-emphasis-color);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-md);
-  background-color: var(--black-30a);
-  border-radius: var(--base-border-radius);
-
-  i {
-    font-size: 2rem;
-    opacity: 0.5;
-  }
-
-  p {
-    margin: 0;
-  }
 }
 </style>

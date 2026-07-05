@@ -3,9 +3,10 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { ConnectionProfileSelector } from '../../../components/common';
 import { FormItem, Tabs } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
+import { mergeChatExtra } from '../_shared/runtime/extension-extra';
 import LorebookTab from './components/LorebookTab.vue';
 import MessageSummariesTab from './components/MessageSummariesTab.vue';
-import { type ChatMemoryMetadata, type ExtensionSettings, type MemoryMessageExtra } from './types';
+import { EXTENSION_KEY, type ChatMemoryMetadata, type ExtensionSettings, type MemoryMessageExtra } from './types';
 
 const props = defineProps<{
   api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata, MemoryMessageExtra>;
@@ -59,17 +60,7 @@ function saveGlobalSettings() {
 }
 
 function saveTabState() {
-  const currentMetadata = props.api.chat.metadata.get();
-  if (!currentMetadata) return;
-
-  props.api.chat.metadata.update({
-    extra: {
-      'core.chat-memory': {
-        memories: currentMetadata.extra?.['core.chat-memory']?.memories || [],
-        activeTab: activeTab.value,
-      },
-    },
-  });
+  mergeChatExtra<ChatMemoryMetadata>(props.api, EXTENSION_KEY, { activeTab: activeTab.value });
 }
 </script>
 

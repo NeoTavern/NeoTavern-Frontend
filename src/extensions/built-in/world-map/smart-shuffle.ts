@@ -1,3 +1,4 @@
+import { cloneJson } from '../_shared/data-utils';
 import type {
   WorldMapAccessPoint,
   WorldMapArea,
@@ -87,10 +88,6 @@ const DEFAULT_CONNECTION_STYLE_IDS: Record<WorldMapRoute['kind'], string> = {
   adjacent: 'smart_adjacent',
   unknown: 'smart_unknown',
 };
-
-function cloneMap(map: WorldMapDocument): WorldMapDocument {
-  return JSON.parse(JSON.stringify(map)) as WorldMapDocument;
-}
 
 function hashSeed(seed: string): number {
   let hash = 2166136261;
@@ -1393,7 +1390,7 @@ export function smartShuffleWorldMap(
   mode: WorldMapShuffleMode,
   seed = `${Date.now()}`,
 ): WorldMapDocument {
-  const nextMap = cloneMap(map);
+  const nextMap = cloneJson(map);
   const rng = createRng(`${mode}:${seed}`);
   if (mode === 'all' || mode === 'positions') smartShufflePositions(nextMap, rng);
   if (mode === 'all' || mode === 'paths') smartShufflePaths(nextMap, rng);

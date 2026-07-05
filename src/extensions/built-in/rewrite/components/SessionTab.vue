@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Button } from '../../../../components/UI';
-import { SplitPane } from '../../../../components/common';
+import { EmptyState, SplitPane } from '../../../../components/common';
 import type { ExtensionAPI } from '../../../../types';
 import type { FieldChange, RewriteField, RewriteSession, RewriteSettings } from '../types';
 import SessionManager from './SessionManager.vue';
@@ -83,12 +83,15 @@ function handleApplyLatest() {
             @abort="emit('abort')"
             @regenerate="emit('regenerate')"
           />
-          <div v-else class="empty-session-view">
-            <p>{{ t('extensionsBuiltin.rewrite.session.selectSession') }}</p>
+          <EmptyState
+            v-else
+            class="empty-session-view"
+            :description="t('extensionsBuiltin.rewrite.session.selectSession')"
+          >
             <Button icon="fa-plus" @click="emit('newSession')">{{
               t('extensionsBuiltin.rewrite.session.newSession')
             }}</Button>
-          </div>
+          </EmptyState>
 
           <!-- Footer for Session Tab -->
           <div class="session-footer">
@@ -158,12 +161,7 @@ function handleApplyLatest() {
 
 .empty-session-view {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  gap: 15px;
-  opacity: 0.6;
   border: 1px dashed var(--theme-border-color);
   border-radius: var(--base-border-radius);
 }

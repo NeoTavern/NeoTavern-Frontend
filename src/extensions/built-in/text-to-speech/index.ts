@@ -1,39 +1,12 @@
 import { GenerationMode } from '../../../constants';
 import type { ChatMessage, ExtensionAPI } from '../../../types';
+import { findChatMessageIndex, isFinishedAssistantMessage } from '../_shared/runtime/chat-message';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
 import { countTtsWords, prepareTtsText, TextToSpeechService } from './tts-service';
 import { mergeTtsSettings, type TextToSpeechSettings, type TtsPlaybackState } from './types';
 
 export { manifest };
-
-function isFinishedAssistantMessage(message: ChatMessage | null): message is ChatMessage {
-  return Boolean(message && !message.is_user && !message.is_system && message.gen_finished);
-}
-
-function findMessageIndex(history: ChatMessage[], message: ChatMessage, generationId?: string): number {
-  if (generationId) {
-    for (let index = history.length - 1; index >= 0; index--) {
-      const candidate = history[index];
-      if (candidate.swipe_info?.some((swipe) => swipe.generation_id === generationId)) return index;
-    }
-  }
-
-  for (let index = history.length - 1; index >= 0; index--) {
-    const candidate = history[index];
-    if (
-      candidate.name === message.name &&
-      candidate.send_date === message.send_date &&
-      candidate.gen_started === message.gen_started &&
-      candidate.gen_finished === message.gen_finished &&
-      candidate.mes === message.mes
-    ) {
-      return index;
-    }
-  }
-
-  return -1;
-}
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
@@ -368,7 +341,7 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
 
   unbinds.push(
     api.events.on('message:created', (message: ChatMessage) => {
-      const messageIndex = findMessageIndex(api.chat.getHistory(), message);
+      const messageIndex = findChatMessageIndex(api.chat.getHistory(), message);
       if (messageIndex === -1) return;
 
       for (const state of earlyPlaybackByGeneration.values()) {
@@ -396,7 +369,7 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
         return;
       }
 
-      const messageIndex = findMessageIndex(api.chat.getHistory(), message, context.generationId);
+      const messageIndex = findChatMessageIndex(api.chat.getHistory(), message, context.generationId);
       if (messageIndex === -1) return;
 
       if (earlyPlayback?.messageIndex === null) {

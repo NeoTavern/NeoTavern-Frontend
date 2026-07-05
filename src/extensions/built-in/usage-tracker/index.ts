@@ -5,6 +5,7 @@ import { POPUP_TYPE, type ExtensionAPI, type GenerationResponse, type StreamedCh
 import type { LlmUsageData } from '../../../types/events';
 import { MountableComponent } from '../../../types/ExtensionAPI';
 import type { ChatCompletionPayload } from '../../../types/generation';
+import { cloneJson } from '../_shared/data-utils';
 import CaptureViewer from './CaptureViewer.vue';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
@@ -40,10 +41,6 @@ function getSettings(api: ExtensionAPI<UsageTrackerSettings>): UsageTrackerSetti
 
 function isCaptureEnabled(api: ExtensionAPI<UsageTrackerSettings>): boolean {
   return getSettings(api).captureFullPayloads;
-}
-
-function cloneJson<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
 }
 
 function getActiveChatFile(api: ExtensionAPI<UsageTrackerSettings>): string | undefined {

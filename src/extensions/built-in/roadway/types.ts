@@ -1,9 +1,9 @@
 import {
-  migratePromptPresetState,
+  migratePromptPresetSettings,
   resolvePromptPreset,
   type PromptPreset,
   type PromptPresetState,
-} from '../prompt-presets';
+} from '../_shared/prompt-presets';
 
 export type RoadwayPrompts = {
   choiceGenPrompt: string;
@@ -89,25 +89,19 @@ export const DEFAULT_SETTINGS: RoadwaySettings = {
 };
 
 export function migrateRoadwaySettings(settings: Partial<RoadwaySettings> = {}): RoadwaySettings {
-  return {
-    ...DEFAULT_SETTINGS,
-    ...migratePromptPresetState({
-      settings: {
-        activePromptPresetId: DEFAULT_SETTINGS.activePromptPresetId,
-        promptPresets: [],
-        ...settings,
-      },
-      builtInPresets: BUILT_IN_PROMPT_PRESETS,
-      legacyPrompts: {
-        choiceGenPrompt: settings.choiceGenPrompt,
-        impersonatePrompt: settings.impersonatePrompt,
-      },
-      legacyDefaults: {
-        choiceGenPrompt: DEFAULT_CHOICE_GEN_PROMPT,
-        impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
-      },
-    }),
-  };
+  return migratePromptPresetSettings({
+    settings,
+    defaultSettings: DEFAULT_SETTINGS,
+    builtInPresets: BUILT_IN_PROMPT_PRESETS,
+    legacyPrompts: {
+      choiceGenPrompt: settings.choiceGenPrompt,
+      impersonatePrompt: settings.impersonatePrompt,
+    },
+    legacyDefaults: {
+      choiceGenPrompt: DEFAULT_CHOICE_GEN_PROMPT,
+      impersonatePrompt: DEFAULT_IMPERSONATE_PROMPT,
+    },
+  });
 }
 
 export function resolveRoadwayPrompts(settings: RoadwaySettings): RoadwayPrompts {

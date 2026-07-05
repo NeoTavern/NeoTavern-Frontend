@@ -1,3 +1,4 @@
+import { cloneJson } from '../_shared/data-utils';
 import { ANALYSIS_PROMPT, INITIAL_SCENE_PROMPT, NARRATION_PROMPT } from './prompts';
 import type {
   EventGenerationData,
@@ -2020,7 +2021,7 @@ export const DEFAULT_BASE_SETTINGS: MythicSettings = {
 };
 
 export function cloneDefaultMythicSettings(): MythicSettings {
-  return JSON.parse(JSON.stringify(DEFAULT_BASE_SETTINGS)) as MythicSettings;
+  return cloneJson(DEFAULT_BASE_SETTINGS);
 }
 
 function isDefaultPresetChanged(preset: MythicPreset | undefined): boolean {
@@ -2064,7 +2065,7 @@ export function migrateMythicSettings(saved?: Partial<MythicSettings> | null): M
     presets.push({
       name: migratedName,
       builtIn: false,
-      data: JSON.parse(JSON.stringify(savedDefault.data)) as MythicPresetData,
+      data: cloneJson(savedDefault.data) as MythicPresetData,
     });
 
     if (!saved.selectedPreset || saved.selectedPreset === 'Default') {

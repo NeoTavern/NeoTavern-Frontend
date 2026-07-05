@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { FormItem, Input, Toggle } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import { DEFAULT_SETTINGS, type UsageTrackerSettings } from './types';
 
 const props = defineProps<{
@@ -9,28 +10,22 @@ const props = defineProps<{
 }>();
 
 const t = props.api.i18n.t;
-const settings = ref<UsageTrackerSettings>({ ...DEFAULT_SETTINGS });
 const storageLimitMb = ref(Math.round(DEFAULT_SETTINGS.captureStorageLimitBytes / 1024 / 1024));
-
-onMounted(() => {
-  const saved = props.api.settings.get();
-  settings.value = { ...DEFAULT_SETTINGS, ...(saved ?? {}) };
-  storageLimitMb.value = Math.max(1, Math.round(settings.value.captureStorageLimitBytes / 1024 / 1024));
-});
+const settings = useExtensionSettings<UsageTrackerSettings>(
+  props.api,
+  { ...DEFAULT_SETTINGS },
+  (saved) => ({ ...DEFAULT_SETTINGS, ...(saved ?? {}) }),
+  {
+    onLoaded: (loadedSettings) => {
+      storageLimitMb.value = Math.max(1, Math.round(loadedSettings.captureStorageLimitBytes / 1024 / 1024));
+    },
+  },
+);
 
 watch(storageLimitMb, (value) => {
   const normalized = typeof value === 'number' && Number.isFinite(value) ? Math.max(1, Math.round(value)) : 1;
   settings.value.captureStorageLimitBytes = normalized * 1024 * 1024;
 });
-
-watch(
-  settings,
-  (newSettings) => {
-    props.api.settings.set(undefined, newSettings);
-    props.api.settings.save();
-  },
-  { deep: true },
-);
 </script>
 
 <template>

@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/common';
-import { FormItem } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
-import PromptPresetField from '../PromptPresetField.vue';
+import ConnectionProfileField from '../_shared/components/ConnectionProfileField.vue';
+import PromptPresetField from '../_shared/components/PromptPresetField.vue';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import { BUILT_IN_PROMPT_PRESETS, DEFAULT_SETTINGS, migrateGroupChatSettings, type GroupChatPrompts } from './types';
 import type { GroupExtensionSettings } from './types';
 
@@ -12,20 +11,10 @@ const props = defineProps<{
 }>();
 
 const t = props.api.i18n.t;
-
-const settings = ref<GroupExtensionSettings>({ ...DEFAULT_SETTINGS });
-
-onMounted(() => {
-  settings.value = migrateGroupChatSettings(props.api.settings.get());
-});
-
-watch(
-  settings,
-  (newSettings) => {
-    props.api.settings.set(undefined, newSettings);
-    props.api.settings.save();
-  },
-  { deep: true },
+const settings = useExtensionSettings<GroupExtensionSettings>(
+  props.api,
+  { ...DEFAULT_SETTINGS },
+  migrateGroupChatSettings,
 );
 
 const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
@@ -81,12 +70,11 @@ const promptFields: Array<{
   <div class="group-settings-panel">
     <div class="settings-section">
       <h3>{{ t('common.general') }}</h3>
-      <FormItem
+      <ConnectionProfileField
+        v-model="settings.defaultConnectionProfile"
         :label="t('extensionsBuiltin.groupChat.settings.defaultConnectionProfile')"
         :description="t('extensionsBuiltin.groupChat.settings.defaultConnectionProfileDesc')"
-      >
-        <ConnectionProfileSelector v-model="settings.defaultConnectionProfile" />
-      </FormItem>
+      />
     </div>
 
     <div class="settings-section">

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
-import { ConnectionProfileSelector } from '../../../components/common';
-import { FormItem, Input, Select, Toggle } from '../../../components/UI';
-import PromptPresetField from '../PromptPresetField.vue';
+import { FormItem, Select, Toggle } from '../../../components/UI';
+import ConnectionProfileField from '../_shared/components/ConnectionProfileField.vue';
+import NumberSettingField from '../_shared/components/NumberSettingField.vue';
+import PromptPresetField from '../_shared/components/PromptPresetField.vue';
+import { createStructuredRequestFormatOptions } from '../_shared/runtime/structured-request-format';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import {
   BUILT_IN_PROMPT_PRESETS,
   DEFAULT_SETTINGS,
@@ -16,26 +18,13 @@ const props = defineProps<{
 }>();
 
 const t = props.api.i18n.t;
-const settings = ref<TimelineSettings>({ ...DEFAULT_SETTINGS });
+const settings = useExtensionSettings<TimelineSettings>(props.api, { ...DEFAULT_SETTINGS }, migrateTimelineSettings);
 
-onMounted(() => {
-  settings.value = migrateTimelineSettings(props.api.settings.get());
+const formatOptions = createStructuredRequestFormatOptions({
+  native: t('extensionsBuiltin.timeline.requestFormats.native'),
+  json: t('extensionsBuiltin.timeline.requestFormats.json'),
+  xml: t('extensionsBuiltin.timeline.requestFormats.xml'),
 });
-
-watch(
-  settings,
-  (value) => {
-    props.api.settings.set(undefined, value);
-    props.api.settings.save();
-  },
-  { deep: true },
-);
-
-const formatOptions = [
-  { label: t('extensionsBuiltin.timeline.requestFormats.native'), value: 'native' },
-  { label: t('extensionsBuiltin.timeline.requestFormats.json'), value: 'json' },
-  { label: t('extensionsBuiltin.timeline.requestFormats.xml'), value: 'xml' },
-];
 
 const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 </script>
@@ -46,39 +35,44 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
     <FormItem :label="t('extensionsBuiltin.timeline.enable')">
       <Toggle v-model="settings.enabled" />
     </FormItem>
-    <FormItem
+    <ConnectionProfileField
+      v-model="settings.connectionProfile"
       :label="t('extensionsBuiltin.timeline.connectionProfile')"
       :description="t('extensionsBuiltin.timeline.connectionProfileHint')"
-    >
-      <ConnectionProfileSelector v-model="settings.connectionProfile" />
-    </FormItem>
+    />
     <FormItem :label="t('extensionsBuiltin.timeline.structuredRequestFormat')">
       <Select v-model="settings.structuredRequestFormat" :options="formatOptions" />
     </FormItem>
 
     <div class="timeline-settings__group">{{ t('extensionsBuiltin.timeline.limits') }}</div>
-    <FormItem
+    <NumberSettingField
+      v-model="settings.includeLastXMessages"
       :label="t('extensionsBuiltin.timeline.recentMessages')"
       :description="t('extensionsBuiltin.timeline.recentMessagesHint')"
-    >
-      <Input v-model.number="settings.includeLastXMessages" type="number" :min="-1" :max="500" />
-    </FormItem>
-    <FormItem :label="t('extensionsBuiltin.timeline.maxResponseTokens')">
-      <Input v-model.number="settings.maxResponseTokens" type="number" :min="512" :max="32000" />
-    </FormItem>
+      :min="-1"
+      :max="500"
+    />
+    <NumberSettingField
+      v-model="settings.maxResponseTokens"
+      :label="t('extensionsBuiltin.timeline.maxResponseTokens')"
+      :min="512"
+      :max="32000"
+    />
     <div class="timeline-settings__row">
-      <FormItem
+      <NumberSettingField
+        v-model="settings.maxDueInjected"
         :label="t('extensionsBuiltin.timeline.dueInjected')"
         :description="t('extensionsBuiltin.timeline.dueInjectedHint')"
-      >
-        <Input v-model.number="settings.maxDueInjected" type="number" :min="-1" :max="20" />
-      </FormItem>
-      <FormItem
+        :min="-1"
+        :max="20"
+      />
+      <NumberSettingField
+        v-model="settings.maxUpcomingInjected"
         :label="t('extensionsBuiltin.timeline.upcomingInjected')"
         :description="t('extensionsBuiltin.timeline.upcomingInjectedHint')"
-      >
-        <Input v-model.number="settings.maxUpcomingInjected" type="number" :min="-1" :max="20" />
-      </FormItem>
+        :min="-1"
+        :max="20"
+      />
     </div>
 
     <div class="timeline-settings__group">{{ t('extensionsBuiltin.timeline.aiPrompt') }}</div>

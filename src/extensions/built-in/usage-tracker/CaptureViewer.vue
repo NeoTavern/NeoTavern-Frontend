@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { EmptyState } from '../../../components/common';
 import { Button } from '../../../components/UI';
 import { useStrictI18n } from '../../../composables/useStrictI18n';
 import type { UsageCaptureEntry } from './types';
@@ -192,7 +193,7 @@ function sourceLabel(source: string): string {
       <pre class="capture-code">{{ activeContent || t('extensionsBuiltin.usageTracker.noDataCaptured') }}</pre>
     </section>
 
-    <div v-else class="empty-state">{{ t('extensionsBuiltin.usageTracker.noCaptures') }}</div>
+    <EmptyState v-else :description="t('extensionsBuiltin.usageTracker.noCaptures')" />
   </div>
 </template>
 
@@ -286,10 +287,6 @@ function sourceLabel(source: string): string {
   word-break: break-word;
   font-family: var(--font-family-mono);
   font-size: 0.85em;
-}
-
-.empty-state {
-  color: var(--theme-emphasis-color);
 }
 
 @media (max-width: 700px) {

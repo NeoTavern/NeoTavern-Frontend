@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
 import { Checkbox, FormItem, Input } from '../../../components/UI';
 import type { ExtensionAPI } from '../../../types';
+import { useExtensionSettings } from '../_shared/composables/use-extension-settings';
 import { DEFAULT_SETTINGS, type StandardToolsSettings } from './types';
 
 const props = defineProps<{
@@ -9,24 +9,10 @@ const props = defineProps<{
 }>();
 
 const t = props.api.i18n.t;
-
-const settings = ref<StandardToolsSettings>({ ...DEFAULT_SETTINGS });
-
-onMounted(() => {
-  const saved = props.api.settings.get();
-  if (saved) {
-    settings.value = { ...DEFAULT_SETTINGS, ...saved };
-  }
-});
-
-watch(
-  settings,
-  (newSettings) => {
-    props.api.settings.set(undefined, newSettings);
-    props.api.settings.save();
-  },
-  { deep: true },
-);
+const settings = useExtensionSettings<StandardToolsSettings>(props.api, { ...DEFAULT_SETTINGS }, (saved) => ({
+  ...DEFAULT_SETTINGS,
+  ...(saved ?? {}),
+}));
 
 const getResetTool = (field: keyof StandardToolsSettings) => ({
   id: 'reset',
