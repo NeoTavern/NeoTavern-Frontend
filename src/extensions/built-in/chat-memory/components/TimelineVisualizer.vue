@@ -11,6 +11,8 @@ export interface TimelineSegment {
 const props = defineProps<{
   totalItems: number;
   segments: TimelineSegment[];
+  title: string;
+  messageUnitLabel: string;
 }>();
 
 const processedSegments = computed(() => {
@@ -32,7 +34,7 @@ const processedSegments = computed(() => {
 </script>
 
 <template>
-  <div class="timeline-container" title="Timeline">
+  <div class="timeline-container" :title="title">
     <div class="timeline-bar">
       <div
         v-for="(seg, idx) in processedSegments"
@@ -45,7 +47,7 @@ const processedSegments = computed(() => {
     </div>
     <div class="timeline-labels">
       <span>0</span>
-      <span>{{ totalItems }} msgs</span>
+      <span>{{ totalItems }} {{ messageUnitLabel }}</span>
     </div>
   </div>
 </template>

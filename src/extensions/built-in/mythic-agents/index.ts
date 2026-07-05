@@ -39,14 +39,14 @@ export function activate(api: MythicExtensionAPI) {
   // Register the sidebar
   api.ui.registerSidebar('mythic-panel', MythicPanel, 'right', {
     icon: 'fa-dice-d20',
-    title: 'Mythic Agents',
+    title: api.i18n.t('extensionsBuiltin.mythicAgents.title'),
     props: { api },
   });
 
   // Register navbar item
   api.ui.registerNavBarItem('mythic', {
     icon: 'fa-dice-d20',
-    title: 'Mythic Agents (GME)',
+    title: api.i18n.t('extensionsBuiltin.mythicAgents.navTitle'),
     layoutComponent: MythicPanel,
     layoutProps: { api },
     onClick() {
@@ -334,7 +334,7 @@ export function activate(api: MythicExtensionAPI) {
         }
       } catch (error) {
         console.error('Mythic Agents error:', error);
-        api.ui.showToast('Mythic Agents encountered an error. Check console for details.', 'error');
+        api.ui.showToast(api.i18n.t('extensionsBuiltin.mythicAgents.toasts.runtimeError'), 'error');
       } finally {
         api.chat.setGeneratingState(false);
       }

@@ -10,6 +10,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const t = props.api.i18n.t;
 
 const { state: extra, getLatestMythicMessageIndex } = useMythicState(props.api);
 const chaos = computed(() => extra.value?.chaos ?? 5);
@@ -62,8 +63,8 @@ function adjustChaos(delta: number) {
 function resetAll() {
   props.api.ui
     .showPopup({
-      title: 'Reset Mythic Agents',
-      content: 'This will clear all mythic agents data (chaos, scene, action history, etc.). Are you sure?',
+      title: t('extensionsBuiltin.mythicAgents.panel.resetTitle'),
+      content: t('extensionsBuiltin.mythicAgents.panel.resetContent'),
       type: POPUP_TYPE.CONFIRM,
     })
     .then(async (result) => {
@@ -95,7 +96,7 @@ function resetAll() {
           props.api.chat.metadata.set({ ...metadata, extra });
         }
 
-        props.api.ui.showToast('Mythic Agents chat data reset', 'success');
+        props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.chatDataReset'), 'success');
       }
     });
 }
@@ -138,7 +139,7 @@ function getRandomEvents(action: DisplayAction): EventMeaningResult[] {
   <div class="dashboard">
     <!-- Chaos Control -->
     <div class="chaos-section">
-      <div class="section-header">Chaos Rank</div>
+      <div class="section-header">{{ t('extensionsBuiltin.mythicAgents.panel.chaosRank') }}</div>
       <div class="chaos-control">
         <Button class="chaos-btn" :disabled="chaos <= 1" @click="adjustChaos(-1)">
           <i class="fas fa-minus"></i>
@@ -154,7 +155,11 @@ function getRandomEvents(action: DisplayAction): EventMeaningResult[] {
         </Button>
       </div>
       <div class="chaos-description">
-        {{ chaos >= 5 ? 'High Chaos: Expect the unexpected.' : 'Low Chaos: Things are calm.' }}
+        {{
+          chaos >= 5
+            ? t('extensionsBuiltin.mythicAgents.panel.highChaos')
+            : t('extensionsBuiltin.mythicAgents.panel.lowChaos')
+        }}
       </div>
     </div>
 
@@ -164,18 +169,20 @@ function getRandomEvents(action: DisplayAction): EventMeaningResult[] {
         <div class="stat-value">
           {{ npcCount }}
         </div>
-        <div class="stat-label">NPCs</div>
+        <div class="stat-label">{{ t('extensionsBuiltin.mythicAgents.panel.npcs') }}</div>
       </div>
       <div class="stat-card">
         <div class="stat-value">{{ scene?.threads?.length || 0 }}</div>
-        <div class="stat-label">Threads</div>
+        <div class="stat-label">{{ t('extensionsBuiltin.mythicAgents.panel.threads') }}</div>
       </div>
     </div>
 
     <!-- Recent Actions -->
     <div class="recent-activity">
-      <div class="section-header">Recent Actions</div>
-      <div v-if="actionHistory.length === 0" class="empty-state">No actions recorded yet.</div>
+      <div class="section-header">{{ t('extensionsBuiltin.mythicAgents.panel.recentActions') }}</div>
+      <div v-if="actionHistory.length === 0" class="empty-state">
+        {{ t('extensionsBuiltin.mythicAgents.panel.noActionsRecorded') }}
+      </div>
       <ul v-else class="activity-list">
         <li v-for="(action, index) in actionHistory.slice().reverse().slice(0, 5)" :key="index" class="activity-item">
           <div v-for="(question, questionIndex) in getQuestions(action)" :key="questionIndex" class="activity-main">

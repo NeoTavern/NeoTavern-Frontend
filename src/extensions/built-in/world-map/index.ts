@@ -1348,7 +1348,7 @@ class WorldMapManager {
     await this.removeChatMapMetadata();
     await this.clearMessageExtras();
     this.injectAllUi();
-    this.api.ui.showToast('World map data removed for this chat.', 'success');
+    this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.worldMap.toasts.removed'), 'success');
   }
 
   private async updateMessageExtra(index: number, data: Partial<WorldMapMessageExtraData>): Promise<void> {
@@ -1387,10 +1387,10 @@ class WorldMapManager {
     this.injectChatUi();
     this.api.ui.showToast(
       rollback && isLatestMapProducingMessage
-        ? 'World map reverted to the state before this message delta.'
+        ? this.api.i18n.t('extensionsBuiltin.worldMap.toasts.reverted')
         : removedDeltaCount > 0
-          ? 'World map rebuilt without this message delta.'
-          : 'World map data removed from message. No replayable delta was stored for it.',
+          ? this.api.i18n.t('extensionsBuiltin.worldMap.toasts.rebuilt')
+          : this.api.i18n.t('extensionsBuiltin.worldMap.toasts.messageDataRemoved'),
       'success',
     );
   }
@@ -1574,25 +1574,25 @@ class WorldMapManager {
     const history = this.api.chat.getHistory();
     const targetIndex = index ?? history.length - 1;
     if (targetIndex < 0 || !history[targetIndex]) {
-      this.api.ui.showToast('No message available for world map update.', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.worldMap.toasts.noMessage'), 'info');
       return;
     }
 
     if (this.pendingRequests.has(targetIndex)) {
-      this.api.ui.showToast('World map update is already running for this message.', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.worldMap.toasts.updateAlreadyRunning'), 'info');
       return;
     }
 
     const settings = this.getSettings();
     if (!settings.enabled) {
-      this.api.ui.showToast('World Map is disabled in settings.', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.worldMap.toasts.disabled'), 'info');
       return;
     }
 
     const connectionProfile =
       settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
     if (!connectionProfile) {
-      this.api.ui.showToast('No connection profile selected for World Map.', 'error');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.worldMap.toasts.noConnectionProfile'), 'error');
       return;
     }
 
@@ -1634,7 +1634,7 @@ class WorldMapManager {
       ];
 
       if (!generation.delta && generation.parseError && generation.rawContent.trim()) {
-        this.api.ui.showToast('World map response needs schema repair. Retrying once...', 'info');
+        this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.worldMap.toasts.schemaRepair'), 'info');
         const repaired = await this.repairStructuredMapDelta(
           repairMessages,
           'Schema validation error',
@@ -1672,7 +1672,7 @@ class WorldMapManager {
         qualityValidationError = qualityIssues.map((issue) => `- ${issue.code}: ${issue.message}`).join('\n');
         const candidateMapJson = JSON.stringify(candidateMap);
 
-        this.api.ui.showToast('World map response needs render-quality repair. Retrying once...', 'info');
+        this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.worldMap.toasts.qualityRepair'), 'info');
         let repaired = await this.repairStructuredMapDelta(
           repairMessages,
           'Map quality validation issues',
@@ -1727,7 +1727,7 @@ class WorldMapManager {
         await this.updateMessageExtra(targetIndex, {
           run: { status: 'error', error, updatedAt: new Date().toISOString() },
         });
-        this.api.ui.showToast('World map update failed.', 'error');
+        this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.worldMap.toasts.updateFailed'), 'error');
         return;
       }
 
@@ -1738,13 +1738,13 @@ class WorldMapManager {
         deltas: appliedDeltas,
         rollback,
       });
-      this.api.ui.showToast('World map updated.', 'success');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.worldMap.toasts.updated'), 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown world map update error.';
       await this.updateMessageExtra(targetIndex, {
         run: { status: 'error', error: message, updatedAt: new Date().toISOString() },
       });
-      this.api.ui.showToast('World map update failed.', 'error');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.worldMap.toasts.updateFailed'), 'error');
       console.error('World map update failed:', error);
     } finally {
       this.pendingRequests.delete(targetIndex);
@@ -1754,20 +1754,30 @@ class WorldMapManager {
   public async smartShuffleMap(mode: WorldMapShuffleMode): Promise<void> {
     const map = this.getMap();
     if (!map) {
-      this.api.ui.showToast('No world map exists for this chat yet.', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.worldMap.toasts.noMapYet'), 'info');
       return;
     }
     const shuffledMap = smartShuffleWorldMap(map, mode, `${Date.now()}-${Math.random()}`);
     await this.setMap(shuffledMap);
+    const shuffleModeLabels: Record<Exclude<WorldMapShuffleMode, 'all'>, string> = {
+      positions: this.api.i18n.t('extensionsBuiltin.worldMap.shuffleModes.positions'),
+      paths: this.api.i18n.t('extensionsBuiltin.worldMap.shuffleModes.paths'),
+      areas: this.api.i18n.t('extensionsBuiltin.worldMap.shuffleModes.areas'),
+      style: this.api.i18n.t('extensionsBuiltin.worldMap.shuffleModes.style'),
+    };
     this.api.ui.showToast(
-      mode === 'all' ? 'World map shuffled.' : `World map ${mode === 'positions' ? 'positions' : mode} shuffled.`,
+      mode === 'all'
+        ? this.api.i18n.t('extensionsBuiltin.worldMap.toasts.shuffled')
+        : this.api.i18n.t('extensionsBuiltin.worldMap.toasts.shuffledMode', {
+            mode: shuffleModeLabels[mode],
+          }),
       'success',
     );
   }
 
   public async showMap(): Promise<void> {
     await this.api.ui.showPopup({
-      title: 'World Map',
+      title: this.api.i18n.t('extensionsBuiltin.worldMap.title'),
       component: WorldMapPanel,
       componentProps: {
         api: this.api,
@@ -1776,8 +1786,8 @@ class WorldMapManager {
         smartShuffleMap: (mode: WorldMapShuffleMode) => this.smartShuffleMap(mode),
         removeMap: async () => {
           const { result } = await this.api.ui.showPopup({
-            title: 'Remove World Map',
-            content: 'Remove the existing world map for this chat?',
+            title: this.api.i18n.t('extensionsBuiltin.worldMap.removeWorldMapTitle'),
+            content: this.api.i18n.t('extensionsBuiltin.worldMap.removeWorldMapContent'),
             type: POPUP_TYPE.CONFIRM,
             okButton: 'common.delete',
             cancelButton: 'common.cancel',
@@ -1861,7 +1871,10 @@ class WorldMapManager {
     target.insertAdjacentElement('afterbegin', mountPoint);
     const button = this.api.ui.mount(mountPoint, MapMessageButton, {
       message,
-      title: hasMap ? 'Update world map from this message' : 'Create world map from this message',
+      title: hasMap
+        ? this.api.i18n.t('extensionsBuiltin.worldMap.updateFromMessage')
+        : this.api.i18n.t('extensionsBuiltin.worldMap.createFromMessage'),
+      clearTitle: this.api.i18n.t('extensionsBuiltin.worldMap.removeDeltaFromMessage'),
       onRun: () => this.runMapUpdate(index),
       onClear: () => this.clearMessageExtra(index),
     });
@@ -1880,18 +1893,24 @@ class WorldMapManager {
     if (!this.api.chat.getChatInfo()) return;
 
     this.unregisterChatUiFns.push(
-      this.api.ui.registerChatQuickAction(QUICK_ACTION_GROUP_ID, 'Context AI', {
-        id: 'world-map-open',
-        icon: 'fa-solid fa-map-location-dot',
-        label: 'World Map',
-        onClick: () => this.showMap(),
-      }),
+      this.api.ui.registerChatQuickAction(
+        QUICK_ACTION_GROUP_ID,
+        this.api.i18n.t('extensionsBuiltin.worldMap.contextAi'),
+        {
+          id: 'world-map-open',
+          icon: 'fa-solid fa-map-location-dot',
+          label: this.api.i18n.t('extensionsBuiltin.worldMap.title'),
+          onClick: () => this.showMap(),
+        },
+      ),
     );
     this.unregisterChatUiFns.push(
       this.api.ui.registerChatFormOptionsMenuItem({
         id: 'world-map-update',
         icon: 'fa-solid fa-map-location-dot',
-        label: hasMap ? 'Update World Map' : 'Create World Map',
+        label: hasMap
+          ? this.api.i18n.t('extensionsBuiltin.worldMap.updateWorldMap')
+          : this.api.i18n.t('extensionsBuiltin.worldMap.createWorldMap'),
         onClick: () => this.runMapUpdate(),
       }),
     );
@@ -1942,7 +1961,7 @@ export function activate(api: WorldMapExtensionAPI) {
   const unbinds: Array<() => void> = [];
 
   api.ui.registerNavBarItem(MAP_NAV_ID, {
-    title: 'World Map',
+    title: api.i18n.t('extensionsBuiltin.worldMap.title'),
     icon: 'fa-solid fa-map-location-dot',
     onClick: () => manager.showMap(),
   });

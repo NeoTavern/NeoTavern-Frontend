@@ -67,6 +67,7 @@ function filterUnsupportedMediaParts(
 export interface ResolvedConnectionProfileSettings {
   provider: ApiProvider;
   model: string;
+  samplerPresetName: string;
   samplerSettings: SamplerSettings;
   formatter: ApiFormatter;
   instructTemplate?: InstructTemplate;
@@ -105,10 +106,14 @@ export async function resolveConnectionProfileSettings(options: {
 
   // Determine effective sampler settings
   let effectiveSamplerSettings = cloneDeep(settingsStore.settings.api.samplers);
+  let effectiveSamplerPresetName = settingsStore.settings.api.selectedSampler || 'Default';
   if (profileSettings?.sampler) {
     if (apiStore.presets.length === 0) await apiStore.loadPresetsForApi();
     const preset = apiStore.presets.find((p) => p.name === profileSettings!.sampler);
-    if (preset) effectiveSamplerSettings = cloneDeep(preset.preset);
+    if (preset) {
+      effectiveSamplerSettings = cloneDeep(preset.preset);
+      effectiveSamplerPresetName = preset.name;
+    }
   }
 
   // Apply sampler overrides
@@ -169,6 +174,7 @@ export async function resolveConnectionProfileSettings(options: {
   return {
     provider: effectiveProvider,
     model: effectiveModel,
+    samplerPresetName: effectiveSamplerPresetName,
     samplerSettings: effectiveSamplerSettings,
     formatter: effectiveFormatter,
     instructTemplate: effectiveTemplate,
@@ -921,7 +927,7 @@ export class ChatCompletionService {
         const errorJson = JSON.parse(errorText);
         errorMessage = errorJson.error?.message || errorJson.message || errorMessage;
       } catch {
-        // TODO: Not a JSON error, use the status text
+        errorMessage = response.statusText || errorMessage;
       }
       throw new Error(errorMessage);
     }

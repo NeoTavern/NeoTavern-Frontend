@@ -214,18 +214,3 @@ const textareaStyle = computed<StyleValue>(() => ({
     <slot name="footer" />
   </div>
 </template>
-
-<style scoped>
-/* TODO: Make sure this is sync with _ui-components.scss */
-.textarea-header-tools {
-  display: flex;
-  margin-left: auto;
-}
-
-.textarea-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-}
-</style>

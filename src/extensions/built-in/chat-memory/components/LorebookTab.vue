@@ -486,7 +486,12 @@ watch(
   <div class="lorebook-tab">
     <div class="section">
       <div class="section-title">1. {{ t('extensionsBuiltin.chatMemory.manageRange') }}</div>
-      <TimelineVisualizer :total-items="maxIndex + 1" :segments="timelineSegments" />
+      <TimelineVisualizer
+        :total-items="maxIndex + 1"
+        :segments="timelineSegments"
+        :title="t('extensionsBuiltin.chatMemory.timeline.title')"
+        :message-unit-label="t('extensionsBuiltin.chatMemory.timeline.messages')"
+      />
       <div class="row">
         <FormItem :label="t('extensionsBuiltin.chatMemory.labels.startIndex')" style="flex: 1" :error="startIndexError">
           <Input v-model.number="startIndex" type="number" :min="0" :max="endIndex" />
@@ -502,7 +507,7 @@ watch(
     </div>
 
     <div class="section">
-      <div class="section-title">2. Summarize</div>
+      <div class="section-title">2. {{ t('extensionsBuiltin.chatMemory.sections.summarize') }}</div>
       <PromptPresetField
         :api="api"
         :active-preset-id="activePromptPresetId"
@@ -551,7 +556,7 @@ watch(
     </div>
 
     <div class="section highlight">
-      <div class="section-title">3. Create Memory</div>
+      <div class="section-title">3. {{ t('extensionsBuiltin.chatMemory.sections.createMemory') }}</div>
       <div class="row">
         <FormItem :label="t('extensionsBuiltin.chatMemory.labels.targetLorebook')" style="flex: 1">
           <Select

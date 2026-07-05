@@ -13,8 +13,6 @@ const emit = defineEmits<{
   (e: 'track'): void;
 }>();
 
-// TODO: i18n
-
 const t = props.api.i18n.t;
 
 const trackers = computed<Record<string, TrackerData> | undefined>(() => {
@@ -64,9 +62,10 @@ const title = computed(() => {
       return t('extensionsBuiltin.tracker.status.success');
     case 'error':
       const errorTracker = allTrackers.find((t) => t.status === 'error');
-      return `${t('extensionsBuiltin.tracker.status.error')} in ${getNames('error')}: ${
-        errorTracker?.error ?? 'Unknown'
-      }`;
+      return t('extensionsBuiltin.tracker.status.errorIn', {
+        names: getNames('error'),
+        error: errorTracker?.error ?? t('common.unknown'),
+      });
     default:
       return t('extensionsBuiltin.tracker.status.idle');
   }

@@ -1,7 +1,11 @@
 import type { ExtensionManifest } from '../types';
 
-// TODO: Create type for the response
-export async function discoverExtensions(): Promise<{ name: string; type: string }[]> {
+export interface ExtensionDiscoveryResult {
+  name: string;
+  type: string;
+}
+
+export async function discoverExtensions(): Promise<ExtensionDiscoveryResult[]> {
   // Mocked response for development. The real implementation is commented out below.
   console.log('Using mocked extension discovery');
   return Promise.resolve([

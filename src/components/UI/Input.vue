@@ -113,18 +113,3 @@ function handleToolClick(tool: TextareaToolDefinition) {
     />
   </div>
 </template>
-
-<style scoped>
-/* TODO: Make sure this is sync with _ui-components.scss */
-.input-header-tools {
-  display: flex;
-  margin-left: auto;
-}
-
-.input-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 5px;
-}
-</style>

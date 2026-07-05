@@ -336,14 +336,14 @@ class PhoneManager {
 
   public async refreshContacts(): Promise<void> {
     if (this.pendingContacts) {
-      this.api.ui.showToast('Phone contact refresh is already running.', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.phone.toasts.refreshAlreadyRunning'), 'info');
       return;
     }
 
     const settings = this.getSettings();
     const prompts = resolvePhonePrompts(settings);
     if (!settings.enabled) {
-      this.api.ui.showToast('Phone is disabled in settings.', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.phone.toasts.disabled'), 'info');
       return;
     }
 
@@ -399,10 +399,13 @@ class PhoneManager {
         contacts: [...nextById.values()].sort((a, b) => a.displayName.localeCompare(b.displayName)),
         lastContactRefreshAt: now,
       });
-      this.api.ui.showToast('Phone contacts refreshed.', 'success');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.phone.toasts.contactsRefreshed'), 'success');
     } catch (error) {
       console.error('Phone contact refresh failed:', error);
-      this.api.ui.showToast(error instanceof Error ? error.message : 'Phone contact refresh failed.', 'error');
+      this.api.ui.showToast(
+        error instanceof Error ? error.message : this.api.i18n.t('extensionsBuiltin.phone.toasts.contactRefreshFailed'),
+        'error',
+      );
     } finally {
       this.pendingContacts = false;
     }
@@ -425,19 +428,19 @@ class PhoneManager {
     const settings = this.getSettings();
     const prompts = resolvePhonePrompts(settings);
     if (!settings.enabled) {
-      this.api.ui.showToast('Phone is disabled in settings.', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.phone.toasts.disabled'), 'info');
       return;
     }
 
     const contact = this.getContacts().find((item) => item.id === contactId);
     if (!contact) {
-      this.api.ui.showToast('Select a phone contact first.', 'error');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.phone.toasts.selectContact'), 'error');
       return;
     }
 
     const pendingKey = `${messageIndex}:${contactId}`;
     if (this.pendingSms.has(pendingKey)) {
-      this.api.ui.showToast('SMS generation is already running for this contact.', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.phone.toasts.smsAlreadyRunning'), 'info');
       return;
     }
 
@@ -531,7 +534,12 @@ class PhoneManager {
           .concat(replies),
         lastSmsGenerationAt: deliveredAt,
       });
-      this.api.ui.showToast(replies.length > 0 ? 'SMS reply received.' : 'SMS sent.', 'success');
+      this.api.ui.showToast(
+        replies.length > 0
+          ? this.api.i18n.t('extensionsBuiltin.phone.toasts.smsReplyReceived')
+          : this.api.i18n.t('extensionsBuiltin.phone.toasts.smsSent'),
+        'success',
+      );
     } catch (error) {
       console.error('Phone SMS generation failed:', error);
       const failedData = this.getMessageExtra(messageIndex);
@@ -541,7 +549,10 @@ class PhoneManager {
           (message): PhoneMessage => (message.id === outbound.id ? { ...message, status: 'failed' } : message),
         ),
       });
-      this.api.ui.showToast(error instanceof Error ? error.message : 'SMS generation failed.', 'error');
+      this.api.ui.showToast(
+        error instanceof Error ? error.message : this.api.i18n.t('extensionsBuiltin.phone.toasts.smsGenerationFailed'),
+        'error',
+      );
     } finally {
       this.pendingSms.delete(pendingKey);
     }
@@ -590,10 +601,10 @@ class PhoneManager {
     if (!this.api.chat.getChatInfo()) return;
 
     this.unregisterChatUiFns.push(
-      this.api.ui.registerChatQuickAction(QUICK_ACTION_GROUP_ID, 'Context AI', {
+      this.api.ui.registerChatQuickAction(QUICK_ACTION_GROUP_ID, this.api.i18n.t('extensionsBuiltin.phone.contextAi'), {
         id: 'phone-open',
         icon: 'fa-solid fa-mobile-screen-button',
-        label: 'Phone',
+        label: this.api.i18n.t('extensionsBuiltin.phone.title'),
         onClick: () => this.openPanel(),
       }),
     );
@@ -601,7 +612,7 @@ class PhoneManager {
       this.api.ui.registerChatFormOptionsMenuItem({
         id: 'phone-open',
         icon: 'fa-solid fa-mobile-screen-button',
-        label: 'Phone',
+        label: this.api.i18n.t('extensionsBuiltin.phone.title'),
         onClick: () => this.openPanel(),
       }),
     );
@@ -621,7 +632,7 @@ export function activate(api: PhoneExtensionAPI) {
 
   api.ui.registerSidebar(SIDEBAR_ID, PhonePanel, 'right', {
     icon: 'fa-mobile-screen-button',
-    title: 'Phone',
+    title: api.i18n.t('extensionsBuiltin.phone.title'),
     props: {
       api,
       manager,

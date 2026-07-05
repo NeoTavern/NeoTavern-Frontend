@@ -1,8 +1,6 @@
 import type { ApiModel, ApiProvider, ConnectionProfile } from '../../../types';
 import type { ModelGroup, RandomizerProfile } from './types';
 
-// TODO: i18n
-
 /**
  * Get a random element from an array
  */

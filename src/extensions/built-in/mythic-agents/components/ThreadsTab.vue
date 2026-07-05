@@ -9,6 +9,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const t = props.api.i18n.t;
 
 const newThread = ref('');
 
@@ -60,19 +61,28 @@ function removeThread(index: number) {
       <Input
         v-model.trim="newThread"
         class="thread-input"
-        placeholder="Add a new plot thread..."
+        :placeholder="t('extensionsBuiltin.mythicAgents.panel.addThreadPlaceholder')"
         @keyup.enter="addThread"
       />
-      <Button :disabled="!newThread.trim()" @click="addThread"> <i class="fas fa-plus"></i> Add </Button>
+      <Button :disabled="!newThread.trim()" @click="addThread">
+        <i class="fas fa-plus"></i> {{ t('common.add') }}
+      </Button>
     </div>
 
-    <div v-if="!scene?.threads.length" class="empty-state">No open threads. Add one to track plot points.</div>
+    <div v-if="!scene?.threads.length" class="empty-state">
+      {{ t('extensionsBuiltin.mythicAgents.panel.noOpenThreads') }}
+    </div>
 
     <ul class="thread-list">
       <li v-for="(thread, index) in scene?.threads || []" :key="index" class="thread-item">
         <span class="thread-text">{{ thread }}</span>
         <div class="thread-actions">
-          <Button size="small" variant="danger" title="Remove Thread" @click="removeThread(index)">
+          <Button
+            size="small"
+            variant="danger"
+            :title="t('extensionsBuiltin.mythicAgents.panel.removeThread')"
+            @click="removeThread(index)"
+          >
             <i class="fas fa-trash"></i>
           </Button>
         </div>
@@ -80,7 +90,7 @@ function removeThread(index: number) {
     </ul>
 
     <div v-if="resolvedThreads?.length" class="resolved-threads">
-      <h4>Resolved Threads</h4>
+      <h4>{{ t('extensionsBuiltin.mythicAgents.panel.resolvedThreads') }}</h4>
       <ul class="thread-list">
         <li v-for="(thread, index) in resolvedThreads" :key="`resolved-${index}`" class="thread-item resolved">
           <span class="thread-text">{{ thread }}</span>

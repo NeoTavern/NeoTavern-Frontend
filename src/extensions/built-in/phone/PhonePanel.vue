@@ -15,6 +15,7 @@ const props = defineProps<{
   manager: PhoneManager;
 }>();
 
+const t = props.api.i18n.t;
 const contacts = ref<PhoneContact[]>([]);
 const messageIndex = ref(0);
 const selectedContactId = ref('');
@@ -29,9 +30,9 @@ const selectedExtra = ref<PhoneMessageExtraData>({});
 
 const messageOptions = computed(() =>
   history.value.map((message, index) => {
-    const label = `${index === history.value.length - 1 ? 'Latest' : `#${index + 1}`} · ${message.name}: ${stripText(
-      message.mes,
-    )}`;
+    const label = `${
+      index === history.value.length - 1 ? t('extensionsBuiltin.phone.latest') : `#${index + 1}`
+    } · ${message.name}: ${stripText(message.mes)}`;
     return { label, value: index };
   }),
 );
@@ -56,15 +57,15 @@ const threadMessages = computed<PhoneMessage[]>(() => {
 });
 
 const ownerLabel = computed(() => {
-  if (!selectedMessage.value) return 'No chat message selected';
+  if (!selectedMessage.value) return t('extensionsBuiltin.phone.noChatMessageSelected');
   const prefix =
     messageIndex.value === history.value.length - 1
-      ? 'Attached to latest message'
-      : `Attached to #${messageIndex.value + 1}`;
+      ? t('extensionsBuiltin.phone.attachedToLatestMessage')
+      : t('extensionsBuiltin.phone.attachedToMessage', { index: messageIndex.value + 1 });
   return `${prefix}: ${stripText(selectedMessage.value.mes)}`;
 });
 
-const activeThreadTitle = computed(() => selectedContact.value?.displayName ?? 'Messages');
+const activeThreadTitle = computed(() => selectedContact.value?.displayName ?? t('extensionsBuiltin.phone.messages'));
 
 function stripText(value: string): string {
   return (
@@ -72,7 +73,7 @@ function stripText(value: string): string {
       .replace(/<[^>]*>/g, '')
       .replace(/\s+/g, ' ')
       .trim()
-      .slice(0, 90) || 'Empty message'
+      .slice(0, 90) || t('extensionsBuiltin.phone.emptyMessage')
   );
 }
 
@@ -135,7 +136,9 @@ function backToList(): void {
 }
 
 function messageSpeaker(message: PhoneMessage): string {
-  return message.direction === 'outbound' ? 'You' : (selectedContact.value?.displayName ?? 'Contact');
+  return message.direction === 'outbound'
+    ? t('extensionsBuiltin.phone.you')
+    : (selectedContact.value?.displayName ?? t('extensionsBuiltin.phone.contact'));
 }
 
 function latestMessageForContact(contactId: string): PhoneMessage | null {
@@ -212,16 +215,25 @@ watch(messageIndex, () => {
             <section v-if="activeScreen === 'list'" key="list" class="android-page">
               <header class="android-app-bar android-app-bar--large">
                 <div>
-                  <strong>Messages</strong>
+                  <strong>{{ t('extensionsBuiltin.phone.messages') }}</strong>
                   <span>{{ ownerLabel }}</span>
                 </div>
-                <button class="android-icon-button" type="button" title="Refresh contacts" @click="initContacts">
+                <button
+                  class="android-icon-button"
+                  type="button"
+                  :title="t('extensionsBuiltin.phone.refreshContacts')"
+                  @click="initContacts"
+                >
                   <i :class="['fa-solid', loadingContacts ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles']"></i>
                 </button>
               </header>
 
               <div class="phone-controls">
-                <Select v-model="messageIndex" :options="messageOptions" title="Attached message" />
+                <Select
+                  v-model="messageIndex"
+                  :options="messageOptions"
+                  :title="t('extensionsBuiltin.phone.attachedMessage')"
+                />
               </div>
 
               <div class="conversation-list">
@@ -246,14 +258,14 @@ watch(messageIndex, () => {
 
                 <div v-if="contacts.length === 0" class="phone-empty">
                   <i class="fa-solid fa-address-book"></i>
-                  <span>Initialize contacts to start texting.</span>
+                  <span>{{ t('extensionsBuiltin.phone.initializeContacts') }}</span>
                 </div>
               </div>
             </section>
 
             <section v-else key="thread" class="android-page">
               <header class="android-app-bar">
-                <button class="android-icon-button" type="button" title="Back" @click="backToList">
+                <button class="android-icon-button" type="button" :title="t('common.back')" @click="backToList">
                   <i class="fa-solid fa-arrow-left"></i>
                 </button>
                 <span
@@ -265,14 +277,16 @@ watch(messageIndex, () => {
                 </span>
                 <div>
                   <strong>{{ activeThreadTitle }}</strong>
-                  <span>{{ selectedContact?.relationship ?? selectedContact?.handle ?? 'SMS' }}</span>
+                  <span>{{
+                    selectedContact?.relationship ?? selectedContact?.handle ?? t('extensionsBuiltin.phone.sms')
+                  }}</span>
                 </div>
               </header>
 
               <div class="message-list">
                 <div v-if="threadMessages.length === 0" class="phone-empty">
                   <i class="fa-solid fa-comment-sms"></i>
-                  <span>Start this SMS conversation.</span>
+                  <span>{{ t('extensionsBuiltin.phone.startSmsConversation') }}</span>
                 </div>
                 <article
                   v-for="message in threadMessages"
@@ -282,7 +296,7 @@ watch(messageIndex, () => {
                 >
                   <div class="sms-bubble__meta">
                     <span>{{ messageSpeaker(message) }}</span>
-                    <button type="button" title="Delete SMS" @click="deleteSms(message)">
+                    <button type="button" :title="t('extensionsBuiltin.phone.deleteSms')" @click="deleteSms(message)">
                       <i class="fa-solid fa-trash"></i>
                     </button>
                   </div>
@@ -300,7 +314,7 @@ watch(messageIndex, () => {
                 <Textarea
                   v-model="draft"
                   :rows="1"
-                  placeholder="Text message"
+                  :placeholder="t('extensionsBuiltin.phone.textMessage')"
                   :disabled="!selectedContact || sending"
                   @keydown="handleComposerKeydown"
                 />
@@ -308,7 +322,7 @@ watch(messageIndex, () => {
                   icon="fa-paper-plane"
                   :loading="sending"
                   :disabled="!draft.trim() || !selectedContact"
-                  title="Send"
+                  :title="t('extensionsBuiltin.phone.send')"
                 />
               </form>
             </section>

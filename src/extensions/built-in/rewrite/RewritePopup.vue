@@ -12,25 +12,7 @@ import { useRewriteOneShot } from './composables/useRewriteOneShot';
 import { useRewriteSessions } from './composables/useRewriteSessions';
 import { useRewriteSettings } from './composables/useRewriteSettings';
 import type { FieldChange, RewriteField, RewriteSettings, StructuredResponseFormat } from './types';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function deepToRaw<T extends Record<string, any>>(sourceObj: T): T {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const objectIterator = (input: any): any => {
-    if (Array.isArray(input)) {
-      return input.map((item) => objectIterator(item));
-    }
-    if (input && typeof input === 'object') {
-      return Object.keys(input).reduce((acc, key) => {
-        acc[key as keyof typeof acc] = objectIterator(input[key]);
-        return acc;
-      }, {} as T);
-    }
-    return input;
-  };
-
-  return objectIterator(sourceObj);
-}
+import { deepToRaw } from './utils';
 
 const props = defineProps<{
   api: ExtensionAPI<RewriteSettings>;

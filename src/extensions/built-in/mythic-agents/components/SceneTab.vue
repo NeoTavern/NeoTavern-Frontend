@@ -10,6 +10,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const t = props.api.i18n.t;
 
 const { state: extra, getLatestMythicMessageIndex } = useMythicState(props.api);
 const scene = computed(() => extra.value?.scene);
@@ -20,8 +21,8 @@ const abortController = ref<AbortController | null>(null);
 const activeRequestId = ref(0);
 const generateIdentities = ref(true);
 const actionButtonLabel = computed(() => {
-  if (loading.value) return 'Abort';
-  return 'Reinitialize Scene';
+  if (loading.value) return t('common.abort');
+  return t('extensionsBuiltin.mythicAgents.panel.reinitializeScene');
 });
 
 async function generateInitialScene() {
@@ -31,7 +32,7 @@ async function generateInitialScene() {
     loading.value = false;
     abortController.value = null;
     controller?.abort();
-    props.api.ui.showToast('Scene reinitialization abort requested.', 'info');
+    props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.sceneAbortRequested'), 'info');
     return;
   }
 
@@ -80,7 +81,7 @@ async function generateInitialScene() {
     }
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      props.api.ui.showToast('Scene reinitialization aborted.', 'info');
+      props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.sceneAborted'), 'info');
     } else {
       console.error('Failed to generate initial scene:', error);
     }
@@ -96,20 +97,20 @@ async function generateInitialScene() {
 <template>
   <div class="scene">
     <div class="controls">
-      <Checkbox v-model="generateIdentities" label="Let LLM generate character identities" />
+      <Checkbox v-model="generateIdentities" :label="t('extensionsBuiltin.mythicAgents.panel.generateIdentities')" />
       <Button block class="action-btn" @click="generateInitialScene">
         <i :class="loading ? 'fas fa-stop' : 'fas fa-film'"></i>
         {{ actionButtonLabel }}
       </Button>
     </div>
 
-    <div class="section-header">Current Scene Details</div>
+    <div class="section-header">{{ t('extensionsBuiltin.mythicAgents.panel.currentSceneDetails') }}</div>
 
     <div v-if="scene" class="scene-details">
       <div class="detail-card">
         <div class="detail-icon"><i class="fas fa-dice-d20"></i></div>
         <div class="detail-content">
-          <div class="label">Chaos Rank</div>
+          <div class="label">{{ t('extensionsBuiltin.mythicAgents.panel.chaosRank') }}</div>
           <div class="value">{{ scene.chaos_rank }}</div>
         </div>
       </div>
@@ -117,7 +118,7 @@ async function generateInitialScene() {
       <div class="detail-card">
         <div class="detail-icon"><i class="fas fa-users"></i></div>
         <div class="detail-content">
-          <div class="label">Active NPCs</div>
+          <div class="label">{{ t('extensionsBuiltin.mythicAgents.panel.activeNpcs') }}</div>
           <div class="value">
             {{ activeNpcCount }}
           </div>
@@ -127,7 +128,7 @@ async function generateInitialScene() {
       <div class="detail-card">
         <div class="detail-icon"><i class="fas fa-list-ul"></i></div>
         <div class="detail-content">
-          <div class="label">Open Threads</div>
+          <div class="label">{{ t('extensionsBuiltin.mythicAgents.panel.openThreads') }}</div>
           <div class="value">{{ scene.threads.length }}</div>
         </div>
       </div>
@@ -135,7 +136,7 @@ async function generateInitialScene() {
 
     <div v-else class="empty-state">
       <i class="fas fa-ghost"></i>
-      <p>No scene data available. Start a new scene to begin.</p>
+      <p>{{ t('extensionsBuiltin.mythicAgents.panel.noSceneData') }}</p>
     </div>
   </div>
 </template>

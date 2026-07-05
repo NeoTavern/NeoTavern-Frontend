@@ -76,8 +76,6 @@ function findMessageIndex(history: ChatMessage[], message: ChatMessage, generati
   return -1;
 }
 
-// TODO: i18n
-
 class TrackerManager {
   private mountedIcons = new Map<number, MountedComponent>();
   private mountedDisplays = new Map<number, MountedComponent>();
@@ -254,7 +252,7 @@ class TrackerManager {
 
     let chatSchemaNames = this.api.chat.metadata.get()?.extra?.['core.tracker']?.schemaNames ?? [];
     if (chatSchemaNames.length === 0) {
-      this.api.ui.showToast('No tracker schemas are configured for this chat. Please manage schemas first.', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.tracker.toasts.noSchemasConfigured'), 'info');
       await this.manageChatSchemas();
       chatSchemaNames = this.api.chat.metadata.get()?.extra?.['core.tracker']?.schemaNames ?? [];
       if (chatSchemaNames.length === 0) return; // User cancelled

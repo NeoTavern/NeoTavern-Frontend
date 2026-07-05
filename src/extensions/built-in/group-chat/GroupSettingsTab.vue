@@ -83,12 +83,12 @@ const replyStrategyOptions = computed(() => [
   { label: t('group.strategies.natural'), value: GroupReplyStrategy.NATURAL_ORDER },
   { label: t('group.strategies.list'), value: GroupReplyStrategy.LIST_ORDER },
   { label: t('group.strategies.pooled'), value: GroupReplyStrategy.POOLED_ORDER },
-  { label: 'LLM Decision', value: GroupReplyStrategy.LLM_DECISION },
+  { label: t('group.strategies.llmDecision'), value: GroupReplyStrategy.LLM_DECISION },
 ]);
 
 const handlingModeOptions = computed(() => [
   { label: t('group.modes.swap'), value: GroupGenerationHandlingMode.SWAP },
-  { label: 'Swap + Summaries', value: GroupGenerationHandlingMode.SWAP_INCLUDE_SUMMARIES },
+  { label: t('group.modes.swapSummaries'), value: GroupGenerationHandlingMode.SWAP_INCLUDE_SUMMARIES },
   { label: t('group.modes.joinExclude'), value: GroupGenerationHandlingMode.JOIN_EXCLUDE_MUTED },
   { label: t('group.modes.joinInclude'), value: GroupGenerationHandlingMode.JOIN_INCLUDE_MUTED },
 ]);
@@ -138,7 +138,7 @@ function updateSummary(avatar: string, value: string) {
     <!-- Queue Display -->
     <div v-if="service.generationQueue.value.length > 0 || service.isAnalyzing.value" class="queue-section">
       <div class="queue-header">
-        <span v-if="service.isAnalyzing.value">Deciding next speaker...</span>
+        <span v-if="service.isAnalyzing.value">{{ t('group.decidingNextSpeaker') }}</span>
         <span v-else>{{ t('group.queue') }} ({{ service.generationQueue.value.length }})</span>
         <Button
           v-if="!service.isAnalyzing.value"
@@ -203,7 +203,7 @@ function updateSummary(avatar: string, value: string) {
                       !groupConfig?.members[member.avatar]?.summary
                     "
                     class="fa-solid fa-triangle-exclamation no-summary-indicator"
-                    title="No summary set"
+                    :title="t('group.noSummarySet')"
                   ></i>
                   <div v-if="service.generatingAvatar.value === member.avatar" class="typing-indicator-small">
                     <div class="dot" />
@@ -217,7 +217,7 @@ function updateSummary(avatar: string, value: string) {
                   v-if="isGroup"
                   variant="ghost"
                   :icon="editingSummaryAvatar === member.avatar ? 'fa-chevron-up' : 'fa-pen-to-square'"
-                  :title="'Edit Summary'"
+                  :title="t('group.editSummary')"
                   @click.stop="toggleSummaryEdit(member.avatar)"
                 />
                 <Button
@@ -252,22 +252,22 @@ function updateSummary(avatar: string, value: string) {
 
             <div v-if="editingSummaryAvatar === member.avatar" class="summary-editor">
               <div class="summary-editor-header">
-                <span>Summary (for Swap+Summary mode)</span>
+                <span>{{ t('group.summaryForMode') }}</span>
                 <Button
                   size="small"
                   variant="ghost"
                   icon="fa-wand-magic-sparkles"
                   :loading="service.isGeneratingSummary.value"
-                  title="Generate with AI"
+                  :title="t('group.generateWithAi')"
                   @click="service.generateMemberSummary(member.avatar)"
                 >
-                  Generate
+                  {{ t('group.generate') }}
                 </Button>
               </div>
               <Textarea
                 :model-value="groupConfig?.members[member.avatar]?.summary || ''"
                 :rows="3"
-                placeholder="Brief summary of this character..."
+                :placeholder="t('group.summaryPlaceholder')"
                 allow-maximize
                 @update:model-value="(val) => updateSummary(member.avatar, val)"
               />
@@ -326,7 +326,7 @@ function updateSummary(avatar: string, value: string) {
 
         <FormItem
           v-if="groupConfig.config.replyStrategy === GroupReplyStrategy.LLM_DECISION"
-          label="Context Size (Messages)"
+          :label="t('group.contextSizeMessages')"
         >
           <Input
             v-model="groupConfig.config.decisionContextSize"

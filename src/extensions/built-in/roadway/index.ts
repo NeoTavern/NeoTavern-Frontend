@@ -24,8 +24,6 @@ interface MountedComponent {
   component: Component;
 }
 
-// TODO: i18n
-
 class RoadwayManager {
   private mountedChoices = new Map<number, MountedComponent>();
   private unregisterChatFormUiFns: Array<() => void> = [];
@@ -41,7 +39,7 @@ class RoadwayManager {
 
   public manualGenerateChoicesForLastMessage(): void {
     if (!this.getSettings().enabled) {
-      this.api.ui.showToast('Roadway is disabled.', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.roadway.toasts.disabled'), 'info');
       return;
     }
 
@@ -54,7 +52,7 @@ class RoadwayManager {
         return;
       }
     }
-    this.api.ui.showToast('No AI message found to generate choices for.', 'info');
+    this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.roadway.toasts.noAiMessage'), 'info');
   }
 
   public async generateChoicesForMessage(message: ChatMessage, index: number): Promise<void> {
@@ -64,7 +62,7 @@ class RoadwayManager {
     const connectionProfile =
       settings.choiceGenConnectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
     if (!connectionProfile) {
-      this.api.ui.showToast('Roadway: Choice Generation Connection Profile is not set.', 'error');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.roadway.toasts.noChoiceProfile'), 'error');
       return;
     }
 
@@ -118,12 +116,12 @@ class RoadwayManager {
         async onCompletion({ structured_content, parse_error }) {
           if (abortController.signal.aborted) return;
           if (parse_error) {
-            thus.api.ui.showToast('Roadway: Failed to parse choice generation response.', 'error');
+            thus.api.ui.showToast(thus.api.i18n.t('extensionsBuiltin.roadway.toasts.parseFailed'), 'error');
             console.error('Roadway choice generation parse error:', parse_error);
             return;
           }
           if (!structured_content) {
-            thus.api.ui.showToast('Roadway: No structured content in choice generation response.', 'error');
+            thus.api.ui.showToast(thus.api.i18n.t('extensionsBuiltin.roadway.toasts.noStructuredContent'), 'error');
             console.error('Roadway choice generation missing structured content.');
             return;
           }
@@ -143,7 +141,7 @@ class RoadwayManager {
     } catch (error) {
       if ((error as Error).name !== 'AbortError') {
         console.error('Roadway choice generation failed:', error);
-        this.api.ui.showToast('Failed to generate choices.', 'error');
+        this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.roadway.toasts.generationFailed'), 'error');
       }
     } finally {
       if (!abortController.signal.aborted) {
@@ -161,7 +159,7 @@ class RoadwayManager {
       // Clean up the UI state
       this.updateMessageExtra(messageIndex, { isGeneratingChoices: false });
       if (showToast) {
-        this.api.ui.showToast('Choice generation cancelled.', 'info');
+        this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.roadway.toasts.generationCancelled'), 'info');
       }
     }
   }
@@ -295,14 +293,14 @@ class RoadwayManager {
 
     const isRoadwayEnabled = this.getSettings().enabled;
     const quickActionGroupId = 'core.context-ai';
-    const quickActionGroupLabel = 'Context AI';
+    const quickActionGroupLabel = this.api.i18n.t('extensionsBuiltin.roadway.contextAi');
 
     // ---- Generate Choices Action ----
     const generateAction: ChatQuickActionDefinition & ChatFormOptionsMenuItemDefinition = {
       id: 'roadway-generate-choices',
       icon: 'fa-solid fa-list-check',
-      label: 'Generate Choices',
-      title: 'Generate reply choices for the last AI message',
+      label: this.api.i18n.t('extensionsBuiltin.roadway.generateChoices'),
+      title: this.api.i18n.t('extensionsBuiltin.roadway.generateChoicesTitle'),
       onClick: () => this.manualGenerateChoicesForLastMessage(),
       disabled: !isRoadwayEnabled,
     };

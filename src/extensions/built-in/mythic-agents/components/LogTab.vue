@@ -8,6 +8,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const t = props.api.i18n.t;
 
 const actionHistory = computed(() => props.api.chat.metadata.get()?.extra?.actionHistory ?? []);
 const reversedHistory = computed(() => actionHistory.value.slice().reverse());
@@ -74,7 +75,9 @@ function getJustification(action: DisplayAction) {
 
 <template>
   <div class="log">
-    <div v-if="reversedHistory.length === 0" class="empty-state">No history recorded.</div>
+    <div v-if="reversedHistory.length === 0" class="empty-state">
+      {{ t('extensionsBuiltin.mythicAgents.panel.noHistoryRecorded') }}
+    </div>
     <div v-for="(action, index) in paginatedHistory" :key="index" class="log-card">
       <div v-for="(question, questionIndex) in getQuestions(action)" :key="questionIndex" class="question-block">
         <div class="log-header">
@@ -85,11 +88,11 @@ function getJustification(action: DisplayAction) {
         <div v-if="getRolls(action)[questionIndex]" class="log-body">
           <div class="roll-info">
             <div class="roll-detail">
-              <span class="label">Roll:</span>
+              <span class="label">{{ t('extensionsBuiltin.mythicAgents.panel.roll') }}:</span>
               <span class="value">{{ getRolls(action)[questionIndex].roll }}</span>
             </div>
             <div class="roll-detail">
-              <span class="label">Chaos Die:</span>
+              <span class="label">{{ t('extensionsBuiltin.mythicAgents.panel.chaosDie') }}:</span>
               <span class="value">{{ getRolls(action)[questionIndex].chaosDie }}</span>
             </div>
           </div>
@@ -105,7 +108,9 @@ function getJustification(action: DisplayAction) {
         :key="`event-${eventIndex}`"
         class="random-event"
       >
-        <div class="event-header"><i class="fas fa-bolt"></i> Random Event</div>
+        <div class="event-header">
+          <i class="fas fa-bolt"></i> {{ t('extensionsBuiltin.mythicAgents.panel.randomEvent') }}
+        </div>
         <div class="event-content">
           <span class="focus">{{ randomEvent.focus }}</span>
           <span class="separator">•</span>

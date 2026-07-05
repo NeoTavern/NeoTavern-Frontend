@@ -8,8 +8,6 @@ const props = defineProps<{
   message: ChatMessage;
 }>();
 
-// TODO: i18n
-
 const t = props.api.i18n.t;
 const collapsedStates = ref<Record<string, boolean>>({});
 

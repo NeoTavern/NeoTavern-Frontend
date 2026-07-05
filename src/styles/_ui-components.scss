@@ -278,6 +278,12 @@
     font-size: 0.9em;
     margin-bottom: var(--spacing-xs);
   }
+
+  .input-header-tools,
+  .textarea-header-tools {
+    display: flex;
+    margin-left: auto;
+  }
 }
 
 // --- FormItem ---

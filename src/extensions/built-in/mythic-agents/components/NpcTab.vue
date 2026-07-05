@@ -11,6 +11,7 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+const t = props.api.i18n.t;
 
 const { state: extra, getLatestMythicMessageIndex } = useMythicState(props.api);
 const scene = computed(() => extra.value?.scene);
@@ -135,10 +136,14 @@ function removeNpc(id: string) {
 <template>
   <div class="npcs">
     <div class="actions">
-      <Button block @click="addNpc"> <i class="fas fa-plus"></i> Add Random NPC </Button>
+      <Button block @click="addNpc">
+        <i class="fas fa-plus"></i> {{ t('extensionsBuiltin.mythicAgents.panel.addRandomNpc') }}
+      </Button>
     </div>
 
-    <div v-if="!scene?.characters?.length" class="empty-state">No characters in current scene.</div>
+    <div v-if="!scene?.characters?.length" class="empty-state">
+      {{ t('extensionsBuiltin.mythicAgents.panel.noCharacters') }}
+    </div>
 
     <div class="npc-list">
       <div v-for="npc in scene?.characters || []" :key="npc.id" class="npc-card">
@@ -149,23 +154,44 @@ function removeNpc(id: string) {
           </div>
           <div v-else class="npc-identity">
             <div class="edit-input-wrapper">
-              <Input v-model="editForm.name" placeholder="Name" />
+              <Input v-model="editForm.name" :placeholder="t('extensionsBuiltin.mythicAgents.panel.name')" />
             </div>
             <div class="edit-input-wrapper">
-              <Select v-model="editForm.type" :options="typeOptions" placeholder="Type" />
+              <Select
+                v-model="editForm.type"
+                :options="typeOptions"
+                :placeholder="t('extensionsBuiltin.mythicAgents.panel.type')"
+              />
             </div>
           </div>
           <div class="npc-actions">
-            <Button v-if="editingNpcId !== npc.id" size="small" title="Edit NPC" @click="startEdit(npc)">
+            <Button
+              v-if="editingNpcId !== npc.id"
+              size="small"
+              :title="t('extensionsBuiltin.mythicAgents.panel.editNpc')"
+              @click="startEdit(npc)"
+            >
               <i class="fas fa-edit"></i>
             </Button>
-            <Button v-else size="small" variant="confirm" title="Save" @click="saveEdit">
+            <Button v-else size="small" variant="confirm" :title="t('common.save')" @click="saveEdit">
               <i class="fas fa-check"></i>
             </Button>
-            <Button v-if="editingNpcId === npc.id" size="small" variant="ghost" title="Cancel" @click="cancelEdit">
+            <Button
+              v-if="editingNpcId === npc.id"
+              size="small"
+              variant="ghost"
+              :title="t('common.cancel')"
+              @click="cancelEdit"
+            >
               <i class="fas fa-times"></i>
             </Button>
-            <Button size="small" variant="danger" class="delete-btn" title="Remove NPC" @click="removeNpc(npc.id)">
+            <Button
+              size="small"
+              variant="danger"
+              class="delete-btn"
+              :title="t('extensionsBuiltin.mythicAgents.panel.removeNpc')"
+              @click="removeNpc(npc.id)"
+            >
               <i class="fas fa-trash"></i>
             </Button>
           </div>
@@ -174,26 +200,47 @@ function removeNpc(id: string) {
         <div class="npc-details">
           <div class="une-profile">
             <div class="profile-row">
-              <span class="label">Identity:</span>
+              <span class="label">{{ t('extensionsBuiltin.mythicAgents.panel.identity') }}:</span>
               <span v-if="editingNpcId !== npc.id" class="value"
                 >{{ npc.une_profile.modifier }} {{ npc.une_profile.noun }}</span
               >
               <div v-else class="value">
-                <Input v-model="editForm.modifier" placeholder="Modifier" style="width: 80px; margin-right: 4px" />
-                <Input v-model="editForm.noun" placeholder="Noun" style="width: 80px" />
+                <Input
+                  v-model="editForm.modifier"
+                  :placeholder="t('extensionsBuiltin.mythicAgents.modifiers')"
+                  style="width: 80px; margin-right: 4px"
+                />
+                <Input
+                  v-model="editForm.noun"
+                  :placeholder="t('extensionsBuiltin.mythicAgents.nouns')"
+                  style="width: 80px"
+                />
               </div>
-              <Button v-if="editingNpcId !== npc.id" size="small" title="Regenerate UNE" @click="regenerateUNE(npc.id)">
+              <Button
+                v-if="editingNpcId !== npc.id"
+                size="small"
+                :title="t('extensionsBuiltin.mythicAgents.panel.regenerateUne')"
+                @click="regenerateUNE(npc.id)"
+              >
                 <i class="fas fa-dice"></i>
               </Button>
             </div>
             <div class="profile-row">
-              <span class="label">Motivation:</span>
+              <span class="label">{{ t('extensionsBuiltin.mythicAgents.panel.motivation') }}:</span>
               <span v-if="editingNpcId !== npc.id" class="value">
                 {{ npc.une_profile.motivation_verb }} {{ npc.une_profile.motivation_noun }}
               </span>
               <div v-else class="value">
-                <Input v-model="editForm.motivation_verb" placeholder="Verb" style="width: 80px; margin-right: 4px" />
-                <Input v-model="editForm.motivation_noun" placeholder="Noun" style="width: 80px" />
+                <Input
+                  v-model="editForm.motivation_verb"
+                  :placeholder="t('extensionsBuiltin.mythicAgents.panel.verb')"
+                  style="width: 80px; margin-right: 4px"
+                />
+                <Input
+                  v-model="editForm.motivation_noun"
+                  :placeholder="t('extensionsBuiltin.mythicAgents.nouns')"
+                  style="width: 80px"
+                />
               </div>
             </div>
           </div>

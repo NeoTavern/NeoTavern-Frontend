@@ -6,6 +6,7 @@ import type { WorldMapMessageExtra } from './types';
 const props = defineProps<{
   message: ChatMessage;
   title: string;
+  clearTitle: string;
 }>();
 
 const emit = defineEmits<{
@@ -38,7 +39,7 @@ const iconClass = computed(() => {
     <button
       v-if="hasWorldMapData"
       class="menu-button menu-button--ghost world-map-message-button world-map-message-button__clear"
-      title="Remove this message's world map delta"
+      :title="clearTitle"
       @click.stop="emit('clear')"
     >
       <i class="fa-solid fa-xmark"></i>

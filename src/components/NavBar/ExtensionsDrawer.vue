@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useExtensionStore, type Extension } from '../../stores/extension.store';
 import { useLayoutStore } from '../../stores/layout.store';
+import { useSettingsStore } from '../../stores/settings.store';
 import { EmptyState } from '../common';
 import PanelLayout from '../common/PanelLayout.vue';
 import { Button, FormItem, ListItem, Search, Toggle } from '../UI';
@@ -14,9 +15,13 @@ const props = defineProps<{
 }>();
 const extensionStore = useExtensionStore();
 const layoutStore = useLayoutStore();
+const settingsStore = useSettingsStore();
 
-const isBrowserCollapsed = ref(false); // TODO: load from account storage
 const notifyOnUpdates = ref(false); // TODO: Connect this to settings
+const isBrowserCollapsed = computed({
+  get: () => settingsStore.settings.account.extensionsBrowserExpanded,
+  set: (value) => (settingsStore.settings.account.extensionsBrowserExpanded = value),
+});
 
 function manageExtensions() {
   // TODO: Open manage extensions popup

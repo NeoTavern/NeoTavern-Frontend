@@ -7,8 +7,6 @@ import {
   resolveLiveCommentaryPrompts,
 } from './types';
 
-// TODO: i18n
-
 function formatDuration(ms: number): string {
   if (ms < 0) ms = 0;
   const seconds = Math.floor(ms / 1000);
@@ -179,7 +177,7 @@ export class Commentator {
       settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
     if (!connectionProfile) {
       if (this.ongoingControllers.size === 0) {
-        this.api.ui.showToast('Live Commentary: No connection profile selected.', 'warning');
+        this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.liveCommentary.noConnectionProfile'), 'warning');
       }
       return;
     }
@@ -312,7 +310,10 @@ export class Commentator {
         return;
       }
       console.error('Live Commentary generation failed', error);
-      this.api.ui.showToast(`Commentary for ${character.name} failed`, 'error');
+      this.api.ui.showToast(
+        this.api.i18n.t('extensionsBuiltin.liveCommentary.commentaryFailed', { name: character.name }),
+        'error',
+      );
     } finally {
       this.ongoingControllers.delete(character.avatar);
     }
@@ -452,12 +453,12 @@ export class Commentator {
     const connectionProfile =
       settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
     if (!connectionProfile) {
-      throw new Error('Live Commentary: No connection profile selected.');
+      throw new Error(this.api.i18n.t('extensionsBuiltin.liveCommentary.noConnectionProfile'));
     }
 
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) {
-      throw new Error('Ask needs a question.');
+      throw new Error(this.api.i18n.t('extensionsBuiltin.liveCommentary.askNeedsQuestion'));
     }
 
     const chatHistory = this.api.chat

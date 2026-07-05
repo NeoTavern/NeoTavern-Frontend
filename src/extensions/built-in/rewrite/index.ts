@@ -86,17 +86,21 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
 
     const alternateGreetingFields: RewriteField[] = (char.data?.alternate_greetings || []).map((greeting, index) => ({
       id: getAlternateGreetingFieldId(index),
-      label: `Alternate Greeting ${index + 1}`,
+      label: t('extensionsBuiltin.rewrite.fields.alternateGreeting', { index: index + 1 }),
       value: greeting,
     }));
 
     const fields: RewriteField[] = [
-      { id: 'description', label: 'Description', value: char.description || '' },
-      { id: 'personality', label: 'Personality', value: char.personality || '' },
-      { id: 'scenario', label: 'Scenario', value: char.scenario || '' },
-      { id: 'first_mes', label: 'First Message', value: char.first_mes || '' },
+      { id: 'description', label: t('extensionsBuiltin.rewrite.fields.description'), value: char.description || '' },
+      { id: 'personality', label: t('extensionsBuiltin.rewrite.fields.personality'), value: char.personality || '' },
+      { id: 'scenario', label: t('extensionsBuiltin.rewrite.fields.scenario'), value: char.scenario || '' },
+      { id: 'first_mes', label: t('extensionsBuiltin.rewrite.fields.firstMessage'), value: char.first_mes || '' },
       ...alternateGreetingFields,
-      { id: 'mes_example', label: 'Example Messages', value: char.mes_example || '' },
+      {
+        id: 'mes_example',
+        label: t('extensionsBuiltin.rewrite.fields.exampleMessages'),
+        value: char.mes_example || '',
+      },
     ];
 
     handleRewrite(
@@ -163,7 +167,7 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
     icon: 'fa-solid fa-wand-magic-sparkles',
     title: t('extensionsBuiltin.rewrite.popupTitle'),
     onClick: ({ value, setValue }) => {
-      const field: RewriteField = { id: 'extension', label: 'Extension Field', value };
+      const field: RewriteField = { id: 'extension', label: t('extensionsBuiltin.rewrite.fields.extension'), value };
       handleRewrite(
         {
           fields: [field],
@@ -223,7 +227,11 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
         const msg = history[messageIndex];
         if (!msg) return;
 
-        const field: RewriteField = { id: 'chat.message', label: 'Chat Message', value: msg.mes };
+        const field: RewriteField = {
+          id: 'chat.message',
+          label: t('extensionsBuiltin.rewrite.fields.chatMessage'),
+          value: msg.mes,
+        };
         handleRewrite(
           {
             fields: [field],
@@ -254,7 +262,11 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
       const input = api.chat.getChatInput();
       if (!input || !input.value) return;
 
-      const field: RewriteField = { id: 'chat.input', label: 'Chat Input', value: input.value };
+      const field: RewriteField = {
+        id: 'chat.input',
+        label: t('extensionsBuiltin.rewrite.fields.chatInput'),
+        value: input.value,
+      };
       handleRewrite(
         {
           fields: [field],

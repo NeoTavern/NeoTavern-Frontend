@@ -1,13 +1,18 @@
 import { getRequestHeaders } from '../utils/client';
+import type { ApiModel } from '../types';
+
+export interface ConnectionStatusResponse {
+  data?: ApiModel[];
+  error?: string;
+  bypass?: boolean;
+}
 
 export async function fetchChatCompletionStatus(settings: {
   chat_completion_source: string;
   reverse_proxy?: string;
   proxy_password?: string;
   custom_url?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-}): Promise<any> {
-  // TODO: Proper type
+}): Promise<ConnectionStatusResponse> {
   const response = await fetch('/api/backends/chat-completions/status', {
     method: 'POST',
     headers: getRequestHeaders(),
@@ -29,8 +34,7 @@ export async function fetchChatCompletionStatus(settings: {
 export async function fetchTextCompletionStatus(settings: {
   api_type: string;
   api_server?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-}): Promise<any> {
+}): Promise<ConnectionStatusResponse> {
   const response = await fetch('/api/backends/text-completions/status', {
     method: 'POST',
     headers: getRequestHeaders(),

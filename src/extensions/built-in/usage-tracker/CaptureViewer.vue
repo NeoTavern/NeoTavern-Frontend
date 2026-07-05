@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { Button } from '../../../components/UI';
+import { useStrictI18n } from '../../../composables/useStrictI18n';
 import type { UsageCaptureEntry } from './types';
 
 const props = defineProps<{
@@ -9,6 +10,7 @@ const props = defineProps<{
 }>();
 
 const PRETTY_MODE_STORAGE_KEY = 'NeoTavern_UsageTracker_CaptureViewer_PrettyMode';
+const { t } = useStrictI18n();
 
 function getSavedPrettyMode(): boolean {
   try {
@@ -71,10 +73,15 @@ function formatMessages(messages: unknown): string | null {
   return messages
     .map((message) => {
       if (!isRecord(message)) return stringify(message);
-      const role = typeof message.role === 'string' ? message.role.toUpperCase() : 'MESSAGE';
+      const role =
+        typeof message.role === 'string'
+          ? message.role.toUpperCase()
+          : t('extensionsBuiltin.usageTracker.message').toUpperCase();
       const name = typeof message.name === 'string' && message.name ? ` (${message.name})` : '';
       const content = formatContent(message.content);
-      const toolCalls = message.tool_calls ? `\n\nTOOL CALLS:\n${stringify(message.tool_calls)}` : '';
+      const toolCalls = message.tool_calls
+        ? `\n\n${t('extensionsBuiltin.usageTracker.toolCalls').toUpperCase()}:\n${stringify(message.tool_calls)}`
+        : '';
       return `${role}${name}:\n${content}${toolCalls}`;
     })
     .join('\n\n');
@@ -87,7 +94,7 @@ function formatRequest(request: unknown): string {
   if (formattedMessages) return formattedMessages;
 
   if (typeof request.prompt === 'string') {
-    return `PROMPT:\n${request.prompt}`;
+    return `${t('extensionsBuiltin.usageTracker.prompt').toUpperCase()}:\n${request.prompt}`;
   }
 
   return stringify(request);
@@ -98,13 +105,19 @@ function formatResponse(response: unknown, responseText?: string): string {
   if (!isRecord(response)) return stringify(response);
 
   const sections: string[] = [];
-  if (typeof response.content === 'string' && response.content.trim()) sections.push(`CONTENT:\n${response.content}`);
-  if (typeof response.reasoning === 'string' && response.reasoning.trim()) {
-    sections.push(`REASONING:\n${response.reasoning}`);
+  if (typeof response.content === 'string' && response.content.trim()) {
+    sections.push(`${t('extensionsBuiltin.usageTracker.content').toUpperCase()}:\n${response.content}`);
   }
-  if (response.tool_calls) sections.push(`TOOL CALLS:\n${stringify(response.tool_calls)}`);
-  if (response.images) sections.push(`IMAGES:\n${stringify(response.images)}`);
-  if (typeof response.error === 'string' && response.error.trim()) sections.push(`ERROR:\n${response.error}`);
+  if (typeof response.reasoning === 'string' && response.reasoning.trim()) {
+    sections.push(`${t('extensionsBuiltin.usageTracker.reasoning').toUpperCase()}:\n${response.reasoning}`);
+  }
+  if (response.tool_calls)
+    sections.push(`${t('extensionsBuiltin.usageTracker.toolCalls').toUpperCase()}:\n${stringify(response.tool_calls)}`);
+  if (response.images)
+    sections.push(`${t('extensionsBuiltin.usageTracker.images').toUpperCase()}:\n${stringify(response.images)}`);
+  if (typeof response.error === 'string' && response.error.trim()) {
+    sections.push(`${t('extensionsBuiltin.usageTracker.error').toUpperCase()}:\n${response.error}`);
+  }
 
   return sections.length > 0 ? sections.join('\n\n') : stringify(response);
 }
@@ -156,14 +169,14 @@ function sourceLabel(source: string): string {
             icon="fa-arrow-up"
             @click="activePane = 'request'"
           >
-            Request
+            {{ t('extensionsBuiltin.usageTracker.request') }}
           </Button>
           <Button
             :variant="activePane === 'response' ? 'default' : 'ghost'"
             icon="fa-arrow-down"
             @click="activePane = 'response'"
           >
-            Response
+            {{ t('extensionsBuiltin.usageTracker.response') }}
           </Button>
         </div>
 
@@ -172,14 +185,14 @@ function sourceLabel(source: string): string {
           icon="fa-wand-magic-sparkles"
           @click="prettyMode = !prettyMode"
         >
-          {{ prettyMode ? 'Pretty' : 'Raw' }}
+          {{ prettyMode ? t('extensionsBuiltin.usageTracker.pretty') : t('extensionsBuiltin.usageTracker.raw') }}
         </Button>
       </div>
 
-      <pre class="capture-code">{{ activeContent || 'No data captured.' }}</pre>
+      <pre class="capture-code">{{ activeContent || t('extensionsBuiltin.usageTracker.noDataCaptured') }}</pre>
     </section>
 
-    <div v-else class="empty-state">No captures found.</div>
+    <div v-else class="empty-state">{{ t('extensionsBuiltin.usageTracker.noCaptures') }}</div>
   </div>
 </template>
 

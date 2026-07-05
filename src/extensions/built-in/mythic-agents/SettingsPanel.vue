@@ -25,6 +25,7 @@ const props = defineProps<{
   api: MythicExtensionAPI;
 }>();
 
+const t = props.api.i18n.t;
 const initial: MythicSettings = cloneDefaultMythicSettings();
 
 const settings = ref<MythicSettings>(JSON.parse(JSON.stringify(initial)));
@@ -43,30 +44,30 @@ const isCurrentPresetBuiltIn = computed(() => currentPreset.value?.builtIn === t
 
 function isPresetContentEditable(): boolean {
   if (isCurrentPresetBuiltIn.value) {
-    props.api.ui.showToast('Built-in Mythic Agents presets are read-only. Create a preset to customize them.', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.builtInReadOnly'), 'error');
     return false;
   }
   return true;
 }
 
 const mainTabs = [
-  { label: 'General', value: 'general' },
-  { label: 'Prompts', value: 'prompts' },
-  { label: 'Fate Chart', value: 'fateChart' },
-  { label: 'Event Tables', value: 'eventTables' },
-  { label: 'UNE', value: 'une' },
+  { label: t('extensionsBuiltin.mythicAgents.tabs.general'), value: 'general' },
+  { label: t('extensionsBuiltin.mythicAgents.tabs.prompts'), value: 'prompts' },
+  { label: t('extensionsBuiltin.mythicAgents.tabs.fateChart'), value: 'fateChart' },
+  { label: t('extensionsBuiltin.mythicAgents.tabs.eventTables'), value: 'eventTables' },
+  { label: t('extensionsBuiltin.mythicAgents.tabs.une'), value: 'une' },
 ];
 
 const promptTypes: { key: keyof NonNullable<MythicSettings['prompts']>; label: string }[] = [
-  { key: 'initialScene', label: 'Initial Scene' },
-  { key: 'analysis', label: 'Analysis' },
-  { key: 'narration', label: 'Narration' },
+  { key: 'initialScene', label: t('extensionsBuiltin.mythicAgents.prompts.initialScene') },
+  { key: 'analysis', label: t('extensionsBuiltin.mythicAgents.prompts.analysis') },
+  { key: 'narration', label: t('extensionsBuiltin.mythicAgents.prompts.narration') },
 ];
 
 const formatOptions = [
-  { label: 'Native', value: 'native' },
-  { label: 'JSON', value: 'json' },
-  { label: 'XML', value: 'xml' },
+  { label: t('extensionsBuiltin.mythicAgents.requestFormats.native'), value: 'native' },
+  { label: t('extensionsBuiltin.mythicAgents.requestFormats.json'), value: 'json' },
+  { label: t('extensionsBuiltin.mythicAgents.requestFormats.xml'), value: 'xml' },
 ];
 
 // JSON Editors State
@@ -249,16 +250,16 @@ async function saveFateChart() {
     if (errors.length > 0) {
       await popupStore.show({
         type: POPUP_TYPE.TEXT,
-        title: 'Validation Errors',
+        title: t('extensionsBuiltin.mythicAgents.validationErrors'),
         content: errors.join('\n'),
         okButton: true,
       });
       return;
     }
     currentPreset.value.data.fateChart = data;
-    props.api.ui.showToast('Fate Chart updated', 'success');
+    props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.fateChartUpdated'), 'success');
   } catch {
-    props.api.ui.showToast('Invalid JSON', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.invalidJson'), 'error');
   }
 }
 
@@ -276,16 +277,16 @@ async function saveEventFocuses() {
     if (errors.length > 0) {
       await popupStore.show({
         type: POPUP_TYPE.TEXT,
-        title: 'Validation Errors',
+        title: t('extensionsBuiltin.mythicAgents.validationErrors'),
         content: errors.join('\n'),
         okButton: true,
       });
       return;
     }
     currentPreset.value.data.eventGeneration.focuses = data;
-    props.api.ui.showToast('Event Focuses updated', 'success');
+    props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.eventFocusesUpdated'), 'success');
   } catch {
-    props.api.ui.showToast('Invalid JSON', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.invalidJson'), 'error');
   }
 }
 
@@ -302,7 +303,16 @@ function saveStringArray(target: 'actions' | 'subjects', jsonValue: string) {
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
   currentPreset.value.data.eventGeneration[target] = data;
-  props.api.ui.showToast(`${target} updated`, 'success');
+  const tableLabels = {
+    actions: t('extensionsBuiltin.mythicAgents.eventTables.actions'),
+    subjects: t('extensionsBuiltin.mythicAgents.eventTables.subjects'),
+  };
+  props.api.ui.showToast(
+    t('extensionsBuiltin.mythicAgents.toasts.tableUpdated', {
+      table: tableLabels[target],
+    }),
+    'success',
+  );
 }
 
 function resetStringArray(target: 'actions' | 'subjects') {
@@ -331,7 +341,7 @@ async function saveUNE() {
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
   currentPreset.value.data.une = { modifiers, nouns, motivation_verbs, motivation_nouns };
-  props.api.ui.showToast('UNE settings updated', 'success');
+  props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.uneUpdated'), 'success');
 }
 
 function resetUNE() {
@@ -350,7 +360,7 @@ async function saveCharacterTypes() {
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
   currentPreset.value.data.characterTypes = data;
-  props.api.ui.showToast('Character Types updated', 'success');
+  props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.characterTypesUpdated'), 'success');
 }
 
 function resetCharacterTypes() {
@@ -364,7 +374,7 @@ function resetCharacterTypes() {
 async function handleCreatePreset() {
   const result = await popupStore.show({
     type: POPUP_TYPE.INPUT,
-    content: 'Enter preset name:',
+    content: t('extensionsBuiltin.mythicAgents.popups.enterPresetName'),
     inputRequired: true,
     okButton: true,
     cancelButton: true,
@@ -372,7 +382,7 @@ async function handleCreatePreset() {
   if (result.result === 1 && result.value && typeof result.value === 'string' && result.value.trim()) {
     const presetName = result.value.trim();
     if (settings.value.presets.some((p) => p.name === presetName)) {
-      props.api.ui.showToast('Preset name already exists', 'error');
+      props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.presetNameExists'), 'error');
       return;
     }
     const newPreset: MythicPreset = {
@@ -394,7 +404,7 @@ async function handleEditPreset() {
   if (!selectedPreset.value) return;
   const result = await popupStore.show({
     type: POPUP_TYPE.INPUT,
-    content: 'Enter new preset name:',
+    content: t('extensionsBuiltin.mythicAgents.popups.enterNewPresetName'),
     inputValue: selectedPreset.value,
     inputRequired: true,
     okButton: true,
@@ -402,12 +412,12 @@ async function handleEditPreset() {
   });
   if (result.result === 1 && result.value && typeof result.value === 'string' && result.value.trim()) {
     if (isCurrentPresetBuiltIn.value) {
-      props.api.ui.showToast('Built-in Mythic Agents presets cannot be renamed', 'error');
+      props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.builtInCannotRename'), 'error');
       return;
     }
     const presetName = result.value.trim();
     if (settings.value.presets.some((p) => p.name === presetName && p.name !== selectedPreset.value)) {
-      props.api.ui.showToast('Preset name already exists', 'error');
+      props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.presetNameExists'), 'error');
       return;
     }
     const preset = settings.value.presets.find((p) => p.name === selectedPreset.value);
@@ -421,16 +431,16 @@ async function handleEditPreset() {
 async function handleDeletePreset() {
   if (!selectedPreset.value) return;
   if (isCurrentPresetBuiltIn.value) {
-    props.api.ui.showToast('Built-in Mythic Agents presets cannot be deleted', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.builtInCannotDelete'), 'error');
     return;
   }
   if (settings.value.presets.length <= 1) {
-    props.api.ui.showToast('Cannot delete the last preset', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.cannotDeleteLastPreset'), 'error');
     return;
   }
   const confirm = await popupStore.show({
     type: POPUP_TYPE.CONFIRM,
-    content: `Are you sure you want to delete preset "${selectedPreset.value}"?`,
+    content: t('extensionsBuiltin.mythicAgents.popups.deletePreset', { name: selectedPreset.value }),
     okButton: true,
     cancelButton: true,
   });
@@ -491,12 +501,12 @@ function handleFileImport(event: Event) {
           if (!settings.value.presets.some((p) => p.name === importedPreset.name)) {
             importedPreset.builtIn = false;
             settings.value.presets.push(importedPreset);
-            props.api.ui.showToast('Preset imported', 'success');
+            props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.presetImported'), 'success');
           } else {
-            props.api.ui.showToast('Preset name already exists', 'error');
+            props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.presetNameExists'), 'error');
           }
         } else {
-          props.api.ui.showToast('Invalid preset format', 'error');
+          props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.invalidPresetFormat'), 'error');
         }
       } else {
         const importedPresets: MythicPreset[] = JSON.parse(e.target?.result as string);
@@ -507,13 +517,13 @@ function handleFileImport(event: Event) {
               settings.value.presets.push(preset);
             }
           }
-          props.api.ui.showToast('Presets imported', 'success');
+          props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.presetsImported'), 'success');
         } else {
-          props.api.ui.showToast('Invalid file format', 'error');
+          props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.invalidFileFormat'), 'error');
         }
       }
     } catch {
-      props.api.ui.showToast('Invalid JSON', 'error');
+      props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.invalidJson'), 'error');
     }
   };
   reader.readAsText(file);
@@ -522,8 +532,7 @@ function handleFileImport(event: Event) {
 async function handleResetAllPresets() {
   const confirm = await popupStore.show({
     type: POPUP_TYPE.CONFIRM,
-    content:
-      'Are you sure you want to reset Mythic Agents prompts, presets, fate charts, event tables, and UNE data to default?',
+    content: t('extensionsBuiltin.mythicAgents.popups.resetAllContent'),
     okButton: true,
     cancelButton: true,
   });
@@ -534,7 +543,7 @@ async function handleResetAllPresets() {
     selectedPreset.value = 'Default';
     settings.value.selectedPreset = 'Default';
     loadJsonFromSettings();
-    props.api.ui.showToast('Mythic Agents content reset', 'success');
+    props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.contentReset'), 'success');
   }
 }
 
@@ -548,12 +557,15 @@ onMounted(async () => {
     loadJsonFromSettings();
     const errors = validateCurrentPreset();
     if (errors.length > 0) {
-      props.api.ui.showToast(`Preset "${selectedPreset.value}" has validation errors. Please fix or reset.`, 'error');
+      props.api.ui.showToast(
+        t('extensionsBuiltin.mythicAgents.toasts.presetValidationErrors', { name: selectedPreset.value }),
+        'error',
+      );
       console.error('Preset validation errors:', errors);
     }
   } catch (error) {
     console.error('Failed to load preset data:', error);
-    props.api.ui.showToast('Failed to load preset data. See console for details.', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.loadPresetFailed'), 'error');
     await handleResetAllPresets();
   }
 });
@@ -565,12 +577,15 @@ watch(selectedPreset, async (newPreset) => {
       loadJsonFromSettings();
       const errors = validateCurrentPreset();
       if (errors.length > 0) {
-        props.api.ui.showToast(`Preset "${newPreset}" has validation errors. Please fix or reset.`, 'error');
+        props.api.ui.showToast(
+          t('extensionsBuiltin.mythicAgents.toasts.presetValidationErrors', { name: newPreset }),
+          'error',
+        );
         console.error('Preset validation errors:', errors);
       }
     } catch (error) {
       console.error('Failed to load preset data:', error);
-      props.api.ui.showToast('Failed to load preset data. See console for details.', 'error');
+      props.api.ui.showToast(t('extensionsBuiltin.mythicAgents.toasts.loadPresetFailed'), 'error');
       await handleResetAllPresets();
     }
   }
@@ -590,11 +605,11 @@ const getPromptTools = (type: keyof NonNullable<MythicSettings['prompts']>) => [
   {
     id: 'reset',
     icon: 'fa-rotate-left',
-    title: 'Reset to Default',
+    title: t('extensionsBuiltin.mythicAgents.resetToDefault'),
     onClick: async ({ setValue }: { setValue: (value: string) => void }) => {
       const confirm = await popupStore.show({
         type: POPUP_TYPE.CONFIRM,
-        content: 'Are you sure you want to reset this prompt to default?',
+        content: t('extensionsBuiltin.mythicAgents.popups.resetPromptContent'),
         okButton: true,
         cancelButton: true,
       });
@@ -613,13 +628,13 @@ const fateChartTools = [
   {
     id: 'save',
     icon: 'fa-save',
-    title: 'Apply',
+    title: t('common.apply'),
     onClick: saveFateChart,
   },
   {
     id: 'reset',
     icon: 'fa-undo',
-    title: 'Reset',
+    title: t('common.reset'),
     onClick: resetFateChart,
   },
 ];
@@ -628,13 +643,13 @@ const eventFocusesTools = [
   {
     id: 'save',
     icon: 'fa-save',
-    title: 'Apply',
+    title: t('common.apply'),
     onClick: saveEventFocuses,
   },
   {
     id: 'reset',
     icon: 'fa-undo',
-    title: 'Reset',
+    title: t('common.reset'),
     onClick: resetEventFocuses,
   },
 ];
@@ -643,13 +658,13 @@ const eventActionsTools = [
   {
     id: 'save',
     icon: 'fa-save',
-    title: 'Apply',
+    title: t('common.apply'),
     onClick: () => saveStringArray('actions', eventActionsJson.value),
   },
   {
     id: 'reset',
     icon: 'fa-undo',
-    title: 'Reset',
+    title: t('common.reset'),
     onClick: () => resetStringArray('actions'),
   },
 ];
@@ -658,13 +673,13 @@ const eventSubjectsTools = [
   {
     id: 'save',
     icon: 'fa-save',
-    title: 'Apply',
+    title: t('common.apply'),
     onClick: () => saveStringArray('subjects', eventSubjectsJson.value),
   },
   {
     id: 'reset',
     icon: 'fa-undo',
-    title: 'Reset',
+    title: t('common.reset'),
     onClick: () => resetStringArray('subjects'),
   },
 ];
@@ -673,13 +688,13 @@ const uneTools = [
   {
     id: 'save',
     icon: 'fa-save',
-    title: 'Apply',
+    title: t('common.apply'),
     onClick: saveUNE,
   },
   {
     id: 'reset',
     icon: 'fa-undo',
-    title: 'Reset',
+    title: t('common.reset'),
     onClick: resetUNE,
   },
 ];
@@ -688,13 +703,13 @@ const characterTypesTools = [
   {
     id: 'save',
     icon: 'fa-save',
-    title: 'Apply',
+    title: t('common.apply'),
     onClick: saveCharacterTypes,
   },
   {
     id: 'reset',
     icon: 'fa-undo',
-    title: 'Reset',
+    title: t('common.reset'),
     onClick: resetCharacterTypes,
   },
 ];
@@ -763,32 +778,44 @@ const customActions: CustomAction[] = [
     <Tabs v-model="activeTab" :options="mainTabs" class="main-tabs" />
 
     <div v-if="activeTab === 'general'" class="tab-content">
-      <div class="group-header">General Configuration</div>
-      <FormItem label="Enable Mythic Agents Extension">
+      <div class="group-header">{{ t('extensionsBuiltin.mythicAgents.generalConfiguration') }}</div>
+      <FormItem :label="t('extensionsBuiltin.mythicAgents.enable')">
         <Toggle v-model="settings.enabled" />
       </FormItem>
       <FormItem
-        label="Auto-Analyze User Messages"
-        description="Automatically analyze user messages for implied questions and roll fate when Mythic is active."
+        :label="t('extensionsBuiltin.mythicAgents.autoAnalyze')"
+        :description="t('extensionsBuiltin.mythicAgents.autoAnalyzeHint')"
       >
         <Toggle v-model="settings.autoAnalyze" />
       </FormItem>
-      <FormItem label="Auto-Update Scene" description="Automatically update the scene state after each narration.">
+      <FormItem
+        :label="t('extensionsBuiltin.mythicAgents.autoUpdateScene')"
+        :description="t('extensionsBuiltin.mythicAgents.autoUpdateSceneHint')"
+      >
         <Toggle v-model="settings.autoSceneUpdate" />
       </FormItem>
       <FormItem
-        label="Connection Profile"
-        description="The connection profile to use for LLM analysis and event generation."
+        :label="t('extensionsBuiltin.mythicAgents.connectionProfile')"
+        :description="t('extensionsBuiltin.mythicAgents.connectionProfileHint')"
       >
         <ConnectionProfileSelector v-model="settings.connectionProfileId" />
       </FormItem>
-      <FormItem label="Default Chaos Rank" description="The default chaos rank for new scenes (1-9).">
+      <FormItem
+        :label="t('extensionsBuiltin.mythicAgents.defaultChaosRank')"
+        :description="t('extensionsBuiltin.mythicAgents.defaultChaosRankHint')"
+      >
         <Input v-model.number="settings.chaos" type="number" :min="1" :max="9" />
       </FormItem>
-      <FormItem label="Language" description="The language for generated content.">
-        <Input v-model="settings.language" placeholder="English" />
+      <FormItem
+        :label="t('extensionsBuiltin.mythicAgents.language')"
+        :description="t('extensionsBuiltin.mythicAgents.languageHint')"
+      >
+        <Input v-model="settings.language" :placeholder="t('extensionsBuiltin.mythicAgents.languagePlaceholder')" />
       </FormItem>
-      <FormItem label="Request Format" description="Format to enforce for Mythic structured responses.">
+      <FormItem
+        :label="t('extensionsBuiltin.mythicAgents.requestFormat')"
+        :description="t('extensionsBuiltin.mythicAgents.requestFormatHint')"
+      >
         <Select v-model="settings.structuredRequestFormat" :options="formatOptions" />
       </FormItem>
     </div>
@@ -820,7 +847,7 @@ const customActions: CustomAction[] = [
     </div>
 
     <div v-if="activeTab === 'eventTables'" class="tab-content">
-      <CollapsibleSection title="Event Focuses (Weighted Table)">
+      <CollapsibleSection :title="t('extensionsBuiltin.mythicAgents.eventFocusesWeighted')">
         <p class="help-text">
           Use <code>min</code> and <code>max</code> (1-100) for probability. <code>action</code> supports logic like
           <code>(random_npc or random_pc) and new_warrior</code>.
@@ -834,7 +861,7 @@ const customActions: CustomAction[] = [
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Event Actions">
+      <CollapsibleSection :title="t('extensionsBuiltin.mythicAgents.eventActions')">
         <Textarea
           v-model="eventActionsJson"
           :rows="10"
@@ -844,7 +871,7 @@ const customActions: CustomAction[] = [
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Event Subjects">
+      <CollapsibleSection :title="t('extensionsBuiltin.mythicAgents.eventSubjects')">
         <Textarea
           v-model="eventSubjectsJson"
           :rows="10"
@@ -854,7 +881,7 @@ const customActions: CustomAction[] = [
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Character Types">
+      <CollapsibleSection :title="t('extensionsBuiltin.mythicAgents.characterTypes')">
         <Textarea
           v-model="characterTypesJson"
           :rows="5"
@@ -866,7 +893,7 @@ const customActions: CustomAction[] = [
     </div>
 
     <div v-if="activeTab === 'une'" class="tab-content">
-      <CollapsibleSection title="Modifiers">
+      <CollapsibleSection :title="t('extensionsBuiltin.mythicAgents.modifiers')">
         <Textarea
           v-model="modifiersJson"
           :rows="5"
@@ -876,7 +903,7 @@ const customActions: CustomAction[] = [
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Nouns">
+      <CollapsibleSection :title="t('extensionsBuiltin.mythicAgents.nouns')">
         <Textarea
           v-model="nounsJson"
           :rows="5"
@@ -886,7 +913,7 @@ const customActions: CustomAction[] = [
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Motivation Verbs">
+      <CollapsibleSection :title="t('extensionsBuiltin.mythicAgents.motivationVerbs')">
         <Textarea
           v-model="motivationVerbsJson"
           :rows="5"
@@ -896,7 +923,7 @@ const customActions: CustomAction[] = [
         />
       </CollapsibleSection>
 
-      <CollapsibleSection title="Motivation Nouns">
+      <CollapsibleSection :title="t('extensionsBuiltin.mythicAgents.motivationNouns')">
         <Textarea
           v-model="motivationNounsJson"
           :rows="5"

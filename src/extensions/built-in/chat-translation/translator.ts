@@ -2,8 +2,6 @@ import Handlebars from 'handlebars';
 import type { ApiChatMessage, ExtensionAPI } from '../../../types';
 import { type ChatTranslationSettings, migrateChatTranslationSettings, resolveChatTranslationPrompts } from './types';
 
-// TODO: i18n
-
 export class Translator {
   constructor(private api: ExtensionAPI<ChatTranslationSettings>) {}
 
@@ -22,7 +20,7 @@ export class Translator {
       await this.api.chat.updateMessageObject(messageIndex, {
         extra: { display_text: undefined },
       });
-      this.api.ui.showToast('Translation removed', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.translationRemoved'), 'info');
       return;
     }
 
@@ -31,11 +29,11 @@ export class Translator {
     const connectionProfile =
       settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
     if (!connectionProfile) {
-      this.api.ui.showToast('No connection profile selected for translation', 'error');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.noConnectionProfile'), 'error');
       return;
     }
 
-    this.api.ui.showToast('Translating...', 'info');
+    this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.translating'), 'info');
 
     try {
       // Compile Prompt
@@ -82,10 +80,10 @@ export class Translator {
         extra: { display_text: translatedText },
       });
 
-      this.api.ui.showToast('Translation complete', 'success');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.translationComplete'), 'success');
     } catch (error) {
       console.error('Translation failed', error);
-      this.api.ui.showToast('Translation failed', 'error');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.translationFailed'), 'error');
     }
   }
 
@@ -104,7 +102,7 @@ export class Translator {
     const connectionProfile =
       settings.connectionProfile || this.api.settings.getGlobal('api.selectedConnectionProfile');
     if (!connectionProfile) {
-      this.api.ui.showToast('No connection profile selected for translation', 'error');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.noConnectionProfile'), 'error');
       return;
     }
 
@@ -112,14 +110,11 @@ export class Translator {
     const targetLang = settings.sourceLang;
 
     if (targetLang.toLowerCase() === 'auto') {
-      this.api.ui.showToast(
-        'Cannot reverse translate when Source Language is "Auto". Please set a specific Source Language.',
-        'warning',
-      );
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.autoSourceReverseWarning'), 'warning');
       return;
     }
 
-    this.api.ui.showToast('Translating input...', 'info');
+    this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.translatingInput'), 'info');
 
     try {
       const template = Handlebars.compile(resolveChatTranslationPrompts(settings).prompt, { noEscape: true });
@@ -162,10 +157,10 @@ export class Translator {
       }
 
       this.api.chat.setChatInput(newValue);
-      this.api.ui.showToast('Input translated', 'success');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.inputTranslated'), 'success');
     } catch (error) {
       console.error('Input translation failed', error);
-      this.api.ui.showToast('Input translation failed', 'error');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.chatTranslation.inputTranslationFailed'), 'error');
     }
   }
 }

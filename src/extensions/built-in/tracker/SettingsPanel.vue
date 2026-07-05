@@ -20,8 +20,6 @@ const props = defineProps<{
 
 const t = props.api.i18n.t;
 
-// TODO: i18n
-
 const settings = ref<TrackerSettings>({ ...DEFAULT_SETTINGS });
 const schemaError = ref<string | null>(null);
 
@@ -58,7 +56,7 @@ watch(
       if (e instanceof Error) {
         schemaError.value = e.message;
       } else {
-        schemaError.value = 'Invalid JSON format.';
+        schemaError.value = t('extensionsBuiltin.tracker.errors.invalidJson');
       }
     }
   },
@@ -145,8 +143,8 @@ async function handlePresetDelete() {
 
 async function handleResetAll() {
   const { result } = await props.api.ui.showPopup({
-    title: 'Reset All Tracker Presets?',
-    content: 'This will reset all schema presets to their default values. This action cannot be undone.',
+    title: t('extensionsBuiltin.tracker.popups.resetAllTitle'),
+    content: t('extensionsBuiltin.tracker.popups.resetAllContent'),
     type: POPUP_TYPE.CONFIRM,
     okButton: 'common.reset',
   });
@@ -154,27 +152,27 @@ async function handleResetAll() {
   if (result === POPUP_RESULT.AFFIRMATIVE) {
     settings.value.schemaPresets = JSON.parse(JSON.stringify(DEFAULT_PRESETS));
     settings.value.activeSchemaPresetName = DEFAULT_PRESETS[0].name;
-    props.api.ui.showToast('Tracker presets have been reset.', 'success');
+    props.api.ui.showToast(t('extensionsBuiltin.tracker.toasts.presetsReset'), 'success');
   }
 }
 
 const autoModeOptions = [
-  { label: 'None', value: 'none' },
-  { label: 'AI Responses', value: 'responses' },
-  { label: 'User Inputs', value: 'inputs' },
-  { label: 'Both', value: 'both' },
+  { label: t('common.none'), value: 'none' },
+  { label: t('extensionsBuiltin.tracker.autoModes.responses'), value: 'responses' },
+  { label: t('extensionsBuiltin.tracker.autoModes.inputs'), value: 'inputs' },
+  { label: t('extensionsBuiltin.tracker.autoModes.both'), value: 'both' },
 ];
 
 const promptEngineeringOptions = [
-  { label: 'Native (Recommended)', value: 'native' },
-  { label: 'Force JSON', value: 'json' },
-  { label: 'Force XML', value: 'xml' },
+  { label: t('extensionsBuiltin.tracker.promptEngineering.native'), value: 'native' },
+  { label: t('extensionsBuiltin.tracker.promptEngineering.json'), value: 'json' },
+  { label: t('extensionsBuiltin.tracker.promptEngineering.xml'), value: 'xml' },
 ];
 
 const deltaModeOptions = [
-  { label: 'Auto (Recommended)', value: 'auto' },
-  { label: 'Off', value: 'off' },
-  { label: 'Always', value: 'always' },
+  { label: t('extensionsBuiltin.tracker.deltaModes.auto'), value: 'auto' },
+  { label: t('extensionsBuiltin.tracker.deltaModes.off'), value: 'off' },
+  { label: t('extensionsBuiltin.tracker.deltaModes.always'), value: 'always' },
 ];
 
 const schemaTools = computed(() => [
@@ -187,14 +185,14 @@ const schemaTools = computed(() => [
       const defaultActivePreset = DEFAULT_PRESETS.find((p) => p.name === activePreset.value?.name) ?? null;
       if (!defaultActivePreset) return;
       const { result } = await props.api.ui.showPopup({
-        title: 'Reset Schema?',
-        content: `Are you sure you want to reset the schema for "${activePreset.value?.name}" to its default value?`,
+        title: t('extensionsBuiltin.tracker.popups.resetSchemaTitle'),
+        content: t('extensionsBuiltin.tracker.popups.resetSchemaContent', { name: activePreset.value?.name ?? '' }),
         type: POPUP_TYPE.CONFIRM,
         okButton: 'common.reset',
       });
       if (result === POPUP_RESULT.AFFIRMATIVE) {
         setValue(defaultActivePreset.schema);
-        props.api.ui.showToast('Schema has been reset.', 'success');
+        props.api.ui.showToast(t('extensionsBuiltin.tracker.toasts.schemaReset'), 'success');
       }
     },
   },
@@ -210,14 +208,14 @@ const templateTools = computed(() => [
       const defaultActivePreset = DEFAULT_PRESETS.find((p) => p.name === activePreset.value?.name) ?? null;
       if (!defaultActivePreset) return;
       const { result } = await props.api.ui.showPopup({
-        title: 'Reset Template?',
-        content: `Are you sure you want to reset the HTML template for "${activePreset.value?.name}" to its default value?`,
+        title: t('extensionsBuiltin.tracker.popups.resetTemplateTitle'),
+        content: t('extensionsBuiltin.tracker.popups.resetTemplateContent', { name: activePreset.value?.name ?? '' }),
         type: POPUP_TYPE.CONFIRM,
         okButton: 'common.reset',
       });
       if (result === POPUP_RESULT.AFFIRMATIVE) {
         setValue(defaultActivePreset.template);
-        props.api.ui.showToast('HTML template has been reset.', 'success');
+        props.api.ui.showToast(t('extensionsBuiltin.tracker.toasts.templateReset'), 'success');
       }
     },
   },
@@ -233,14 +231,14 @@ const promptTools = computed(() => [
       const defaultActivePreset = DEFAULT_PRESETS.find((p) => p.name === activePreset.value?.name) ?? null;
       if (!defaultActivePreset) return;
       const { result } = await props.api.ui.showPopup({
-        title: 'Reset Prompt?',
-        content: `Are you sure you want to reset the prompt template for "${activePreset.value?.name}" to its default value?`,
+        title: t('extensionsBuiltin.tracker.popups.resetPromptTitle'),
+        content: t('extensionsBuiltin.tracker.popups.resetPromptContent', { name: activePreset.value?.name ?? '' }),
         type: POPUP_TYPE.CONFIRM,
         okButton: 'common.reset',
       });
       if (result === POPUP_RESULT.AFFIRMATIVE) {
         setValue(defaultActivePreset.prompt);
-        props.api.ui.showToast('Prompt template has been reset.', 'success');
+        props.api.ui.showToast(t('extensionsBuiltin.tracker.toasts.promptReset'), 'success');
       }
     },
   },
@@ -249,39 +247,48 @@ const promptTools = computed(() => [
 
 <template>
   <div class="tracker-settings">
-    <div class="group-header">General</div>
-    <FormItem label="Enable Tracker">
+    <div class="group-header">{{ t('common.general') }}</div>
+    <FormItem :label="t('extensionsBuiltin.tracker.settings.enable')">
       <Toggle v-model="settings.enabled" />
     </FormItem>
 
-    <FormItem label="Connection Profile" description="Overrides the chat's connection profile for tracker generation.">
+    <FormItem
+      :label="t('extensionsBuiltin.tracker.settings.connectionProfile')"
+      :description="t('extensionsBuiltin.tracker.settings.connectionProfileHint')"
+    >
       <ConnectionProfileSelector v-model="settings.connectionProfile" />
     </FormItem>
 
     <div class="setting-row">
-      <FormItem label="Auto Mode" description="Automatically run tracker on new messages." style="flex: 1">
+      <FormItem
+        :label="t('extensionsBuiltin.tracker.settings.autoMode')"
+        :description="t('extensionsBuiltin.tracker.settings.autoModeHint')"
+        style="flex: 1"
+      >
         <Select v-model="settings.autoMode" :options="autoModeOptions" />
       </FormItem>
       <FormItem
-        label="Prompt Engineering"
-        description="Method to ensure structured output. 'Native' is best if the model supports it."
+        :label="t('extensionsBuiltin.tracker.settings.promptEngineering')"
+        :description="t('extensionsBuiltin.tracker.settings.promptEngineeringHint')"
         style="flex: 1"
       >
         <Select v-model="settings.promptEngineering" :options="promptEngineeringOptions" />
       </FormItem>
       <FormItem
-        label="Delta Mode"
-        description="Ask for partial JSON updates after the first full tracker when the schema allows it."
+        :label="t('extensionsBuiltin.tracker.settings.deltaMode')"
+        :description="t('extensionsBuiltin.tracker.settings.deltaModeHint')"
         style="flex: 1"
       >
         <Select v-model="settings.deltaMode" :options="deltaModeOptions" />
       </FormItem>
     </div>
     <div class="reset-all-container">
-      <Button icon="fa-rotate-left" variant="danger" @click="handleResetAll">Reset All Presets</Button>
+      <Button icon="fa-rotate-left" variant="danger" @click="handleResetAll">
+        {{ t('extensionsBuiltin.tracker.settings.resetAllPresets') }}
+      </Button>
     </div>
 
-    <div class="group-header">Schema Presets</div>
+    <div class="group-header">{{ t('extensionsBuiltin.tracker.settings.schemaPresets') }}</div>
     <PresetControl
       v-model="settings.activeSchemaPresetName"
       :options="presetOptions"
@@ -295,8 +302,8 @@ const promptTools = computed(() => [
 
     <template v-if="activePreset">
       <FormItem
-        label="JSON Schema"
-        description="Defines the structure of the data to extract."
+        :label="t('extensionsBuiltin.tracker.settings.jsonSchema')"
+        :description="t('extensionsBuiltin.tracker.settings.jsonSchemaHint')"
         class="schema-form-item"
         :error="schemaError ?? undefined"
       >
@@ -310,7 +317,10 @@ const promptTools = computed(() => [
           :disabled="isActivePresetBuiltIn"
         />
       </FormItem>
-      <FormItem label="HTML Template" description="Handlebars template to render the extracted data in the chat.">
+      <FormItem
+        :label="t('extensionsBuiltin.tracker.settings.htmlTemplate')"
+        :description="t('extensionsBuiltin.tracker.settings.htmlTemplateHint')"
+      >
         <Textarea
           v-model="activePreset.template"
           allow-maximize
@@ -321,7 +331,10 @@ const promptTools = computed(() => [
           :disabled="isActivePresetBuiltIn"
         />
       </FormItem>
-      <FormItem label="Prompt Template" description="The prompt sent to the AI for data extraction.">
+      <FormItem
+        :label="t('extensionsBuiltin.tracker.settings.promptTemplate')"
+        :description="t('extensionsBuiltin.tracker.settings.promptTemplateHint')"
+      >
         <Textarea
           v-model="activePreset.prompt"
           allow-maximize
@@ -334,31 +347,35 @@ const promptTools = computed(() => [
       </FormItem>
     </template>
 
-    <div class="group-header">Context Management</div>
+    <div class="group-header">{{ t('extensionsBuiltin.tracker.settings.contextManagement') }}</div>
     <div class="setting-row">
-      <FormItem label="Max Response Tokens" description="Max tokens for the tracker's response." style="flex: 1">
+      <FormItem
+        :label="t('extensionsBuiltin.tracker.settings.maxResponseTokens')"
+        :description="t('extensionsBuiltin.tracker.settings.maxResponseTokensHint')"
+        style="flex: 1"
+      >
         <Input v-model.number="settings.maxResponseTokens" type="number" :min="16" :step="16" />
       </FormItem>
       <FormItem
-        label="Last Messages"
-        description="Include last X messages in prompt context (-1 for all)."
+        :label="t('extensionsBuiltin.tracker.settings.lastMessages')"
+        :description="t('extensionsBuiltin.tracker.settings.lastMessagesHint')"
         style="flex: 1"
       >
         <Input v-model.number="settings.includeLastXMessages" type="number" :min="-1" />
       </FormItem>
       <FormItem
-        label="Last Trackers"
-        description="Include last X trackers in prompt context (-1 for all)."
+        :label="t('extensionsBuiltin.tracker.settings.lastTrackers')"
+        :description="t('extensionsBuiltin.tracker.settings.lastTrackersHint')"
         style="flex: 1"
       >
         <Input v-model.number="settings.includeLastXTrackers" type="number" :min="-1" />
       </FormItem>
     </div>
-    <div class="group-header">Advanced</div>
+    <div class="group-header">{{ t('extensionsBuiltin.tracker.settings.advanced') }}</div>
     <div class="setting-row">
       <FormItem
-        label="Parallel Request Limit"
-        description="How many trackers can run at the same time."
+        :label="t('extensionsBuiltin.tracker.settings.parallelRequestLimit')"
+        :description="t('extensionsBuiltin.tracker.settings.parallelRequestLimitHint')"
         style="flex: 1; max-width: 200px"
       >
         <Input v-model.number="settings.parallelRequestLimit" type="number" :min="1" :max="10" />

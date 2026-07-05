@@ -19,39 +19,38 @@ import type {
   ViewMode,
 } from './types';
 
-// TODO: i18n
-
 const props = defineProps<{
   api: ExtensionAPI;
   storage: UsageStorage;
 }>();
 
+const t = props.api.i18n.t;
 const extensionStore = useExtensionStore();
 
 // --- Types & Constants ---
 
 const rangeOptions: { label: string; value: TimeRange }[] = [
-  { label: 'Last 5 Minutes', value: '5m' },
-  { label: 'Last 15 Minutes', value: '15m' },
-  { label: 'Last 1 Hour', value: '1h' },
-  { label: 'Last 4 Hours', value: '4h' },
-  { label: 'Last 12 Hours', value: '12h' },
-  { label: 'Last 24 Hours', value: '24h' },
-  { label: 'Last 7 Days', value: '7d' },
-  { label: 'Last 30 Days', value: '30d' },
-  { label: 'Last 90 Days', value: '90d' },
-  { label: 'All Time', value: 'all' },
+  { label: t('extensionsBuiltin.usageTracker.ranges.last5Minutes'), value: '5m' },
+  { label: t('extensionsBuiltin.usageTracker.ranges.last15Minutes'), value: '15m' },
+  { label: t('extensionsBuiltin.usageTracker.ranges.last1Hour'), value: '1h' },
+  { label: t('extensionsBuiltin.usageTracker.ranges.last4Hours'), value: '4h' },
+  { label: t('extensionsBuiltin.usageTracker.ranges.last12Hours'), value: '12h' },
+  { label: t('extensionsBuiltin.usageTracker.ranges.last24Hours'), value: '24h' },
+  { label: t('extensionsBuiltin.usageTracker.ranges.last7Days'), value: '7d' },
+  { label: t('extensionsBuiltin.usageTracker.ranges.last30Days'), value: '30d' },
+  { label: t('extensionsBuiltin.usageTracker.ranges.last90Days'), value: '90d' },
+  { label: t('extensionsBuiltin.usageTracker.ranges.allTime'), value: 'all' },
 ];
 
 const sortOptions: { label: string; value: SortField }[] = [
-  { label: 'Date', value: 'timestamp' },
-  { label: 'Total Tokens', value: 'totalTokens' },
-  { label: 'Duration', value: 'duration' },
+  { label: t('extensionsBuiltin.usageTracker.date'), value: 'timestamp' },
+  { label: t('extensionsBuiltin.usageTracker.totalTokens'), value: 'totalTokens' },
+  { label: t('extensionsBuiltin.usageTracker.duration'), value: 'duration' },
 ];
 
 const sortOrderOptions: { label: string; value: SortOrder }[] = [
-  { label: 'Desc', value: 'desc' },
-  { label: 'Asc', value: 'asc' },
+  { label: t('extensionsBuiltin.usageTracker.desc'), value: 'desc' },
+  { label: t('extensionsBuiltin.usageTracker.asc'), value: 'asc' },
 ];
 
 // --- State ---
@@ -99,8 +98,8 @@ const sortedSources = computed(() => {
 });
 
 function formatSource(source: string): string {
-  if (source === 'core') return 'Core';
-  if (source === 'unknown') return 'Unknown';
+  if (source === 'core') return t('extensionsBuiltin.usageTracker.core');
+  if (source === 'unknown') return t('common.unknown');
   return extensionStore.extensions[source]?.manifest.display_name ?? source;
 }
 
@@ -151,7 +150,7 @@ async function loadCaptures() {
 async function showCapture(capture: UsageCaptureEntry) {
   await props.api.ui.showPopup({
     type: POPUP_TYPE.DISPLAY,
-    title: 'Request / Response Capture',
+    title: t('extensionsBuiltin.usageTracker.requestResponseCapture'),
     wide: true,
     large: true,
     component: markRaw(CaptureViewer),
@@ -178,8 +177,8 @@ async function refresh() {
 async function clearLogs() {
   const popupResult = await props.api.ui.showPopup({
     type: POPUP_TYPE.CONFIRM,
-    title: 'Clear All Usage Data',
-    content: 'Are you sure you want to clear all usage logs? This action cannot be undone.',
+    title: t('extensionsBuiltin.usageTracker.clearAllUsageData'),
+    content: t('extensionsBuiltin.usageTracker.clearAllUsageDataContent'),
   });
   if (popupResult.result) {
     await props.storage.clearAll();
@@ -383,51 +382,60 @@ const chartYLabels = computed(() => {
     <!-- Header / Global Controls -->
     <div class="dashboard-header">
       <div class="header-top">
-        <Select v-model="activeRange" :options="rangeOptions" class="range-select" title="Time Range" />
+        <Select
+          v-model="activeRange"
+          :options="rangeOptions"
+          class="range-select"
+          :title="t('extensionsBuiltin.usageTracker.timeRange')"
+        />
       </div>
       <div class="header-actions">
-        <div class="view-toggles" aria-label="Usage view">
+        <div class="view-toggles" :aria-label="t('extensionsBuiltin.usageTracker.usageView')">
           <Button
             :variant="viewMode === 'chart' ? 'default' : 'ghost'"
             icon="fa-chart-area"
-            title="Chart View"
+            :title="t('extensionsBuiltin.usageTracker.chartView')"
             @click="viewMode = 'chart'"
           />
           <Button
             :variant="viewMode === 'table' ? 'default' : 'ghost'"
             icon="fa-list"
-            title="Logs View"
+            :title="t('extensionsBuiltin.usageTracker.logsView')"
             @click="viewMode = 'table'"
           />
           <Button
             :variant="viewMode === 'captures' ? 'default' : 'ghost'"
             icon="fa-file-lines"
-            title="Request/Response Captures"
+            :title="t('extensionsBuiltin.usageTracker.requestResponseCaptures')"
             @click="viewMode = 'captures'"
           />
         </div>
-        <Button icon="fa-rotate" title="Refresh" variant="ghost" class="refresh-button" @click="refresh" />
+        <Button icon="fa-rotate" :title="t('common.refresh')" variant="ghost" class="refresh-button" @click="refresh" />
         <Button
           icon="fa-trash-can"
-          title="Clear Logs"
+          :title="t('extensionsBuiltin.usageTracker.clearLogs')"
           variant="danger"
           class="clear-button"
           :disabled="!stats || stats.totalRequests === 0"
           @click="clearLogs"
         >
-          Clear
+          {{ t('common.clear') }}
         </Button>
       </div>
     </div>
 
     <!-- Filters Toolbar (Shared) -->
     <div class="filters-toolbar fadeIn">
-      <Input v-model="searchQuery" placeholder="Search context or model..." class="search-input" />
+      <Input
+        v-model="searchQuery"
+        :placeholder="t('extensionsBuiltin.usageTracker.searchPlaceholder')"
+        class="search-input"
+      />
       <Select
         v-model="filterModels"
         :options="availableModels"
         multiple
-        placeholder="All Models"
+        :placeholder="t('extensionsBuiltin.usageTracker.allModels')"
         class="filter-select"
         searchable
       />
@@ -435,33 +443,43 @@ const chartYLabels = computed(() => {
         v-model="filterSources"
         :options="availableSources"
         multiple
-        placeholder="All Sources"
+        :placeholder="t('extensionsBuiltin.usageTracker.allSources')"
         class="filter-select"
         searchable
       />
       <!-- Sort controls only relevant for Table view, but maybe useful for list logic in future -->
       <div v-if="viewMode === 'table'" class="sort-controls">
-        <Select v-model="sortField" :options="sortOptions" class="sort-select" title="Sort By" />
-        <Select v-model="sortOrder" :options="sortOrderOptions" class="sort-order" title="Order" />
+        <Select
+          v-model="sortField"
+          :options="sortOptions"
+          class="sort-select"
+          :title="t('extensionsBuiltin.usageTracker.sortBy')"
+        />
+        <Select
+          v-model="sortOrder"
+          :options="sortOrderOptions"
+          class="sort-order"
+          :title="t('extensionsBuiltin.usageTracker.order')"
+        />
       </div>
     </div>
 
     <!-- Summary Cards (Always Visible, reflects filters) -->
     <div v-if="stats" class="summary-cards">
       <div class="card">
-        <div class="card-label">Requests</div>
+        <div class="card-label">{{ t('extensionsBuiltin.usageTracker.requests') }}</div>
         <div class="card-value">{{ formatNumber(stats.totalRequests) }}</div>
       </div>
       <div class="card">
-        <div class="card-label">Input Tokens</div>
+        <div class="card-label">{{ t('extensionsBuiltin.usageTracker.inputTokens') }}</div>
         <div class="card-value">{{ formatNumber(stats.totalInput) }}</div>
       </div>
       <div class="card">
-        <div class="card-label">Output Tokens</div>
+        <div class="card-label">{{ t('extensionsBuiltin.usageTracker.outputTokens') }}</div>
         <div class="card-value">{{ formatNumber(stats.totalOutput) }}</div>
       </div>
       <div class="card total">
-        <div class="card-label">Total Tokens</div>
+        <div class="card-label">{{ t('extensionsBuiltin.usageTracker.totalTokens') }}</div>
         <div class="card-value">{{ formatNumber(stats.totalInput + stats.totalOutput) }}</div>
       </div>
     </div>
@@ -472,7 +490,7 @@ const chartYLabels = computed(() => {
       <div v-if="viewMode === 'chart'" class="chart-view fadeIn">
         <!-- Time Series Chart -->
         <div class="chart-container-wrapper card-base">
-          <h3>Token Usage Over Time</h3>
+          <h3>{{ t('extensionsBuiltin.usageTracker.tokenUsageOverTime') }}</h3>
           <div v-if="chartPoints.length > 1" class="svg-container">
             <svg :viewBox="`0 0 ${chartWidth} ${chartHeight}`" preserveAspectRatio="none" class="usage-chart">
               <!-- Grid Lines -->
@@ -495,9 +513,13 @@ const chartYLabels = computed(() => {
               <!-- Legend (Overlay) -->
               <g transform="translate(60, 20)">
                 <rect width="10" height="10" fill="var(--color-warning-amber)" />
-                <text x="15" y="9" fill="currentColor" font-size="10">Input</text>
+                <text x="15" y="9" fill="currentColor" font-size="10">
+                  {{ t('extensionsBuiltin.usageTracker.input') }}
+                </text>
                 <rect x="60" width="10" height="10" fill="var(--color-accent-green)" />
-                <text x="75" y="9" fill="currentColor" font-size="10">Output</text>
+                <text x="75" y="9" fill="currentColor" font-size="10">
+                  {{ t('extensionsBuiltin.usageTracker.output') }}
+                </text>
               </g>
 
               <!-- Labels -->
@@ -527,13 +549,13 @@ const chartYLabels = computed(() => {
               </g>
             </svg>
           </div>
-          <div v-else class="empty-chart">Not enough data to display graph for this period.</div>
+          <div v-else class="empty-chart">{{ t('extensionsBuiltin.usageTracker.notEnoughData') }}</div>
         </div>
 
         <div class="charts-row">
           <!-- By Model -->
           <div class="chart-section card-base">
-            <h3>Usage by Model</h3>
+            <h3>{{ t('extensionsBuiltin.usageTracker.usageByModel') }}</h3>
             <div class="chart-list">
               <div v-for="[model, s] in sortedModels" :key="model" class="chart-item">
                 <div class="chart-info">
@@ -546,12 +568,12 @@ const chartYLabels = computed(() => {
                   <div
                     class="progress-bar input"
                     :style="{ width: getBarWidth(s.input, s.input + s.output) }"
-                    :title="'Input: ' + formatNumber(s.input)"
+                    :title="t('extensionsBuiltin.usageTracker.inputValue', { value: formatNumber(s.input) })"
                   ></div>
                   <div
                     class="progress-bar output"
                     :style="{ width: getBarWidth(s.output, s.input + s.output) }"
-                    :title="'Output: ' + formatNumber(s.output)"
+                    :title="t('extensionsBuiltin.usageTracker.outputValue', { value: formatNumber(s.output) })"
                   ></div>
                 </div>
               </div>
@@ -560,7 +582,7 @@ const chartYLabels = computed(() => {
 
           <!-- By Source -->
           <div class="chart-section card-base">
-            <h3>Usage by Source</h3>
+            <h3>{{ t('extensionsBuiltin.usageTracker.usageBySource') }}</h3>
             <div class="chart-list">
               <div v-for="[source, s] in sortedSources" :key="source" class="chart-item">
                 <div class="chart-info">
@@ -573,12 +595,12 @@ const chartYLabels = computed(() => {
                   <div
                     class="progress-bar input"
                     :style="{ width: getBarWidth(s.input, s.input + s.output) }"
-                    :title="'Input: ' + formatNumber(s.input)"
+                    :title="t('extensionsBuiltin.usageTracker.inputValue', { value: formatNumber(s.input) })"
                   ></div>
                   <div
                     class="progress-bar output"
                     :style="{ width: getBarWidth(s.output, s.input + s.output) }"
-                    :title="'Output: ' + formatNumber(s.output)"
+                    :title="t('extensionsBuiltin.usageTracker.outputValue', { value: formatNumber(s.output) })"
                   ></div>
                 </div>
               </div>
@@ -593,21 +615,23 @@ const chartYLabels = computed(() => {
           <table class="logs-table">
             <thead>
               <tr>
-                <th>Time</th>
-                <th>Source</th>
-                <th>Model</th>
-                <th>Message</th>
-                <th>Status</th>
-                <th class="text-right">Size</th>
-                <th class="text-right">Action</th>
+                <th>{{ t('extensionsBuiltin.usageTracker.time') }}</th>
+                <th>{{ t('extensionsBuiltin.usageTracker.source') }}</th>
+                <th>{{ t('extensionsBuiltin.usageTracker.model') }}</th>
+                <th>{{ t('extensionsBuiltin.usageTracker.message') }}</th>
+                <th>{{ t('extensionsBuiltin.usageTracker.status') }}</th>
+                <th class="text-right">{{ t('extensionsBuiltin.usageTracker.size') }}</th>
+                <th class="text-right">{{ t('extensionsBuiltin.usageTracker.action') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="loading">
-                <td colspan="7" class="text-center">Loading...</td>
+                <td colspan="7" class="text-center">{{ t('common.loading') }}</td>
               </tr>
               <tr v-else-if="captures.length === 0">
-                <td colspan="7" class="text-center">No request/response captures found.</td>
+                <td colspan="7" class="text-center">
+                  {{ t('extensionsBuiltin.usageTracker.noCaptures') }}
+                </td>
               </tr>
               <tr v-for="capture in captures" :key="capture.id">
                 <td>{{ new Date(capture.timestamp).toLocaleString() }}</td>
@@ -619,7 +643,12 @@ const chartYLabels = computed(() => {
                 <td>{{ capture.status }}</td>
                 <td class="text-right">{{ Math.ceil(capture.sizeBytes / 1024) }} KB</td>
                 <td class="text-right">
-                  <Button variant="ghost" icon="fa-eye" title="View capture" @click="showCapture(capture)" />
+                  <Button
+                    variant="ghost"
+                    icon="fa-eye"
+                    :title="t('extensionsBuiltin.usageTracker.viewCapture')"
+                    @click="showCapture(capture)"
+                  />
                 </td>
               </tr>
             </tbody>
@@ -638,22 +667,22 @@ const chartYLabels = computed(() => {
           <table class="logs-table">
             <thead>
               <tr>
-                <th>Time</th>
-                <th>Source</th>
-                <th>Model</th>
-                <th>Context</th>
-                <th class="text-right">In</th>
-                <th class="text-right">Out</th>
-                <th class="text-right">Total</th>
-                <th class="text-right">Duration</th>
+                <th>{{ t('extensionsBuiltin.usageTracker.time') }}</th>
+                <th>{{ t('extensionsBuiltin.usageTracker.source') }}</th>
+                <th>{{ t('extensionsBuiltin.usageTracker.model') }}</th>
+                <th>{{ t('extensionsBuiltin.usageTracker.context') }}</th>
+                <th class="text-right">{{ t('extensionsBuiltin.usageTracker.in') }}</th>
+                <th class="text-right">{{ t('extensionsBuiltin.usageTracker.out') }}</th>
+                <th class="text-right">{{ t('extensionsBuiltin.usageTracker.total') }}</th>
+                <th class="text-right">{{ t('extensionsBuiltin.usageTracker.duration') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="loading">
-                <td colspan="8" class="text-center">Loading...</td>
+                <td colspan="8" class="text-center">{{ t('common.loading') }}</td>
               </tr>
               <tr v-else-if="logs.length === 0">
-                <td colspan="8" class="text-center">No logs found matching filters.</td>
+                <td colspan="8" class="text-center">{{ t('extensionsBuiltin.usageTracker.noLogs') }}</td>
               </tr>
               <tr v-for="log in logs" :key="log.id">
                 <td>{{ new Date(log.timestamp).toLocaleString() }}</td>

@@ -7,8 +7,6 @@ import { AutoTranslateMode, type ChatTranslationSettings } from './types';
 
 export { manifest };
 
-// TODO: i18n
-
 function isFinishedAssistantMessage(message: ChatMessage | null): message is ChatMessage {
   return Boolean(message && !message.is_user && !message.is_system && message.gen_finished);
 }
@@ -41,6 +39,7 @@ function findMessageIndex(history: ChatMessage[], message: ChatMessage, generati
 }
 
 export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
+  const t = api.i18n.t;
   const translator = new Translator(api);
   let settingsApp: {
     unmount: () => void;
@@ -65,7 +64,7 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
 
     await api.ui.mountComponent(wrapper, MountableComponent.Button, {
       icon: 'fa-globe',
-      title: 'Translate Message',
+      title: t('extensionsBuiltin.chatTranslation.translateMessage'),
       variant: 'ghost',
       onClick: (e: MouseEvent) => {
         e.stopPropagation();
@@ -93,14 +92,14 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
     api.ui.registerChatFormOptionsMenuItem({
       id: 'chat-translation-translate-input',
       icon: 'fa-solid fa-language',
-      label: 'Translate Input',
+      label: t('extensionsBuiltin.chatTranslation.translateInput'),
       onClick,
       visible: api.chat.getChatInfo() !== null,
     });
     api.ui.registerChatQuickAction('core.input-message', '', {
       id: 'chat-translation-translate-input',
       icon: 'fa-solid fa-language',
-      label: 'Translate Input',
+      label: t('extensionsBuiltin.chatTranslation.translateInput'),
       onClick,
       disabled: api.chat.getChatInfo() === null,
     });
@@ -143,7 +142,7 @@ export function activate(api: ExtensionAPI<ChatTranslationSettings>) {
       if (messageElements) {
         injectSingleButton(messageElements as HTMLElement, messageIndex);
       } else {
-        api.ui.showToast('Translation button injection failed: Message element not found', 'error');
+        api.ui.showToast(t('extensionsBuiltin.chatTranslation.buttonInjectionFailed'), 'error');
       }
 
       const settings = api.settings.get();

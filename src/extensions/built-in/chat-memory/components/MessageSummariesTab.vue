@@ -443,7 +443,12 @@ watch(
 
     <div class="section highlight">
       <div class="section-title">{{ t('extensionsBuiltin.chatMemory.manageRange') }}</div>
-      <TimelineVisualizer :total-items="maxIndex + 1" :segments="timelineSegments" />
+      <TimelineVisualizer
+        :total-items="maxIndex + 1"
+        :segments="timelineSegments"
+        :title="t('extensionsBuiltin.chatMemory.timeline.title')"
+        :message-unit-label="t('extensionsBuiltin.chatMemory.timeline.messages')"
+      />
       <div class="stats-row">
         <span>{{ t('extensionsBuiltin.chatMemory.stats.total', { count: messageStats.total }) }}</span>
         <span>{{ t('extensionsBuiltin.chatMemory.stats.summarized', { count: messageStats.summarized }) }}</span>
@@ -483,7 +488,7 @@ watch(
             :disabled="
               !enableMessageSummarization || !connectionProfile || !isValidRange || countSummarizedInRange === 0
             "
-            title="Re-summarize all messages in range, including existing ones"
+            :title="t('extensionsBuiltin.chatMemory.tooltips.resummarizeRange')"
             @click="summarizeRange('force-all')"
           >
             {{ t('extensionsBuiltin.chatMemory.buttons.resummarize') }}
@@ -493,7 +498,11 @@ watch(
             :disabled="
               !enableMessageSummarization || !connectionProfile || !isValidRange || countUnsummarizedInRange === 0
             "
-            :title="`Summarize ${countUnsummarizedInRange} missing messages in range`"
+            :title="
+              t('extensionsBuiltin.chatMemory.tooltips.summarizeMissingRange', {
+                count: countUnsummarizedInRange,
+              })
+            "
             @click="summarizeRange('missing-only')"
           >
             {{ t('extensionsBuiltin.chatMemory.buttons.summarizeMissing') }}

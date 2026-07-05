@@ -13,7 +13,7 @@ const props = defineProps<{
   api: ExtensionAPI<NotebookSettings>;
 }>();
 
-// TODO: i18n
+const t = props.api.i18n.t;
 
 // --- Component State ---
 const notes = ref<Note[]>([]);
@@ -72,7 +72,7 @@ const saveContent = (content: string) => {
     if (note && note.content !== content) {
       note.content = content;
       const match = content.match(/<h[1-3]>(.*?)<\/h[1-3]>/);
-      note.title = match ? match[1].trim().substring(0, 50) : 'Untitled Note';
+      note.title = match ? match[1].trim().substring(0, 50) : t('extensionsBuiltin.notebook.untitledNote');
       saveNotes();
     }
   }
@@ -98,8 +98,8 @@ watch(editor, (newEditor, oldEditor) => {
 const addNote = () => {
   const newNote: Note = {
     id: props.api.uuid(),
-    title: 'New Note',
-    content: '<h1>New Note</h1><p>Start writing here...</p>',
+    title: t('extensionsBuiltin.notebook.newNote'),
+    content: t('extensionsBuiltin.notebook.newNoteContent'),
     createdAt: Date.now(),
   };
   notes.value.unshift(newNote);
@@ -109,7 +109,8 @@ const addNote = () => {
 
 const deleteNote = async (noteId: string) => {
   const { result } = await props.api.ui.showPopup({
-    title: 'Delete Note',
+    title: t('extensionsBuiltin.notebook.deleteNote'),
+    content: t('extensionsBuiltin.notebook.deleteNoteContent'),
     okButton: 'common.delete',
     cancelButton: 'common.cancel',
   });
@@ -150,8 +151,8 @@ onMounted(() => {
   if (notes.value.length === 0) {
     const welcomeNote: Note = {
       id: props.api.uuid(),
-      title: 'Welcome!',
-      content: '<h1>Welcome to your Notebook!</h1><p>You can start taking notes here.</p>',
+      title: t('extensionsBuiltin.notebook.welcomeTitle'),
+      content: t('extensionsBuiltin.notebook.welcomeContent'),
       createdAt: Date.now(),
     };
     notes.value.push(welcomeNote);
@@ -233,8 +234,13 @@ const toolbarActions: ToolbarItem[] = [
     >
       <template #side>
         <div class="notebook-panel__sidebar-header">
-          <span>Notes</span>
-          <Button icon="fa-solid fa-plus" title="New Note" variant="ghost" @click="addNote" />
+          <span>{{ t('extensionsBuiltin.notebook.notes') }}</span>
+          <Button
+            icon="fa-solid fa-plus"
+            :title="t('extensionsBuiltin.notebook.newNote')"
+            variant="ghost"
+            @click="addNote"
+          />
         </div>
         <div class="notebook-panel__note-list">
           <div
@@ -246,7 +252,12 @@ const toolbarActions: ToolbarItem[] = [
             @click="selectNote(note.id)"
           >
             <span class="notebook-panel__note-title">{{ note.title }}</span>
-            <Button icon="fa-solid fa-trash" title="Delete Note" variant="ghost" @click.stop="deleteNote(note.id)" />
+            <Button
+              icon="fa-solid fa-trash"
+              :title="t('extensionsBuiltin.notebook.deleteNote')"
+              variant="ghost"
+              @click.stop="deleteNote(note.id)"
+            />
           </div>
         </div>
       </template>
@@ -274,7 +285,9 @@ const toolbarActions: ToolbarItem[] = [
           <EditorContent class="notebook-panel__editor" :editor="editor" />
         </div>
         <div v-else>
-          <p style="text-align: center; padding: 20px">Select a note to start editing, or create a new one.</p>
+          <p style="text-align: center; padding: 20px">
+            {{ t('extensionsBuiltin.notebook.emptyState') }}
+          </p>
         </div>
       </template>
     </SplitPane>

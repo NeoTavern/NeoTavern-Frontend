@@ -21,6 +21,7 @@ const props = defineProps<{
   removeMap: () => Promise<void>;
 }>();
 
+const t = props.api.i18n.t;
 const map = ref<WorldMapDocument | null>(null);
 const activeViewId = ref<string | null>(null);
 const hoveredNodeId = ref<string | null>(null);
@@ -801,9 +802,9 @@ async function copyMap(): Promise<void> {
     } else if (!copyTextFallback(text)) {
       throw new Error('Clipboard API is unavailable.');
     }
-    props.api.ui.showToast('World map JSON copied.', 'success');
+    props.api.ui.showToast(t('extensionsBuiltin.worldMap.toasts.jsonCopied'), 'success');
   } catch (error) {
-    props.api.ui.showToast('Failed to copy world map JSON.', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.worldMap.toasts.jsonCopyFailed'), 'error');
     console.error('World map copy failed:', error);
   } finally {
     isCopying.value = false;
@@ -1031,21 +1032,21 @@ onBeforeUnmount(() => {
       <div class="world-map-panel__actions">
         <Button
           icon="fa-solid fa-arrow-up"
-          title="Upper map"
+          :title="t('extensionsBuiltin.worldMap.upperMap')"
           variant="ghost"
           :disabled="!activeView?.parentId || isTransitioning"
           @click="goUp"
         />
         <Button
           icon="fa-solid fa-arrow-down"
-          title="Lower floor"
+          :title="t('extensionsBuiltin.worldMap.lowerFloor')"
           variant="ghost"
           :disabled="floorSiblings.findIndex((floor) => floor.id === activeView?.id) <= 0 || isTransitioning"
           @click="goFloor(-1)"
         />
         <Button
           icon="fa-solid fa-arrow-up-short-wide"
-          title="Upper floor"
+          :title="t('extensionsBuiltin.worldMap.upperFloor')"
           variant="ghost"
           :disabled="
             isTransitioning ||
@@ -1056,14 +1057,14 @@ onBeforeUnmount(() => {
         />
         <Button
           icon="fa-solid fa-crosshairs"
-          title="Fit map"
+          :title="t('extensionsBuiltin.worldMap.fitMap')"
           variant="ghost"
           :disabled="isTransitioning"
           @click="fitActiveView(true)"
         />
         <Button
           icon="fa-solid fa-shuffle"
-          title="Smart shuffle"
+          :title="t('extensionsBuiltin.worldMap.smartShuffle')"
           variant="ghost"
           :loading="isShuffling"
           :disabled="!hasMap || isUpdating || isTransitioning"
@@ -1071,35 +1072,35 @@ onBeforeUnmount(() => {
         />
         <Button
           icon="fa-solid fa-object-ungroup"
-          title="Shuffle positions"
+          :title="t('extensionsBuiltin.worldMap.shufflePositions')"
           variant="ghost"
           :disabled="!hasMap || isUpdating || isShuffling || isTransitioning"
           @click="handleSmartShuffle('positions')"
         />
         <Button
           icon="fa-solid fa-route"
-          title="Shuffle paths"
+          :title="t('extensionsBuiltin.worldMap.shufflePaths')"
           variant="ghost"
           :disabled="!hasMap || isUpdating || isShuffling || isTransitioning"
           @click="handleSmartShuffle('paths')"
         />
         <Button
           icon="fa-solid fa-draw-polygon"
-          title="Shuffle areas"
+          :title="t('extensionsBuiltin.worldMap.shuffleAreas')"
           variant="ghost"
           :disabled="!hasMap || isUpdating || isShuffling || isTransitioning"
           @click="handleSmartShuffle('areas')"
         />
         <Button
           icon="fa-solid fa-palette"
-          title="Shuffle style"
+          :title="t('extensionsBuiltin.worldMap.shuffleStyle')"
           variant="ghost"
           :disabled="!hasMap || isUpdating || isShuffling || isTransitioning"
           @click="handleSmartShuffle('style')"
         />
         <Button
           icon="fa-solid fa-copy"
-          title="Copy map JSON"
+          :title="t('extensionsBuiltin.worldMap.copyJson')"
           variant="ghost"
           :loading="isCopying"
           :disabled="!hasMap || isUpdating || isShuffling || isTransitioning"
@@ -1107,14 +1108,14 @@ onBeforeUnmount(() => {
         />
         <Button
           icon="fa-solid fa-wand-magic-sparkles"
-          title="Create or update map"
+          :title="t('extensionsBuiltin.worldMap.createOrUpdateMap')"
           :loading="isUpdating"
           :disabled="isShuffling || isTransitioning"
           @click="updateMap"
         />
         <Button
           icon="fa-solid fa-trash"
-          title="Remove map"
+          :title="t('extensionsBuiltin.worldMap.removeMap')"
           variant="danger"
           :disabled="!hasMap || isUpdating || isShuffling || isTransitioning"
           @click="handleRemoveMap"
@@ -1125,23 +1126,25 @@ onBeforeUnmount(() => {
     <div class="world-map-panel__instructions">
       <Checkbox
         v-model="includeLorebookEntries"
-        label="Send whole lorebook entries"
-        description="Include all enabled entries from active lorebooks in this map request."
+        :label="t('extensionsBuiltin.worldMap.sendWholeLorebookEntries')"
+        :description="t('extensionsBuiltin.worldMap.sendWholeLorebookEntriesHint')"
         :disabled="isUpdating || isShuffling || isTransitioning"
       />
       <textarea
         v-model="updateInstructions"
         class="world-map-panel__instructions-input"
         rows="3"
-        placeholder="Optional map instructions for this update"
+        :placeholder="t('extensionsBuiltin.worldMap.instructionsPlaceholder')"
         :disabled="isUpdating || isShuffling || isTransitioning"
       ></textarea>
     </div>
 
     <div v-if="!hasMap" class="world-map-panel__empty">
       <i class="fa-solid fa-map-location-dot"></i>
-      <span>No world map exists for this chat yet.</span>
-      <Button icon="fa-solid fa-wand-magic-sparkles" :loading="isUpdating" @click="updateMap">Create Map</Button>
+      <span>{{ t('extensionsBuiltin.worldMap.noMapYet') }}</span>
+      <Button icon="fa-solid fa-wand-magic-sparkles" :loading="isUpdating" @click="updateMap">
+        {{ t('extensionsBuiltin.worldMap.createMap') }}
+      </Button>
     </div>
 
     <div v-else class="world-map-panel__body">

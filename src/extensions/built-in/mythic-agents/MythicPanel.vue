@@ -12,16 +12,17 @@ interface Props {
   api: MythicExtensionAPI;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
+const t = props.api.i18n.t;
 const activeTab = ref('dashboard');
 
 const tabs = [
-  { label: 'Dashboard', value: 'dashboard' },
-  { label: 'Scene', value: 'scene' },
-  { label: 'NPCs', value: 'npcs' },
-  { label: 'Threads', value: 'threads' },
-  { label: 'Log', value: 'log' },
+  { label: t('extensionsBuiltin.mythicAgents.panel.tabs.dashboard'), value: 'dashboard' },
+  { label: t('extensionsBuiltin.mythicAgents.panel.tabs.scene'), value: 'scene' },
+  { label: t('extensionsBuiltin.mythicAgents.panel.tabs.npcs'), value: 'npcs' },
+  { label: t('extensionsBuiltin.mythicAgents.panel.tabs.threads'), value: 'threads' },
+  { label: t('extensionsBuiltin.mythicAgents.panel.tabs.log'), value: 'log' },
 ];
 </script>
 

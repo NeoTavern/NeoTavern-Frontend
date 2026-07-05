@@ -2,25 +2,7 @@ import { ref } from 'vue';
 import type { Character, ExtensionAPI, Persona } from '../../../../types';
 import { RewriteService } from '../RewriteService';
 import type { RewriteSettings } from '../types';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function deepToRaw<T extends Record<string, any>>(sourceObj: T): T {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const objectIterator = (input: any): any => {
-    if (Array.isArray(input)) {
-      return input.map((item) => objectIterator(item));
-    }
-    if (input && typeof input === 'object') {
-      return Object.keys(input).reduce((acc, key) => {
-        acc[key as keyof typeof acc] = objectIterator(input[key]);
-        return acc;
-      }, {} as T);
-    }
-    return input;
-  };
-
-  return objectIterator(sourceObj);
-}
+import { deepToRaw } from '../utils';
 
 export function useRewriteOneShot(api: ExtensionAPI<RewriteSettings>) {
   const service = new RewriteService(api);

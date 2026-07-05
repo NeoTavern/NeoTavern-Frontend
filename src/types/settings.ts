@@ -463,6 +463,7 @@ export interface Settings {
     personaBrowserWidth: number;
     personaPageSize: number;
     personaBrowserExpanded: boolean;
+    extensionsBrowserExpanded: boolean;
     characterSortOrder: CharacterSortOption;
     worldInfoSortOrder: WorldInfoSortOption;
     extensionsBrowserWidth: number;

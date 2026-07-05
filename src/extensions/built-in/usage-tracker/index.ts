@@ -14,8 +14,6 @@ import UsageDashboard from './UsageDashboard.vue';
 
 export { manifest };
 
-// TODO: i18n
-
 const SIDEBAR_ID = 'usage-dashboard';
 const MESSAGE_BUTTON_CLASS = 'usage-tracker-message-button';
 
@@ -71,14 +69,14 @@ async function showCapturesPopup(
 ) {
   const extensionStore = useExtensionStore();
   const formatSource = (source: string) => {
-    if (source === 'core') return 'Core';
-    if (source === 'unknown') return 'Unknown';
+    if (source === 'core') return api.i18n.t('extensionsBuiltin.usageTracker.core');
+    if (source === 'unknown') return api.i18n.t('common.unknown');
     return extensionStore.extensions[source]?.manifest.display_name ?? source;
   };
 
   await api.ui.showPopup({
     type: POPUP_TYPE.DISPLAY,
-    title: 'Request / Response Capture',
+    title: api.i18n.t('extensionsBuiltin.usageTracker.requestResponseCapture'),
     wide: true,
     large: true,
     component: markRaw(CaptureViewer),
@@ -119,7 +117,7 @@ export function activate(api: ExtensionAPI<UsageTrackerSettings>) {
         buttonsContainer.prepend(wrapper);
         void api.ui.mountComponent(wrapper, MountableComponent.Button, {
           icon: 'fa-file-lines',
-          title: 'View full request/response',
+          title: api.i18n.t('extensionsBuiltin.usageTracker.viewFullRequestResponse'),
           variant: 'ghost',
           onClick: async (event: MouseEvent) => {
             event.stopPropagation();
@@ -329,7 +327,7 @@ export function activate(api: ExtensionAPI<UsageTrackerSettings>) {
   unbinds.push(api.events.on('chat:messages-loaded-more', refreshMessageButtons));
 
   api.ui.registerSidebar(SIDEBAR_ID, markRaw(UsageDashboard), 'right', {
-    title: 'Usage Stats',
+    title: api.i18n.t('extensionsBuiltin.usageTracker.usageStats'),
     icon: 'fa-chart-line',
     props: {
       api,

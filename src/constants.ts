@@ -542,6 +542,7 @@ export const defaultAccountSettings: Settings['account'] = {
   personaBrowserWidth: 300,
   personaPageSize: 10,
   personaBrowserExpanded: false,
+  extensionsBrowserExpanded: false,
   characterSortOrder: CharacterSortOption.NAME_ASC,
   worldInfoSortOrder: WorldInfoSortOption.ORDER_ASC,
   extensionsBrowserWidth: 300,

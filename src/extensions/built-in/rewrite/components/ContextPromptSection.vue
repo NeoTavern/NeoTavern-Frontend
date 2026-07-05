@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { Button, Checkbox, CollapsibleSection, FormItem, Input, Select, Textarea } from '../../../../components/UI';
 import type { ExtensionAPI, WorldInfoBook } from '../../../../types';
-import type { RewriteSettings, RewriteTemplate } from '../types';
+import type { RewriteSettings, RewriteTemplate, RewriteTemplateArg } from '../types';
 
 const props = defineProps<{
   api: ExtensionAPI<RewriteSettings>;
@@ -68,6 +68,17 @@ function getEntriesForBook(bookName: string) {
 function getArgOverrideValue(key: string): string | number {
   return props.argOverrides[key] as string | number;
 }
+
+function getArgLabel(arg: RewriteTemplateArg) {
+  if (!props.currentTemplate?.builtIn) return arg.label;
+  const labels: Record<string, string> = {
+    includeChar: t('extensionsBuiltin.rewrite.args.includeChar'),
+    includePersona: t('extensionsBuiltin.rewrite.args.includePersona'),
+    includeSelectedBookContext: t('extensionsBuiltin.rewrite.args.includeSelectedLorebooks'),
+    includeSelectedCharacters: t('extensionsBuiltin.rewrite.args.includeSelectedCharacters'),
+  };
+  return labels[arg.key] ?? arg.label;
+}
 </script>
 
 <template>
@@ -78,10 +89,10 @@ function getArgOverrideValue(key: string): string | number {
         <Checkbox
           v-if="arg.type === 'boolean'"
           :model-value="argOverrides[arg.key] as boolean"
-          :label="arg.label"
+          :label="getArgLabel(arg)"
           @update:model-value="emit('update:argOverrides', { ...argOverrides, [arg.key]: $event })"
         />
-        <FormItem v-else :label="arg.label">
+        <FormItem v-else :label="getArgLabel(arg)">
           <Input
             :model-value="getArgOverrideValue(arg.key)"
             :type="arg.type === 'number' ? 'number' : 'text'"
@@ -206,10 +217,10 @@ function getArgOverrideValue(key: string): string | number {
         <Select
           :model-value="structuredResponseFormat"
           :options="[
-            { label: 'Native (Structured)', value: 'native' },
-            { label: 'JSON (Structured)', value: 'json' },
-            { label: 'XML (Structured)', value: 'xml' },
-            { label: 'Raw Text (Readonly/Chat)', value: 'text' },
+            { label: t('extensionsBuiltin.rewrite.popup.structuredFormats.native'), value: 'native' },
+            { label: t('extensionsBuiltin.rewrite.popup.structuredFormats.json'), value: 'json' },
+            { label: t('extensionsBuiltin.rewrite.popup.structuredFormats.xml'), value: 'xml' },
+            { label: t('extensionsBuiltin.rewrite.popup.structuredFormats.text'), value: 'text' },
           ]"
           @update:model-value="emit('update:structuredResponseFormat', $event as string)"
         />

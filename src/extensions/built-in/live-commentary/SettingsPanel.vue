@@ -19,7 +19,6 @@ const props = defineProps<{
 
 const t = props.api.i18n.t;
 
-// TODO: i18n
 const showNote = ref(true);
 
 const settings = ref<LiveCommentarySettings>({
@@ -51,8 +50,11 @@ const injectionTools = computed<TextareaToolDefinition[]>(() => [
 ]);
 
 const positionOptions = [
-  { label: 'Before Last User Message', value: 'before_last_user_message' },
-  { label: 'End of Context (System)', value: 'end_of_context' },
+  {
+    label: t('extensionsBuiltin.liveCommentary.injectionPositions.beforeLastUserMessage'),
+    value: 'before_last_user_message',
+  },
+  { label: t('extensionsBuiltin.liveCommentary.injectionPositions.endOfContext'), value: 'end_of_context' },
 ];
 
 const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
@@ -62,13 +64,19 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
   <div class="commentary-settings">
     <div v-if="showNote" class="experimental-note">
       <p>
-        <b>Note:</b> This is an experimental extension created to test new concepts. Its future is uncertain, and it may
-        be changed or removed. Feedback is welcome!
+        <b>{{ t('extensionsBuiltin.liveCommentary.experimentalNoteTitle') }}</b>
+        {{ t('extensionsBuiltin.liveCommentary.experimentalNote') }}
       </p>
-      <button class="close-note-btn" title="Dismiss note" @click="showNote = false">×</button>
+      <button
+        class="close-note-btn"
+        :title="t('extensionsBuiltin.liveCommentary.dismissNote')"
+        @click="showNote = false"
+      >
+        ×
+      </button>
     </div>
 
-    <div class="group-header">General</div>
+    <div class="group-header">{{ t('common.general') }}</div>
     <FormItem :label="t('extensionsBuiltin.liveCommentary.enable')">
       <Toggle v-model="settings.enabled" />
     </FormItem>
@@ -85,15 +93,19 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
         <Input v-model.number="settings.debounceMs" type="number" :min="100" :step="100" />
       </FormItem>
       <FormItem
-        label="Max Wait (ms)"
-        description="Triggers commentary if typing this long without pausing."
+        :label="t('extensionsBuiltin.liveCommentary.maxWaitMs')"
+        :description="t('extensionsBuiltin.liveCommentary.maxWaitMsHint')"
         style="flex: 1"
       >
         <Input v-model.number="settings.maxWaitMs" type="number" :min="1000" :step="500" />
       </FormItem>
     </div>
     <div class="setting-row">
-      <FormItem label="Min Interval (ms)" description="Cooldown per character between commentaries." style="flex: 1">
+      <FormItem
+        :label="t('extensionsBuiltin.liveCommentary.minIntervalMs')"
+        :description="t('extensionsBuiltin.liveCommentary.minIntervalMsHint')"
+        style="flex: 1"
+      >
         <Input v-model.number="settings.minIntervalMs" type="number" :min="1000" :step="500" />
       </FormItem>
       <FormItem :label="t('extensionsBuiltin.liveCommentary.displayDurationMs')" style="flex: 1">
@@ -115,28 +127,32 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
       @update:prompt-presets="settings.promptPresets = $event"
     />
 
-    <div class="group-header">Context Injection</div>
+    <div class="group-header">{{ t('extensionsBuiltin.liveCommentary.contextInjection') }}</div>
     <FormItem
-      label="Enable Injection"
-      description="Injects the generated thoughts into the prompt for the AI response."
+      :label="t('extensionsBuiltin.liveCommentary.enableInjection')"
+      :description="t('extensionsBuiltin.liveCommentary.enableInjectionHint')"
     >
       <Toggle v-model="settings.injectionEnabled" />
     </FormItem>
 
     <template v-if="settings.injectionEnabled">
       <div class="setting-row">
-        <FormItem label="Injection Depth" description="Number of recent thoughts to inject." style="flex: 1">
+        <FormItem
+          :label="t('extensionsBuiltin.liveCommentary.injectionDepth')"
+          :description="t('extensionsBuiltin.liveCommentary.injectionDepthHint')"
+          style="flex: 1"
+        >
           <Input v-model.number="settings.injectionDepth" type="number" :min="1" :max="100" />
         </FormItem>
 
-        <FormItem label="Injection Position" style="flex: 1">
+        <FormItem :label="t('extensionsBuiltin.liveCommentary.injectionPosition')" style="flex: 1">
           <Select v-model="settings.injectionPosition" :options="positionOptions" />
         </FormItem>
       </div>
 
       <FormItem
-        label="Injection Template"
-        description="Template for the injected thought. Variables: {{char}}, {{thought}}"
+        :label="t('extensionsBuiltin.liveCommentary.injectionTemplate')"
+        :description="t('extensionsBuiltin.liveCommentary.injectionTemplateHint')"
       >
         <Textarea
           v-model="settings.injectionTemplate"
@@ -148,15 +164,15 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
       </FormItem>
     </template>
 
-    <div class="group-header">Prompt Context</div>
+    <div class="group-header">{{ t('extensionsBuiltin.liveCommentary.promptContext') }}</div>
     <FormItem
-      label="Commentary History"
-      description="Max number of recent commentaries to include in the prompt context."
+      :label="t('extensionsBuiltin.liveCommentary.commentaryHistory')"
+      :description="t('extensionsBuiltin.liveCommentary.commentaryHistoryHint')"
     >
       <Input v-model.number="settings.maxCommentaryHistory" type="number" :min="0" :max="50" />
     </FormItem>
 
-    <div class="group-header">Ask Chat History</div>
+    <div class="group-header">{{ t('extensionsBuiltin.liveCommentary.askChatHistory') }}</div>
     <PromptPresetField
       :api="api"
       :active-preset-id="settings.activePromptPresetId"

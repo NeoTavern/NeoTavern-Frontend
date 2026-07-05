@@ -17,7 +17,7 @@ const props = defineProps<{
   index: number;
 }>();
 
-// TODO: i18n
+const t = props.api.i18n.t;
 
 const choiceMade = ref(false);
 const isImpersonating = ref(false);
@@ -59,7 +59,7 @@ async function handleImpersonate(choiceText: string) {
   const connectionProfile =
     settings.impersonateConnectionProfile || props.api.settings.getGlobal('api.selectedConnectionProfile');
   if (!connectionProfile) {
-    props.api.ui.showToast('Roadway: Impersonate Connection Profile is not set.', 'error');
+    props.api.ui.showToast(t('extensionsBuiltin.roadway.toasts.noImpersonateProfile'), 'error');
     return;
   }
   isImpersonating.value = true;
@@ -118,7 +118,7 @@ async function handleImpersonate(choiceText: string) {
   } catch (error) {
     if ((error as Error).name !== 'AbortError') {
       console.error('Roadway impersonate error:', error);
-      props.api.ui.showToast('Failed to impersonate response.', 'error');
+      props.api.ui.showToast(t('extensionsBuiltin.roadway.toasts.impersonateFailed'), 'error');
     }
   } finally {
     isImpersonating.value = false;
@@ -145,16 +145,20 @@ function stopChoiceGeneration() {
     class="roadway-choices-container"
   >
     <div v-if="isImpersonating" class="roadway-overlay">
-      <span>Generating impersonated response...</span>
-      <Button variant="danger" icon="fa-stop" @click="stopImpersonation">Stop</Button>
+      <span>{{ t('extensionsBuiltin.roadway.generatingImpersonatedResponse') }}</span>
+      <Button variant="danger" icon="fa-stop" @click="stopImpersonation">{{
+        t('extensionsBuiltin.roadway.stop')
+      }}</Button>
     </div>
     <div v-else-if="roadwayExtra?.isGeneratingChoices" class="roadway-overlay roadway-overlay--generating">
       <i class="fa-solid fa-spinner fa-spin"></i>
-      <span>Generating choices...</span>
-      <Button variant="danger" size="sm" @click="stopChoiceGeneration">Stop</Button>
+      <span>{{ t('extensionsBuiltin.roadway.generatingChoices') }}</span>
+      <Button variant="danger" size="sm" @click="stopChoiceGeneration">{{
+        t('extensionsBuiltin.roadway.stop')
+      }}</Button>
     </div>
 
-    <div class="roadway-choices-header">Choices</div>
+    <div class="roadway-choices-header">{{ t('extensionsBuiltin.roadway.choices') }}</div>
     <ul v-if="choices.length > 0" class="roadway-choices-list">
       <li v-for="(choice, i) in choices" :key="i" class="roadway-choice-item">
         <span class="choice-text">{{ choice }}</span>
@@ -162,21 +166,21 @@ function stopChoiceGeneration() {
           <Button
             variant="ghost"
             icon="fa-paper-plane"
-            title="Send"
+            :title="t('extensionsBuiltin.roadway.send')"
             :disabled="isImpersonating"
             @click="handleSend(choice)"
           />
           <Button
             variant="ghost"
             icon="fa-pencil"
-            title="Edit"
+            :title="t('common.edit')"
             :disabled="isImpersonating"
             @click="handleEdit(choice)"
           />
           <Button
             variant="ghost"
             icon="fa-user-secret"
-            title="Impersonate"
+            :title="t('extensionsBuiltin.roadway.impersonate')"
             :disabled="isImpersonating"
             @click="handleImpersonate(choice)"
           />

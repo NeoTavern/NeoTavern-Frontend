@@ -446,6 +446,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     const {
       provider: effectiveProvider,
       model: effectiveModel,
+      samplerPresetName: effectiveSamplerPresetName,
       samplerSettings: effectiveSamplerSettings,
       formatter: effectiveFormatter,
       instructTemplate: effectiveTemplate,
@@ -702,7 +703,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       model: payloadRaw.model,
       api: payloadRaw.provider,
       tokenizer: settings.api.tokenizer,
-      presetName: chatMetadata.connection_profile || settings.api.selectedSampler || 'Default', // FIXME: Instead of "chatMetadata.connection_profile", we should get the sampler name from the resolved connection profile
+      presetName: effectiveSamplerPresetName,
       messages: messages,
       breakdown: breakdown,
       timestamp: Date.now(),

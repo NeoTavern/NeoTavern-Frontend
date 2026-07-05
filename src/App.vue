@@ -43,8 +43,6 @@ const { t } = useStrictI18n();
 const { registerCoreComponents } = useAppRegistration();
 const { toasts } = useToastState();
 
-// TODO: i18n
-
 // PWA Update Logic
 const { needRefresh, updateServiceWorker } = useRegisterSW({
   onRegistered(r) {
@@ -225,10 +223,14 @@ onMounted(async () => {
 
   <!-- PWA Update Notification -->
   <div v-if="needRefresh" class="pwa-toast" role="alert">
-    <div class="pwa-message">New version available</div>
+    <div class="pwa-message">{{ t('common.newVersionAvailable') }}</div>
     <div class="pwa-actions">
-      <Button variant="confirm" @click="updateServiceWorker(true)"> Reload </Button>
-      <Button variant="ghost" @click="needRefresh = false"> Close </Button>
+      <Button variant="confirm" @click="updateServiceWorker(true)">
+        {{ t('common.reload') }}
+      </Button>
+      <Button variant="ghost" @click="needRefresh = false">
+        {{ t('common.close') }}
+      </Button>
     </div>
   </div>
 

@@ -17,7 +17,7 @@ const props = defineProps<{
   api: ExtensionAPI<RoadwaySettings, RoadwayChatExtra, RoadwayMessageExtra>;
 }>();
 
-// TODO: i18n
+const t = props.api.i18n.t;
 
 const settings = ref<RoadwaySettings>({ ...DEFAULT_SETTINGS });
 
@@ -37,9 +37,9 @@ watch(
 );
 
 const formatOptions = [
-  { label: 'Native', value: 'native' },
-  { label: 'JSON', value: 'json' },
-  { label: 'XML', value: 'xml' },
+  { label: t('extensionsBuiltin.roadway.requestFormats.native'), value: 'native' },
+  { label: t('extensionsBuiltin.roadway.requestFormats.json'), value: 'json' },
+  { label: t('extensionsBuiltin.roadway.requestFormats.xml'), value: 'xml' },
 ];
 
 const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
@@ -47,25 +47,34 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 
 <template>
   <div class="roadway-settings">
-    <div class="group-header">General</div>
-    <FormItem label="Enable Roadway Extension">
+    <div class="group-header">{{ t('common.general') }}</div>
+    <FormItem :label="t('extensionsBuiltin.roadway.enable')">
       <Toggle v-model="settings.enabled" />
     </FormItem>
     <FormItem
-      label="Auto-generate Choices"
-      description="Automatically generate choices after every AI response when Roadway is active in a chat."
+      :label="t('extensionsBuiltin.roadway.autoGenerateChoices')"
+      :description="t('extensionsBuiltin.roadway.autoGenerateChoicesHint')"
     >
       <Toggle v-model="settings.autoMode" />
     </FormItem>
 
-    <div class="group-header">Choice Generation</div>
-    <FormItem label="Connection Profile" description="Overrides the chat's connection profile for generating choices.">
+    <div class="group-header">{{ t('extensionsBuiltin.roadway.choiceGeneration') }}</div>
+    <FormItem
+      :label="t('extensionsBuiltin.roadway.connectionProfile')"
+      :description="t('extensionsBuiltin.roadway.choiceConnectionProfileHint')"
+    >
       <ConnectionProfileSelector v-model="settings.choiceGenConnectionProfile" />
     </FormItem>
-    <FormItem label="Number of Choices" description="How many choices to generate for each message.">
+    <FormItem
+      :label="t('extensionsBuiltin.roadway.numberOfChoices')"
+      :description="t('extensionsBuiltin.roadway.numberOfChoicesHint')"
+    >
       <Input v-model.number="settings.choiceCount" type="number" :min="1" :max="20" />
     </FormItem>
-    <FormItem label="Request Format" description="Format to enforce for the structured response.">
+    <FormItem
+      :label="t('extensionsBuiltin.roadway.requestFormat')"
+      :description="t('extensionsBuiltin.roadway.requestFormatHint')"
+    >
       <Select v-model="settings.structuredRequestFormat" :options="formatOptions" />
     </FormItem>
     <PromptPresetField
@@ -74,18 +83,18 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
       :prompt-presets="settings.promptPresets"
       :built-in-presets="builtInPromptPresets"
       prompt-key="choiceGenPrompt"
-      label="Prompt Template"
-      description="The prompt sent to the AI to generate choices. Use {{choiceCount}} to reference the number of choices."
+      :label="t('extensionsBuiltin.roadway.promptTemplate')"
+      :description="t('extensionsBuiltin.roadway.choicePromptHint')"
       identifier="extension.roadway.choiceGenPrompt"
       :rows="6"
       @update:active-preset-id="settings.activePromptPresetId = $event"
       @update:prompt-presets="settings.promptPresets = $event"
     />
 
-    <div class="group-header">Impersonate Action</div>
+    <div class="group-header">{{ t('extensionsBuiltin.roadway.impersonateAction') }}</div>
     <FormItem
-      label="Connection Profile"
-      description="Overrides the chat's connection profile for the 'Impersonate' action."
+      :label="t('extensionsBuiltin.roadway.connectionProfile')"
+      :description="t('extensionsBuiltin.roadway.impersonateConnectionProfileHint')"
     >
       <ConnectionProfileSelector v-model="settings.impersonateConnectionProfile" />
     </FormItem>
@@ -95,8 +104,8 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
       :prompt-presets="settings.promptPresets"
       :built-in-presets="builtInPromptPresets"
       prompt-key="impersonatePrompt"
-      label="Prompt Template"
-      description="The prompt sent to the AI to expand a choice into a full user response."
+      :label="t('extensionsBuiltin.roadway.promptTemplate')"
+      :description="t('extensionsBuiltin.roadway.impersonatePromptHint')"
       identifier="extension.roadway.impersonatePrompt"
       :rows="6"
       @update:active-preset-id="settings.activePromptPresetId = $event"

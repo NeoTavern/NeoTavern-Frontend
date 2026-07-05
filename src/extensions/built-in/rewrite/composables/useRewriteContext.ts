@@ -1,6 +1,7 @@
 import { computed, onMounted, ref, type Ref, watch } from 'vue';
 import type { Character, ExtensionAPI, WorldInfoBook, WorldInfoHeader } from '../../../../types';
 import type { RewriteSettings } from '../types';
+import { formatRewriteCharacterContext, formatRewriteContextMessages } from '../utils';
 
 export function useRewriteContext(
   api: ExtensionAPI<RewriteSettings>,
@@ -92,13 +93,7 @@ export function useRewriteContext(
   }
 
   function getContextMessagesString(contextMessageCount: number, referenceMessageIndex?: number): string {
-    if (contextMessageCount <= 0) return '';
-    const history = api.chat.getHistory();
-    if (history.length === 0) return '';
-    const endIndex = referenceMessageIndex !== undefined ? referenceMessageIndex : history.length;
-    const startIndex = Math.max(0, endIndex - contextMessageCount);
-    const slice = history.slice(startIndex, endIndex);
-    return slice.map((m) => `${m.name}: ${m.mes}`).join('\n');
+    return formatRewriteContextMessages(api.chat.getHistory(), contextMessageCount, referenceMessageIndex);
   }
 
   function getAdditionalCharactersContext(selectedContextCharacters: string[]): string {
@@ -106,16 +101,7 @@ export function useRewriteContext(
     const chars = selectedContextCharacters
       .map((avatar) => api.character.get(avatar))
       .filter((c) => c !== null) as Character[];
-    return chars
-      .map((c) => {
-        let text = `Name: ${c.name}`;
-        if (c.description) text += `\nDescription: ${c.description}`;
-        if (c.personality) text += `\nPersonality: ${c.personality}`;
-        if (c.scenario) text += `\nScenario: ${c.scenario}`;
-        if (c.mes_example) text += `\nExample Messages: ${c.mes_example}`;
-        return text;
-      })
-      .join('\n\n');
+    return formatRewriteCharacterContext(chars);
   }
 
   async function getWorldInfoContext(

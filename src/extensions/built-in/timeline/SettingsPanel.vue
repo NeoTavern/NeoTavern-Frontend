@@ -15,6 +15,7 @@ const props = defineProps<{
   api: TimelineExtensionAPI;
 }>();
 
+const t = props.api.i18n.t;
 const settings = ref<TimelineSettings>({ ...DEFAULT_SETTINGS });
 
 onMounted(() => {
@@ -31,9 +32,9 @@ watch(
 );
 
 const formatOptions = [
-  { label: 'Native', value: 'native' },
-  { label: 'JSON', value: 'json' },
-  { label: 'XML', value: 'xml' },
+  { label: t('extensionsBuiltin.timeline.requestFormats.native'), value: 'native' },
+  { label: t('extensionsBuiltin.timeline.requestFormats.json'), value: 'json' },
+  { label: t('extensionsBuiltin.timeline.requestFormats.xml'), value: 'xml' },
 ];
 
 const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
@@ -41,44 +42,53 @@ const builtInPromptPresets = BUILT_IN_PROMPT_PRESETS;
 
 <template>
   <div class="timeline-settings">
-    <div class="timeline-settings__group">General</div>
-    <FormItem label="Enable Timeline">
+    <div class="timeline-settings__group">{{ t('common.general') }}</div>
+    <FormItem :label="t('extensionsBuiltin.timeline.enable')">
       <Toggle v-model="settings.enabled" />
     </FormItem>
-    <FormItem label="Connection Profile" description="Overrides the chat connection profile for extraction.">
+    <FormItem
+      :label="t('extensionsBuiltin.timeline.connectionProfile')"
+      :description="t('extensionsBuiltin.timeline.connectionProfileHint')"
+    >
       <ConnectionProfileSelector v-model="settings.connectionProfile" />
     </FormItem>
-    <FormItem label="Structured Request Format">
+    <FormItem :label="t('extensionsBuiltin.timeline.structuredRequestFormat')">
       <Select v-model="settings.structuredRequestFormat" :options="formatOptions" />
     </FormItem>
 
-    <div class="timeline-settings__group">Limits</div>
-    <FormItem label="Recent Messages" description="Use -1 to include the full current chat context.">
+    <div class="timeline-settings__group">{{ t('extensionsBuiltin.timeline.limits') }}</div>
+    <FormItem
+      :label="t('extensionsBuiltin.timeline.recentMessages')"
+      :description="t('extensionsBuiltin.timeline.recentMessagesHint')"
+    >
       <Input v-model.number="settings.includeLastXMessages" type="number" :min="-1" :max="500" />
     </FormItem>
-    <FormItem label="Max Response Tokens">
+    <FormItem :label="t('extensionsBuiltin.timeline.maxResponseTokens')">
       <Input v-model.number="settings.maxResponseTokens" type="number" :min="512" :max="32000" />
     </FormItem>
     <div class="timeline-settings__row">
-      <FormItem label="Due Injected" description="Maximum due events injected into prompt context. Use -1 for all.">
+      <FormItem
+        :label="t('extensionsBuiltin.timeline.dueInjected')"
+        :description="t('extensionsBuiltin.timeline.dueInjectedHint')"
+      >
         <Input v-model.number="settings.maxDueInjected" type="number" :min="-1" :max="20" />
       </FormItem>
       <FormItem
-        label="Upcoming Injected"
-        description="Maximum upcoming events injected into prompt context. Use -1 for all."
+        :label="t('extensionsBuiltin.timeline.upcomingInjected')"
+        :description="t('extensionsBuiltin.timeline.upcomingInjectedHint')"
       >
         <Input v-model.number="settings.maxUpcomingInjected" type="number" :min="-1" :max="20" />
       </FormItem>
     </div>
 
-    <div class="timeline-settings__group">AI Prompt</div>
+    <div class="timeline-settings__group">{{ t('extensionsBuiltin.timeline.aiPrompt') }}</div>
     <PromptPresetField
       :api="api"
       :active-preset-id="settings.activePromptPresetId"
       :prompt-presets="settings.promptPresets"
       :built-in-presets="builtInPromptPresets"
       prompt-key="extractionPrompt"
-      label="Extraction Prompt"
+      :label="t('extensionsBuiltin.timeline.extractionPrompt')"
       identifier="extension.timeline.extractionPrompt"
       :rows="14"
       @update:active-preset-id="settings.activePromptPresetId = $event"

@@ -477,8 +477,12 @@ Response:
   },
 ];
 
-function cloneTemplate(template: RewriteTemplate): RewriteTemplate {
+export function cloneRewriteTemplate(template: RewriteTemplate): RewriteTemplate {
   return JSON.parse(JSON.stringify(template)) as RewriteTemplate;
+}
+
+export function cloneDefaultRewriteTemplates(): RewriteTemplate[] {
+  return DEFAULT_TEMPLATES.map(cloneRewriteTemplate);
 }
 
 function areTemplatesEqual(left: RewriteTemplate, right: RewriteTemplate): boolean {
@@ -503,14 +507,14 @@ function uniqueTemplateId(baseId: string, templates: RewriteTemplate[]): string 
 
 export function migrateRewriteSettings(settings: Partial<RewriteSettings> = {}): RewriteSettings {
   const savedTemplates = settings.templates ?? [];
-  const migratedTemplates = DEFAULT_TEMPLATES.map(cloneTemplate);
+  const migratedTemplates = cloneDefaultRewriteTemplates();
   const idRemap = new Map<string, string>();
 
   for (const savedTemplate of savedTemplates) {
     const builtInTemplate = DEFAULT_TEMPLATES.find((template) => template.id === savedTemplate.id);
 
     if (!builtInTemplate) {
-      migratedTemplates.push({ ...cloneTemplate(savedTemplate), builtIn: false });
+      migratedTemplates.push({ ...cloneRewriteTemplate(savedTemplate), builtIn: false });
       continue;
     }
 
@@ -519,7 +523,7 @@ export function migrateRewriteSettings(settings: Partial<RewriteSettings> = {}):
     const customId = uniqueTemplateId(`custom-${savedTemplate.id}`, migratedTemplates);
     idRemap.set(savedTemplate.id, customId);
     migratedTemplates.push({
-      ...cloneTemplate(savedTemplate),
+      ...cloneRewriteTemplate(savedTemplate),
       id: customId,
       name: `Custom ${savedTemplate.name}`,
       builtIn: false,

@@ -6,6 +6,12 @@ import { useStrictI18n } from '../../../../composables/useStrictI18n';
 import { useToolStore } from '../../../../stores/tool.store';
 import { POPUP_RESULT, POPUP_TYPE, type ExtensionAPI } from '../../../../types';
 import type { FieldChange, RewriteField, RewriteLLMResponse, RewriteSessionMessage, RewriteSettings } from '../types';
+import {
+  getChangesFromMessage,
+  getRewriteMessageContent as getMessageContent,
+  hasRewriteMessageJustification as hasMessageJustification,
+  hasRewriteMessageToolCalls as hasToolCalls,
+} from '../utils';
 
 const props = defineProps<{
   api: ExtensionAPI<RewriteSettings>;
@@ -177,93 +183,6 @@ function handleSend() {
   }
 }
 
-function hasMessageJustification(msg: RewriteSessionMessage): boolean {
-  const content = getMessageContent(msg);
-  return (
-    typeof content === 'object' &&
-    content &&
-    'justification' in content &&
-    typeof (content as RewriteLLMResponse).justification === 'string' &&
-    ((content as RewriteLLMResponse).justification || '').trim() !== ''
-  );
-}
-
-function getMessageContent(msg: RewriteSessionMessage): RewriteLLMResponse | string {
-  if (msg.role !== 'assistant') return msg.content as string;
-  try {
-    if (typeof msg.content === 'string') {
-      return JSON.parse(msg.content);
-    }
-    return msg.content;
-  } catch {
-    return msg.content as string;
-  }
-}
-
-function hasToolCalls(msg: RewriteSessionMessage): boolean {
-  const content = getMessageContent(msg);
-  return (
-    typeof content === 'object' &&
-    content &&
-    'toolCalls' in content &&
-    Array.isArray((content as RewriteLLMResponse).toolCalls) &&
-    (content as RewriteLLMResponse).toolCalls!.length > 0
-  );
-}
-
-function getChangesFromMessage(msg: RewriteSessionMessage, msgIndex: number): FieldChange[] {
-  const content = getMessageContent(msg);
-  if (typeof content === 'string' || !content) return [];
-
-  // Get the state before this assistant message
-  const previousState = new Map<string, string>();
-  props.initialFields.forEach((field) => {
-    previousState.set(field.id, field.value);
-  });
-
-  // Apply changes from all previous assistant messages
-  for (let i = 0; i < msgIndex; i++) {
-    const prevMsg = props.messages[i];
-    if (prevMsg.role !== 'assistant') continue;
-    const prevContent = getMessageContent(prevMsg);
-    if (typeof prevContent === 'string' || !prevContent) continue;
-
-    if (prevContent.changes) {
-      prevContent.changes.forEach((change) => {
-        previousState.set(change.fieldId, change.newValue);
-      });
-    } else if (prevContent.response && props.initialFields.length > 0) {
-      const field = props.initialFields[0];
-      previousState.set(field.id, prevContent.response);
-    }
-  }
-
-  const initialFieldsMap = new Map(props.initialFields.map((f) => [f.id, f]));
-
-  if (content.changes) {
-    return content.changes.map((c) => {
-      const field = initialFieldsMap.get(c.fieldId);
-      return {
-        ...c,
-        label: field?.label || c.fieldId,
-        oldValue: previousState.get(c.fieldId) || '',
-      };
-    });
-  }
-  if (content.response && props.initialFields.length > 0) {
-    const field = props.initialFields[0];
-    return [
-      {
-        fieldId: field.id,
-        label: field.label,
-        oldValue: previousState.get(field.id) || '',
-        newValue: content.response,
-      },
-    ];
-  }
-  return [];
-}
-
 // Edit Logic
 function startEdit(msg: RewriteSessionMessage) {
   editingMessageId.value = msg.id;
@@ -410,7 +329,11 @@ onUnmounted(() => {
               {{ (getMessageContent(msg) as RewriteLLMResponse).justification }}
             </div>
             <div class="changes-proposal">
-              <div v-for="change in getChangesFromMessage(msg, index)" :key="change.fieldId" class="change-card">
+              <div
+                v-for="change in getChangesFromMessage(msg, index, messages, initialFields)"
+                :key="change.fieldId"
+                class="change-card"
+              >
                 <div class="change-header">
                   <strong class="change-label">{{ change.label }}</strong>
                   <div class="spacer"></div>
@@ -418,7 +341,7 @@ onUnmounted(() => {
                     icon="fa-code-compare"
                     variant="ghost"
                     :title="t('extensionsBuiltin.rewrite.popup.showDiff')"
-                    @click="emit('show-diff', getChangesFromMessage(msg, index))"
+                    @click="emit('show-diff', getChangesFromMessage(msg, index, messages, initialFields))"
                   />
                 </div>
                 <div class="change-preview">

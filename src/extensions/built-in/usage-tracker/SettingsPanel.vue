@@ -8,6 +8,7 @@ const props = defineProps<{
   api: ExtensionAPI<UsageTrackerSettings>;
 }>();
 
+const t = props.api.i18n.t;
 const settings = ref<UsageTrackerSettings>({ ...DEFAULT_SETTINGS });
 const storageLimitMb = ref(Math.round(DEFAULT_SETTINGS.captureStorageLimitBytes / 1024 / 1024));
 
@@ -35,15 +36,18 @@ watch(
 <template>
   <div class="usage-tracker-settings">
     <FormItem
-      label="Keep Full Requests and Responses"
-      description="Stores full LLM payloads and responses locally for inspection. This can include private chat content."
+      :label="t('extensionsBuiltin.usageTracker.settings.keepFullPayloads')"
+      :description="t('extensionsBuiltin.usageTracker.settings.keepFullPayloadsHint')"
     >
       <Toggle v-model="settings.captureFullPayloads" />
     </FormItem>
 
-    <FormItem label="Capture Storage Limit" description="Maximum local storage for captured request/response records.">
+    <FormItem
+      :label="t('extensionsBuiltin.usageTracker.settings.captureStorageLimit')"
+      :description="t('extensionsBuiltin.usageTracker.settings.captureStorageLimitHint')"
+    >
       <Input v-model="storageLimitMb" type="number" :min="1" :step="1" />
-      <span class="setting-unit">MB</span>
+      <span class="setting-unit">{{ t('extensionsBuiltin.usageTracker.megabytes') }}</span>
     </FormItem>
   </div>
 </template>

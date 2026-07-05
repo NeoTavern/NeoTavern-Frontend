@@ -390,13 +390,13 @@ class TimelineManager {
 
   public async runExtraction(): Promise<void> {
     if (this.pending) {
-      this.api.ui.showToast('Timeline extraction is already running.', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.timeline.toasts.extractionAlreadyRunning'), 'info');
       return;
     }
 
     const settings = this.getSettings();
     if (!settings.enabled) {
-      this.api.ui.showToast('Timeline is disabled in settings.', 'info');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.timeline.toasts.disabled'), 'info');
       return;
     }
 
@@ -417,7 +417,10 @@ class TimelineManager {
       ) {
         repairCount += 1;
         this.api.ui.showToast(
-          `Timeline response needs schema repair. Retry ${repairCount}/${MAX_SCHEMA_REPAIRS}...`,
+          this.api.i18n.t('extensionsBuiltin.timeline.toasts.schemaRepair', {
+            count: repairCount,
+            max: MAX_SCHEMA_REPAIRS,
+          }),
           'info',
         );
         generation = await this.repairOperations(
@@ -435,10 +438,13 @@ class TimelineManager {
 
       const merged = mergeOperations(this.getEvents(), generation.operations, currentStoryTime);
       await this.saveEvents(merged);
-      this.api.ui.showToast('Timeline updated.', 'success');
+      this.api.ui.showToast(this.api.i18n.t('extensionsBuiltin.timeline.toasts.updated'), 'success');
     } catch (error) {
       console.error('Timeline extraction failed:', error);
-      this.api.ui.showToast(error instanceof Error ? error.message : 'Timeline extraction failed.', 'error');
+      this.api.ui.showToast(
+        error instanceof Error ? error.message : this.api.i18n.t('extensionsBuiltin.timeline.toasts.extractionFailed'),
+        'error',
+      );
     } finally {
       this.pending = false;
     }
@@ -454,18 +460,22 @@ class TimelineManager {
     if (!this.api.chat.getChatInfo()) return;
 
     this.unregisterChatUiFns.push(
-      this.api.ui.registerChatQuickAction(QUICK_ACTION_GROUP_ID, 'Context AI', {
-        id: 'timeline-open',
-        icon: 'fa-solid fa-calendar-days',
-        label: 'Timeline',
-        onClick: () => this.openPanel(),
-      }),
+      this.api.ui.registerChatQuickAction(
+        QUICK_ACTION_GROUP_ID,
+        this.api.i18n.t('extensionsBuiltin.timeline.contextAi'),
+        {
+          id: 'timeline-open',
+          icon: 'fa-solid fa-calendar-days',
+          label: this.api.i18n.t('extensionsBuiltin.timeline.title'),
+          onClick: () => this.openPanel(),
+        },
+      ),
     );
     this.unregisterChatUiFns.push(
       this.api.ui.registerChatFormOptionsMenuItem({
         id: 'timeline-extract',
         icon: 'fa-solid fa-calendar-days',
-        label: 'Extract Timeline',
+        label: this.api.i18n.t('extensionsBuiltin.timeline.extractTimeline'),
         onClick: () => this.runExtraction(),
       }),
     );
@@ -518,7 +528,7 @@ export function activate(api: TimelineExtensionAPI) {
 
   api.ui.registerSidebar(SIDEBAR_ID, TimelinePanel, 'right', {
     icon: 'fa-calendar-days',
-    title: 'Timeline',
+    title: api.i18n.t('extensionsBuiltin.timeline.title'),
     props: {
       api,
       runExtraction: () => manager.runExtraction(),

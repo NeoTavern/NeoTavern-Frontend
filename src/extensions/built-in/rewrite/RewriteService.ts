@@ -18,6 +18,7 @@ import type {
   StructuredResponseFormat,
 } from './types';
 import { migrateRewriteSettings } from './types';
+import { createRewriteResponseSchema, extractCodeBlock } from './utils';
 
 export class RewriteService {
   private store: LocalForage;
@@ -214,69 +215,7 @@ export class RewriteService {
       };
     });
 
-    const isMultiField = availableFields.length > 1;
-
-    const schema = {
-      name: 'rewrite_response',
-      strict: true,
-      value: {
-        type: 'object',
-        properties: {
-          justification: {
-            type: 'string',
-            description: 'A brief explanation of the changes made and the reasoning behind them.',
-          },
-          ...(isMultiField
-            ? {
-                changes: {
-                  type: 'array',
-                  description: 'An array of proposed changes to one or more fields.',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      fieldId: {
-                        type: 'string',
-                        description: 'The ID of the field to change.',
-                        enum: availableFields.map((f) => f.id),
-                      },
-                      newValue: {
-                        type: 'string',
-                        description: 'The new, rewritten content for the field.',
-                      },
-                    },
-                    required: ['fieldId', 'newValue'],
-                  },
-                },
-              }
-            : {
-                response: {
-                  type: 'string',
-                  description: 'The full, rewritten text for the single field.',
-                },
-              }),
-          toolCalls: {
-            type: 'array',
-            description: 'Optional tool calls to execute before providing the final response.',
-            items: {
-              type: 'object',
-              properties: {
-                name: {
-                  type: 'string',
-                  description: 'The name of the tool function to call.',
-                },
-                arguments: {
-                  type: 'string',
-                  description: 'A JSON string of the arguments to pass to the tool function.',
-                },
-              },
-              required: ['name', 'arguments'],
-            },
-          },
-        },
-        required: [],
-        additionalProperties: false,
-      },
-    };
+    const schema = createRewriteResponseSchema(availableFields);
 
     let structuredResponseOptions: StructuredResponseOptions | undefined;
     if (format !== 'text') {
@@ -347,18 +286,6 @@ export class RewriteService {
   }
 
   public extractCodeBlock(text: string): string {
-    const completeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
-    const completeMatch = text.match(completeBlockRegex);
-    if (completeMatch && completeMatch[1]) {
-      return completeMatch[1];
-    }
-
-    const incompleteBlockRegex = /```(?:[\w]*\n)?([\s\S]*)/i;
-    const incompleteMatch = text.match(incompleteBlockRegex);
-    if (incompleteMatch && incompleteMatch[1]) {
-      return incompleteMatch[1];
-    }
-
-    return text;
+    return extractCodeBlock(text);
   }
 }

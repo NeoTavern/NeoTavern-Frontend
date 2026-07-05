@@ -1,13 +1,8 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import type { ExtensionAPI } from '../../../../types';
-import type {
-  RewriteSettings,
-  RewriteTemplate,
-  RewriteTemplateArg,
-  RewriteTemplateOverride,
-  StructuredResponseFormat,
-} from '../types';
+import type { RewriteSettings, RewriteTemplate, RewriteTemplateOverride, StructuredResponseFormat } from '../types';
 import { migrateRewriteSettings } from '../types';
+import { getInitialRewriteTemplateId, resolveRewriteTemplateArgOverrides } from '../utils';
 
 export function useRewriteSettings(api: ExtensionAPI<RewriteSettings>, identifier: string) {
   const settings = ref<RewriteSettings>(migrateRewriteSettings(api.settings.get()));
@@ -45,24 +40,7 @@ export function useRewriteSettings(api: ExtensionAPI<RewriteSettings>, identifie
     if (!settings.value.lastUsedTemplates) settings.value.lastUsedTemplates = {};
     if (!settings.value.templateOverrides) settings.value.templateOverrides = {};
 
-    // Auto-select template
-    const lastUsedTpl = settings.value.lastUsedTemplates[identifier];
-    if (lastUsedTpl && settings.value.templates.find((t) => t.id === lastUsedTpl)) {
-      selectedTemplateId.value = lastUsedTpl;
-    } else {
-      // Smart defaults
-      if (IS_WORLD_INFO_FIELD.value) {
-        const wiTpl = settings.value.templates.find((t) => t.id === 'world-info-refiner');
-        if (wiTpl) selectedTemplateId.value = wiTpl.id;
-      } else if (IS_CHARACTER_FIELD.value) {
-        const charTpl = settings.value.templates.find((t) => t.id === 'character-polisher');
-        if (charTpl) selectedTemplateId.value = charTpl.id;
-      } else {
-        if (settings.value.templates.length > 0) {
-          selectedTemplateId.value = settings.value.templates[0].id;
-        }
-      }
-    }
+    selectedTemplateId.value = getInitialRewriteTemplateId(settings.value, identifier);
 
     loadTemplateOverrides();
   });
@@ -85,13 +63,7 @@ export function useRewriteSettings(api: ExtensionAPI<RewriteSettings>, identifie
     isCharacterContextOpen.value = !(overrides.isCharacterContextCollapsed ?? true);
     isWorldInfoContextOpen.value = !(overrides.isWorldInfoContextCollapsed ?? true);
 
-    const args: Record<string, boolean | number | string> = {};
-    if (tpl?.args) {
-      tpl.args.forEach((arg: RewriteTemplateArg) => {
-        args[arg.key] = overrides.args?.[arg.key] ?? arg.defaultValue;
-      });
-    }
-    argOverrides.value = args;
+    argOverrides.value = resolveRewriteTemplateArgOverrides(tpl, overrides);
   }
 
   function resetPrompt() {

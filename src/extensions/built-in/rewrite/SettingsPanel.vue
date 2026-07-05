@@ -6,7 +6,8 @@ import { POPUP_RESULT, POPUP_TYPE, type ExtensionAPI } from '../../../types';
 import { uuidv4 } from '../../../utils/commons';
 import { RewriteService } from './RewriteService';
 import {
-  DEFAULT_TEMPLATES,
+  cloneDefaultRewriteTemplates,
+  cloneRewriteTemplate,
   type RewriteSettings,
   type RewriteTemplate,
   type RewriteTemplateArg,
@@ -20,7 +21,7 @@ const props = defineProps<{
 const t = props.api.i18n.t;
 
 const settings = ref<RewriteSettings>({
-  templates: [...DEFAULT_TEMPLATES],
+  templates: cloneDefaultRewriteTemplates(),
   defaultConnectionProfile: '',
   lastUsedTemplates: {},
   templateOverrides: {},
@@ -70,10 +71,9 @@ function duplicateTemplate(id: string) {
   if (!original) return;
 
   const newTemplate: RewriteTemplate = {
-    ...original,
+    ...cloneRewriteTemplate(original),
     id: uuidv4(),
     name: `${original.name} (Copy)`,
-    args: original.args ? JSON.parse(JSON.stringify(original.args)) : [],
     builtIn: false,
   };
   settings.value.templates.push(newTemplate);
@@ -126,7 +126,7 @@ async function resetTemplates() {
 
   if (result === POPUP_RESULT.AFFIRMATIVE) {
     const customTemplates = settings.value.templates.filter((template) => !template.builtIn);
-    settings.value.templates = [...JSON.parse(JSON.stringify(DEFAULT_TEMPLATES)), ...customTemplates];
+    settings.value.templates = [...cloneDefaultRewriteTemplates(), ...customTemplates];
     editingTemplateId.value = null;
   }
 }
@@ -148,9 +148,9 @@ async function deleteAllSessions() {
 
 // Argument Management
 const argTypes = [
-  { label: 'Boolean', value: 'boolean' },
-  { label: 'String', value: 'string' },
-  { label: 'Number', value: 'number' },
+  { label: t('extensionsBuiltin.rewrite.settings.argTypes.boolean'), value: 'boolean' },
+  { label: t('extensionsBuiltin.rewrite.settings.argTypes.string'), value: 'string' },
+  { label: t('extensionsBuiltin.rewrite.settings.argTypes.number'), value: 'number' },
 ];
 
 function addArg() {
@@ -158,7 +158,7 @@ function addArg() {
   if (!activeTemplate.value.args) activeTemplate.value.args = [];
   activeTemplate.value.args.push({
     key: 'newArg',
-    label: 'New Argument',
+    label: t('extensionsBuiltin.rewrite.settings.newArgument'),
     type: 'boolean',
     defaultValue: true,
   });
@@ -270,13 +270,13 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
                     <div class="arg-row">
                       <Input
                         v-model="arg.key"
-                        placeholder="Key (e.g. includeChar)"
+                        :placeholder="t('extensionsBuiltin.rewrite.settings.argKeyPlaceholder')"
                         class="arg-input-sm"
                         :disabled="isActiveTemplateBuiltIn"
                       />
                       <Input
                         v-model="arg.label"
-                        placeholder="Label"
+                        :placeholder="t('extensionsBuiltin.rewrite.settings.argLabelPlaceholder')"
                         class="arg-input-md"
                         :disabled="isActiveTemplateBuiltIn"
                       />
@@ -298,7 +298,7 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
                           v-else
                           v-model="arg.defaultValue as string | number"
                           :type="arg.type === 'number' ? 'number' : 'text'"
-                          placeholder="Default"
+                          :placeholder="t('extensionsBuiltin.rewrite.settings.argDefaultPlaceholder')"
                           :disabled="isActiveTemplateBuiltIn"
                         />
                       </div>
@@ -342,7 +342,7 @@ function onArgTypeChange(arg: RewriteTemplateArg) {
                       >{{ '{' + '{' + arg.key + '}' + '}' }}
                     </code>
                   </template>
-                  <template v-else>None</template>
+                  <template v-else>{{ t('extensionsBuiltin.rewrite.settings.none') }}</template>
                   <br />
                   Standard macros (e.g. <code>{{ '{' + '{char}' + '}' }}</code
                   >, <code>{{ '{' + '{user}' + '}' }}</code
