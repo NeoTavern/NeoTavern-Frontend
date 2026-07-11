@@ -66,13 +66,13 @@ export const usePersonaStore = defineStore('persona', () => {
     await refreshPersonas();
 
     if (activePersonaId.value && personas.value.some((p) => p.avatarId === activePersonaId.value)) {
-      await setActivePersona(activePersonaId.value);
+      await setActivePersona(activePersonaId.value, { notify: false });
     } else {
       const defaultPersonaId = settingsStore.settings.persona.defaultPersonaId;
       if (defaultPersonaId && personas.value.some((p) => p.avatarId === defaultPersonaId)) {
-        await setActivePersona(defaultPersonaId);
+        await setActivePersona(defaultPersonaId, { notify: false });
       } else if (personas.value.length > 0) {
-        await setActivePersona(personas.value[0].avatarId);
+        await setActivePersona(personas.value[0].avatarId, { notify: false });
       }
     }
   }
@@ -110,7 +110,7 @@ export const usePersonaStore = defineStore('persona', () => {
     }
   }
 
-  async function setActivePersona(avatarId: string | null) {
+  async function setActivePersona(avatarId: string | null, options: { notify?: boolean } = {}) {
     if (!avatarId) return;
     const persona = personas.value.find((p) => p.avatarId === avatarId);
 
@@ -121,7 +121,7 @@ export const usePersonaStore = defineStore('persona', () => {
       uiStore.activePlayerName = persona.name;
       uiStore.activePlayerAvatar = persona.avatarId;
 
-      if (settingsStore.settings.persona.showNotifications) {
+      if (options.notify !== false && settingsStore.settings.persona.showNotifications) {
         toast.info(t('personaManagement.activated', { name: persona.name }));
       }
 

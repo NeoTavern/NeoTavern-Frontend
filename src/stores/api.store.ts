@@ -97,7 +97,7 @@ export const useApiStore = defineStore('api', () => {
     // Setup watchers only after settings are ready
     setupWatchers();
 
-    await connect();
+    await connect({ notifySuccess: false });
   }
 
   function setupWatchers() {
@@ -265,7 +265,7 @@ export const useApiStore = defineStore('api', () => {
     }
   }
 
-  async function connect() {
+  async function connect(options: { notifySuccess?: boolean } = {}) {
     if (isConnecting.value) return;
 
     isConnecting.value = true;
@@ -318,7 +318,9 @@ export const useApiStore = defineStore('api', () => {
       }
 
       onlineStatus.value = response.bypass ? t('api.status.bypassed') : t('api.status.valid');
-      toast.success(t('api.connectSuccess'));
+      if (options.notifySuccess !== false) {
+        toast.success(t('api.connectSuccess'));
+      }
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const msg = (error as any).message || t('api.connectFailed');
