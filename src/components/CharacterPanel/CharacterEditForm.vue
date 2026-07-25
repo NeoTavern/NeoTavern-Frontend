@@ -367,7 +367,11 @@ function handleExportJson() {
 async function handleDuplicate() {
   if (!localCharacter.value) return;
   try {
-    await characterStore.duplicateCharacter(localCharacter.value.avatar);
+    const newAvatar = await characterStore.duplicateCharacter(localCharacter.value);
+    if (newAvatar) {
+      characterUiStore.selectCharacterByAvatar(newAvatar);
+      characterUiStore.highlightCharacter(newAvatar);
+    }
   } catch {
     toast.error(t('character.duplicate.error'));
   }

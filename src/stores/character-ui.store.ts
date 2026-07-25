@@ -138,6 +138,11 @@ export const useCharacterUiStore = defineStore('character-ui', () => {
       cancelCreating();
     }
     selectedCharacterAvatarForEditing.value = avatar;
+
+    const displayIndex = displayableCharacters.value.findIndex((c) => c.avatar === avatar);
+    if (displayIndex !== -1) {
+      currentPage.value = Math.floor(displayIndex / itemsPerPage.value) + 1;
+    }
   }
 
   function highlightCharacter(avatar: string) {

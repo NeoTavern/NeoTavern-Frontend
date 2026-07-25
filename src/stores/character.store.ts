@@ -202,8 +202,11 @@ export const useCharacterStore = defineStore('character', () => {
     await refreshCharacters();
   }
 
-  async function duplicateCharacter(avatar: string) {
-    const character = characters.value.find((c) => c.avatar === avatar);
+  async function duplicateCharacter(characterOrAvatar: Character | string) {
+    const character =
+      typeof characterOrAvatar === 'string'
+        ? characters.value.find((c) => c.avatar === characterOrAvatar)
+        : cloneDeep(characterOrAvatar);
     if (!character) return;
 
     const result = await characterService.duplicate(character);
@@ -212,6 +215,7 @@ export const useCharacterStore = defineStore('character', () => {
       const createdChar = characters.value.find((c) => c.avatar === result.avatar);
       if (createdChar) {
         await eventEmitter.emit('character:created', createdChar);
+        return createdChar.avatar;
       }
     }
   }

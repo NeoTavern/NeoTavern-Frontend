@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
 import { useCharacterUiStore } from '../../stores/character-ui.store';
@@ -30,6 +30,27 @@ const popupStore = usePopupStore();
 
 const isSearchActive = ref(false);
 const highlightedItemRef = ref<HTMLElement | null>(null);
+const suppressNextSelectionScroll = ref(false);
+
+async function scrollSelectedCharacterIntoView() {
+  if (props.mode !== 'side-only') return;
+
+  if (suppressNextSelectionScroll.value) {
+    suppressNextSelectionScroll.value = false;
+    return;
+  }
+
+  const avatar = characterUiStore.selectedCharacterAvatarForEditing;
+  if (!avatar) return;
+
+  await nextTick();
+  requestAnimationFrame(() => {
+    const selectedItem = document
+      .getElementById('character-list')
+      ?.querySelector<HTMLElement>(`[data-character-avatar="${CSS.escape(avatar)}"]`);
+    selectedItem?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+}
 
 watch(
   () => characterUiStore.highlightedAvatar,
@@ -39,6 +60,32 @@ watch(
     }
   },
   { flush: 'post' },
+);
+
+watch(
+  () => [
+    characterUiStore.selectedCharacterAvatarForEditing,
+    characterUiStore.currentPage,
+    characterUiStore.paginatedCharacters.map((character) => character.avatar).join('|'),
+  ],
+  () => {
+    scrollSelectedCharacterIntoView();
+  },
+  { flush: 'post', immediate: true },
+);
+
+watch(
+  () => [layoutStore.activeMainLayout, layoutStore.isLeftSidebarOpen, layoutStore.leftSidebarView],
+  () => {
+    if (
+      layoutStore.activeMainLayout === 'character' &&
+      layoutStore.isLeftSidebarOpen &&
+      layoutStore.leftSidebarView === 'character-side'
+    ) {
+      scrollSelectedCharacterIntoView();
+    }
+  },
+  { flush: 'post', immediate: true },
 );
 
 function createNew() {
@@ -63,6 +110,7 @@ function handleCharacterDoubleClick(character: Character) {
 }
 
 function handleCharacterSelect(character: Character) {
+  suppressNextSelectionScroll.value = true;
   characterUiStore.selectCharacterByAvatar(character.avatar);
   layoutStore.autoCloseSidebarsOnMobile();
 }

@@ -10,7 +10,7 @@ import {
 } from '../api/characters';
 import type { CropData } from '../types';
 import { type Character } from '../types/character';
-import { createCharacterFormData, getThumbnailUrl } from '../utils/character';
+import { createCharacterFormData } from '../utils/character';
 import { uuidv4 } from '../utils/commons';
 
 const IMPORT_EXCLUDED_TAGS: string[] = [];
@@ -77,17 +77,22 @@ export const characterService = {
   },
 
   async duplicate(character: Character): Promise<{ avatar: string } | undefined> {
-    const charCopy = { ...character, name: character.name };
+    await this.saveChanges(character.avatar, character);
+
+    const response = await fetch(`/characters/${encodeURIComponent(character.avatar)}`, { cache: 'no-cache' });
+    if (!response.ok) {
+      throw new Error('Failed to fetch character card for duplicate');
+    }
+
     const uuid = uuidv4();
-    charCopy.chat = uuid;
-    delete charCopy.create_date;
+    const blob = await response.blob();
+    const file = new File([blob], `${uuid}.png`, { type: blob.type || 'image/png' });
+    const result = await apiImportCharacter(file);
 
-    const url = getThumbnailUrl('avatar', character.avatar);
-    const res = await fetch(url);
-    const blob = await res.blob();
-    const file = new File([blob], 'avatar.png', { type: blob.type });
-
-    return this.create(charCopy, file);
+    if (result.file_name) {
+      return { avatar: `${result.file_name}.png` };
+    }
+    return undefined;
   },
 
   getImportTags(character: Character, importSetting: 'all' | 'ask' | 'only_existing' | 'none'): string[] {
