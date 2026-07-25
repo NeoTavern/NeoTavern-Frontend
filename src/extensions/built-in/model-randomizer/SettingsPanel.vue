@@ -109,6 +109,15 @@ async function loadModelOptions(provider: ApiProvider) {
   }
 }
 
+function toggleGroupEditing(group: ModelGroup) {
+  const isOpening = editingGroupId.value !== group.id;
+  editingGroupId.value = isOpening ? group.id : null;
+
+  if (isOpening) {
+    void loadModelOptions(group.provider);
+  }
+}
+
 function addManualModel(groupId: string, group: ModelGroup) {
   const modelId = manualModelInput.value[groupId]?.trim();
   if (!modelId) return;
@@ -124,6 +133,18 @@ function removeManualModel(group: ModelGroup, modelId: string) {
   if (index > -1) {
     group.modelIds.splice(index, 1);
   }
+}
+
+function getModelOptionsForGroup(group: ModelGroup): { label: string; value: string }[] {
+  const existingModelIds = new Set(modelOptions.value.map((option) => option.value));
+  const missingSelectedOptions = group.modelIds
+    .filter((modelId) => !existingModelIds.has(modelId))
+    .map((modelId) => ({
+      label: `${modelId} (${t('extensionsBuiltin.modelRandomizer.unavailableModel')})`,
+      value: modelId,
+    }));
+
+  return [...modelOptions.value, ...missingSelectedOptions];
 }
 
 function getModelsPlaceholder(provider: ApiProvider): string {
@@ -336,7 +357,7 @@ const isProfileActive = computed(() => {
 
         <div v-if="selectedProfile.modelGroups && selectedProfile.modelGroups.length > 0" class="groups-list">
           <div v-for="group in selectedProfile.modelGroups" :key="group.id" class="group-item">
-            <div class="group-header" @click="editingGroupId = editingGroupId === group.id ? null : group.id">
+            <div class="group-header" @click="toggleGroupEditing(group)">
               <div class="group-info">
                 <i class="fa-solid" :class="editingGroupId === group.id ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
                 <span class="group-name">{{ group.name }}</span>
@@ -364,9 +385,9 @@ const isProfileActive = computed(() => {
 
               <FormItem :label="t('extensionsBuiltin.modelRandomizer.models')">
                 <Select
-                  v-if="modelOptions.length > 0"
+                  v-if="getModelOptionsForGroup(group).length > 0"
                   v-model="group.modelIds"
-                  :options="modelOptions"
+                  :options="getModelOptionsForGroup(group)"
                   multiple
                   searchable
                   :disabled="loadingModels"

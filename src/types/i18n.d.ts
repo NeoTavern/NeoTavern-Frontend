@@ -2456,6 +2456,7 @@ export interface MessageSchema {
       selectModels: string;
       noModels: string;
       noModelsLocal: string;
+      unavailableModel: string;
       enterModelId: string;
       manualModelHelp: string;
       randomizeTemperature: string;

@@ -2453,6 +2453,7 @@
       "selectModels": "Select models...",
       "noModels": "No models available. Connect to API first.",
       "noModelsLocal": "No models found. Start the local server first.",
+      "unavailableModel": "unavailable",
       "enterModelId": "Enter model ID...",
       "manualModelHelp": "No models available from API. Enter model IDs manually.",
       "randomizeTemperature": "Randomize Temperature",
