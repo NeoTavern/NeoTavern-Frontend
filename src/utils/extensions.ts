@@ -23,6 +23,7 @@ import type {
 } from '../types';
 import { api_providers, type ApiProvider } from '../types';
 import { isDeviceMobile, isViewportMobile, sanitizeSelector } from './client';
+import { getCharactersInMemberOrder } from './character';
 import { formatFileSize, getMessageTimeStamp, uuidv4 } from './commons';
 
 // Internal Store Imports
@@ -464,6 +465,7 @@ const baseExtensionAPI: ExtensionAPI = {
       const builder = new PromptBuilder({
         generationId: options?.generationId ?? uuidv4(),
         characters: contextCharacters,
+        group: options?.group ?? getCharactersInMemberOrder(characterStore.characters, chatMetadata?.members),
         chatMetadata,
         chatHistory,
         persona,
@@ -477,6 +479,8 @@ const baseExtensionAPI: ExtensionAPI = {
         worldInfo: mergeWithUndefinedMulti({}, settingsStore.settings.worldInfo, options?.worldInfo),
         mediaContext,
         structuredResponse: options?.structuredResponse,
+        macroEvaluation: 'preview',
+        macroRandom: options?.macroRandom,
       });
 
       const messages = await builder.build();
@@ -704,10 +708,14 @@ const baseExtensionAPI: ExtensionAPI = {
     process: (text, context, additionalMacros) => {
       const charStore = useCharacterStore();
       const personaStore = usePersonaStore();
+      const chatStore = useChatStore();
 
       const characters = context?.characters ?? charStore.activeCharacters;
       const activeCharacter = context?.activeCharacter ?? characters[0];
       const persona = context?.persona ?? personaStore.activePersona;
+      const chatHistory = context?.chatHistory ?? chatStore.activeChat?.messages;
+      const chatMetadata = context?.chatMetadata ?? chatStore.activeChat?.metadata;
+      const group = context?.group ?? getCharactersInMemberOrder(charStore.characters, chatMetadata?.members);
 
       if (!persona) throw new Error('No active persona found for macro processing.');
 
@@ -715,6 +723,10 @@ const baseExtensionAPI: ExtensionAPI = {
         characters,
         persona,
         activeCharacter,
+        group,
+        chatHistory,
+        chatMetadata,
+        random: context?.random,
         additionalMacros,
       });
     },

@@ -295,6 +295,7 @@ export type GenerationContext = {
   generationId: string;
   mode: GenerationMode;
   characters: Character[];
+  group?: Character[];
   chatMetadata: ChatMetadata;
   history: ChatMessage[];
   persona: Persona;
@@ -316,6 +317,7 @@ export type GenerationContext = {
 export type PromptBuilderOptions = {
   generationId: string;
   characters: Character[];
+  group?: Character[];
   chatMetadata?: ChatMetadata;
   chatHistory: ChatMessage[] | ApiChatMessage[];
   worldInfo: WorldInfoSettings;
@@ -325,6 +327,8 @@ export type PromptBuilderOptions = {
   tokenizer: Tokenizer;
   mediaContext: MediaHydrationContext;
   structuredResponse?: StructuredResponseOptions;
+  macroEvaluation?: 'commit' | 'preview';
+  macroRandom?: () => number;
 };
 
 export interface MediaHydrationContext {

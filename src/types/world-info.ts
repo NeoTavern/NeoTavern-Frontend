@@ -4,6 +4,7 @@ import type { ChatMessage } from './chat';
 import type { MessageRole, StrictOmitString } from './common';
 import type { Persona } from './persona';
 import type { Tokenizer } from './tokenizer';
+import type { ChatMetadata } from './chat';
 
 export interface WorldInfoEntry {
   uid: number;
@@ -116,4 +117,7 @@ export type WorldInfoOptions = {
   persona: Persona;
   maxContext: number;
   tokenizer: Tokenizer;
+  chatMetadata?: ChatMetadata;
+  group?: Character[];
+  macroRandom?: () => number;
 };

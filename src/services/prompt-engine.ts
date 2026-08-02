@@ -21,11 +21,12 @@ import type {
 import { countTokens, eventEmitter } from '../utils/extensions';
 import { compressImage, getImageTokenCost, getMediaDurationFromDataURL, isDataURL } from '../utils/media';
 import { buildStructuredResponseSystemPrompt } from '../utils/structured-response';
-import { macroService } from './macro-service';
+import { macroService, type MacroEvaluationSession } from './macro-service';
 import { WorldInfoProcessor } from './world-info';
 
 export class PromptBuilder {
   public characters: Character[];
+  public group?: Character[];
   public character?: Character;
   public chatMetadata?: ChatMetadata;
   public chatHistory: ChatMessage[];
@@ -40,13 +41,17 @@ export class PromptBuilder {
   public mediaTokenCost = 0;
   public mediaContext: MediaHydrationContext;
   public structuredResponse?: StructuredResponseOptions;
+  public macroVariablesChanged = false;
+
+  private macroSession?: MacroEvaluationSession;
+  private builtMessages: ApiChatMessage[] | null = null;
 
   private static convertApiMessagesToChatMessages(apiMessages: ApiChatMessage[]): ChatMessage[] {
     return apiMessages.map((m) => ({
       extra: {},
       is_user: m.role === 'user',
-      is_system: false,
-      mes: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+      is_system: m.role === 'system' || m.role === 'tool',
+      mes: m.content === null ? '' : typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
       name: m.name,
       send_date: new Date().toISOString(),
       swipe_id: 0,
@@ -58,6 +63,7 @@ export class PromptBuilder {
 
   constructor({
     characters,
+    group,
     chatHistory,
     samplerSettings,
     persona,
@@ -68,8 +74,11 @@ export class PromptBuilder {
     generationId,
     mediaContext,
     structuredResponse,
+    macroEvaluation,
+    macroRandom,
   }: PromptBuilderOptions) {
     this.characters = characters;
+    this.group = group;
     this.character = characters.length > 0 ? characters[0] : undefined;
     this.chatMetadata = chatMetadata;
     this.chatHistory =
@@ -84,9 +93,14 @@ export class PromptBuilder {
     this.generationId = generationId;
     this.mediaContext = mediaContext;
     this.structuredResponse = structuredResponse;
+    this.macroEvaluation = macroEvaluation;
+    this.macroRandom = macroRandom;
 
     this.maxContext = this.samplerSettings.max_context ?? defaultSamplerSettings.max_context;
   }
+
+  private readonly macroEvaluation?: 'commit' | 'preview';
+  private readonly macroRandom?: () => number;
 
   /**
    * Helper to process a specific field for all characters in the context.
@@ -99,11 +113,7 @@ export class PromptBuilder {
         .map((c) => {
           const raw = fieldGetter(c);
           if (!raw) return null;
-          return macroService.process(raw, {
-            characters: this.characters,
-            persona: this.persona,
-            activeCharacter: c,
-          });
+          return this.macroSession!.evaluate(raw, { activeCharacter: c });
         })
         .filter(Boolean)
         .join('\n');
@@ -112,19 +122,13 @@ export class PromptBuilder {
     // Single character case (Including Group Chat SWAP mode where characters.length === 1)
     const raw = fieldGetter(this.character) || '';
     if (!raw) return '';
-    return macroService.process(raw, {
-      characters: this.characters,
-      persona: this.persona,
-    });
+    return this.macroSession!.evaluate(raw);
   }
 
   private async _buildMessageContent(
     msg: ChatMessage,
   ): Promise<{ content: string | ApiChatContentPart[]; mediaTokens: number }> {
-    const processedContent = macroService.process(msg.mes, {
-      characters: this.characters,
-      persona: this.persona,
-    });
+    const processedContent = this.macroSession!.evaluate(msg.mes);
     let mediaTokens = 0;
 
     const mediaEnabled =
@@ -202,9 +206,22 @@ export class PromptBuilder {
   }
 
   public async build(): Promise<ApiChatMessage[]> {
+    if (this.builtMessages) return this.builtMessages;
+
+    this.macroSession ??= macroService.createEvaluationSession({
+      characters: this.characters,
+      persona: this.persona,
+      activeCharacter: this.character,
+      group: this.group,
+      chatHistory: this.chatHistory,
+      chatMetadata: this.chatMetadata,
+      random: this.macroRandom,
+    });
+
     const options: PromptBuilderOptions = {
       books: this.books,
       characters: this.characters,
+      group: this.group,
       chatMetadata: this.chatMetadata,
       chatHistory: this.chatHistory,
       samplerSettings: this.samplerSettings,
@@ -213,22 +230,30 @@ export class PromptBuilder {
       worldInfo: this.worldInfo,
       generationId: this.generationId,
       mediaContext: this.mediaContext,
+      macroEvaluation: this.macroEvaluation,
+      macroRandom: this.macroRandom,
     };
     await eventEmitter.emit('prompt:building-started', options);
     const finalMessages: ApiChatMessage[] = [];
     let currentTokenCount = 0;
 
     // 1. Process World Info
-    const processor = new WorldInfoProcessor({
-      books: this.books,
-      chat: this.chatHistory,
-      characters: this.characters,
-      settings: this.worldInfo,
-      persona: this.persona,
-      maxContext: this.maxContext,
-      tokenizer: this.tokenizer,
-      generationId: this.generationId,
-    });
+    const processor = new WorldInfoProcessor(
+      {
+        books: this.books,
+        chat: this.chatHistory,
+        characters: this.characters,
+        settings: this.worldInfo,
+        persona: this.persona,
+        maxContext: this.maxContext,
+        tokenizer: this.tokenizer,
+        generationId: this.generationId,
+        group: this.group,
+        macroRandom: this.macroRandom,
+        chatMetadata: this.chatMetadata,
+      },
+      this.macroSession,
+    );
 
     this.processedWorldInfo = await processor.process();
     const { worldInfoBefore, worldInfoAfter, emBefore, emAfter } = this.processedWorldInfo;
@@ -246,7 +271,7 @@ export class PromptBuilder {
       name: 'system',
     };
 
-    const isGroupContext = (this.chatMetadata?.members?.length ?? 0) > 1;
+    const isGroupContext = (this.group?.length ?? 0) > 1;
 
     for (const promptDefinition of enabledPrompts) {
       const role = promptDefinition.role ?? 'system';
@@ -275,10 +300,7 @@ export class PromptBuilder {
           case 'scenario': {
             let content = '';
             if (this.chatMetadata?.promptOverrides?.scenario) {
-              content = macroService.process(this.chatMetadata.promptOverrides.scenario, {
-                characters: this.characters,
-                persona: this.persona,
-              });
+              content = this.macroSession.evaluate(this.chatMetadata.promptOverrides.scenario);
             } else {
               content = this.getProcessedContent((c) => c?.scenario);
             }
@@ -313,10 +335,7 @@ export class PromptBuilder {
             break;
           }
           case 'personaDescription': {
-            const content = macroService.process(this.persona.description || '', {
-              characters: this.characters,
-              persona: this.persona,
-            });
+            const content = this.macroSession.evaluate(this.persona.description || '');
             if (content) fixedPrompts.push({ role, content, name });
             break;
           }
@@ -328,10 +347,7 @@ export class PromptBuilder {
         }
       } else {
         if (promptDefinition.content && promptDefinition.role) {
-          const content = macroService.process(promptDefinition.content, {
-            characters: this.characters,
-            persona: this.persona,
-          });
+          const content = this.macroSession.evaluate(promptDefinition.content);
           if (content) fixedPrompts.push({ role, content, name });
         }
       }
@@ -339,7 +355,10 @@ export class PromptBuilder {
 
     // Add structured response system prompt if needed
     if (this.structuredResponse && this.structuredResponse.format !== 'native') {
-      const systemPrompt = buildStructuredResponseSystemPrompt(this.structuredResponse as StructuredResponsePrompted);
+      const systemPrompt = buildStructuredResponseSystemPrompt(
+        this.structuredResponse as StructuredResponsePrompted,
+        this.macroSession,
+      );
       fixedPrompts.push({
         role: 'system',
         content: systemPrompt,
@@ -531,6 +550,10 @@ export class PromptBuilder {
     }
 
     await eventEmitter.emit('prompt:built', finalMessages, { generationId: this.generationId });
+    if (this.macroEvaluation !== 'preview') {
+      this.macroVariablesChanged = this.macroSession.commit();
+    }
+    this.builtMessages = finalMessages;
     return finalMessages;
   }
 }

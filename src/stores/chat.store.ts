@@ -34,6 +34,7 @@ import { useUiStore } from './ui.store';
 export type ChatStoreState = {
   messages: ChatMessage[];
   metadata: ChatMetadata;
+  fileName?: string;
 };
 
 export const useChatStore = defineStore('chat', () => {
@@ -65,29 +66,26 @@ export const useChatStore = defineStore('chat', () => {
     return mapping;
   });
 
+  async function persistChat(chatContext: ChatStoreState, chatFile: string) {
+    uiStore.isChatSaving = true;
+    try {
+      const chatToSave: FullChat = [{ chat_metadata: chatContext.metadata }, ...chatContext.messages];
+
+      await chatService.save(chatFile, chatToSave);
+      await promptStore.saveItemizedPrompts(chatFile);
+
+      const info = chatInfos.value.find((chatInfo) => chatInfo.file_name === chatFile);
+      if (info) info.chat_metadata = chatContext.metadata;
+    } finally {
+      uiStore.isChatSaving = false;
+    }
+  }
+
   // Consolidated Saving Logic
   const { trigger: triggerSave } = useAutoSave(
     async () => {
       if (!activeChat.value || !activeChatFile.value) return;
-
-      uiStore.isChatSaving = true; // Keep UI store in sync for legacy status bar
-      try {
-        const chatToSave: FullChat = [{ chat_metadata: activeChat.value.metadata }, ...activeChat.value.messages];
-
-        await chatService.save(activeChatFile.value, chatToSave);
-        await promptStore.saveItemizedPrompts(activeChatFile.value);
-
-        // Update local cache of infos
-        const updateInfo = (infos: ChatInfo[]) => {
-          const info = infos.find((c) => c.file_name === activeChatFile.value);
-          if (info && activeChat.value) {
-            info.chat_metadata = activeChat.value.metadata;
-          }
-        };
-        updateInfo(chatInfos.value);
-      } finally {
-        uiStore.isChatSaving = false;
-      }
+      await persistChat(activeChat.value, activeChatFile.value);
     },
     { timeout: 1000 },
   );
@@ -161,6 +159,7 @@ export const useChatStore = defineStore('chat', () => {
     stopAutoModeTimer,
     findToolChainStart,
     triggerSave,
+    persistChat,
   });
 
   eventEmitter.on(
@@ -281,6 +280,7 @@ export const useChatStore = defineStore('chat', () => {
             integrity: uuidv4(),
           },
           messages: [],
+          fileName: activeChatFile.value ?? undefined,
         };
       }
     }
@@ -305,6 +305,7 @@ export const useChatStore = defineStore('chat', () => {
         activeChat.value = {
           metadata: metadataItem.chat_metadata,
           messages: response as ChatMessage[],
+          fileName: chatFile,
         };
 
         chatUiStore.resetRenderedMessagesCount(settingsStore.settings.ui.chat.messagesToLoad || 100);
@@ -376,7 +377,7 @@ export const useChatStore = defineStore('chat', () => {
       };
 
       const messages = firstMessage && firstMessage.mes ? [firstMessage] : [];
-      activeChat.value = { metadata, messages };
+      activeChat.value = { metadata, messages, fileName: filename };
 
       const fullChat: FullChat = [{ chat_metadata: metadata }, ...messages];
       await chatService.create(filename, fullChat);

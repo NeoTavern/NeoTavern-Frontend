@@ -4,12 +4,14 @@ import { PromptBuilder } from '../src/services/prompt-engine';
 import { WorldInfoProcessor } from '../src/services/world-info';
 import type {
   ApiChatContentPart,
+  ApiChatMessage,
   Character,
   ChatMessage,
   ChatMetadata,
   KnownPromptIdentifiers,
   Persona,
   SamplerSettings,
+  StructuredResponsePrompted,
   Tokenizer,
   WorldInfoSettings,
 } from '../src/types';
@@ -194,6 +196,92 @@ describe('PromptBuilder', () => {
     expect(eventEmitter.emit).toHaveBeenCalledWith('prompt:built', messages, expect.anything());
   });
 
+  it('keeps API roles out of lastCharMessage unless they are assistant messages', async () => {
+    const settings: SamplerSettings = {
+      ...mockSamplerSettings,
+      prompts: [
+        {
+          identifier: 'custom' as KnownPromptIdentifiers,
+          name: 'Chat context',
+          role: 'system',
+          content: '{{lastMessage}}|{{lastUserMessage}}|{{lastCharMessage}}',
+          marker: false,
+          enabled: true,
+        },
+      ],
+    };
+    const apiHistory: ApiChatMessage[] = [
+      { role: 'assistant', content: 'character reply', name: 'Char1' },
+      { role: 'system', content: 'system note', name: 'System' },
+      { role: 'tool', content: 'tool result', tool_call_id: 'call-1', name: 'Tool' },
+    ];
+
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: apiHistory,
+      samplerSettings: settings,
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: mockMetadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'api-role-chat-context',
+      mediaContext: mockMediaContext,
+    });
+
+    expect((await builder.build())[0].content).toBe('tool result||character reply');
+  });
+
+  it('normalizes null assistant content in tool-call-only API history', async () => {
+    const settings: SamplerSettings = {
+      ...mockSamplerSettings,
+      prompts: [
+        {
+          identifier: 'custom' as KnownPromptIdentifiers,
+          name: 'Chat context',
+          role: 'system',
+          content: '{{lastMessage}}|{{lastUserMessage}}|{{lastCharMessage}}',
+          marker: false,
+          enabled: true,
+        },
+      ],
+    };
+    const apiHistory: ApiChatMessage[] = [
+      { role: 'assistant', content: 'previous reply', name: 'Char1' },
+      { role: 'user', content: 'question', name: 'User' },
+      {
+        role: 'assistant',
+        content: null,
+        tool_calls: [
+          {
+            id: 'call-1',
+            type: 'function',
+            function: { name: 'lookup', arguments: '{}' },
+          },
+        ],
+        name: 'Char1',
+      },
+    ];
+
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: apiHistory,
+      samplerSettings: settings,
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: mockMetadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'api-null-assistant-content',
+      mediaContext: mockMediaContext,
+    });
+
+    const messages = await builder.build();
+
+    expect(messages[0].content).toBe('|question|');
+    expect(messages.some((message) => message.content === 'null')).toBe(false);
+  });
+
   it('respects max context and history budgeting', async () => {
     // Create long history
     const longHistory: ChatMessage[] = [];
@@ -328,6 +416,138 @@ describe('PromptBuilder', () => {
 
     const messages = await builder.build();
     expect(messages[0].content).toBe('Hello User, I am Char1');
+  });
+
+  it('keeps ordered group context separate from the generation character list', async () => {
+    const char2 = { ...mockCharacter, name: 'Char2', avatar: 'char2.png' };
+    const settings: SamplerSettings = {
+      ...mockSamplerSettings,
+      prompts: [
+        {
+          identifier: 'custom' as KnownPromptIdentifiers,
+          name: 'Group',
+          role: 'system',
+          content: '{{group}}|{{char}}',
+          marker: false,
+          enabled: true,
+        },
+      ],
+    };
+
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      group: [char2, mockCharacter],
+      chatHistory: [],
+      samplerSettings: settings,
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: { ...mockMetadata, members: [char2.avatar, mockCharacter.avatar] },
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'group-order',
+      mediaContext: mockMediaContext,
+    });
+
+    expect((await builder.build())[0].content).toBe('Char2, Char1|Char1');
+  });
+
+  it('uses the ordered group for swap-mode single-speaker generation', async () => {
+    const char2 = { ...mockCharacter, name: 'Char2', avatar: 'char2.png' };
+    const settings: SamplerSettings = {
+      ...mockSamplerSettings,
+      prompts: [
+        {
+          identifier: 'custom' as KnownPromptIdentifiers,
+          name: 'Group',
+          role: 'system',
+          content: '{{char}}/{{group}}',
+          marker: false,
+          enabled: true,
+        },
+      ],
+    };
+
+    const builder = new PromptBuilder({
+      characters: [char2],
+      group: [mockCharacter, char2],
+      chatHistory: [],
+      samplerSettings: settings,
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: { ...mockMetadata, members: [mockCharacter.avatar, char2.avatar] },
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'group-swap',
+      mediaContext: mockMediaContext,
+    });
+
+    expect((await builder.build())[0].content).toBe('Char2/Char1, Char2');
+  });
+
+  it('falls back to the active character when no group is selected', async () => {
+    const settings: SamplerSettings = {
+      ...mockSamplerSettings,
+      prompts: [
+        {
+          identifier: 'custom' as KnownPromptIdentifiers,
+          name: 'Group',
+          role: 'system',
+          content: '{{group}}',
+          marker: false,
+          enabled: true,
+        },
+      ],
+    };
+
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: [],
+      samplerSettings: settings,
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: mockMetadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'group-fallback',
+      mediaContext: mockMediaContext,
+    });
+
+    expect((await builder.build())[0].content).toBe('Char1');
+  });
+
+  it('forwards injected macro randomness and keeps preview prompts read-only', async () => {
+    const metadata: ChatMetadata = { integrity: 'extension-contract' };
+    const settings: SamplerSettings = {
+      ...mockSamplerSettings,
+      prompts: [
+        {
+          identifier: 'custom' as KnownPromptIdentifiers,
+          name: 'Extension',
+          role: 'system',
+          content: '{{roll::1d20}}/{{incvar::count}}',
+          marker: false,
+          enabled: true,
+        },
+      ],
+    };
+
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: [],
+      samplerSettings: settings,
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: metadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'extension-contract',
+      mediaContext: mockMediaContext,
+      macroEvaluation: 'preview',
+      macroRandom: () => 0.5,
+    });
+
+    expect((await builder.build())[0].content).toBe('11/1');
+    expect(metadata.extra).toBeUndefined();
   });
 
   it('skips disabled prompts', async () => {
@@ -549,5 +769,110 @@ describe('PromptBuilder', () => {
 
     // Order: EM Before -> Dialogue Examples -> EM After
     expect(contentArray).toEqual(['EM Before', 'Example 1', 'EM After']);
+  });
+
+  it('commits state-changing macros once and leaves preview builds read-only', async () => {
+    const metadata: ChatMetadata = { integrity: 'macro-session' };
+    const settings: SamplerSettings = {
+      ...mockSamplerSettings,
+      prompts: [
+        {
+          identifier: 'custom' as KnownPromptIdentifiers,
+          name: 'Stateful',
+          role: 'system',
+          content: 'count={{incvar::count}}',
+          marker: false,
+          enabled: true,
+        },
+      ],
+    };
+
+    const previewBuilder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: [],
+      samplerSettings: settings,
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: metadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'macro-preview',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
+      macroEvaluation: 'preview',
+    });
+    expect((await previewBuilder.build())[0].content).toBe('count=1');
+    expect(metadata.extra).toBeUndefined();
+
+    const generationBuilder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: [],
+      samplerSettings: settings,
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: metadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'macro-generation',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
+    });
+    expect((await generationBuilder.build())[0].content).toBe('count=1');
+    expect((await generationBuilder.build())[0].content).toBe('count=1');
+    expect(metadata.extra?.variables).toEqual({ count: 1 });
+  });
+
+  it('evaluates structured-response templates in the shared prompt session', async () => {
+    const char2 = { ...mockCharacter, name: 'Char2', avatar: 'char2.png' };
+    const metadata: ChatMetadata = { integrity: 'structured-session' };
+    const structuredResponse: StructuredResponsePrompted = {
+      format: 'json',
+      schema: {
+        name: 'result',
+        strict: true,
+        value: { type: 'object', properties: { answer: { type: 'string' } } },
+      },
+      jsonPrompt:
+        '{{char}}|{{group}}|{{user}}|{{lastMessage}}|{{chatMetadata.integrity}}|{{roll::1d6}}|{{getvar::origin}}|{{incvar::count}}{{getvar::count}}|{{schema}}|{{example_response}}',
+      exampleResponse: { answer: 'example' },
+    };
+    const settings: SamplerSettings = {
+      ...mockSamplerSettings,
+      prompts: [
+        {
+          identifier: 'custom' as KnownPromptIdentifiers,
+          name: 'Shared session setup',
+          role: 'system',
+          content: '{{setvar::origin::prompt}}',
+          marker: false,
+          enabled: true,
+        },
+      ],
+    };
+
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      group: [char2, mockCharacter],
+      chatHistory: mockChatHistory,
+      samplerSettings: settings,
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: metadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'structured-session',
+      mediaContext: mockMediaContext,
+      structuredResponse,
+      macroRandom: () => 0.5,
+    });
+
+    const messages = await builder.build();
+    const structuredPrompt = messages[messages.length - 1].content;
+
+    expect(structuredPrompt).toContain('Char1|Char2, Char1|User|Hi|structured-session|4|prompt|11');
+    expect(structuredPrompt).toContain('"answer": {');
+    expect(structuredPrompt).toContain('"answer": "example"');
+    expect(metadata.extra?.variables).toEqual({ origin: 'prompt', count: 1 });
+    expect(builder.macroVariablesChanged).toBe(true);
   });
 });

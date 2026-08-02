@@ -38,7 +38,10 @@ export interface ChatMetadata<T = Record<string, unknown>> {
   };
 
   // Extension specific data storage
-  extra?: Record<string, unknown> & T;
+  extra?: Record<string, unknown> &
+    T & {
+      variables?: Record<string, string | number>;
+    };
 }
 
 export interface SwipeInfo {

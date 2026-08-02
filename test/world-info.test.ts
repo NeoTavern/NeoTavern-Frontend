@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { WorldInfoPosition } from '../src/constants';
+import { macroService } from '../src/services/macro-service';
 import { WorldInfoProcessor, createDefaultEntry } from '../src/services/world-info';
 import type { Character, ChatMessage, Persona, Tokenizer, WorldInfoBook, WorldInfoSettings } from '../src/types';
 
@@ -72,6 +73,119 @@ const mockChat: ChatMessage[] = [
 ];
 
 describe('WorldInfoProcessor', () => {
+  test('uses the prompt evaluation session and evaluates stateful content once', async () => {
+    const entry = createDefaultEntry(1);
+    entry.key = ['Hello'];
+    entry.content = '{{incvar::worldInfoCount}}';
+    const metadata = { integrity: 'world-info-session' };
+    const session = macroService.createEvaluationSession({
+      characters: [mockCharacter],
+      persona: mockPersona,
+      chatHistory: mockChat,
+      chatMetadata: metadata,
+    });
+    const processor = new WorldInfoProcessor(
+      {
+        chat: mockChat,
+        characters: [mockCharacter],
+        settings: mockSettings,
+        books: [{ name: 'Test Book', entries: [entry] }],
+        persona: mockPersona,
+        maxContext: 1000,
+        tokenizer: mockTokenizer,
+        generationId: 'test-world-info-session',
+        chatMetadata: metadata,
+      },
+      session,
+    );
+
+    const result = await processor.process();
+
+    expect(result.worldInfoBefore).toBe('1');
+    expect(session.commit()).toBe(true);
+    expect(metadata.extra?.variables).toEqual({ worldInfoCount: 1 });
+  });
+
+  test('evaluates a stateful World Info key once when recursion revisits it', async () => {
+    const keyEntry = createDefaultEntry(1);
+    keyEntry.order = 1;
+    keyEntry.key = ['{{incvar::keyCount}}{{getvar::keyCount}}'];
+    keyEntry.content = 'Key entry';
+
+    const triggerEntry = createDefaultEntry(2);
+    triggerEntry.order = 2;
+    triggerEntry.key = ['Hello'];
+    triggerEntry.content = '11';
+
+    const metadata = { integrity: 'world-info-key-cache' };
+    const session = macroService.createEvaluationSession({
+      characters: [mockCharacter],
+      persona: mockPersona,
+      chatHistory: mockChat,
+      chatMetadata: metadata,
+    });
+    const processor = new WorldInfoProcessor(
+      {
+        chat: mockChat,
+        characters: [mockCharacter],
+        settings: mockSettings,
+        books: [{ name: 'Test Book', entries: [keyEntry, triggerEntry] }],
+        persona: mockPersona,
+        maxContext: 1000,
+        tokenizer: mockTokenizer,
+        generationId: 'test-world-info-key-cache',
+        chatMetadata: metadata,
+      },
+      session,
+    );
+
+    const result = await processor.process();
+
+    expect(result.worldInfoBefore).toContain('Key entry');
+    expect(session.commit()).toBe(true);
+    expect(metadata.extra?.variables).toEqual({ keyCount: 1 });
+  });
+
+  test('evaluates identical stateful keys once per configured entry', async () => {
+    const firstEntry = createDefaultEntry(1);
+    firstEntry.key = ['{{incvar::keyCount}}{{getvar::keyCount}}'];
+    firstEntry.content = 'First entry';
+
+    const secondEntry = createDefaultEntry(2);
+    secondEntry.key = ['{{incvar::keyCount}}{{getvar::keyCount}}'];
+    secondEntry.content = 'Second entry';
+
+    const keyChat = [{ ...mockChat[0], mes: '11 22' }];
+    const metadata = { integrity: 'world-info-distinct-key-cache' };
+    const session = macroService.createEvaluationSession({
+      characters: [mockCharacter],
+      persona: mockPersona,
+      chatHistory: keyChat,
+      chatMetadata: metadata,
+    });
+    const processor = new WorldInfoProcessor(
+      {
+        chat: keyChat,
+        characters: [mockCharacter],
+        settings: mockSettings,
+        books: [{ name: 'Test Book', entries: [firstEntry, secondEntry] }],
+        persona: mockPersona,
+        maxContext: 1000,
+        tokenizer: mockTokenizer,
+        generationId: 'test-world-info-distinct-key-cache',
+        chatMetadata: metadata,
+      },
+      session,
+    );
+
+    const result = await processor.process();
+
+    expect(result.worldInfoBefore).toContain('First entry');
+    expect(result.worldInfoBefore).toContain('Second entry');
+    expect(session.commit()).toBe(true);
+    expect(metadata.extra?.variables).toEqual({ keyCount: 2 });
+  });
+
   test('Activates entry based on key match', async () => {
     const entry = createDefaultEntry(1);
     entry.key = ['Hello'];

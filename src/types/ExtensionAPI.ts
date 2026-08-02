@@ -25,6 +25,7 @@ import type { ApiFormatter, CodeMirrorTarget, SamplerSettings, Settings, Setting
 import type { ToolDefinition } from './tools';
 import type { DeepPartial, Path, ValueForPath } from './utils';
 import type { WorldInfoBook, WorldInfoEntry, WorldInfoHeader, WorldInfoSettings } from './world-info';
+import type { MacroContextOverrides } from '../services/macro-service';
 
 export interface ChatInputDetail {
   value: string;
@@ -447,7 +448,9 @@ export interface ExtensionAPI<
      * This replicates the internal prompt building logic used during generation.
      */
     buildPrompt: (
-      options?: Partial<Omit<PromptBuilderOptions, 'samplerSettings' | 'worldInfo' | 'mediaContext'>> & {
+      options?: Partial<
+        Omit<PromptBuilderOptions, 'samplerSettings' | 'worldInfo' | 'mediaContext' | 'macroEvaluation'>
+      > & {
         samplerSettings?: Partial<SamplerSettings>;
         worldInfo?: Partial<WorldInfoSettings>;
         mediaContext?: Partial<MediaHydrationContext>;
@@ -559,11 +562,7 @@ export interface ExtensionAPI<
      * @param context Optional context overrides. If not provided, active context is used.
      * @param additionalMacros Optional custom macros to merge into the context. These can override built-in macros.
      */
-    process: (
-      text: string,
-      context?: { activeCharacter?: Character; characters?: Character[]; persona?: Persona },
-      additionalMacros?: Record<string, unknown>,
-    ) => string;
+    process: (text: string, context?: MacroContextOverrides, additionalMacros?: Record<string, unknown>) => string;
   };
   tools: {
     /**

@@ -13,7 +13,7 @@ import type {
   WorldInfoSettings,
 } from '../types';
 import { eventEmitter } from '../utils/extensions';
-import { macroService } from './macro-service';
+import { macroService, type MacroEvaluationSession } from './macro-service';
 
 const DEFAULT_DEPTH = 4;
 const DEFAULT_WEIGHT = 100;
@@ -192,6 +192,8 @@ interface ProcessingEntry extends WorldInfoEntry {
   world: string;
 }
 
+type KeyGroup = 'primary' | 'secondary';
+
 interface ScoredEntry {
   entry: ProcessingEntry;
   score: number;
@@ -327,8 +329,29 @@ export class WorldInfoProcessor {
   public persona: Persona;
   public tokenizer: Tokenizer;
   public generationId: string;
+  public chatMetadata?: WorldInfoOptions['chatMetadata'];
+  public group?: Character[];
+  public macroRandom?: () => number;
+  private readonly macroSession: MacroEvaluationSession;
+  private readonly substitutedKeys = new WeakMap<ProcessingEntry, Record<KeyGroup, Map<number, string>>>();
+  private readonly substitutedContents = new Map<string, string>();
 
-  constructor({ chat, characters, settings, books, maxContext, persona, tokenizer, generationId }: WorldInfoOptions) {
+  constructor(
+    {
+      chat,
+      characters,
+      settings,
+      books,
+      maxContext,
+      persona,
+      tokenizer,
+      generationId,
+      chatMetadata,
+      group,
+      macroRandom,
+    }: WorldInfoOptions,
+    macroSession?: MacroEvaluationSession,
+  ) {
     this.chat = chat;
     this.characters = characters;
     this.character = characters[0];
@@ -338,6 +361,20 @@ export class WorldInfoProcessor {
     this.maxContext = maxContext;
     this.tokenizer = tokenizer;
     this.generationId = generationId;
+    this.chatMetadata = chatMetadata;
+    this.group = group;
+    this.macroRandom = macroRandom;
+    this.macroSession =
+      macroSession ??
+      macroService.createEvaluationSession({
+        characters: this.characters,
+        group,
+        persona: this.persona,
+        activeCharacter: this.character,
+        chatHistory: this.chat,
+        chatMetadata,
+        random: macroRandom,
+      });
   }
 
   private checkFilters(entry: ProcessingEntry, scanState: ScanState): boolean {
@@ -403,6 +440,29 @@ export class WorldInfoProcessor {
     return entry.useGroupScoring ?? this.settings.useGroupScoring;
   }
 
+  private evaluateEntryContent(entry: ProcessingEntry): string {
+    const key = `${entry.world}.${entry.uid}`;
+    const cached = this.substitutedContents.get(key);
+    if (cached !== undefined) return cached;
+    const content = this.macroSession.evaluate(entry.content);
+    this.substitutedContents.set(key, content);
+    return content;
+  }
+
+  private evaluateEntryKey(entry: ProcessingEntry, key: string, keyGroup: KeyGroup, keyIndex: number): string {
+    let entryCache = this.substitutedKeys.get(entry);
+    if (!entryCache) {
+      entryCache = { primary: new Map(), secondary: new Map() };
+      this.substitutedKeys.set(entry, entryCache);
+    }
+
+    const cached = entryCache[keyGroup].get(keyIndex);
+    if (cached !== undefined) return cached;
+    const substitutedKey = this.macroSession.evaluate(key);
+    entryCache[keyGroup].set(keyIndex, substitutedKey);
+    return substitutedKey;
+  }
+
   public async process(): Promise<ProcessedWorldInfo> {
     const options: WorldInfoOptions = {
       chat: this.chat,
@@ -413,6 +473,9 @@ export class WorldInfoProcessor {
       maxContext: this.maxContext,
       tokenizer: this.tokenizer,
       generationId: this.generationId,
+      chatMetadata: this.chatMetadata,
+      group: this.group,
+      macroRandom: this.macroRandom,
     };
     await eventEmitter.emit('world-info:processing-started', options);
 
@@ -482,8 +545,8 @@ export class WorldInfoProcessor {
         let hasPrimaryKeyMatch = false;
 
         // Check Primary Keys
-        for (const key of entry.key) {
-          const subbedKey = macroService.process(key, { characters: this.characters, persona: this.persona });
+        for (const [keyIndex, key] of entry.key.entries()) {
+          const subbedKey = this.evaluateEntryKey(entry, key, 'primary', keyIndex);
           if (subbedKey) {
             const score = buffer.getMatchScore(textToScan, subbedKey, entry);
             if (score > 0) {
@@ -503,8 +566,8 @@ export class WorldInfoProcessor {
             let hasAnySecondaryMatch = false;
             let hasAllSecondaryMatch = true;
 
-            for (const key of entry.keysecondary) {
-              const subbedKey = macroService.process(key, { characters: this.characters, persona: this.persona });
+            for (const [keyIndex, key] of entry.keysecondary.entries()) {
+              const subbedKey = this.evaluateEntryKey(entry, key, 'secondary', keyIndex);
               if (subbedKey) {
                 const score = buffer.getMatchScore(textToScan, subbedKey, entry);
                 if (score > 0) {
@@ -591,10 +654,7 @@ export class WorldInfoProcessor {
         const roll = Math.random() * 100;
         if (entry.useProbability && roll > entry.probability) continue;
 
-        const substitutedContent = macroService.process(entry.content, {
-          characters: this.characters,
-          persona: this.persona,
-        });
+        const substitutedContent = this.evaluateEntryContent(entry);
 
         const contentForBudget = `\n${substitutedContent}`;
         const tokens = await this.tokenizer.getTokenCount(contentForBudget);
@@ -673,7 +733,7 @@ export class WorldInfoProcessor {
       }
       result.triggeredEntries[entry.world].push(entry);
 
-      const content = macroService.process(entry.content, { characters: this.characters, persona: this.persona });
+      const content = this.evaluateEntryContent(entry);
       if (!content) continue;
 
       switch (entry.position) {

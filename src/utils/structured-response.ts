@@ -1,6 +1,6 @@
 import Ajv from 'ajv';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
-import { macroService } from '../services/macro-service';
+import type { MacroEvaluationSession } from '../services/macro-service';
 import type { StructuredResponsePrompted } from '../types';
 
 export const DEFAULT_JSON_PROMPT = `You are a highly specialized AI assistant. Your SOLE purpose is to generate a single, valid JSON object that strictly adheres to the provided JSON schema.
@@ -153,7 +153,10 @@ function generateExample(schema: any): any {
   }
 }
 
-export function buildStructuredResponseSystemPrompt(srOptions: StructuredResponsePrompted): string {
+export function buildStructuredResponseSystemPrompt(
+  srOptions: StructuredResponsePrompted,
+  macroSession: MacroEvaluationSession,
+): string {
   const format = srOptions.format;
   const promptTemplate =
     format === 'json' ? srOptions.jsonPrompt || DEFAULT_JSON_PROMPT : srOptions.xmlPrompt || DEFAULT_XML_PROMPT;
@@ -172,8 +175,7 @@ export function buildStructuredResponseSystemPrompt(srOptions: StructuredRespons
     }
   }
 
-  return macroService.process(promptTemplate, {
-    characters: [],
+  return macroSession.evaluate(promptTemplate, {
     additionalMacros: {
       schema: JSON.stringify(srOptions.schema.value, null, 2),
       example_response: exampleResponse,

@@ -33,7 +33,7 @@ import {
   type SwipeInfo,
   type WorldInfoBook,
 } from '../types';
-import { getThumbnailUrl } from '../utils/character';
+import { getCharactersInMemberOrder, getThumbnailUrl } from '../utils/character';
 import { extractMediaFromMarkdown } from '../utils/chat';
 import { getMessageTimeStamp, uuidv4 } from '../utils/commons';
 import { countTokens, eventEmitter } from '../utils/extensions';
@@ -44,6 +44,7 @@ import { toast } from './useToast';
 export interface ChatStateRef {
   messages: ChatMessage[];
   metadata: ChatMetadata;
+  fileName?: string;
 }
 
 export interface ChatGenerationDependencies {
@@ -52,6 +53,7 @@ export interface ChatGenerationDependencies {
   stopAutoModeTimer: () => void;
   findToolChainStart: (endIndex: number) => number;
   triggerSave: () => void;
+  persistChat: (chatContext: ChatStateRef, chatFile: string) => Promise<void>;
 }
 
 interface GenerationStepResult {
@@ -213,6 +215,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
     let mode = initialMode;
     const currentChatContext = deps.activeChat.value;
+    const currentChatFile = currentChatContext.fileName;
     let historyForGen = [...currentChatContext.messages];
 
     // Handle Regenerate Logic (part 1: determine mode and speaker)
@@ -329,6 +332,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           modeForLoop,
           finalGenerationId,
           currentChatContext,
+          currentChatFile,
           historyForGen,
           overallController,
         );
@@ -428,6 +432,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     mode: GenerationMode,
     generationId: string,
     chatContext: ChatStateRef,
+    chatFile: string | undefined,
     historyForStep: ChatMessage[],
     controller: AbortController,
   ): Promise<GenerationStepResult | null> {
@@ -472,6 +477,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       generationId,
       mode,
       characters: charactersForContext,
+      group: getCharactersInMemberOrder(characterStore.characters, chatMetadata.members),
       chatMetadata: chatMetadata,
       history: [...historyForStep],
       persona: activePersona,
@@ -539,6 +545,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     const promptBuilder = new PromptBuilder({
       generationId,
       characters: context.characters,
+      group: context.group,
       chatMetadata: context.chatMetadata,
       chatHistory: context.history,
       persona: context.persona,
@@ -566,6 +573,8 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
     const messages = await promptBuilder.build();
     if (messages.length === 0) throw new Error(t('chat.generate.noPrompts'));
+    if (promptBuilder.macroVariablesChanged && chatFile) await deps.persistChat(chatContext, chatFile);
+    if (deps.activeChat.value !== chatContext) throw new Error('Context switched');
 
     // Handle (Continue) injection
     const lastPromptMsg = messages[messages.length - 1];

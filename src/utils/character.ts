@@ -10,6 +10,15 @@ import { useCharacterStore } from '../stores/character.store';
 import { usePersonaStore } from '../stores/persona.store';
 import { type Character, type ThumbnailType } from '../types';
 
+export function getCharactersInMemberOrder(characters: Character[], members?: string[]): Character[] | undefined {
+  if (!members || members.length <= 1) return undefined;
+
+  const charactersByAvatar = new Map(characters.map((character) => [character.avatar, character]));
+  return members
+    .map((avatar) => charactersByAvatar.get(avatar))
+    .filter((character): character is Character => character !== undefined);
+}
+
 // --- Manipulation & Form Data ---
 
 export function getCharacterDifferences(oldChar: Character, newChar: Character): Partial<Character> | null {
