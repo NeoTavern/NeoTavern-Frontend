@@ -10,6 +10,7 @@ import type {
   MediaHydrationContext,
   Persona,
   ProcessedWorldInfo,
+  Prompt,
   PromptBuilderOptions,
   SamplerSettings,
   StructuredResponseOptions,
@@ -23,6 +24,42 @@ import { compressImage, getImageTokenCost, getMediaDurationFromDataURL, isDataUR
 import { buildStructuredResponseSystemPrompt } from '../utils/structured-response';
 import { macroService, type MacroEvaluationSession } from './macro-service';
 import { WorldInfoProcessor } from './world-info';
+
+const supportedPromptRoles = new Set(['system', 'user', 'assistant']);
+const promptRolePriority: Record<'user' | 'assistant' | 'system', number> = {
+  user: 0,
+  assistant: 1,
+  system: 2,
+};
+
+function validatePromptDefinition(prompt: Prompt): void {
+  if (prompt.role !== undefined && !supportedPromptRoles.has(prompt.role)) {
+    throw new Error(`Unsupported role for prompt "${prompt.identifier}": ${String(prompt.role)}`);
+  }
+
+  if (
+    prompt.injection_position !== undefined &&
+    prompt.injection_position !== 'relative' &&
+    prompt.injection_position !== 'in-chat'
+  ) {
+    throw new Error(
+      `Unsupported injection position for prompt "${prompt.identifier}": ${String(prompt.injection_position)}`,
+    );
+  }
+
+  if (
+    prompt.injection_depth !== undefined &&
+    (!Number.isFinite(prompt.injection_depth) ||
+      !Number.isInteger(prompt.injection_depth) ||
+      prompt.injection_depth < 0)
+  ) {
+    throw new Error(`Invalid injection depth for prompt "${prompt.identifier}": ${String(prompt.injection_depth)}`);
+  }
+
+  if (prompt.injection_order !== undefined && !Number.isFinite(prompt.injection_order)) {
+    throw new Error(`Invalid injection order for prompt "${prompt.identifier}": ${String(prompt.injection_order)}`);
+  }
+}
 
 export class PromptBuilder {
   public characters: Character[];
@@ -260,7 +297,14 @@ export class PromptBuilder {
 
     // 2. Build non-history prompts
     const fixedPrompts: ApiChatMessage[] = [];
-    const enabledPrompts = this.samplerSettings.prompts.filter((p) => p.enabled);
+    const configuredPrompts = this.samplerSettings.prompts.map((prompt, configuredOrder) => ({
+      prompt,
+      configuredOrder,
+    }));
+    for (const { prompt } of configuredPrompts) {
+      validatePromptDefinition(prompt);
+    }
+    const enabledPrompts = configuredPrompts.filter(({ prompt }) => prompt.enabled);
     if (enabledPrompts.length === 0) {
       console.warn('No enabled prompts found in sampler settings.');
       return [];
@@ -273,7 +317,9 @@ export class PromptBuilder {
 
     const isGroupContext = (this.group?.length ?? 0) > 1;
 
-    for (const promptDefinition of enabledPrompts) {
+    for (const { prompt: promptDefinition } of enabledPrompts.filter(
+      ({ prompt }) => prompt.injection_position !== 'in-chat',
+    )) {
       const role = promptDefinition.role ?? 'system';
       const name =
         role === 'user'
@@ -346,7 +392,7 @@ export class PromptBuilder {
           }
         }
       } else {
-        if (promptDefinition.content && promptDefinition.role) {
+        if (promptDefinition.content) {
           const content = this.macroSession.evaluate(promptDefinition.content);
           if (content) fixedPrompts.push({ role, content, name });
         }
@@ -410,6 +456,45 @@ export class PromptBuilder {
         const list = depthEntriesMap.get(entryItem.depth) || [];
         depthEntriesMap.set(entryItem.depth, [...list, ...msgs]);
       }
+    }
+
+    const inChatPrompts = enabledPrompts
+      .filter(({ prompt }) => prompt.injection_position === 'in-chat')
+      .sort((a, b) => {
+        const depthA = a.prompt.injection_depth ?? 0;
+        const depthB = b.prompt.injection_depth ?? 0;
+        if (depthA !== depthB) return depthA - depthB;
+
+        const orderA = a.prompt.injection_order ?? 100;
+        const orderB = b.prompt.injection_order ?? 100;
+        if (orderA !== orderB) return orderA - orderB;
+
+        const roleA = promptRolePriority[a.prompt.role ?? 'system'];
+        const roleB = promptRolePriority[b.prompt.role ?? 'system'];
+        if (roleA !== roleB) return roleA - roleB;
+
+        return a.configuredOrder - b.configuredOrder;
+      });
+
+    for (const { prompt } of inChatPrompts) {
+      if (prompt.marker || !prompt.content) continue;
+
+      const content = this.macroSession.evaluate(prompt.content);
+      if (!content) continue;
+
+      const role = prompt.role ?? 'system';
+      const name =
+        role === 'user'
+          ? this.persona.name || '{{#raw}}{{user}}{{/raw}}'
+          : role === 'assistant'
+            ? this.character?.name || '{{#raw}}{{char}}{{/raw}}'
+            : 'System';
+      const apiMessage: ApiChatMessage = { role, content, name };
+      const tokens = await countTokens(content, this.tokenizer);
+      const depth = prompt.injection_depth ?? 0;
+      const list = depthEntriesMap.get(depth) || [];
+      list.push({ apiMessage, tokens });
+      depthEntriesMap.set(depth, list);
     }
 
     // Current depth counter (starts at 0 = end of chat)

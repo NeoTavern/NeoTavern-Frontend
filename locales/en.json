@@ -212,10 +212,16 @@
         "afterEM": "{'↓'}EM",
         "beforeAN": "{'↑'}AN",
         "afterAN": "{'↓'}AN",
-        "atDepthSystem": "{'@'}D ⚙️",
+        "atDepth": "{'@'}D",
         "outlet": "➡️ Outlet"
       },
       "depth": "Depth",
+      "role": "Role",
+      "roles": {
+        "system": "System",
+        "user": "User",
+        "assistant": "Assistant"
+      },
       "order": "Order",
       "trigger": "Trigger %",
       "move": "Move/Copy Entry to Another Lorebook",
@@ -352,6 +358,13 @@
       "newPrompt": "New Prompt",
       "newGlobalPrompt": "New Global Prompt",
       "role": "Role",
+      "injectionPosition": "Injection Position",
+      "injectionDepth": "Injection Depth",
+      "injectionOrder": "Injection Order",
+      "injectionPositions": {
+        "relative": "Relative",
+        "inChat": "In chat"
+      },
       "content": "Content",
       "roles": {
         "system": "System",

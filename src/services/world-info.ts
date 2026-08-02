@@ -13,11 +13,23 @@ import type {
   WorldInfoSettings,
 } from '../types';
 import { eventEmitter } from '../utils/extensions';
+import { validateWorldInfoRole } from '../utils/world-info-role';
 import { macroService, type MacroEvaluationSession } from './macro-service';
 
 const DEFAULT_DEPTH = 4;
 const DEFAULT_WEIGHT = 100;
 const MAX_SCAN_DEPTH = 100;
+
+function worldInfoRoleToMessageRole(role: unknown, context: string): 'system' | 'user' | 'assistant' {
+  switch (validateWorldInfoRole(role, context)) {
+    case WorldInfoRole.SYSTEM:
+      return 'system';
+    case WorldInfoRole.USER:
+      return 'user';
+    case WorldInfoRole.ASSISTANT:
+      return 'assistant';
+  }
+}
 
 enum ScanState {
   NONE = 0,
@@ -109,7 +121,7 @@ export function convertCharacterBookToWorldInfoBook(charBook: CharacterBook): Wo
       matchWholeWords: entry.extensions?.match_whole_words ?? null,
       useGroupScoring: entry.extensions?.use_group_scoring ?? null,
       automationId: entry.extensions?.automation_id ?? '',
-      role: entry.extensions?.role ?? WorldInfoRole.SYSTEM,
+      role: validateWorldInfoRole(entry.extensions?.role ?? WorldInfoRole.SYSTEM, `World Info entry ${uid}`),
       vectorized: entry.extensions?.vectorized ?? false,
       sticky: entry.extensions?.sticky ?? null,
       cooldown: entry.extensions?.cooldown ?? null,
@@ -492,7 +504,11 @@ export class WorldInfoProcessor {
     }
 
     const allEntries: ProcessingEntry[] = this.books.flatMap((book) =>
-      book.entries.map((entry) => ({ ...entry, world: book.name })),
+      book.entries.map((entry) => ({
+        ...entry,
+        role: validateWorldInfoRole(entry.role, `World Info entry ${book.name}/${entry.uid}`),
+        world: book.name,
+      })),
     );
     const sortedEntries = allEntries.sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
 
@@ -756,7 +772,11 @@ export class WorldInfoProcessor {
           result.emAfter.push(content);
           break;
         case WorldInfoPosition.AT_DEPTH:
-          result.depthEntries.push({ depth: entry.depth, role: 'system', entries: [content] });
+          result.depthEntries.push({
+            depth: entry.depth,
+            role: worldInfoRoleToMessageRole(entry.role, `World Info entry ${entry.world}/${entry.uid}`),
+            entries: [content],
+          });
           break;
         case WorldInfoPosition.OUTLET:
           if (entry.outletName) {

@@ -30,6 +30,9 @@ export interface LegacyPrompt {
   content?: string;
   identifier: string;
   marker?: boolean;
+  injection_position?: number;
+  injection_depth?: number;
+  injection_order?: number;
 }
 
 export interface LegacyPromptOrderConfig {
@@ -49,6 +52,9 @@ export type KnownPromptIdentifiers =
   | 'worldInfoAfter'
   | 'personaDescription'
   | 'jailbreak';
+
+export type PromptInjectionPosition = 'relative' | 'in-chat';
+
 export interface Prompt {
   identifier: string & KnownPromptIdentifiers; // i know
   name: string;
@@ -56,6 +62,9 @@ export interface Prompt {
   content: string;
   marker: boolean;
   enabled: boolean;
+  injection_position?: PromptInjectionPosition;
+  injection_depth?: number;
+  injection_order?: number;
 }
 
 export type Proxy = {

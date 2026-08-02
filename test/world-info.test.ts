@@ -1,8 +1,17 @@
-import { describe, expect, test } from 'vitest';
-import { WorldInfoPosition } from '../src/constants';
+import { describe, expect, test, vi } from 'vitest';
+import { fetchWorldInfoBook } from '../src/api/world-info';
+import { WorldInfoPosition, WorldInfoRole } from '../src/constants';
 import { macroService } from '../src/services/macro-service';
-import { WorldInfoProcessor, createDefaultEntry } from '../src/services/world-info';
+import {
+  WorldInfoProcessor,
+  convertCharacterBookToWorldInfoBook,
+  createDefaultEntry,
+} from '../src/services/world-info';
 import type { Character, ChatMessage, Persona, Tokenizer, WorldInfoBook, WorldInfoSettings } from '../src/types';
+
+vi.mock('../src/utils/client', () => ({
+  getRequestHeaders: vi.fn(() => ({})),
+}));
 
 // Mock tokenizer
 const mockTokenizer: Tokenizer = {
@@ -509,5 +518,122 @@ describe('WorldInfoProcessor', () => {
     const result = await processor.process();
     expect(result.worldInfoBefore).toContain('Before Char');
     expect(result.worldInfoAfter).toContain('After Char');
+  });
+
+  test('preserves each configured role for at-depth entries', async () => {
+    const roles = [WorldInfoRole.SYSTEM, WorldInfoRole.USER, WorldInfoRole.ASSISTANT];
+    const entries = roles.map((role, index) => {
+      const entry = createDefaultEntry(index + 1);
+      entry.constant = true;
+      entry.content = `Depth role ${role}`;
+      entry.position = WorldInfoPosition.AT_DEPTH;
+      entry.depth = index;
+      entry.role = role;
+      return entry;
+    });
+
+    const result = await new WorldInfoProcessor({
+      chat: mockChat,
+      characters: [mockCharacter],
+      settings: mockSettings,
+      books: [{ name: 'Roles', entries }],
+      persona: mockPersona,
+      maxContext: 1000,
+      tokenizer: mockTokenizer,
+      generationId: 'world-info-depth-roles',
+    }).process();
+
+    expect(result.depthEntries).toEqual([
+      { depth: 0, role: 'system', entries: ['Depth role 0'] },
+      { depth: 1, role: 'user', entries: ['Depth role 1'] },
+      { depth: 2, role: 'assistant', entries: ['Depth role 2'] },
+    ]);
+  });
+
+  test('validates imported World Info roles without changing non-depth placement', () => {
+    const book = convertCharacterBookToWorldInfoBook({
+      name: 'Imported',
+      entries: [
+        {
+          id: 1,
+          keys: ['hello'],
+          content: 'Imported user entry',
+          extensions: { role: 'user' },
+        },
+      ],
+    });
+
+    expect(book.entries[0].role).toBe(WorldInfoRole.USER);
+    expect(() =>
+      convertCharacterBookToWorldInfoBook({
+        name: 'Invalid',
+        entries: [{ id: 2, keys: ['hello'], content: 'Invalid', extensions: { role: 'tool' } }],
+      }),
+    ).toThrow('Unsupported role');
+  });
+
+  test('normalizes SillyTavern extension roles before depth processing', async () => {
+    const rawBook = {
+      name: 'Imported roles',
+      entries: [
+        {
+          ...createDefaultEntry(1),
+          role: undefined,
+          constant: true,
+          content: 'Imported user role',
+          position: WorldInfoPosition.AT_DEPTH,
+          depth: 0,
+          extensions: { role: 'user' },
+        },
+        {
+          ...createDefaultEntry(2),
+          role: undefined,
+          constant: true,
+          content: 'Imported assistant role',
+          position: WorldInfoPosition.AT_DEPTH,
+          depth: 1,
+          extensions: { role: 'assistant' },
+        },
+      ],
+    };
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(rawBook),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const importedBook = await fetchWorldInfoBook('imported-roles');
+
+      expect(importedBook.entries.map((entry) => entry.role)).toEqual([WorldInfoRole.USER, WorldInfoRole.ASSISTANT]);
+
+      const result = await new WorldInfoProcessor({
+        chat: mockChat,
+        characters: [mockCharacter],
+        settings: mockSettings,
+        books: [importedBook],
+        persona: mockPersona,
+        maxContext: 1000,
+        tokenizer: mockTokenizer,
+        generationId: 'imported-world-info-roles',
+      }).process();
+
+      expect(result.depthEntries).toEqual([
+        { depth: 0, role: 'user', entries: ['Imported user role'] },
+        { depth: 1, role: 'assistant', entries: ['Imported assistant role'] },
+      ]);
+
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: 'Unsupported role',
+          entries: [{ ...rawBook.entries[0], extensions: { role: 'tool' } }],
+        }),
+      });
+
+      await expect(fetchWorldInfoBook('unsupported-role')).rejects.toThrow('Unsupported role');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

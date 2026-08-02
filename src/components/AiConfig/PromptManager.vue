@@ -5,7 +5,7 @@ import { useStrictI18n } from '../../composables/useStrictI18n';
 import { usePopupStore } from '../../stores/popup.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import type { MessageRole, StrictOmitString } from '../../types';
-import type { KnownPromptIdentifiers, Prompt } from '../../types/settings';
+import type { KnownPromptIdentifiers, Prompt, PromptInjectionPosition } from '../../types/settings';
 import { DraggableList, EmptyState } from '../common';
 import { Button, FormItem, Input, Select, Textarea } from '../UI';
 import GlobalPromptManager from './GlobalPromptManager.vue';
@@ -25,6 +25,11 @@ const roleOptions = computed(() => [
   { label: t('aiConfig.promptManager.roles.system'), value: 'system' },
   { label: t('aiConfig.promptManager.roles.user'), value: 'user' },
   { label: t('aiConfig.promptManager.roles.assistant'), value: 'assistant' },
+]);
+
+const injectionPositionOptions = computed(() => [
+  { label: t('aiConfig.promptManager.injectionPositions.relative'), value: 'relative' },
+  { label: t('aiConfig.promptManager.injectionPositions.inChat'), value: 'in-chat' },
 ]);
 
 const selectedLibraryPrompt = ref<string>('');
@@ -103,7 +108,7 @@ function toggleEnabled(index: number) {
 function updatePromptField(
   index: number,
   field: keyof Prompt,
-  value: string | number | StrictOmitString<MessageRole, 'tool'>,
+  value: string | number | StrictOmitString<MessageRole, 'tool'> | PromptInjectionPosition,
 ) {
   // @ts-expect-error Dynamic assignment
   presetPrompts.value[index][field] = value;
@@ -205,6 +210,41 @@ function getBadgeClass(role?: StrictOmitString<MessageRole, 'tool'>) {
                   @update:model-value="
                     updatePromptField(index, 'role', $event as StrictOmitString<MessageRole, 'tool'>)
                   "
+                />
+              </FormItem>
+
+              <FormItem :label="t('aiConfig.promptManager.injectionPosition')">
+                <Select
+                  :model-value="prompt.injection_position || 'relative'"
+                  :options="injectionPositionOptions"
+                  @update:model-value="
+                    updatePromptField(index, 'injection_position', $event as PromptInjectionPosition)
+                  "
+                />
+              </FormItem>
+
+              <FormItem
+                v-if="prompt.injection_position === 'in-chat'"
+                :label="t('aiConfig.promptManager.injectionDepth')"
+              >
+                <Input
+                  type="number"
+                  :min="0"
+                  :step="1"
+                  :model-value="prompt.injection_depth ?? 0"
+                  @update:model-value="(v) => updatePromptField(index, 'injection_depth', Number(v))"
+                />
+              </FormItem>
+
+              <FormItem
+                v-if="prompt.injection_position === 'in-chat'"
+                :label="t('aiConfig.promptManager.injectionOrder')"
+              >
+                <Input
+                  type="number"
+                  :step="1"
+                  :model-value="prompt.injection_order ?? 100"
+                  @update:model-value="(v) => updatePromptField(index, 'injection_order', Number(v))"
                 />
               </FormItem>
 

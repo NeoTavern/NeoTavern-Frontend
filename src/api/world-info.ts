@@ -1,5 +1,6 @@
 import type { WorldInfoBook, WorldInfoEntry, WorldInfoHeader } from '../types';
 import { getRequestHeaders } from '../utils/client';
+import { validateWorldInfoRole } from '../utils/world-info-role';
 
 export async function listAllWorldInfoBooks(): Promise<WorldInfoHeader[]> {
   const response = await fetch('/api/worldinfo/list', {
@@ -32,7 +33,13 @@ export async function fetchWorldInfoBook(filename: string): Promise<WorldInfoBoo
     entriesArray = Object.values(bookData.entries);
   }
 
-  return { ...bookData, entries: entriesArray };
+  return {
+    ...bookData,
+    entries: entriesArray.map((entry) => ({
+      ...entry,
+      role: validateWorldInfoRole(entry.role ?? entry.extensions?.role, `World Info book ${filename}/${entry.uid}`),
+    })),
+  };
 }
 
 export async function saveWorldInfoBook(filename: string, data: WorldInfoBook): Promise<void> {

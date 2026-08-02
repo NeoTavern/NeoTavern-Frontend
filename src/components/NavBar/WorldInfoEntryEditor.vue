@@ -14,7 +14,7 @@ import {
   Textarea,
 } from '../../components/UI';
 import { useStrictI18n } from '../../composables/useStrictI18n';
-import { DebounceTimeout, WorldInfoPosition } from '../../constants';
+import { DebounceTimeout, WorldInfoPosition, WorldInfoRole } from '../../constants';
 import { usePopupStore } from '../../stores/popup.store';
 import { useWorldInfoUiStore } from '../../stores/world-info-ui.store';
 import { useWorldInfoStore } from '../../stores/world-info.store';
@@ -113,8 +113,14 @@ const positionOptions = [
   { label: t('worldInfo.entry.positionOptions.afterEM'), value: WorldInfoPosition.AFTER_EM },
   { label: t('worldInfo.entry.positionOptions.beforeAN'), value: WorldInfoPosition.BEFORE_AN },
   { label: t('worldInfo.entry.positionOptions.afterAN'), value: WorldInfoPosition.AFTER_AN },
-  { label: t('worldInfo.entry.positionOptions.atDepthSystem'), value: WorldInfoPosition.AT_DEPTH },
+  { label: t('worldInfo.entry.positionOptions.atDepth'), value: WorldInfoPosition.AT_DEPTH },
   { label: t('worldInfo.entry.positionOptions.outlet'), value: WorldInfoPosition.OUTLET },
+];
+
+const roleOptions = [
+  { label: t('worldInfo.entry.roles.system'), value: WorldInfoRole.SYSTEM },
+  { label: t('worldInfo.entry.roles.user'), value: WorldInfoRole.USER },
+  { label: t('worldInfo.entry.roles.assistant'), value: WorldInfoRole.ASSISTANT },
 ];
 
 const logicOptions = [
@@ -180,6 +186,14 @@ const logicOptions = [
             :model-value="modelValue?.depth ?? 0"
             :placeholder="t('worldInfo.entry.depth')"
             @update:model-value="(val) => updateValue('depth', Number(val))"
+          />
+        </FormItem>
+
+        <FormItem v-show="isAtDepth" :label="t('worldInfo.entry.role')">
+          <Select
+            :model-value="modelValue?.role ?? WorldInfoRole.SYSTEM"
+            :options="roleOptions"
+            @update:model-value="updateValue('role', Number($event) as WorldInfoRole)"
           />
         </FormItem>
 

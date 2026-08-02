@@ -26,6 +26,11 @@ const roleOptions = computed(() => [
   { label: t('aiConfig.promptManager.roles.assistant'), value: 'assistant' },
 ]);
 
+const injectionPositionOptions = computed(() => [
+  { label: t('aiConfig.promptManager.injectionPositions.relative'), value: 'relative' },
+  { label: t('aiConfig.promptManager.injectionPositions.inChat'), value: 'in-chat' },
+]);
+
 function createNewPrompt() {
   const id = `global-${Date.now()}`;
   const newPrompt: Prompt = {
@@ -138,6 +143,39 @@ function getBadgeClass(role?: StrictOmitString<MessageRole, 'tool'>) {
                   :model-value="prompt.role || 'system'"
                   :options="roleOptions"
                   @update:model-value="updatePromptField(index, 'role', $event as never)"
+                />
+              </FormItem>
+
+              <FormItem :label="t('aiConfig.promptManager.injectionPosition')">
+                <Select
+                  :model-value="prompt.injection_position || 'relative'"
+                  :options="injectionPositionOptions"
+                  @update:model-value="updatePromptField(index, 'injection_position', $event as never)"
+                />
+              </FormItem>
+
+              <FormItem
+                v-if="prompt.injection_position === 'in-chat'"
+                :label="t('aiConfig.promptManager.injectionDepth')"
+              >
+                <Input
+                  type="number"
+                  :min="0"
+                  :step="1"
+                  :model-value="prompt.injection_depth ?? 0"
+                  @update:model-value="(v) => updatePromptField(index, 'injection_depth', Number(v) as never)"
+                />
+              </FormItem>
+
+              <FormItem
+                v-if="prompt.injection_position === 'in-chat'"
+                :label="t('aiConfig.promptManager.injectionOrder')"
+              >
+                <Input
+                  type="number"
+                  :step="1"
+                  :model-value="prompt.injection_order ?? 100"
+                  @update:model-value="(v) => updatePromptField(index, 'injection_order', Number(v) as never)"
                 />
               </FormItem>
 

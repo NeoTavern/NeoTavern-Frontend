@@ -669,8 +669,8 @@ describe('PromptBuilder', () => {
           emBefore: [],
           emAfter: [],
           depthEntries: [
-            { depth: 0, role: 'system', entries: ['At Depth 0'] },
-            { depth: 1, role: 'system', entries: ['At Depth 1'] },
+            { depth: 0, role: 'assistant', entries: ['At Depth 0'] },
+            { depth: 1, role: 'user', entries: ['At Depth 1'] },
           ],
           outletEntries: {},
           triggeredEntries: {},
@@ -717,6 +717,8 @@ describe('PromptBuilder', () => {
       'Hi', // Assistant (Msg 2)
       'At Depth 0', // Injected at depth 0
     ]);
+    expect(messages.find((message) => message.content === 'At Depth 1')?.role).toBe('user');
+    expect(messages.find((message) => message.content === 'At Depth 0')?.role).toBe('assistant');
   });
 
   it('inserts World Info entries around dialogue examples (EM)', async () => {
@@ -874,5 +876,103 @@ describe('PromptBuilder', () => {
     expect(structuredPrompt).toContain('"answer": "example"');
     expect(metadata.extra?.variables).toEqual({ origin: 'prompt', count: 1 });
     expect(builder.macroVariablesChanged).toBe(true);
+  });
+
+  it('keeps relative prompts fixed and orders enabled in-chat prompts by depth, order, role, and configuration', async () => {
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: mockChatHistory,
+      samplerSettings: {
+        ...mockSamplerSettings,
+        prompts: [
+          {
+            identifier: 'relative-custom' as KnownPromptIdentifiers,
+            name: 'Relative',
+            role: 'assistant',
+            content: 'Relative',
+            marker: false,
+            enabled: true,
+          },
+          { identifier: 'chatHistory', name: 'History', role: 'system', content: '', marker: true, enabled: true },
+          {
+            identifier: 'depth-zero-system' as KnownPromptIdentifiers,
+            name: 'Depth zero system',
+            role: 'system',
+            content: 'Depth 0 system',
+            marker: false,
+            enabled: true,
+            injection_position: 'in-chat',
+            injection_depth: 0,
+            injection_order: 1,
+          },
+          {
+            identifier: 'depth-zero-assistant' as KnownPromptIdentifiers,
+            name: 'Depth zero assistant',
+            role: 'assistant',
+            content: 'Depth 0 assistant',
+            marker: false,
+            enabled: true,
+            injection_position: 'in-chat',
+            injection_depth: 0,
+            injection_order: 1,
+          },
+          {
+            identifier: 'depth-zero-user' as KnownPromptIdentifiers,
+            name: 'Depth zero user',
+            role: 'user',
+            content: 'Depth 0 user',
+            marker: false,
+            enabled: true,
+            injection_position: 'in-chat',
+            injection_depth: 0,
+            injection_order: 1,
+          },
+          {
+            identifier: 'depth-one' as KnownPromptIdentifiers,
+            name: 'Depth one',
+            role: 'user',
+            content: 'Depth 1',
+            marker: false,
+            enabled: true,
+            injection_position: 'in-chat',
+            injection_depth: 1,
+            injection_order: 0,
+          },
+          {
+            identifier: 'disabled-depth-zero' as KnownPromptIdentifiers,
+            name: 'Disabled',
+            role: 'system',
+            content: 'Disabled',
+            marker: false,
+            enabled: false,
+            injection_position: 'in-chat',
+            injection_depth: 0,
+            injection_order: 0,
+          },
+        ],
+      },
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: mockMetadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'generic-depth-prompts',
+      mediaContext: mockMediaContext,
+      structuredResponse: undefined,
+    });
+
+    const messages = await builder.build();
+
+    expect(messages.map((message) => message.content)).toEqual([
+      'Relative',
+      'Hello',
+      'Depth 1',
+      'Hi',
+      'Depth 0 user',
+      'Depth 0 assistant',
+      'Depth 0 system',
+    ]);
+    expect(messages.slice(-3).map((message) => message.role)).toEqual(['user', 'assistant', 'system']);
+    expect(messages.some((message) => message.content === 'Disabled')).toBe(false);
   });
 });

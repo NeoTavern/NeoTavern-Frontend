@@ -19,6 +19,7 @@ import {
   api_providers,
   type ConnectionProfile,
   type KnownPromptIdentifiers,
+  type LegacyPrompt,
   type LegacyOaiPresetSettings,
   type LegacySettings,
   type LegacyTextCompletionPreset,
@@ -159,6 +160,44 @@ export function migrateLegacyTextCompletionPreset(legacyPreset: LegacyTextComple
   };
 }
 
+const supportedPromptRoles = new Set(['system', 'user', 'assistant']);
+
+function migrateLegacyPrompt(legacyPrompt: LegacyPrompt): Omit<Prompt, 'enabled'> {
+  if (legacyPrompt.role !== undefined && !supportedPromptRoles.has(legacyPrompt.role)) {
+    throw new Error(`Unsupported role for prompt "${legacyPrompt.identifier}": ${String(legacyPrompt.role)}`);
+  }
+
+  const injectionPosition = legacyPrompt.injection_position;
+  if (injectionPosition !== undefined && injectionPosition !== 0 && injectionPosition !== 1) {
+    throw new Error(
+      `Unsupported injection position for prompt "${legacyPrompt.identifier}": ${String(injectionPosition)}`,
+    );
+  }
+
+  const injectionDepth = legacyPrompt.injection_depth;
+  if (
+    injectionDepth !== undefined &&
+    (!Number.isFinite(injectionDepth) || !Number.isInteger(injectionDepth) || injectionDepth < 0)
+  ) {
+    throw new Error(`Invalid injection depth for prompt "${legacyPrompt.identifier}": ${String(injectionDepth)}`);
+  }
+
+  const injectionOrder = legacyPrompt.injection_order;
+  if (injectionOrder !== undefined && !Number.isFinite(injectionOrder)) {
+    throw new Error(`Invalid injection order for prompt "${legacyPrompt.identifier}": ${String(injectionOrder)}`);
+  }
+
+  return {
+    ...legacyPrompt,
+    identifier: legacyPrompt.identifier as KnownPromptIdentifiers,
+    content: legacyPrompt.content || '',
+    marker: legacyPrompt.marker ?? false,
+    injection_position: injectionPosition === 1 ? 'in-chat' : 'relative',
+    injection_depth: injectionDepth,
+    injection_order: injectionOrder,
+  };
+}
+
 export function migrateLegacyOaiPreset(legacyPreset: LegacyOaiPresetSettings): SamplerSettings {
   const migratedPrompts: Prompt[] = [];
 
@@ -170,11 +209,8 @@ export function migrateLegacyOaiPreset(legacyPreset: LegacyOaiPresetSettings): S
       const def = definitionMap.get(item.identifier);
       if (def) {
         migratedPrompts.push({
-          ...def,
-          identifier: def.identifier as KnownPromptIdentifiers,
-          content: def.content || '',
+          ...migrateLegacyPrompt(def),
           enabled: item.enabled,
-          marker: def.marker ?? false,
         });
         definitionMap.delete(item.identifier);
       }
@@ -228,11 +264,8 @@ function collectPromptsFromLegacyPresets(presets: LegacyOaiPresetSettings[]): Pr
           continue;
         }
         promptMap.set(prompt.identifier, {
-          ...prompt,
-          identifier: prompt.identifier as KnownPromptIdentifiers,
-          content: prompt.content || '',
+          ...migrateLegacyPrompt(prompt),
           enabled: false,
-          marker: prompt.marker ?? false,
         });
       }
     }

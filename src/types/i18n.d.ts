@@ -215,10 +215,16 @@ export interface MessageSchema {
         afterEM: string;
         beforeAN: string;
         afterAN: string;
-        atDepthSystem: string;
+        atDepth: string;
         outlet: string;
       };
       depth: string;
+      role: string;
+      roles: {
+        system: string;
+        user: string;
+        assistant: string;
+      };
       order: string;
       trigger: string;
       move: string;
@@ -355,6 +361,13 @@ export interface MessageSchema {
       newPrompt: string;
       newGlobalPrompt: string;
       role: string;
+      injectionPosition: string;
+      injectionDepth: string;
+      injectionOrder: string;
+      injectionPositions: {
+        relative: string;
+        inChat: string;
+      };
       content: string;
       roles: {
         system: string;
