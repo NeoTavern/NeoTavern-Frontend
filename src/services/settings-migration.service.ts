@@ -30,6 +30,7 @@ import {
 } from '../types';
 import { mergeWithUndefinedMulti, uuidv4 } from '../utils/commons';
 import { runMigrations, type Migration } from '../utils/migration-runner';
+import { normalizeRegexScript } from './regex-scripts';
 
 export const LATEST_SETTINGS_VERSION = 1;
 
@@ -233,6 +234,7 @@ export function migrateLegacyOaiPreset(legacyPreset: LegacyOaiPresetSettings): S
     max_tokens: legacyPreset.openai_max_tokens ?? defaultSamplerSettings.max_tokens,
     stream: legacyPreset.stream_openai ?? defaultSamplerSettings.stream,
     prompts: migratedPrompts,
+    regex_scripts: (legacyPreset.extensions?.regex_scripts ?? []).map((script) => normalizeRegexScript(script)),
     seed: legacyPreset.seed ?? defaultSamplerSettings.seed,
     n: legacyPreset.n ?? defaultSamplerSettings.n,
     stop: defaultSamplerSettings.stop,

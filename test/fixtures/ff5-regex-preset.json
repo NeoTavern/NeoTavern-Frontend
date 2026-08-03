@@ -1,0 +1,130 @@
+{
+  "chat_completion_source": "openai",
+  "reverse_proxy": "",
+  "proxy_password": "",
+  "prompts": [
+    {
+      "identifier": "relative-main",
+      "name": "Relative main",
+      "system_prompt": true,
+      "marker": false,
+      "content": "Relative prompt",
+      "role": "system",
+      "injection_position": 0,
+      "injection_depth": 4,
+      "injection_order": 8,
+      "enabled": true
+    },
+    {
+      "identifier": "in-chat-user",
+      "name": "In-chat user",
+      "system_prompt": false,
+      "marker": false,
+      "content": "User context",
+      "role": "user",
+      "injection_position": 1,
+      "injection_depth": 1,
+      "injection_order": 2,
+      "enabled": true
+    },
+    {
+      "identifier": "in-chat-assistant",
+      "name": "In-chat assistant",
+      "system_prompt": false,
+      "marker": false,
+      "content": "Assistant context",
+      "role": "assistant",
+      "injection_position": 1,
+      "injection_depth": 3,
+      "injection_order": 1,
+      "enabled": true
+    },
+    {
+      "identifier": "disabled-depth",
+      "name": "Disabled depth",
+      "system_prompt": false,
+      "marker": false,
+      "content": "Disabled context",
+      "role": "system",
+      "injection_position": 1,
+      "injection_depth": 0,
+      "injection_order": 0,
+      "enabled": false
+    }
+  ],
+  "prompt_order": [
+    {
+      "character_id": 100001,
+      "order": [
+        { "identifier": "relative-main", "enabled": true },
+        { "identifier": "in-chat-user", "enabled": true },
+        { "identifier": "in-chat-assistant", "enabled": true },
+        { "identifier": "disabled-depth", "enabled": false }
+      ]
+    }
+  ],
+  "extensions": {
+    "regex_scripts": [
+      {
+        "id": "ff5-image-prompt-stripper",
+        "scriptName": "FF5 - Image Prompt Stripper",
+        "findRegex": "/<!--\\s*IMG_PROMPT:[^>]*-->/g",
+        "replaceString": "",
+        "trimStrings": [],
+        "placement": [2],
+        "disabled": false,
+        "markdownOnly": false,
+        "promptOnly": true,
+        "minDepth": 0,
+        "maxDepth": null
+      },
+      {
+        "id": "ff5-gfx-stripper",
+        "scriptName": "FF5 - GFX Stripper",
+        "findRegex": "/<!-- GFX_START -->\\s*<div[^>]*?>([\\s\\S]*?)<\\/div>\\s*<!-- GFX_END -->/g",
+        "replaceString": "$1",
+        "trimStrings": [],
+        "placement": [2],
+        "disabled": false,
+        "markdownOnly": false,
+        "promptOnly": true,
+        "minDepth": 0,
+        "maxDepth": null
+      },
+      {
+        "id": "ff5-context-saver",
+        "scriptName": "FF5 - Context Saver",
+        "findRegex": "/<!-- GFX_START -->\\s+<internal_states>[\\s\\S]*?<!-- GFX_END -->/g",
+        "replaceString": "",
+        "trimStrings": [],
+        "placement": [2],
+        "disabled": false,
+        "markdownOnly": false,
+        "promptOnly": true,
+        "minDepth": 2,
+        "maxDepth": null
+      },
+      {
+        "id": "ff5-display-only",
+        "scriptName": "FF5 UI - Display Only",
+        "findRegex": "/\\[HIGHLIGHT\\]/g",
+        "replaceString": "<mark>[HIGHLIGHT]</mark>",
+        "trimStrings": [],
+        "placement": [2],
+        "disabled": false,
+        "markdownOnly": true,
+        "promptOnly": false,
+        "minDepth": null,
+        "maxDepth": null
+      }
+    ]
+  },
+  "expected": {
+    "regexOrder": ["FF5 - Image Prompt Stripper", "FF5 - GFX Stripper", "FF5 - Context Saver", "FF5 UI - Display Only"],
+    "placement": "assistant",
+    "imagePrompt": "Narrative\n",
+    "gfx": "Narrative\nstate\n",
+    "contextSaverDepth1": "before <!-- GFX_START -->\n<internal_states>state</internal_states><!-- GFX_END --> after",
+    "contextSaverDepth2": "before  after"
+  }
+}

@@ -42,6 +42,46 @@ export interface LegacyPromptOrderConfig {
   }[];
 }
 
+export type RegexScriptPlacement =
+  | 'markdown'
+  | 'user'
+  | 'assistant'
+  | 'system'
+  | 'slash-command'
+  | 'world-info'
+  | 'reasoning';
+
+export interface RegexScript {
+  identifier: string;
+  scriptName: string;
+  pattern: string;
+  replacement: string;
+  flags: string;
+  enabled: boolean;
+  promptOnly: boolean;
+  markdownOnly: boolean;
+  placement: RegexScriptPlacement[];
+  minDepth?: number;
+  maxDepth?: number;
+  trimStrings: string[];
+}
+
+export interface LegacyRegexScript {
+  id?: string;
+  scriptName?: string;
+  findRegex?: string;
+  replaceString?: string;
+  trimStrings?: string[];
+  placement?: (number | string)[];
+  disabled?: boolean;
+  enabled?: boolean;
+  markdownOnly?: boolean;
+  promptOnly?: boolean;
+  minDepth?: number | null;
+  maxDepth?: number | null;
+  substituteRegex?: number;
+}
+
 export type KnownPromptIdentifiers =
   | 'chatHistory'
   | 'charDescription'
@@ -153,6 +193,7 @@ export interface SamplerSettings {
   stop: string[];
   n: number;
   prompts: Prompt[];
+  regex_scripts?: RegexScript[];
   providers: ProviderSettings;
   show_thoughts: boolean;
   reasoning_effort: ReasoningEffort;
@@ -292,6 +333,10 @@ export interface LegacyOaiPresetSettings {
   openrouter_middleout?: boolean;
   openrouter_use_fallback?: boolean;
   openrouter_providers?: string[];
+  extensions?: {
+    regex_scripts?: LegacyRegexScript[];
+    [key: string]: unknown;
+  };
 }
 
 export interface LegacyTextCompletionPreset {

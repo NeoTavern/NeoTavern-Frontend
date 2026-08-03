@@ -18,7 +18,7 @@ export default defineConfig({
   test: {
     setupFiles: ['./test/vitest.setup.ts'],
     include: ['test/**/*', 'src/**/test/**/*'],
-    exclude: ['./test/vitest.setup.ts'],
+    exclude: ['./test/vitest.setup.ts', './test/fixtures/**'],
     coverage: {
       provider: 'istanbul',
       reporter: ['lcov'],

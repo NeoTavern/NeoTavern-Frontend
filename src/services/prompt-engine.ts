@@ -23,6 +23,7 @@ import { countTokens, eventEmitter } from '../utils/extensions';
 import { compressImage, getImageTokenCost, getMediaDurationFromDataURL, isDataURL } from '../utils/media';
 import { buildStructuredResponseSystemPrompt } from '../utils/structured-response';
 import { macroService, type MacroEvaluationSession } from './macro-service';
+import { applyPromptRegexScripts } from './regex-scripts';
 import { WorldInfoProcessor } from './world-info';
 
 const supportedPromptRoles = new Set(['system', 'user', 'assistant']);
@@ -164,8 +165,16 @@ export class PromptBuilder {
 
   private async _buildMessageContent(
     msg: ChatMessage,
+    depth: number,
   ): Promise<{ content: string | ApiChatContentPart[]; mediaTokens: number }> {
-    const processedContent = this.macroSession!.evaluate(msg.mes);
+    const processedContent = applyPromptRegexScripts(
+      this.macroSession!.evaluate(msg.mes),
+      this.samplerSettings.regex_scripts,
+      {
+        placement: msg.is_user ? 'user' : 'assistant',
+        depth,
+      },
+    );
     let mediaTokens = 0;
 
     const mediaEnabled =
@@ -443,12 +452,16 @@ export class PromptBuilder {
       for (const entryItem of this.processedWorldInfo.depthEntries) {
         const msgs = await Promise.all(
           entryItem.entries.map(async (content) => {
+            const transformedContent = applyPromptRegexScripts(content, this.samplerSettings.regex_scripts, {
+              placement: entryItem.role === 'user' ? 'user' : entryItem.role === 'assistant' ? 'assistant' : 'system',
+              depth: entryItem.depth,
+            });
             const apiMessage = {
               role: entryItem.role,
-              content,
+              content: transformedContent,
               name: entryItem.role,
             } as ApiChatMessage;
-            const tokens = await countTokens(content, this.tokenizer);
+            const tokens = await countTokens(transformedContent, this.tokenizer);
             return { apiMessage, tokens };
           }),
         );
@@ -479,10 +492,18 @@ export class PromptBuilder {
     for (const { prompt } of inChatPrompts) {
       if (prompt.marker || !prompt.content) continue;
 
-      const content = this.macroSession.evaluate(prompt.content);
+      const role = prompt.role ?? 'system';
+      const depth = prompt.injection_depth ?? 0;
+      const content = applyPromptRegexScripts(
+        this.macroSession.evaluate(prompt.content),
+        this.samplerSettings.regex_scripts,
+        {
+          placement: role,
+          depth,
+        },
+      );
       if (!content) continue;
 
-      const role = prompt.role ?? 'system';
       const name =
         role === 'user'
           ? this.persona.name || '{{#raw}}{{user}}{{/raw}}'
@@ -491,7 +512,6 @@ export class PromptBuilder {
             : 'System';
       const apiMessage: ApiChatMessage = { role, content, name };
       const tokens = await countTokens(content, this.tokenizer);
-      const depth = prompt.injection_depth ?? 0;
       const list = depthEntriesMap.get(depth) || [];
       list.push({ apiMessage, tokens });
       depthEntriesMap.set(depth, list);
@@ -512,7 +532,7 @@ export class PromptBuilder {
         continue;
       }
 
-      const { content: processedContent, mediaTokens } = await this._buildMessageContent(msg);
+      const { content: processedContent, mediaTokens } = await this._buildMessageContent(msg, currentDepth);
       if (mediaTokens > 0) this.mediaTokenCost += mediaTokens;
 
       const toolInvocations = msg.extra.tool_invocations;
