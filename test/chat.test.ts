@@ -258,10 +258,10 @@ With line breaks
 
       const result = formatText(input, false);
 
-      // Unknown tags should be escaped and treated as text
-      expect(result).toContain('&lt;Info_Board&gt;');
-      expect(result).toContain('&lt;/Info_Board&gt;');
-      expect(result).toContain('&lt;Another_Custom_Tag&gt;');
+      // Generic custom wrappers should survive sanitization
+      expect(result).toContain('<info_board>');
+      expect(result).toContain('</info_board>');
+      expect(result).toContain('<another_custom_tag>');
 
       // Real HTML tags should work
       expect(result).toContain('<strong>Active</strong>');
@@ -311,25 +311,24 @@ Regular **markdown** text.
       expect(result).toContain('With multiple lines');
     });
 
-    test('Should escape custom tags regardless of case', () => {
+    test('Should preserve generic custom wrappers while sanitizing unsafe markup', () => {
       const input = `<CustomTag>Content</CustomTag>
 <customtag>More content</customtag>
 <Info_Board>Data</Info_Board>
-<ALLCAPS>Text</ALLCAPS>`;
+<ALLCAPS onclick="alert('xss')">Text</ALLCAPS>
+<script>alert("xss")</script>`;
 
       const result = formatText(input, false);
 
-      // All custom tags should be escaped
-      expect(result).toContain('&lt;CustomTag&gt;');
-      expect(result).toContain('&lt;/CustomTag&gt;');
-      expect(result).toContain('&lt;customtag&gt;');
-      expect(result).toContain('&lt;/customtag&gt;');
-      expect(result).toContain('&lt;Info_Board&gt;');
-      expect(result).toContain('&lt;ALLCAPS&gt;');
+      // Arbitrary safe custom wrappers should survive generically
+      expect(result).toContain('<customtag>Content</customtag>');
+      expect(result).toContain('<customtag>More content</customtag>');
+      expect(result).toContain('<info_board>Data</info_board>');
+      expect(result).toContain('<allcaps>Text</allcaps>');
 
-      // Content should still be visible
-      expect(result).toContain('Content');
-      expect(result).toContain('More content');
+      // Unsafe tags and event-handler attributes must still be sanitized
+      expect(result).not.toContain('<script');
+      expect(result).not.toContain('onclick');
 
       // Line breaks should be preserved
       expect(result).toContain('<br>');

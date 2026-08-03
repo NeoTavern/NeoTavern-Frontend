@@ -173,7 +173,7 @@ export class MacroService {
 
       const triple = text.startsWith('{{{', open);
       const closeDelimiter = triple ? '}}}' : '}}';
-      const close = text.indexOf(closeDelimiter, open + (triple ? 3 : 2));
+      const close = this.findMacroClose(text, open, triple, context);
       if (close === -1) throw new MacroEvaluationError('Unterminated macro expression.');
 
       const rawExpression = text.slice(open + (triple ? 3 : 2), close);
@@ -247,6 +247,40 @@ export class MacroService {
     }
 
     return rawBlocks.reduce((current, block, index) => current.replace(`\u0000raw:${index}\u0000`, block), result);
+  }
+
+  private findMacroClose(text: string, open: number, triple: boolean, context: MacroContextData): number {
+    const expressionStart = open + (triple ? 3 : 2);
+    const firstClose = text.indexOf(triple ? '}}}' : '}}', expressionStart);
+    if (triple) return firstClose;
+
+    const separator = text.indexOf('::', expressionStart);
+    if (separator === -1) return firstClose;
+
+    const name = text.slice(expressionStart, separator).trim();
+    if (this.hasAdditionalMacro(context, name)) return firstClose;
+    const definition = this.evaluators.get(name);
+    if (!definition?.arity?.preserveRemainder) return firstClose;
+
+    let depth = 1;
+    let cursor = expressionStart;
+    while (cursor < text.length) {
+      const nextOpen = text.indexOf('{{', cursor);
+      const nextClose = text.indexOf('}}', cursor);
+      if (nextClose === -1) return -1;
+
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth++;
+        cursor = nextOpen + 2;
+        continue;
+      }
+
+      depth--;
+      if (depth === 0) return nextClose;
+      cursor = nextClose + 2;
+    }
+
+    return -1;
   }
 
   private registerHandlebarsHelpers(): void {

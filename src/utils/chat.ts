@@ -229,6 +229,17 @@ const dialogue3Extension = createDialogueExtension('dialogue3', '“', '”');
 
 marked.use({
   renderer,
+  tokenizer: {
+    html(src: string) {
+      const match = /^ {0,3}<\/?([a-z][a-z0-9_-]*)(?:\s|\/?>)/i.exec(src);
+      if (match && !STANDARD_HTML_TAGS.has(match[1].toLowerCase())) {
+        // Marked's html override type only models native HTML tokens, but returning a paragraph here
+        // keeps custom wrappers in the Markdown flow so their line breaks and inline formatting survive.
+        return this.paragraph(src) as never;
+      }
+      return false;
+    },
+  },
   extensions: [dialogue1Extension, dialogue2Extension, dialogue3Extension],
 });
 
@@ -291,17 +302,7 @@ export function formatText(
   if (isHtmlBlock(displayText)) {
     rawHtml = displayText;
   } else {
-    // Escape non-standard HTML-like tags (e.g. <Info_Board>, <CustomTag>) so markdown treats them as literal text
-    // This preserves line breaks that would otherwise be lost when markdown passes unknown tags through
-    const processedText = displayText.replace(/<\/?([a-z_][a-z0-9_-]*)\b[^>]*>/gi, (match, tagName) => {
-      const normalizedTag = tagName.toLowerCase();
-      // If it's not a standard HTML tag, escape it
-      if (!STANDARD_HTML_TAGS.has(normalizedTag)) {
-        return match.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      }
-      return match;
-    });
-    rawHtml = marked.parse(processedText, { renderer: customRenderer }) as string;
+    rawHtml = marked.parse(displayText, { renderer: customRenderer }) as string;
   }
 
   // Mask <style> tags to prevent DOMPurify from stripping them (e.g. due to @keyframes or other complex CSS)
@@ -315,7 +316,9 @@ export function formatText(
   const config: Config = {
     RETURN_DOM: false,
     RETURN_DOM_FRAGMENT: false,
-    ADD_TAGS: ['style', 'custom-style', 'q', PLACEHOLDER_TAG],
+    ADD_TAGS: (tagName) =>
+      ['style', 'custom-style', 'q', PLACEHOLDER_TAG].includes(tagName.toLowerCase()) ||
+      (/^[a-z][a-z0-9_-]*$/i.test(tagName) && !STANDARD_HTML_TAGS.has(tagName.toLowerCase())),
     ADD_ATTR: ['target', 'class', 'id', 'data-index'],
     FORBID_TAGS: forbidExternalMedia ? MEDIA_TAGS : [],
   };

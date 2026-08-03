@@ -334,6 +334,19 @@ describe('MacroService', () => {
       );
     });
 
+    test('evaluates nested getvar templates without truncating the stored value', () => {
+      const template =
+        '{{setvar::gmNotebookTemplate::<details>{{getvar::gmNotebook::- [R] No active notes.}}<br></details>}}{{getvar::gmNotebookTemplate}}';
+
+      expect(macroService.process(template, context)).toBe('<details>- [R] No active notes.<br></details>');
+    });
+
+    test('evaluates nested setvar templates', () => {
+      const template = '{{setvar::outer::{{setvar::inner::value}}{{getvar::inner}}}}{{getvar::outer}}';
+
+      expect(macroService.process(template, context)).toBe('value');
+    });
+
     test('does not commit or retain staged variables after a failed evaluation', () => {
       const metadata = { integrity: 'failed-session', extra: { variables: { existing: 'old' } } };
       const session = macroService.createEvaluationSession({ ...context, chatMetadata: metadata });
