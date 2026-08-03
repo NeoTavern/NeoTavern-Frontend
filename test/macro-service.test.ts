@@ -276,6 +276,19 @@ describe('MacroService', () => {
       expect(session.getVariable('score')).toBe('007');
     });
 
+    test('uses getvar defaults only for missing variables and preserves embedded delimiters', () => {
+      const session = macroService.createEvaluationSession({
+        ...context,
+        chatMetadata: { integrity: 'getvar-defaults', extra: { variables: { existing: 'stored' } } },
+      });
+
+      expect(session.evaluate('{{getvar::missing::fallback}}')).toBe('fallback');
+      expect(session.evaluate('{{getvar::existing::fallback}}')).toBe('stored');
+      expect(session.evaluate('{{getvar::notes::- [R] No active notes. :: more}}')).toBe(
+        '- [R] No active notes. :: more',
+      );
+    });
+
     test('uses an injected random source for dice', () => {
       const result = macroService.process('{{roll::2d6+1}}', { ...context, random: () => 0.5 });
       expect(result).toBe('9');
@@ -303,7 +316,6 @@ describe('MacroService', () => {
         ['addvar', '{{addvar::name}}'],
       ];
       const surplusArguments = [
-        ['getvar', '{{getvar::name::extra}}'],
         ['incvar', '{{incvar::name::extra}}'],
         ['decvar', '{{decvar::name::extra}}'],
       ];
@@ -326,8 +338,8 @@ describe('MacroService', () => {
       const metadata = { integrity: 'failed-session', extra: { variables: { existing: 'old' } } };
       const session = macroService.createEvaluationSession({ ...context, chatMetadata: metadata });
 
-      expect(() => session.evaluate('{{setvar::existing::new}}{{getvar::existing::extra}}')).toThrowError(
-        /Macro 'getvar':/,
+      expect(() => session.evaluate('{{setvar::existing::new}}{{incvar::existing::extra}}')).toThrowError(
+        /Macro 'incvar':/,
       );
       expect(session.getVariable('existing')).toBe('old');
       expect(session.commit()).toBe(false);

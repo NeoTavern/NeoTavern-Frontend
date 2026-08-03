@@ -411,10 +411,10 @@ export class MacroService {
       (args, _context, session) => {
         const name = this.variableName(args, 'getvar');
         const value = session.getVariable(name);
-        if (value === undefined) return '';
+        if (value === undefined) return args[1] ?? '';
         return typeof value === 'string' && this.isNumeric(value) ? Number(value) : value;
       },
-      { minArgs: 1, maxArgs: 1 },
+      { minArgs: 1, maxArgs: 2, preserveRemainder: true },
     );
     this.register(
       'addvar',
