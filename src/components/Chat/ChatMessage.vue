@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { PropType } from 'vue';
 import { computed, markRaw, nextTick, onMounted, ref, watch } from 'vue';
+import { resolveConnectionProfileSamplerSettings } from '../../api/generation';
 import { useAnimationControl } from '../../composables/useAnimationControl';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { toast } from '../../composables/useToast';
@@ -16,7 +17,7 @@ import type { ChatMessage, PopupShowOptions, ZoomedAvatarTool } from '../../type
 import { POPUP_RESULT, POPUP_TYPE } from '../../types';
 import type { TextareaToolDefinition } from '../../types/ExtensionAPI';
 import { resolveAvatarUrls } from '../../utils/character';
-import { formatMessage, formatReasoning } from '../../utils/chat';
+import { formatMessage, formatReasoning, getChatHistoryDepth } from '../../utils/chat';
 import { formatTimeStamp } from '../../utils/commons';
 import { isDataURL } from '../../utils/media';
 import { SmartAvatar } from '../common';
@@ -145,9 +146,17 @@ const formattedTimestamp = computed(() => {
 });
 
 const forbidExternalMedia = computed(() => settingsStore.settings.ui.chat.forbidExternalMedia);
+const activeSamplerSettings = computed(() =>
+  resolveConnectionProfileSamplerSettings(chatStore.activeChat?.metadata.connection_profile),
+);
 
 const formattedContent = computed(() => {
-  return formatMessage(props.message, forbidExternalMedia.value);
+  const chatMessages = chatStore.activeChat?.messages;
+  const depth = chatMessages ? getChatHistoryDepth(chatMessages, props.index) : undefined;
+  return formatMessage(props.message, forbidExternalMedia.value, {
+    regexScripts: activeSamplerSettings.value.regex_scripts,
+    depth,
+  });
 });
 
 const formattedReasoning = computed(() => {
@@ -161,7 +170,12 @@ const formattedToolSteps = computed(() => {
     const msg = step.message;
     const isAssistant = !msg.is_user && !msg.is_system;
     const tools = msg.extra?.tool_invocations || [];
-    const formattedBody = formatMessage(msg, forbidExternalMedia.value);
+    const chatMessages = chatStore.activeChat?.messages;
+    const depth = chatMessages ? getChatHistoryDepth(chatMessages, step.index) : undefined;
+    const formattedBody = formatMessage(msg, forbidExternalMedia.value, {
+      regexScripts: activeSamplerSettings.value.regex_scripts,
+      depth,
+    });
     const formattedReasoningContent = formatReasoning(msg, forbidExternalMedia.value);
     const hasReasoningContent = msg.extra.reasoning && msg.extra.reasoning.trim().length > 0;
 

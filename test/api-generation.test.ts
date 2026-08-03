@@ -4,6 +4,7 @@ import {
   ChatCompletionService,
   buildChatCompletionPayload,
   processMessagesWithPrefill,
+  resolveConnectionProfileSamplerSettings,
   resolveConnectionProfileSettings,
 } from '../src/api/generation';
 import { CustomPromptPostProcessing, defaultSamplerSettings } from '../src/constants';
@@ -175,5 +176,65 @@ describe('processMessagesWithPrefill', () => {
     expect(resolved.samplerPresetName).toBe('Creative');
     expect(resolved.samplerSettings.temperature).toBe(1.3);
     expect(resolved.model).toBe('gpt-profile');
+  });
+
+  it('uses the active chat profile sampler scripts for display and generation', async () => {
+    const settingsStore = useSettingsStore();
+    const apiStore = useApiStore();
+    const globalSampler = {
+      ...defaultSamplerSettings,
+      regex_scripts: [
+        {
+          identifier: 'global-script',
+          scriptName: 'Global script',
+          pattern: 'GLOBAL',
+          replacement: 'global',
+          flags: 'g',
+          enabled: true,
+          promptOnly: false,
+          markdownOnly: true,
+          placement: ['assistant'],
+          trimStrings: [],
+        },
+      ],
+    };
+    const profileSampler = {
+      ...defaultSamplerSettings,
+      regex_scripts: [
+        {
+          identifier: 'profile-script',
+          scriptName: 'Profile script',
+          pattern: 'PROFILE',
+          replacement: 'profile',
+          flags: 'g',
+          enabled: true,
+          promptOnly: false,
+          markdownOnly: true,
+          placement: ['assistant'],
+          trimStrings: [],
+        },
+      ],
+    };
+
+    settingsStore.settings.api.samplers = globalSampler;
+    settingsStore.settings.api.connectionProfiles = [
+      {
+        id: 'profile-1',
+        name: 'Roleplay Profile',
+        provider: api_providers.OPENAI,
+        model: 'gpt-profile',
+        sampler: 'Profile sampler',
+      },
+    ];
+    apiStore.presets = [
+      { name: 'Global sampler', preset: globalSampler },
+      { name: 'Profile sampler', preset: profileSampler },
+    ];
+
+    expect(resolveConnectionProfileSamplerSettings('profile-1').regex_scripts?.[0]?.identifier).toBe('profile-script');
+    expect(resolveConnectionProfileSamplerSettings().regex_scripts?.[0]?.identifier).toBe('global-script');
+
+    const resolved = await resolveConnectionProfileSettings({ profile: 'profile-1' });
+    expect(resolved.samplerSettings.regex_scripts?.[0]?.identifier).toBe('profile-script');
   });
 });

@@ -2,7 +2,8 @@ import DOMPurify, { type Config } from 'dompurify';
 import hljs from 'highlight.js';
 import { Marked, type Token, type TokenizerAndRendererExtension } from 'marked';
 import { macroService, type MacroContextData } from '../services/macro-service';
-import type { ChatMediaItem, ChatMessage } from '../types';
+import { applyMarkdownRegexScripts, type RegexApplicationContext } from '../services/regex-scripts';
+import type { ChatMediaItem, ChatMessage, RegexScript } from '../types';
 import { getMessageTimeStamp } from './commons';
 import { scopeHtml } from './style-scoper';
 
@@ -234,6 +235,11 @@ marked.use({
 const MEDIA_TAGS = ['img', 'video', 'audio', 'iframe', 'embed', 'object', 'picture', 'source', 'track'];
 const PLACEHOLDER_TAG = 'x-style-placeholder';
 
+export type ChatFormattingOptions = {
+  regexScripts?: RegexScript[];
+  regexContext?: RegexApplicationContext;
+};
+
 // Helper to handle DOMPurify in both Browser and Test (Node/JSDOM) environments
 let sanitizerInstance: typeof DOMPurify | null = null;
 
@@ -249,8 +255,18 @@ function getSanitizer(): typeof DOMPurify {
   return sanitizerInstance as typeof DOMPurify;
 }
 
-export function formatText(text: string, forbidExternalMedia: boolean = false, ignoredMedia: string[] = []): string {
+export function formatText(
+  text: string,
+  forbidExternalMedia: boolean = false,
+  ignoredMedia: string[] = [],
+  options?: ChatFormattingOptions,
+): string {
   if (!text) return '';
+
+  const displayText =
+    options?.regexScripts && options.regexContext
+      ? applyMarkdownRegexScripts(text, options.regexScripts, options.regexContext)
+      : text;
 
   let rawHtml: string;
 
@@ -272,12 +288,12 @@ export function formatText(text: string, forbidExternalMedia: boolean = false, i
     }" class="message-content-image ${ignoredClass}">`;
   };
 
-  if (isHtmlBlock(text)) {
-    rawHtml = text;
+  if (isHtmlBlock(displayText)) {
+    rawHtml = displayText;
   } else {
     // Escape non-standard HTML-like tags (e.g. <Info_Board>, <CustomTag>) so markdown treats them as literal text
     // This preserves line breaks that would otherwise be lost when markdown passes unknown tags through
-    const processedText = text.replace(/<\/?([a-z_][a-z0-9_-]*)\b[^>]*>/gi, (match, tagName) => {
+    const processedText = displayText.replace(/<\/?([a-z_][a-z0-9_-]*)\b[^>]*>/gi, (match, tagName) => {
       const normalizedTag = tagName.toLowerCase();
       // If it's not a standard HTML tag, escape it
       if (!STANDARD_HTML_TAGS.has(normalizedTag)) {
@@ -324,10 +340,25 @@ export function formatText(text: string, forbidExternalMedia: boolean = false, i
   return scopeHtml(sanitizedHtml);
 }
 
-export function formatMessage(message: ChatMessage, forbidExternalMedia: boolean = false): string {
+export function getChatHistoryDepth(messages: ChatMessage[], index: number): number | undefined {
+  const message = messages[index];
+  if (!message || message.is_system) return undefined;
+
+  return messages.slice(index + 1).filter((item) => !item.is_system).length;
+}
+
+export function formatMessage(
+  message: ChatMessage,
+  forbidExternalMedia: boolean = false,
+  options?: { regexScripts?: RegexScript[]; depth?: number },
+): string {
   const textToFormat = message?.extra.display_text || message.mes;
   const ignored = message.extra.ignored_media ?? [];
-  return formatText(textToFormat, forbidExternalMedia, ignored);
+  const placement = message.is_system ? 'system' : message.is_user ? 'user' : 'assistant';
+  return formatText(textToFormat, forbidExternalMedia, ignored, {
+    regexScripts: options?.regexScripts,
+    regexContext: { placement, depth: options?.depth },
+  });
 }
 
 export function formatReasoning(message: ChatMessage, forbidExternalMedia: boolean = false): string {

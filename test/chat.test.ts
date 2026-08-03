@@ -1,6 +1,9 @@
 import { JSDOM } from 'jsdom';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { formatText } from '../src/utils/chat';
+import ff5Fixture from './fixtures/ff5-regex-preset.json';
+import { migrateLegacyOaiPreset } from '../src/services/settings-migration.service';
+import type { ChatMessage } from '../src/types';
+import { formatMessage, formatText, getChatHistoryDepth } from '../src/utils/chat';
 
 describe('Chat Utils', () => {
   beforeAll(() => {
@@ -14,6 +17,85 @@ describe('Chat Utils', () => {
   });
 
   describe('formatText', () => {
+    test('migrates FF5 display scripts through sanitization and style scoping without mutating stored text', () => {
+      const source = [
+        'Alice ↔ Bob | BOND: +4 | SPARKS: 3 | GRUDGE: 1',
+        '- <b>Threat</b>',
+        '<details><summary>INTERNAL STATES</summary><p>State</p></details>',
+        '<details><summary>QUESTS</summary><p>Quest</p></details>',
+        '<style>.ff5-test { color: red; }</style><script>alert("xss")</script>',
+      ].join('\n');
+      const message = {
+        mes: source,
+        extra: {},
+        is_user: false,
+        is_system: false,
+      } as ChatMessage;
+      const migrated = migrateLegacyOaiPreset(ff5Fixture);
+
+      const result = formatMessage(message, false, { regexScripts: migrated.regex_scripts, depth: 0 });
+
+      expect(result).toContain('Alice <span style="color:#74c7ec;margin:0 8px;">⟷</span> Bob');
+      expect(result).toContain('background:rgba(20,20,30,0.4)');
+      expect(result).toContain('- <b style="color:#f9e2af;font-weight:600');
+      expect(result).toContain('<style>');
+      expect(result).toContain('color: red');
+      expect(result).toMatch(/\.nt-scope-[a-z0-9]+ \.ff5-test/);
+      expect(result).toMatch(/class="nt-scope-[a-z0-9]+"/);
+      expect(result).not.toContain('<script');
+      expect(message.mes).toBe(source);
+    });
+
+    test('calculates newest-first depth over non-system chat messages', () => {
+      const messages = [
+        { is_system: false },
+        { is_system: true },
+        { is_system: false },
+        { is_system: true },
+      ] as ChatMessage[];
+
+      expect(getChatHistoryDepth(messages, 0)).toBe(1);
+      expect(getChatHistoryDepth(messages, 2)).toBe(0);
+      expect(getChatHistoryDepth(messages, 1)).toBeUndefined();
+    });
+
+    test('formats an assistant tool-chain step with its chat depth and active markdown scripts', () => {
+      const messages = [
+        {
+          mes: 'PROFILE tool result',
+          extra: { tool_invocations: [{ displayName: 'lookup' }] },
+          is_user: false,
+          is_system: false,
+        },
+        { mes: 'tool output', extra: {}, is_user: false, is_system: true },
+        { mes: 'final response', extra: {}, is_user: false, is_system: false },
+      ] as ChatMessage[];
+      const regexScripts = [
+        {
+          identifier: 'tool-step-script',
+          scriptName: 'Tool step script',
+          pattern: 'PROFILE',
+          replacement: 'formatted',
+          flags: 'g',
+          enabled: true,
+          promptOnly: false,
+          markdownOnly: true,
+          placement: ['assistant'],
+          minDepth: 1,
+          trimStrings: [],
+        },
+      ];
+
+      const step = messages[0];
+      const result = formatMessage(step, false, {
+        regexScripts,
+        depth: getChatHistoryDepth(messages, 0),
+      });
+
+      expect(result).toContain('formatted tool result');
+      expect(step.mes).toBe('PROFILE tool result');
+    });
+
     test('renders images when external media is allowed', () => {
       const input = '![alt text](https://example.com/image.png)';
       const result = formatText(input, false);

@@ -76,6 +76,16 @@ export interface ResolvedConnectionProfileSettings {
   customPromptPostProcessing: CustomPromptPostProcessing;
 }
 
+export function resolveConnectionProfileSamplerSettings(profile?: string): SamplerSettings {
+  const settingsStore = useSettingsStore();
+  const apiStore = useApiStore();
+  const profileSettings = profile ? apiStore.connectionProfiles.find((p) => p.id === profile) : undefined;
+  const presetName = profileSettings?.sampler;
+  const preset = presetName ? apiStore.presets.find((item) => item.name === presetName) : undefined;
+
+  return cloneDeep(preset?.preset ?? settingsStore.settings.api.samplers);
+}
+
 /**
  * Resolves connection profile settings by merging profile overrides with global settings.
  * Handles apiUrl overrides, secret rotation, and sampler preset loading.
@@ -105,16 +115,16 @@ export async function resolveConnectionProfileSettings(options: {
   }
 
   // Determine effective sampler settings
-  let effectiveSamplerSettings = cloneDeep(settingsStore.settings.api.samplers);
   let effectiveSamplerPresetName = settingsStore.settings.api.selectedSampler || 'Default';
   if (profileSettings?.sampler) {
     if (apiStore.presets.length === 0) await apiStore.loadPresetsForApi();
-    const preset = apiStore.presets.find((p) => p.name === profileSettings!.sampler);
+    const preset = apiStore.presets.find((p) => p.name === profileSettings.sampler);
     if (preset) {
-      effectiveSamplerSettings = cloneDeep(preset.preset);
       effectiveSamplerPresetName = preset.name;
     }
   }
+
+  let effectiveSamplerSettings = resolveConnectionProfileSamplerSettings(profile);
 
   // Apply sampler overrides
   if (samplerOverrides) {

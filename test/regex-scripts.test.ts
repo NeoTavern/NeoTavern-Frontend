@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ff5Fixture from './fixtures/ff5-regex-preset.json';
 import { ReasoningEffort } from '../src/constants';
 import { PromptBuilder } from '../src/services/prompt-engine';
-import { normalizeRegexScript, runRegexScript } from '../src/services/regex-scripts';
+import {
+  applyMarkdownRegexScripts,
+  applyPromptRegexScripts,
+  normalizeRegexScript,
+  runRegexScript,
+} from '../src/services/regex-scripts';
 import { migrateLegacyOaiPreset } from '../src/services/settings-migration.service';
 import type { Character, ChatMessage, Persona, SamplerSettings, Tokenizer, WorldInfoSettings } from '../src/types';
 
@@ -153,35 +158,66 @@ describe('FF5 regex preset migration', () => {
     ]);
 
     expect(migrated.regex_scripts?.map((script) => script.scriptName)).toEqual(ff5Fixture.expected.regexOrder);
-    expect(migrated.regex_scripts?.slice(0, 3)).toMatchObject([
-      {
-        pattern: '<!--\\s*IMG_PROMPT:[^>]*-->',
-        flags: 'g',
-        replacement: '',
-        enabled: true,
-        promptOnly: true,
-        markdownOnly: false,
-        placement: ['assistant'],
-        minDepth: 0,
-      },
-      {
-        pattern: '<!-- GFX_START -->\\s*<div[^>]*?>([\\s\\S]*?)<\\/div>\\s*<!-- GFX_END -->',
-        flags: 'g',
-        replacement: '$1',
-        placement: ['assistant'],
-      },
-      { scriptName: 'FF5 - Context Saver', minDepth: 2, maxDepth: undefined, placement: ['assistant'] },
-    ]);
-    expect(migrated.regex_scripts?.[3]).toMatchObject({ markdownOnly: true, promptOnly: false, enabled: true });
+    const migratedScript = (scriptName: string) =>
+      migrated.regex_scripts?.find((script) => script.scriptName === scriptName);
+    expect(migratedScript('FF5 - Image Prompt Stripper')).toMatchObject({
+      pattern: '<!--\\s*IMG_PROMPT:[^>]*-->',
+      flags: 'g',
+      replacement: '',
+      enabled: true,
+      promptOnly: true,
+      markdownOnly: false,
+      placement: ['assistant'],
+      minDepth: 0,
+    });
+    expect(migratedScript('FF5 - GFX Stripper')).toMatchObject({
+      pattern: '<!-- GFX_START -->\\s*<div[^>]*?>([\\s\\S]*?)<\\/div>\\s*<!-- GFX_END -->',
+      flags: 'g',
+      replacement: '$1',
+      promptOnly: true,
+      markdownOnly: false,
+      placement: ['assistant'],
+      minDepth: 0,
+    });
+    expect(migratedScript('FF5 - Context Saver')).toMatchObject({
+      pattern: '<!-- GFX_START -->\\s+<internal_states>[\\s\\S]*?<!-- GFX_END -->',
+      flags: 'g',
+      replacement: '',
+      promptOnly: true,
+      markdownOnly: false,
+      placement: ['assistant'],
+      minDepth: 2,
+      maxDepth: undefined,
+    });
+    expect(migratedScript('FF5 - Relationship Bars (Positive)')).toMatchObject({
+      pattern:
+        '-?\\s*(?:<b[^>]*>)?\\s*([^<|↔\\n]+?)\\s*(?:<\\/b>)?\\s*↔\\s*(?:<b[^>]*>)?\\s*([^<|\\n]+?)\\s*(?:<\\/b>)?\\s*\\|\\s*(?:BOND|Bond):\\s*(\\+?)(\\d+)\\s*\\|\\s*(?:SPARKS?|Sparks?):\\s*(\\d+)\\s*\\|\\s*(?:GRUDGE|Grudge):\\s*(\\d+)',
+      promptOnly: true,
+      markdownOnly: true,
+      placement: ['assistant'],
+    });
+    expect(migratedScript('FF5 UI - Menu Master')).toMatchObject({
+      pattern: '<details>\\s*<summary>([^<]*?)(INTERNAL STATES)([^<]*?)<\\/summary>',
+      promptOnly: false,
+      markdownOnly: true,
+      placement: ['assistant'],
+    });
+    expect(migratedScript('FF5 UI - Highlights')).toMatchObject({
+      pattern: '-\\s*<b[^>]*?>(.*?)<\\/b>(?!\\s*↔)',
+      promptOnly: false,
+      markdownOnly: true,
+      placement: ['assistant'],
+    });
 
-    const migratedScripts = migrated.regex_scripts!;
-    expect(runRegexScript(migratedScripts[0], 'Narrative\n<!-- IMG_PROMPT: remove -->')).toBe(
-      ff5Fixture.expected.imagePrompt,
-    );
-    expect(runRegexScript(migratedScripts[1], '<!-- GFX_START --><div>state</div><!-- GFX_END -->')).toBe('state');
+    expect(
+      runRegexScript(migratedScript('FF5 - Image Prompt Stripper')!, 'Narrative\n<!-- IMG_PROMPT: remove -->'),
+    ).toBe(ff5Fixture.expected.imagePrompt);
+    expect(
+      runRegexScript(migratedScript('FF5 - GFX Stripper')!, '<!-- GFX_START --><div>state</div><!-- GFX_END -->'),
+    ).toBe('state');
     expect(
       runRegexScript(
-        migratedScripts[2],
+        migratedScript('FF5 - Context Saver')!,
         'before <!-- GFX_START -->\n<internal_states>state</internal_states><!-- GFX_END --> after',
       ),
     ).toBe(ff5Fixture.expected.contextSaverDepth2);
@@ -206,6 +242,95 @@ describe('FF5 regex preset migration', () => {
     expect(() => normalizeRegexScript({ scriptName: 'Bad placement', findRegex: '/x/g', placement: [99] })).toThrow(
       'Bad placement',
     );
+  });
+});
+
+describe('display regex execution', () => {
+  it('selects independent passes and preserves serialized order', () => {
+    const scripts = [
+      normalizeRegexScript({
+        scriptName: 'prompt-only',
+        findRegex: '/foo/g',
+        replaceString: 'prompt',
+        placement: [2],
+        promptOnly: true,
+        markdownOnly: false,
+      }),
+      normalizeRegexScript({
+        scriptName: 'display-only',
+        findRegex: '/foo/g',
+        replaceString: 'display',
+        placement: [2],
+        promptOnly: false,
+        markdownOnly: true,
+      }),
+      normalizeRegexScript({
+        scriptName: 'both',
+        findRegex: '/display|prompt/g',
+        replaceString: 'both',
+        placement: [2],
+        promptOnly: true,
+        markdownOnly: true,
+      }),
+      normalizeRegexScript({
+        scriptName: 'neither',
+        findRegex: '/both/g',
+        replaceString: 'neither',
+        placement: [2],
+        promptOnly: false,
+        markdownOnly: false,
+      }),
+      normalizeRegexScript({
+        scriptName: 'serialized-next',
+        findRegex: '/both/g',
+        replaceString: 'ordered',
+        placement: [2],
+        promptOnly: false,
+        markdownOnly: true,
+      }),
+    ];
+
+    expect(applyPromptRegexScripts('foo', scripts, { placement: 'assistant', depth: 0 })).toBe('both');
+    expect(applyMarkdownRegexScripts('foo', scripts, { placement: 'assistant', depth: 0 })).toBe('ordered');
+  });
+
+  it('applies placement and inclusive depth selection before replacement', () => {
+    const script = normalizeRegexScript({
+      scriptName: 'depth-limited-display',
+      findRegex: '/foo/g',
+      replaceString: 'bar',
+      placement: [2],
+      promptOnly: false,
+      markdownOnly: true,
+      minDepth: 1,
+      maxDepth: 2,
+    });
+
+    expect(applyMarkdownRegexScripts('foo', [script], { placement: 'assistant', depth: 1 })).toBe('bar');
+    expect(applyMarkdownRegexScripts('foo', [script], { placement: 'assistant', depth: 2 })).toBe('bar');
+    expect(applyMarkdownRegexScripts('foo', [script], { placement: 'assistant', depth: 0 })).toBe('foo');
+    expect(applyMarkdownRegexScripts('foo', [script], { placement: 'assistant', depth: 3 })).toBe('foo');
+    expect(applyMarkdownRegexScripts('foo', [script], { placement: 'user', depth: 1 })).toBe('foo');
+  });
+
+  it('transforms representative imported FF5 display text into HTML', () => {
+    const migrated = migrateLegacyOaiPreset(ff5Fixture);
+    const source = [
+      'Alice ↔ Bob | BOND: +4 | SPARKS: 3 | GRUDGE: 1',
+      '- <b>Threat</b>',
+      '<details><summary>INTERNAL STATES</summary><p>State</p></details>',
+      '<details><summary>QUESTS</summary><p>Quest</p></details>',
+    ].join('\n');
+    const result = applyMarkdownRegexScripts(source, migrated.regex_scripts, {
+      placement: 'assistant',
+      depth: 0,
+    });
+
+    expect(result).toContain('background:rgba(24,24,37,0.8)');
+    expect(result).toContain('Alice <span style="color:#74c7ec;margin:0 8px;">⟷</span> Bob');
+    expect(result).toContain('- <b style="color:#f9e2af;font-weight:600');
+    expect(result).toContain('background:rgba(20,20,30,0.4)');
+    expect(result).toContain('</details><details style="background:rgba(203,166,247,0.05)');
   });
 });
 

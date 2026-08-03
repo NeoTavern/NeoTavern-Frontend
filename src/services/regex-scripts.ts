@@ -24,6 +24,8 @@ export type RegexApplicationContext = {
   depth?: number;
 };
 
+export type RegexApplicationPass = 'prompt' | 'markdown';
+
 function scriptLabel(input: RegexScriptInput): string {
   return input.scriptName || input.identifier || '<unnamed regex script>';
 }
@@ -155,18 +157,20 @@ export function runRegexScript(script: RegexScript, value: string): string {
   });
 }
 
-export function applyPromptRegexScripts(
+export function applyRegexScripts(
   value: string,
   scripts: RegexScript[] | undefined,
   context: RegexApplicationContext,
+  pass: RegexApplicationPass,
 ): string {
   if (!scripts || scripts.length === 0) return value;
 
   const normalizedScripts = scripts.map((script) => normalizeRegexScript(script));
   return normalizedScripts.reduce((result, script) => {
+    const selected = pass === 'prompt' ? script.promptOnly : script.markdownOnly;
     if (
       !script.enabled ||
-      !script.promptOnly ||
+      !selected ||
       !script.placement.includes(context.placement) ||
       (context.depth !== undefined && script.minDepth !== undefined && context.depth < script.minDepth) ||
       (context.depth !== undefined && script.maxDepth !== undefined && context.depth > script.maxDepth)
@@ -175,4 +179,20 @@ export function applyPromptRegexScripts(
     }
     return runRegexScript(script, result);
   }, value);
+}
+
+export function applyPromptRegexScripts(
+  value: string,
+  scripts: RegexScript[] | undefined,
+  context: RegexApplicationContext,
+): string {
+  return applyRegexScripts(value, scripts, context, 'prompt');
+}
+
+export function applyMarkdownRegexScripts(
+  value: string,
+  scripts: RegexScript[] | undefined,
+  context: RegexApplicationContext,
+): string {
+  return applyRegexScripts(value, scripts, context, 'markdown');
 }
