@@ -21,6 +21,7 @@ import type {
 } from '../types';
 import { countTokens, eventEmitter } from '../utils/extensions';
 import { compressImage, getImageTokenCost, getMediaDurationFromDataURL, isDataURL } from '../utils/media';
+import { normalizeSamplerSettings } from '../utils/sampler-settings';
 import { buildStructuredResponseSystemPrompt } from '../utils/structured-response';
 import { macroService, type MacroEvaluationSession } from './macro-service';
 import { applyPromptRegexScripts } from './regex-scripts';
@@ -123,7 +124,7 @@ export class PromptBuilder {
       Array.isArray(chatHistory) && chatHistory.length > 0 && 'role' in chatHistory[0]
         ? PromptBuilder.convertApiMessagesToChatMessages(chatHistory as ApiChatMessage[])
         : (chatHistory as ChatMessage[]);
-    this.samplerSettings = samplerSettings;
+    this.samplerSettings = normalizeSamplerSettings(samplerSettings);
     this.persona = persona;
     this.tokenizer = tokenizer;
     this.worldInfo = worldInfo;

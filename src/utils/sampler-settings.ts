@@ -13,5 +13,19 @@ export function normalizeSamplerSettings<T extends Partial<SamplerSettings>>(set
   if (Array.isArray(normalized.stop)) {
     normalized.stop = normalizeStopSequences(normalized.stop);
   }
+  if (Array.isArray(normalized.prompts)) {
+    normalized.prompts = normalized.prompts.map((prompt) => {
+      const injectionPosition = prompt.injection_position as unknown;
+      return {
+        ...prompt,
+        injection_position:
+          injectionPosition === 0
+            ? 'relative'
+            : injectionPosition === 1
+              ? 'in-chat'
+              : injectionPosition,
+      };
+    }) as T['prompts'];
+  }
   return normalized;
 }

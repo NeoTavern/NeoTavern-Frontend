@@ -196,6 +196,57 @@ describe('PromptBuilder', () => {
     expect(eventEmitter.emit).toHaveBeenCalledWith('prompt:built', messages, expect.anything());
   });
 
+  it('normalizes legacy numeric prompt positions at the runtime boundary', async () => {
+    const samplerSettings = {
+      ...mockSamplerSettings,
+      prompts: [
+        {
+          identifier: 'legacy-relative' as KnownPromptIdentifiers,
+          name: 'Legacy relative',
+          role: 'system',
+          content: 'Legacy relative',
+          marker: false,
+          enabled: true,
+          injection_position: 0,
+        },
+        { identifier: 'chatHistory', name: 'History', role: 'system', content: '', marker: true, enabled: true },
+        {
+          identifier: 'legacy-in-chat' as KnownPromptIdentifiers,
+          name: 'Legacy in chat',
+          role: 'system',
+          content: 'Legacy in chat',
+          marker: false,
+          enabled: true,
+          injection_position: 1,
+        },
+      ],
+    } as unknown as SamplerSettings;
+
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: mockChatHistory,
+      samplerSettings,
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: mockMetadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'legacy-injection-position',
+      mediaContext: mockMediaContext,
+    });
+
+    const messages = await builder.build();
+
+    expect(messages.map((message) => message.content)).toEqual([
+      'Legacy relative',
+      'Hello',
+      'Hi',
+      'Legacy in chat',
+    ]);
+    expect(samplerSettings.prompts[0].injection_position).toBe(0);
+    expect(samplerSettings.prompts[2].injection_position).toBe(1);
+  });
+
   it('keeps API roles out of lastCharMessage unless they are assistant messages', async () => {
     const settings: SamplerSettings = {
       ...mockSamplerSettings,
