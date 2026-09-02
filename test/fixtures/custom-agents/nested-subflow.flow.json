@@ -1,0 +1,212 @@
+{
+  "format": "NEOTAVERN_CUSTOM_AGENT_FLOW",
+  "agent": {
+    "id": "example-nested",
+    "name": "Nested Subflow",
+    "enabled": true,
+    "priority": 0,
+    "configurationSchema": { "type": "object", "additionalProperties": false },
+    "configurationDefaults": {},
+    "stateSchema": { "type": "object", "additionalProperties": false },
+    "initialState": {},
+    "views": [],
+    "flows": [
+      {
+        "id": "manual-main",
+        "name": "Run nested",
+        "kind": "TRIGGER",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "trigger",
+            "type": "trigger.manual",
+            "position": { "x": 0, "y": 0 },
+            "data": {
+              "inputSchema": {
+                "type": "object",
+                "properties": { "numbers": { "type": "array", "items": { "type": "number" } } },
+                "required": ["numbers"],
+                "additionalProperties": false
+              }
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "numbers",
+            "type": "data.event",
+            "position": { "x": 0, "y": 180 },
+            "data": { "path": "input.numbers" },
+            "inputValues": {}
+          },
+          {
+            "id": "branch",
+            "type": "control.branch",
+            "position": { "x": 220, "y": 0 },
+            "data": { "cases": [{ "id": "run", "label": "Run" }] },
+            "inputValues": { "condition.run": true }
+          },
+          {
+            "id": "call",
+            "type": "control.run-flow",
+            "position": { "x": 460, "y": -80 },
+            "data": { "flowId": "accumulate" },
+            "inputValues": {}
+          },
+          { "id": "stop", "type": "control.stop", "position": { "x": 460, "y": 100 }, "data": {}, "inputValues": {} }
+        ],
+        "edges": [
+          {
+            "id": "a-trigger-branch",
+            "kind": "CONTROL",
+            "source": { "nodeId": "trigger", "portId": "out" },
+            "target": { "nodeId": "branch", "portId": "in" }
+          },
+          {
+            "id": "b-branch-call",
+            "kind": "CONTROL",
+            "source": { "nodeId": "branch", "portId": "case.run" },
+            "target": { "nodeId": "call", "portId": "in" }
+          },
+          {
+            "id": "c-branch-stop",
+            "kind": "CONTROL",
+            "source": { "nodeId": "branch", "portId": "else" },
+            "target": { "nodeId": "stop", "portId": "in" }
+          },
+          {
+            "id": "d-numbers-call",
+            "kind": "DATA",
+            "source": { "nodeId": "numbers", "portId": "value" },
+            "target": { "nodeId": "call", "portId": "numbers" }
+          }
+        ]
+      },
+      {
+        "id": "accumulate",
+        "name": "Accumulate",
+        "kind": "SUBFLOW",
+        "inputs": [
+          {
+            "id": "numbers",
+            "label": "Numbers",
+            "required": true,
+            "cardinality": "ONE",
+            "schema": { "type": "array", "items": { "type": "number" } }
+          }
+        ],
+        "outputs": [
+          {
+            "id": "result",
+            "label": "Result",
+            "required": true,
+            "cardinality": "ONE",
+            "schema": { "type": "array", "items": { "type": "number" } }
+          }
+        ],
+        "nodes": [
+          { "id": "sub-entry", "type": "scope.entry", "position": { "x": 0, "y": 0 }, "data": {}, "inputValues": {} },
+          {
+            "id": "loop",
+            "type": "control.for-each",
+            "position": { "x": 240, "y": 0 },
+            "data": {
+              "accumulator": true,
+              "body": {
+                "nodes": [
+                  {
+                    "id": "body-entry",
+                    "type": "scope.entry",
+                    "position": { "x": 0, "y": 0 },
+                    "data": {},
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "add",
+                    "type": "tool.number.add",
+                    "position": { "x": 220, "y": 0 },
+                    "data": {},
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "body-return",
+                    "type": "scope.return",
+                    "position": { "x": 440, "y": 0 },
+                    "data": {},
+                    "inputValues": {}
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "body-control-entry-return",
+                    "kind": "CONTROL",
+                    "source": { "nodeId": "body-entry", "portId": "out" },
+                    "target": { "nodeId": "body-return", "portId": "in" }
+                  },
+                  {
+                    "id": "body-item-add",
+                    "kind": "DATA",
+                    "source": { "nodeId": "body-entry", "portId": "item" },
+                    "target": { "nodeId": "add", "portId": "amount" }
+                  },
+                  {
+                    "id": "body-acc-add",
+                    "kind": "DATA",
+                    "source": { "nodeId": "body-entry", "portId": "accumulator" },
+                    "target": { "nodeId": "add", "portId": "value" }
+                  },
+                  {
+                    "id": "body-add-value",
+                    "kind": "DATA",
+                    "source": { "nodeId": "add", "portId": "property/value" },
+                    "target": { "nodeId": "body-return", "portId": "value" }
+                  },
+                  {
+                    "id": "body-add-acc",
+                    "kind": "DATA",
+                    "source": { "nodeId": "add", "portId": "property/value" },
+                    "target": { "nodeId": "body-return", "portId": "accumulator" }
+                  }
+                ]
+              }
+            },
+            "inputValues": { "initialAccumulator": 0 }
+          },
+          {
+            "id": "sub-return",
+            "type": "scope.return",
+            "position": { "x": 520, "y": 0 },
+            "data": {},
+            "inputValues": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "sub-control-entry-loop",
+            "kind": "CONTROL",
+            "source": { "nodeId": "sub-entry", "portId": "out" },
+            "target": { "nodeId": "loop", "portId": "in" }
+          },
+          {
+            "id": "sub-control-loop-return",
+            "kind": "CONTROL",
+            "source": { "nodeId": "loop", "portId": "out" },
+            "target": { "nodeId": "sub-return", "portId": "in" }
+          },
+          {
+            "id": "sub-numbers-loop",
+            "kind": "DATA",
+            "source": { "nodeId": "sub-entry", "portId": "numbers" },
+            "target": { "nodeId": "loop", "portId": "items" }
+          },
+          {
+            "id": "sub-loop-result",
+            "kind": "DATA",
+            "source": { "nodeId": "loop", "portId": "items" },
+            "target": { "nodeId": "sub-return", "portId": "result" }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "format": "NEOTAVERN_CUSTOM_AGENT_FLOW",
+  "agent": {
+    "id": "example-counter",
+    "name": "Example Counter",
+    "enabled": true,
+    "priority": 0,
+    "configurationSchema": { "type": "object", "additionalProperties": false },
+    "configurationDefaults": {},
+    "stateSchema": {
+      "type": "object",
+      "properties": { "count": { "type": "number" } },
+      "required": ["count"],
+      "additionalProperties": false
+    },
+    "initialState": { "count": 0 },
+    "flows": [
+      {
+        "id": "count-user-messages",
+        "name": "Count user messages",
+        "kind": "TRIGGER",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "trigger",
+            "type": "trigger.after-user",
+            "position": { "x": 0, "y": 0 },
+            "data": { "schedule": { "type": "ALWAYS" } },
+            "inputValues": {}
+          },
+          {
+            "id": "read-count",
+            "type": "data.state",
+            "position": { "x": 0, "y": 180 },
+            "data": { "path": "count" },
+            "inputValues": {}
+          },
+          {
+            "id": "increment",
+            "type": "tool.number.add",
+            "position": { "x": 280, "y": 0 },
+            "data": {},
+            "inputValues": { "amount": 1 }
+          },
+          {
+            "id": "save-count",
+            "type": "effect.set-state",
+            "position": { "x": 560, "y": 0 },
+            "data": { "path": "count" },
+            "inputValues": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "control-trigger-save",
+            "kind": "CONTROL",
+            "source": { "nodeId": "trigger", "portId": "out" },
+            "target": { "nodeId": "save-count", "portId": "in" }
+          },
+          {
+            "id": "data-count-increment",
+            "kind": "DATA",
+            "source": { "nodeId": "read-count", "portId": "value" },
+            "target": { "nodeId": "increment", "portId": "value" }
+          },
+          {
+            "id": "data-increment-save",
+            "kind": "DATA",
+            "source": { "nodeId": "increment", "portId": "property/value" },
+            "target": { "nodeId": "save-count", "portId": "value" }
+          }
+        ]
+      }
+    ],
+    "views": []
+  }
+}

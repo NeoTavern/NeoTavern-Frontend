@@ -1,0 +1,893 @@
+[
+  {
+    "type": "trigger.after-user",
+    "class": "TRIGGER/CONTROLLED/TRIGGER",
+    "initialData": "{\"schedule\":{\"type\":\"ALWAYS\"}}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:event:MANY:required:schema={\"type\":\"object\",\"properties\":{\"trigger\":{\"const\":\"AFTER_USER_MESSAGE\"},\"message\":{\"type\":\"object\",\"properties\":{\"index\":{\"type\":\"number\"},\"role\":{\"type\":\"string\",\"enum\":[\"USER\",\"ASSISTANT\",\"SYSTEM\"]},\"name\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"},\"swipeIndex\":{\"type\":\"number\"}},\"required\":[\"index\",\"role\",\"name\",\"content\"],\"additionalProperties\":false}},\"required\":[\"trigger\",\"message\"],\"additionalProperties\":false}:editor=-:label=event:literal=false",
+      "OUTPUT:DATA:message:MANY:required:schema={\"type\":\"object\",\"properties\":{\"index\":{\"type\":\"number\"},\"role\":{\"type\":\"string\",\"enum\":[\"USER\",\"ASSISTANT\",\"SYSTEM\"]},\"name\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"},\"swipeIndex\":{\"type\":\"number\"}},\"required\":[\"index\",\"role\",\"name\",\"content\"],\"additionalProperties\":false}:editor=-:label=message:literal=false"
+    ],
+    "fields": "[{\"id\":\"scheduleType\",\"path\":\"schedule.type\",\"labelKey\":\"scheduleType\",\"control\":\"SELECT\",\"options\":[{\"labelKey\":\"ALWAYS\",\"value\":\"ALWAYS\"},{\"labelKey\":\"EVERY_N_EVENTS\",\"value\":\"EVERY_N_EVENTS\"}]},{\"id\":\"condition\",\"path\":\"condition\",\"labelKey\":\"condition\",\"control\":\"JSON\",\"optional\":true}]"
+  },
+  {
+    "type": "trigger.before-generation",
+    "class": "TRIGGER/CONTROLLED/TRIGGER",
+    "initialData": "{\"generationModes\":[\"NEW\",\"REGENERATE\",\"ADD_SWIPE\"],\"schedule\":{\"type\":\"ALWAYS\"}}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:event:MANY:required:schema={\"type\":\"object\",\"properties\":{\"trigger\":{\"const\":\"BEFORE_ASSISTANT_GENERATION\"},\"generationId\":{\"type\":\"string\"},\"generationMode\":{\"type\":\"string\",\"enum\":[\"NEW\",\"REGENERATE\",\"ADD_SWIPE\"]},\"targetMessage\":{\"type\":\"object\",\"properties\":{\"index\":{\"type\":\"number\"},\"role\":{\"type\":\"string\",\"enum\":[\"USER\",\"ASSISTANT\",\"SYSTEM\"]},\"name\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"},\"swipeIndex\":{\"type\":\"number\"}},\"required\":[\"index\",\"role\",\"name\",\"content\"],\"additionalProperties\":false}},\"required\":[\"trigger\",\"generationId\",\"generationMode\"],\"additionalProperties\":false}:editor=-:label=event:literal=false",
+      "OUTPUT:DATA:generationMode:MANY:required:schema={\"type\":\"string\",\"enum\":[\"NEW\",\"REGENERATE\",\"ADD_SWIPE\"]}:editor=-:label=generationMode:literal=false",
+      "OUTPUT:DATA:targetMessage:MANY:required:schema={}:editor=-:label=targetMessage:literal=false"
+    ],
+    "fields": "[{\"id\":\"generationModes\",\"path\":\"generationModes\",\"labelKey\":\"generationModes\",\"control\":\"CHECKBOX_GROUP\",\"options\":[{\"labelKey\":\"NEW\",\"value\":\"NEW\"},{\"labelKey\":\"REGENERATE\",\"value\":\"REGENERATE\"},{\"labelKey\":\"ADD_SWIPE\",\"value\":\"ADD_SWIPE\"}]},{\"id\":\"scheduleType\",\"path\":\"schedule.type\",\"labelKey\":\"scheduleType\",\"control\":\"SELECT\",\"options\":[{\"labelKey\":\"ALWAYS\",\"value\":\"ALWAYS\"},{\"labelKey\":\"EVERY_N_EVENTS\",\"value\":\"EVERY_N_EVENTS\"}]},{\"id\":\"condition\",\"path\":\"condition\",\"labelKey\":\"condition\",\"control\":\"JSON\",\"optional\":true}]"
+  },
+  {
+    "type": "trigger.generate-assistant",
+    "class": "TRIGGER/CONTROLLED/TRIGGER",
+    "initialData": "{\"generationModes\":[\"NEW\",\"REGENERATE\",\"ADD_SWIPE\"],\"schedule\":{\"type\":\"ALWAYS\"}}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:event:MANY:required:schema={\"type\":\"object\",\"properties\":{\"trigger\":{\"const\":\"ASSISTANT_GENERATION\"},\"generationId\":{\"type\":\"string\"},\"generationMode\":{\"type\":\"string\",\"enum\":[\"NEW\",\"REGENERATE\",\"ADD_SWIPE\"]},\"targetMessage\":{\"type\":\"object\",\"properties\":{\"index\":{\"type\":\"number\"},\"role\":{\"type\":\"string\",\"enum\":[\"USER\",\"ASSISTANT\",\"SYSTEM\"]},\"name\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"},\"swipeIndex\":{\"type\":\"number\"}},\"required\":[\"index\",\"role\",\"name\",\"content\"],\"additionalProperties\":false}},\"required\":[\"trigger\",\"generationId\",\"generationMode\"],\"additionalProperties\":false}:editor=-:label=event:literal=false",
+      "OUTPUT:DATA:generationMode:MANY:required:schema={\"type\":\"string\",\"enum\":[\"NEW\",\"REGENERATE\",\"ADD_SWIPE\"]}:editor=-:label=generationMode:literal=false",
+      "OUTPUT:DATA:targetMessage:MANY:required:schema={}:editor=-:label=targetMessage:literal=false"
+    ],
+    "fields": "[{\"id\":\"generationModes\",\"path\":\"generationModes\",\"labelKey\":\"generationModes\",\"control\":\"CHECKBOX_GROUP\",\"options\":[{\"labelKey\":\"NEW\",\"value\":\"NEW\"},{\"labelKey\":\"REGENERATE\",\"value\":\"REGENERATE\"},{\"labelKey\":\"ADD_SWIPE\",\"value\":\"ADD_SWIPE\"}]},{\"id\":\"scheduleType\",\"path\":\"schedule.type\",\"labelKey\":\"scheduleType\",\"control\":\"SELECT\",\"options\":[{\"labelKey\":\"ALWAYS\",\"value\":\"ALWAYS\"},{\"labelKey\":\"EVERY_N_EVENTS\",\"value\":\"EVERY_N_EVENTS\"}]},{\"id\":\"condition\",\"path\":\"condition\",\"labelKey\":\"condition\",\"control\":\"JSON\",\"optional\":true}]"
+  },
+  {
+    "type": "trigger.after-generation",
+    "class": "TRIGGER/CONTROLLED/TRIGGER",
+    "initialData": "{\"generationModes\":[\"NEW\",\"REGENERATE\",\"ADD_SWIPE\"],\"schedule\":{\"type\":\"ALWAYS\"}}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:event:MANY:required:schema={\"type\":\"object\",\"properties\":{\"trigger\":{\"const\":\"AFTER_ASSISTANT_MESSAGE\"},\"generationId\":{\"type\":\"string\"},\"generationMode\":{\"type\":\"string\",\"enum\":[\"NEW\",\"REGENERATE\",\"ADD_SWIPE\"]},\"message\":{\"type\":\"object\",\"properties\":{\"index\":{\"type\":\"number\"},\"role\":{\"type\":\"string\",\"enum\":[\"USER\",\"ASSISTANT\",\"SYSTEM\"]},\"name\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"},\"swipeIndex\":{\"type\":\"number\"}},\"required\":[\"index\",\"role\",\"name\",\"content\"],\"additionalProperties\":false}},\"required\":[\"trigger\",\"generationId\",\"generationMode\",\"message\"],\"additionalProperties\":false}:editor=-:label=event:literal=false",
+      "OUTPUT:DATA:generationMode:MANY:required:schema={\"type\":\"string\",\"enum\":[\"NEW\",\"REGENERATE\",\"ADD_SWIPE\"]}:editor=-:label=generationMode:literal=false",
+      "OUTPUT:DATA:message:MANY:required:schema={\"type\":\"object\",\"properties\":{\"index\":{\"type\":\"number\"},\"role\":{\"type\":\"string\",\"enum\":[\"USER\",\"ASSISTANT\",\"SYSTEM\"]},\"name\":{\"type\":\"string\"},\"content\":{\"type\":\"string\"},\"swipeIndex\":{\"type\":\"number\"}},\"required\":[\"index\",\"role\",\"name\",\"content\"],\"additionalProperties\":false}:editor=-:label=message:literal=false"
+    ],
+    "fields": "[{\"id\":\"generationModes\",\"path\":\"generationModes\",\"labelKey\":\"generationModes\",\"control\":\"CHECKBOX_GROUP\",\"options\":[{\"labelKey\":\"NEW\",\"value\":\"NEW\"},{\"labelKey\":\"REGENERATE\",\"value\":\"REGENERATE\"},{\"labelKey\":\"ADD_SWIPE\",\"value\":\"ADD_SWIPE\"}]},{\"id\":\"scheduleType\",\"path\":\"schedule.type\",\"labelKey\":\"scheduleType\",\"control\":\"SELECT\",\"options\":[{\"labelKey\":\"ALWAYS\",\"value\":\"ALWAYS\"},{\"labelKey\":\"EVERY_N_EVENTS\",\"value\":\"EVERY_N_EVENTS\"}]},{\"id\":\"condition\",\"path\":\"condition\",\"labelKey\":\"condition\",\"control\":\"JSON\",\"optional\":true}]"
+  },
+  {
+    "type": "trigger.manual",
+    "class": "TRIGGER/CONTROLLED/TRIGGER",
+    "initialData": "{\"inputSchema\":{\"type\":\"object\",\"additionalProperties\":true}}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:event:MANY:required:schema={\"type\":\"object\",\"properties\":{\"trigger\":{\"const\":\"MANUAL\"},\"input\":{\"type\":\"object\",\"additionalProperties\":true}},\"required\":[\"trigger\",\"input\"],\"additionalProperties\":false}:editor=-:label=event:literal=false",
+      "OUTPUT:DATA:input:MANY:required:schema={\"type\":\"object\",\"additionalProperties\":true}:editor=-:label=input:literal=false"
+    ],
+    "fields": "[{\"id\":\"inputSchema\",\"path\":\"inputSchema\",\"labelKey\":\"inputSchema\",\"control\":\"JSON\"},{\"id\":\"condition\",\"path\":\"condition\",\"labelKey\":\"condition\",\"control\":\"JSON\",\"optional\":true}]"
+  },
+  {
+    "type": "control.branch",
+    "class": "CONTROL/CONTROLLED/EXECUTOR",
+    "initialData": "{\"cases\":[{\"id\":\"generated-1\",\"label\":\"Case 1\"}]}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:condition.generated-1:ONE:required:schema={\"type\":\"boolean\"}:editor=-:label=Case 1:literal=true"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:case.generated-1:MANY:label=Case 1:literal=true",
+      "OUTPUT:CONTROL:else:MANY:label=else:literal=false"
+    ],
+    "fields": "[{\"id\":\"cases\",\"path\":\"cases\",\"labelKey\":\"cases\",\"control\":\"REPEATER\",\"minimum\":1,\"itemFields\":[{\"id\":\"label\",\"path\":\"label\",\"labelKey\":\"label\",\"control\":\"INPUT\"}]}]"
+  },
+  {
+    "type": "control.for-each",
+    "class": "CONTROL/CONTROLLED/FOR_EACH",
+    "initialData": "{\"accumulator\":false,\"body\":{\"nodes\":[{\"id\":\"generated-1\",\"type\":\"scope.entry\",\"position\":{\"x\":0,\"y\":0},\"data\":{},\"inputValues\":{}},{\"id\":\"generated-2\",\"type\":\"scope.return\",\"position\":{\"x\":240,\"y\":0},\"data\":{},\"inputValues\":{}}],\"edges\":[{\"id\":\"generated-3\",\"kind\":\"CONTROL\",\"source\":{\"nodeId\":\"generated-1\",\"portId\":\"out\"},\"target\":{\"nodeId\":\"generated-2\",\"portId\":\"in\"}}]}}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:items:ONE:required:schema={\"type\":\"array\"}:editor=-:label=items:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:items:MANY:required:schema={\"type\":\"array\",\"items\":{}}:editor=-:label=items:literal=false"
+    ],
+    "fields": "[{\"id\":\"accumulator\",\"path\":\"accumulator\",\"labelKey\":\"accumulator\",\"control\":\"TOGGLE\"},{\"id\":\"body\",\"path\":\"body\",\"labelKey\":\"body\",\"control\":\"SCOPE_EDITOR\"}]"
+  },
+  {
+    "type": "control.run-flow",
+    "class": "CONTROL/CONTROLLED/RUN_SUBFLOW",
+    "initialData": "{\"flowId\":\"\"}",
+    "initialInputValues": "{}",
+    "inputs": ["INPUT:CONTROL:in:ONE:label=in:literal=false"],
+    "outputs": ["OUTPUT:CONTROL:out:MANY:label=out:literal=false"],
+    "fields": "[{\"id\":\"flowId\",\"path\":\"flowId\",\"labelKey\":\"flowId\",\"control\":\"SELECT\",\"options\":[]}]"
+  },
+  {
+    "type": "control.merge-any",
+    "class": "CONTROL/MERGE_ANY/EXECUTOR",
+    "initialData": "{\"inputs\":[{\"id\":\"generated-1\",\"label\":\"Input 1\",\"carriesValue\":false},{\"id\":\"generated-2\",\"label\":\"Input 2\",\"carriesValue\":false}]}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in.generated-1:ONE:label=Input 1:literal=true",
+      "INPUT:CONTROL:in.generated-2:ONE:label=Input 2:literal=true"
+    ],
+    "outputs": ["OUTPUT:CONTROL:out:MANY:label=out:literal=false"],
+    "fields": "[{\"id\":\"inputs\",\"path\":\"inputs\",\"labelKey\":\"inputs\",\"control\":\"REPEATER\",\"minimum\":2,\"itemFields\":[{\"id\":\"label\",\"path\":\"label\",\"labelKey\":\"label\",\"control\":\"INPUT\"},{\"id\":\"carriesValue\",\"path\":\"carriesValue\",\"labelKey\":\"carriesValue\",\"control\":\"TOGGLE\"}]}]"
+  },
+  {
+    "type": "control.merge-all",
+    "class": "CONTROL/MERGE_ALL/EXECUTOR",
+    "initialData": "{\"inputs\":[{\"id\":\"generated-1\",\"label\":\"Input 1\",\"carriesValue\":false},{\"id\":\"generated-2\",\"label\":\"Input 2\",\"carriesValue\":false}]}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in.generated-1:ONE:label=Input 1:literal=true",
+      "INPUT:CONTROL:in.generated-2:ONE:label=Input 2:literal=true"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:values:MANY:required:schema={\"type\":\"object\",\"properties\":{},\"required\":[],\"additionalProperties\":false}:editor=-:label=values:literal=false"
+    ],
+    "fields": "[{\"id\":\"inputs\",\"path\":\"inputs\",\"labelKey\":\"inputs\",\"control\":\"REPEATER\",\"minimum\":2,\"itemFields\":[{\"id\":\"label\",\"path\":\"label\",\"labelKey\":\"label\",\"control\":\"INPUT\"},{\"id\":\"carriesValue\",\"path\":\"carriesValue\",\"labelKey\":\"carriesValue\",\"control\":\"TOGGLE\"}]}]"
+  },
+  {
+    "type": "control.stop",
+    "class": "CONTROL/CONTROLLED/STOP",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": ["INPUT:CONTROL:in:ONE:label=in:literal=false"],
+    "outputs": [],
+    "fields": "[]"
+  },
+  {
+    "type": "scope.entry",
+    "class": "CONTROL/CONTROLLED/SCOPE_ENTRY",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": ["OUTPUT:CONTROL:out:MANY:label=out:literal=false"],
+    "fields": "[]"
+  },
+  {
+    "type": "scope.return",
+    "class": "CONTROL/CONTROLLED/SCOPE_RETURN",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": ["INPUT:CONTROL:in:ONE:label=in:literal=false"],
+    "outputs": [],
+    "fields": "[]"
+  },
+  {
+    "type": "data.constant",
+    "class": "DATA/PURE_DATA/EXECUTOR",
+    "initialData": "{\"value\":null}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={}:editor=-:label=value:literal=false"],
+    "fields": "[{\"id\":\"value\",\"path\":\"value\",\"labelKey\":\"value\",\"control\":\"JSON\"}]"
+  },
+  {
+    "type": "data.configuration",
+    "class": "DATA/PURE_DATA/EXECUTOR",
+    "initialData": "{\"path\":null}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={\"type\":\"object\"}:editor=-:label=value:literal=false"],
+    "fields": "[{\"id\":\"path\",\"path\":\"path\",\"labelKey\":\"path\",\"control\":\"SCHEMA_PATH\",\"schemaSource\":\"CONFIGURATION\",\"allowRoot\":true}]"
+  },
+  {
+    "type": "data.state",
+    "class": "DATA/PURE_DATA/EXECUTOR",
+    "initialData": "{\"path\":null}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={\"type\":\"object\"}:editor=-:label=value:literal=false"],
+    "fields": "[{\"id\":\"path\",\"path\":\"path\",\"labelKey\":\"path\",\"control\":\"SCHEMA_PATH\",\"schemaSource\":\"STATE\",\"allowRoot\":true}]"
+  },
+  {
+    "type": "data.event",
+    "class": "DATA/PURE_DATA/EXECUTOR",
+    "initialData": "{\"path\":null}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={}:editor=-:label=value:literal=false"],
+    "fields": "[{\"id\":\"path\",\"path\":\"path\",\"labelKey\":\"path\",\"control\":\"SCHEMA_PATH\",\"schemaSource\":\"EVENT\",\"allowRoot\":true}]"
+  },
+  {
+    "type": "data.get",
+    "class": "DATA/PURE_DATA/EXECUTOR",
+    "initialData": "{\"path\":\"\"}",
+    "initialInputValues": "{}",
+    "inputs": ["INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false"],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={}:editor=-:label=value:literal=false"],
+    "fields": "[{\"id\":\"path\",\"path\":\"path\",\"labelKey\":\"path\",\"control\":\"SCHEMA_PATH\",\"schemaSource\":\"INPUT_VALUE\",\"allowRoot\":false}]"
+  },
+  {
+    "type": "data.assert",
+    "class": "DATA/PURE_DATA/EXECUTOR",
+    "initialData": "{\"schema\":{}}",
+    "initialInputValues": "{}",
+    "inputs": ["INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false"],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={}:editor=-:label=value:literal=false"],
+    "fields": "[{\"id\":\"schema\",\"path\":\"schema\",\"labelKey\":\"schema\",\"control\":\"JSON\"}]"
+  },
+  {
+    "type": "data.unpack-object",
+    "class": "DATA/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": ["INPUT:DATA:value:ONE:required:schema={\"type\":\"object\"}:editor=-:label=value:literal=false"],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={}:editor=-:label=value:literal=false"],
+    "fields": "[]"
+  },
+  {
+    "type": "data.object",
+    "class": "DATA/PURE_DATA/EXECUTOR",
+    "initialData": "{\"fields\":[]}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": [
+      "OUTPUT:DATA:value:MANY:required:schema={\"type\":\"object\",\"properties\":{},\"required\":[],\"additionalProperties\":false}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[{\"id\":\"fields\",\"path\":\"fields\",\"labelKey\":\"fields\",\"control\":\"REPEATER\",\"minimum\":0,\"itemFields\":[{\"id\":\"key\",\"path\":\"key\",\"labelKey\":\"key\",\"control\":\"INPUT\"},{\"id\":\"schema\",\"path\":\"schema\",\"labelKey\":\"schema\",\"control\":\"JSON\"}]}]"
+  },
+  {
+    "type": "data.array",
+    "class": "DATA/PURE_DATA/EXECUTOR",
+    "initialData": "{\"items\":[]}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": [
+      "OUTPUT:DATA:value:MANY:required:schema={\"type\":\"array\",\"items\":{}}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[{\"id\":\"items\",\"path\":\"items\",\"labelKey\":\"items\",\"control\":\"REPEATER\",\"minimum\":0,\"itemFields\":[{\"id\":\"label\",\"path\":\"label\",\"labelKey\":\"label\",\"control\":\"INPUT\"}]}]"
+  },
+  {
+    "type": "data.template",
+    "class": "DATA/PURE_DATA/EXECUTOR",
+    "initialData": "{\"template\":\"\",\"variables\":[]}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false"],
+    "fields": "[{\"id\":\"template\",\"path\":\"template\",\"labelKey\":\"template\",\"control\":\"TEXTAREA\"},{\"id\":\"variables\",\"path\":\"variables\",\"labelKey\":\"variables\",\"control\":\"REPEATER\",\"minimum\":0,\"itemFields\":[{\"id\":\"name\",\"path\":\"name\",\"labelKey\":\"name\",\"control\":\"INPUT\"}]}]"
+  },
+  {
+    "type": "logic.all",
+    "class": "LOGIC/PURE_DATA/EXECUTOR",
+    "initialData": "{\"inputs\":[{\"id\":\"generated-1\",\"label\":\"Value 1\"}]}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value.generated-1:ONE:required:schema={\"type\":\"boolean\"}:editor=-:label=Value 1:literal=true"
+    ],
+    "outputs": ["OUTPUT:DATA:result:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=result:literal=false"],
+    "fields": "[{\"id\":\"inputs\",\"path\":\"inputs\",\"labelKey\":\"inputs\",\"control\":\"REPEATER\",\"minimum\":1,\"itemFields\":[{\"id\":\"label\",\"path\":\"label\",\"labelKey\":\"label\",\"control\":\"INPUT\"}]}]"
+  },
+  {
+    "type": "logic.any",
+    "class": "LOGIC/PURE_DATA/EXECUTOR",
+    "initialData": "{\"inputs\":[{\"id\":\"generated-1\",\"label\":\"Value 1\"}]}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value.generated-1:ONE:required:schema={\"type\":\"boolean\"}:editor=-:label=Value 1:literal=true"
+    ],
+    "outputs": ["OUTPUT:DATA:result:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=result:literal=false"],
+    "fields": "[{\"id\":\"inputs\",\"path\":\"inputs\",\"labelKey\":\"inputs\",\"control\":\"REPEATER\",\"minimum\":1,\"itemFields\":[{\"id\":\"label\",\"path\":\"label\",\"labelKey\":\"label\",\"control\":\"INPUT\"}]}]"
+  },
+  {
+    "type": "logic.not",
+    "class": "LOGIC/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": ["INPUT:DATA:value:ONE:required:schema={\"type\":\"boolean\"}:editor=-:label=value:literal=false"],
+    "outputs": ["OUTPUT:DATA:result:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=result:literal=false"],
+    "fields": "[]"
+  },
+  {
+    "type": "logic.exists",
+    "class": "LOGIC/PURE_DATA/EXECUTOR",
+    "initialData": "{\"path\":null}",
+    "initialInputValues": "{}",
+    "inputs": ["INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false"],
+    "outputs": ["OUTPUT:DATA:result:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=result:literal=false"],
+    "fields": "[{\"id\":\"path\",\"path\":\"path\",\"labelKey\":\"path\",\"control\":\"INPUT\"}]"
+  },
+  {
+    "type": "logic.in",
+    "class": "LOGIC/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false",
+      "INPUT:DATA:collection:ONE:required:schema={\"type\":\"array\"}:editor=-:label=collection:literal=false"
+    ],
+    "outputs": ["OUTPUT:DATA:result:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=result:literal=false"],
+    "fields": "[]"
+  },
+  {
+    "type": "llm.request",
+    "class": "LLM/CONTROLLED/EXECUTOR",
+    "initialData": "{\"prompt\":\"\",\"variables\":[],\"assembly\":{\"type\":\"NORMAL_CHAT\",\"history\":\"NONE\",\"placement\":{\"type\":\"AFTER_CONTEXT\",\"role\":\"SYSTEM\"}},\"outputSchema\":{}}",
+    "initialInputValues": "{\"structuredFormat\":\"NATIVE\"}",
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:connectionProfileId:ONE:optional:schema={\"type\":\"string\"}:editor=CONNECTION_PROFILE:label=connectionProfileId:literal=false",
+      "INPUT:DATA:structuredFormat:ONE:required:schema={\"type\":\"string\",\"enum\":[\"NATIVE\",\"JSON\",\"XML\"]}:editor=-:label=structuredFormat:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:result:MANY:required:schema={}:editor=-:label=result:literal=false"
+    ],
+    "fields": "[{\"id\":\"prompt\",\"path\":\"prompt\",\"labelKey\":\"prompt\",\"control\":\"TEXTAREA\"},{\"id\":\"variables\",\"path\":\"variables\",\"labelKey\":\"variables\",\"control\":\"REPEATER\",\"minimum\":0,\"itemFields\":[{\"id\":\"name\",\"path\":\"name\",\"labelKey\":\"name\",\"control\":\"INPUT\"}]},{\"id\":\"assemblyType\",\"path\":\"assembly.type\",\"labelKey\":\"assemblyType\",\"control\":\"SELECT\",\"options\":[{\"labelKey\":\"NORMAL_CHAT\",\"value\":\"NORMAL_CHAT\"},{\"labelKey\":\"STANDALONE\",\"value\":\"STANDALONE\"}]},{\"id\":\"history\",\"path\":\"assembly.history\",\"labelKey\":\"history\",\"control\":\"SELECT\",\"options\":[{\"labelKey\":\"NONE\",\"value\":\"NONE\"},{\"labelKey\":\"FULL_CURRENT\",\"value\":\"FULL_CURRENT\"},{\"labelKey\":\"FULL_TARGET\",\"value\":\"FULL_TARGET\"},{\"labelKey\":\"RECENT_CURRENT\",\"value\":\"RECENT_CURRENT\"},{\"labelKey\":\"RECENT_TARGET\",\"value\":\"RECENT_TARGET\"}]},{\"id\":\"placementType\",\"path\":\"assembly.placement.type\",\"labelKey\":\"placementType\",\"control\":\"SELECT\",\"options\":[{\"labelKey\":\"AFTER_CONTEXT\",\"value\":\"AFTER_CONTEXT\"},{\"labelKey\":\"IN_CHAT\",\"value\":\"IN_CHAT\"}]},{\"id\":\"placementRole\",\"path\":\"assembly.placement.role\",\"labelKey\":\"placementRole\",\"control\":\"SELECT\",\"options\":[{\"labelKey\":\"SYSTEM\",\"value\":\"SYSTEM\"},{\"labelKey\":\"USER\",\"value\":\"USER\"}]},{\"id\":\"outputSchema\",\"path\":\"outputSchema\",\"labelKey\":\"outputSchema\",\"control\":\"JSON\"}]"
+  },
+  {
+    "type": "effect.set-state",
+    "class": "EFFECT/CONTROLLED/EXECUTOR",
+    "initialData": "{\"path\":\"\"}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false"
+    ],
+    "outputs": ["OUTPUT:CONTROL:out:MANY:label=out:literal=false"],
+    "fields": "[{\"id\":\"path\",\"path\":\"path\",\"labelKey\":\"path\",\"control\":\"SCHEMA_PATH\",\"schemaSource\":\"STATE\",\"allowRoot\":false}]"
+  },
+  {
+    "type": "effect.remove-state",
+    "class": "EFFECT/CONTROLLED/EXECUTOR",
+    "initialData": "{\"path\":\"\"}",
+    "initialInputValues": "{}",
+    "inputs": ["INPUT:CONTROL:in:ONE:label=in:literal=false"],
+    "outputs": ["OUTPUT:CONTROL:out:MANY:label=out:literal=false"],
+    "fields": "[{\"id\":\"path\",\"path\":\"path\",\"labelKey\":\"path\",\"control\":\"SCHEMA_PATH\",\"schemaSource\":\"STATE\",\"allowRoot\":false}]"
+  },
+  {
+    "type": "effect.set-injection",
+    "class": "EFFECT/CONTROLLED/EXECUTOR",
+    "initialData": "{\"injectionId\":\"generated-1\",\"placement\":\"relative\",\"depth\":0,\"lifetime\":{\"type\":\"UNTIL_REMOVED\"},\"activation\":{\"type\":\"ALWAYS\"}}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:content:ONE:required:schema={\"type\":\"string\"}:editor=TEXTAREA:label=content:literal=false"
+    ],
+    "outputs": ["OUTPUT:CONTROL:out:MANY:label=out:literal=false"],
+    "fields": "[{\"id\":\"injectionId\",\"path\":\"injectionId\",\"labelKey\":\"injectionId\",\"control\":\"INPUT\"},{\"id\":\"placement\",\"path\":\"placement\",\"labelKey\":\"placement\",\"control\":\"SELECT\",\"options\":[{\"labelKey\":\"relative\",\"value\":\"relative\"},{\"labelKey\":\"in-chat\",\"value\":\"in-chat\"}]},{\"id\":\"depth\",\"path\":\"depth\",\"labelKey\":\"depth\",\"control\":\"NUMBER\"},{\"id\":\"lifetimeType\",\"path\":\"lifetime.type\",\"labelKey\":\"lifetimeType\",\"control\":\"SELECT\",\"options\":[{\"labelKey\":\"ONCE\",\"value\":\"ONCE\"},{\"labelKey\":\"UNTIL_REMOVED\",\"value\":\"UNTIL_REMOVED\"},{\"labelKey\":\"FOR_N_GENERATIONS\",\"value\":\"FOR_N_GENERATIONS\"}]},{\"id\":\"activationType\",\"path\":\"activation.type\",\"labelKey\":\"activationType\",\"control\":\"SELECT\",\"options\":[{\"labelKey\":\"ALWAYS\",\"value\":\"ALWAYS\"},{\"labelKey\":\"PROBABILITY\",\"value\":\"PROBABILITY\"}]}]"
+  },
+  {
+    "type": "effect.remove-injection",
+    "class": "EFFECT/CONTROLLED/EXECUTOR",
+    "initialData": "{\"injectionId\":\"generated-1\"}",
+    "initialInputValues": "{}",
+    "inputs": ["INPUT:CONTROL:in:ONE:label=in:literal=false"],
+    "outputs": ["OUTPUT:CONTROL:out:MANY:label=out:literal=false"],
+    "fields": "[{\"id\":\"injectionId\",\"path\":\"injectionId\",\"labelKey\":\"injectionId\",\"control\":\"INPUT\"}]"
+  },
+  {
+    "type": "effect.visible-message",
+    "class": "EFFECT/CONTROLLED/EXECUTOR",
+    "initialData": "{\"operation\":\"CREATE\"}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:content:ONE:required:schema={\"type\":\"string\"}:editor=TEXTAREA:label=content:literal=false"
+    ],
+    "outputs": ["OUTPUT:CONTROL:out:MANY:label=out:literal=false"],
+    "fields": "[{\"id\":\"operation\",\"path\":\"operation\",\"labelKey\":\"operation\",\"control\":\"SELECT\",\"options\":[{\"labelKey\":\"REPLACE_TARGET\",\"value\":\"REPLACE_TARGET\"},{\"labelKey\":\"APPEND_TARGET\",\"value\":\"APPEND_TARGET\"},{\"labelKey\":\"CREATE\",\"value\":\"CREATE\"}]}]"
+  },
+  {
+    "type": "effect.generation-response",
+    "class": "EFFECT/CONTROLLED/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:content:ONE:required:schema={\"type\":\"string\"}:editor=TEXTAREA:label=content:literal=false"
+    ],
+    "outputs": ["OUTPUT:CONTROL:out:MANY:label=out:literal=false"],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.random.dice",
+    "class": "TOOL/CONTROLLED/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:expression:ONE:required:schema={\"type\":\"string\",\"pattern\":\"^(?:[1-9][0-9]*)?d[1-9][0-9]*(?:[+-](?:0|[1-9][0-9]*))?$\"}:editor=-:label=expression:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"count\":{\"type\":\"integer\",\"exclusiveMinimum\":0,\"maximum\":9007199254740991},\"sides\":{\"type\":\"integer\",\"exclusiveMinimum\":0,\"maximum\":9007199254740991},\"modifier\":{\"type\":\"integer\",\"minimum\":-9007199254740991,\"maximum\":9007199254740991},\"rolls\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"minimum\":-9007199254740991,\"maximum\":9007199254740991}},\"total\":{\"type\":\"integer\",\"minimum\":-9007199254740991,\"maximum\":9007199254740991}},\"required\":[\"count\",\"modifier\",\"rolls\",\"sides\",\"total\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/count:MANY:required:schema={\"type\":\"integer\",\"exclusiveMinimum\":0,\"maximum\":9007199254740991}:editor=-:label=count:literal=false",
+      "OUTPUT:DATA:property/modifier:MANY:required:schema={\"type\":\"integer\",\"minimum\":-9007199254740991,\"maximum\":9007199254740991}:editor=-:label=modifier:literal=false",
+      "OUTPUT:DATA:property/rolls:MANY:required:schema={\"type\":\"array\",\"items\":{\"type\":\"integer\",\"minimum\":-9007199254740991,\"maximum\":9007199254740991}}:editor=-:label=rolls:literal=false",
+      "OUTPUT:DATA:property/sides:MANY:required:schema={\"type\":\"integer\",\"exclusiveMinimum\":0,\"maximum\":9007199254740991}:editor=-:label=sides:literal=false",
+      "OUTPUT:DATA:property/total:MANY:required:schema={\"type\":\"integer\",\"minimum\":-9007199254740991,\"maximum\":9007199254740991}:editor=-:label=total:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.random.chance",
+    "class": "TOOL/CONTROLLED/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:probability:ONE:required:schema={\"type\":\"number\",\"minimum\":0,\"maximum\":1}:editor=-:label=probability:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"roll\":{\"type\":\"number\"},\"result\":{\"type\":\"boolean\"}},\"required\":[\"result\",\"roll\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/result:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/roll:MANY:required:schema={\"type\":\"number\"}:editor=-:label=roll:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.random.select",
+    "class": "TOOL/CONTROLLED/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:items:ONE:required:schema={}:editor=-:label=items:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"index\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991},\"value\":{}},\"required\":[\"index\",\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/index:MANY:required:schema={\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991}:editor=-:label=index:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.random.selectWeighted",
+    "class": "TOOL/CONTROLLED/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:items:ONE:required:schema={}:editor=-:label=items:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"index\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991},\"value\":{},\"weight\":{\"type\":\"number\"}},\"required\":[\"index\",\"value\",\"weight\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/index:MANY:required:schema={\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991}:editor=-:label=index:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={}:editor=-:label=value:literal=false",
+      "OUTPUT:DATA:property/weight:MANY:required:schema={\"type\":\"number\"}:editor=-:label=weight:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.random.sampleWithoutReplacement",
+    "class": "TOOL/CONTROLLED/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:items:ONE:required:schema={}:editor=-:label=items:literal=false",
+      "INPUT:DATA:count:ONE:required:schema={\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991}:editor=-:label=count:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"indices\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991}},\"items\":{}},\"required\":[\"indices\",\"items\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/indices:MANY:required:schema={\"type\":\"array\",\"items\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991}}:editor=-:label=indices:literal=false",
+      "OUTPUT:DATA:property/items:MANY:required:schema={}:editor=-:label=items:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.logic.compare",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:operator:ONE:required:schema={\"type\":\"string\"}:editor=-:label=operator:literal=false",
+      "INPUT:DATA:left:ONE:required:schema={}:editor=-:label=left:literal=false",
+      "INPUT:DATA:right:ONE:required:schema={}:editor=-:label=right:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"result\":{\"type\":\"boolean\"}},\"required\":[\"result\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/result:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=result:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.number.sum",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:values:ONE:required:schema={\"type\":\"array\",\"items\":{\"type\":\"number\"}}:editor=-:label=values:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"number\"}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={\"type\":\"number\"}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.number.add",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={\"type\":\"number\"}:editor=-:label=value:literal=false",
+      "INPUT:DATA:amount:ONE:required:schema={\"type\":\"number\"}:editor=-:label=amount:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"number\"}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={\"type\":\"number\"}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.number.clamp",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={\"type\":\"number\"}:editor=-:label=value:literal=false",
+      "INPUT:DATA:min:ONE:required:schema={\"type\":\"number\"}:editor=-:label=min:literal=false",
+      "INPUT:DATA:max:ONE:required:schema={\"type\":\"number\"}:editor=-:label=max:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"number\"}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={\"type\":\"number\"}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.string.fromPrimitive",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={\"anyOf\":[{\"type\":\"string\"},{\"type\":\"number\"},{\"type\":\"boolean\"},{\"type\":\"null\"}]}:editor=-:label=value:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\"}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.string.transform",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false",
+      "INPUT:DATA:operations:ONE:required:schema={\"type\":\"array\",\"items\":{\"type\":\"string\",\"enum\":[\"TRIM\",\"LOWERCASE\",\"UNDERSCORE_TO_SPACE\"]}}:editor=-:label=operations:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\"}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.string.concat",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:values:ONE:required:schema={\"type\":\"array\",\"items\":{\"type\":\"string\"}}:editor=-:label=values:literal=false",
+      "INPUT:DATA:separator:ONE:required:schema={\"type\":\"string\"}:editor=-:label=separator:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{\"type\":\"string\"}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.string.removePrefix",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false",
+      "INPUT:DATA:prefix:ONE:required:schema={\"type\":\"string\"}:editor=-:label=prefix:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"matched\":{\"type\":\"boolean\"},\"value\":{\"type\":\"string\"}},\"required\":[\"matched\",\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/matched:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=matched:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.table.lookupKey",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:table:ONE:required:schema={}:editor=-:label=table:literal=false",
+      "INPUT:DATA:key:ONE:required:schema={\"type\":\"string\"}:editor=-:label=key:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"key\":{\"type\":\"string\"},\"value\":{}},\"required\":[\"key\",\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/key:MANY:required:schema={\"type\":\"string\"}:editor=-:label=key:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.table.lookupRange",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:rows:ONE:required:schema={}:editor=-:label=rows:literal=false",
+      "INPUT:DATA:number:ONE:required:schema={\"type\":\"number\"}:editor=-:label=number:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"index\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991},\"min\":{\"type\":\"number\"},\"max\":{\"type\":\"number\"},\"value\":{}},\"required\":[\"index\",\"max\",\"min\",\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/index:MANY:required:schema={\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991}:editor=-:label=index:literal=false",
+      "OUTPUT:DATA:property/max:MANY:required:schema={\"type\":\"number\"}:editor=-:label=max:literal=false",
+      "OUTPUT:DATA:property/min:MANY:required:schema={\"type\":\"number\"}:editor=-:label=min:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.json.set",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false",
+      "INPUT:DATA:path:ONE:required:schema={\"type\":\"string\"}:editor=SCHEMA_PATH:pathSource=value/VALUE:label=path:literal=false",
+      "INPUT:DATA:newValue:ONE:required:schema={}:editor=-:label=newValue:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.json.remove",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false",
+      "INPUT:DATA:path:ONE:required:schema={\"type\":\"string\"}:editor=SCHEMA_PATH:pathSource=value/VALUE:label=path:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.json.increment",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false",
+      "INPUT:DATA:path:ONE:required:schema={\"type\":\"string\"}:editor=SCHEMA_PATH:pathSource=value/VALUE:label=path:literal=false",
+      "INPUT:DATA:amount:ONE:required:schema={\"type\":\"number\"}:editor=-:label=amount:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.json.append",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false",
+      "INPUT:DATA:path:ONE:required:schema={\"type\":\"string\"}:editor=SCHEMA_PATH:pathSource=value/VALUE:label=path:literal=false",
+      "INPUT:DATA:item:ONE:required:schema={}:editor=-:label=item:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.json.prepend",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false",
+      "INPUT:DATA:path:ONE:required:schema={\"type\":\"string\"}:editor=SCHEMA_PATH:pathSource=value/VALUE:label=path:literal=false",
+      "INPUT:DATA:item:ONE:required:schema={}:editor=-:label=item:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.json.concat",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false",
+      "INPUT:DATA:path:ONE:required:schema={\"type\":\"string\"}:editor=SCHEMA_PATH:pathSource=value/VALUE:label=path:literal=false",
+      "INPUT:DATA:items:ONE:required:schema={}:editor=-:label=items:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.json.removeMatching",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false",
+      "INPUT:DATA:path:ONE:required:schema={\"type\":\"string\"}:editor=SCHEMA_PATH:pathSource=value/VALUE:label=path:literal=false",
+      "INPUT:DATA:match:ONE:required:schema={}:editor=-:label=match:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{}},\"required\":[\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.json.upsertByKey",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false",
+      "INPUT:DATA:path:ONE:required:schema={\"type\":\"string\"}:editor=SCHEMA_PATH:pathSource=value/VALUE:label=path:literal=false",
+      "INPUT:DATA:key:ONE:required:schema={\"type\":\"string\"}:editor=-:label=key:literal=false",
+      "INPUT:DATA:item:ONE:required:schema={}:editor=-:label=item:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"value\":{},\"index\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991},\"replaced\":{\"type\":\"boolean\"}},\"required\":[\"index\",\"replaced\",\"value\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/index:MANY:required:schema={\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991}:editor=-:label=index:literal=false",
+      "OUTPUT:DATA:property/replaced:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=replaced:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={}:editor=-:label=value:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.collection.filter",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:items:ONE:required:schema={}:editor=-:label=items:literal=false",
+      "INPUT:DATA:match:ONE:required:schema={}:editor=-:label=match:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"items\":{},\"indices\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991}}},\"required\":[\"indices\",\"items\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/indices:MANY:required:schema={\"type\":\"array\",\"items\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991}}:editor=-:label=indices:literal=false",
+      "OUTPUT:DATA:property/items:MANY:required:schema={}:editor=-:label=items:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.collection.mapFields",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:items:ONE:required:schema={}:editor=-:label=items:literal=false",
+      "INPUT:DATA:fields:ONE:required:schema={\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"from\":{\"type\":\"string\"},\"to\":{\"type\":\"string\"}},\"required\":[\"from\",\"to\"],\"additionalProperties\":false}}:editor=-:label=fields:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"items\":{}},\"required\":[\"items\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/items:MANY:required:schema={}:editor=-:label=items:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.collection.extract",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:items:ONE:required:schema={}:editor=-:label=items:literal=false",
+      "INPUT:DATA:path:ONE:required:schema={\"type\":\"string\"}:editor=SCHEMA_PATH:pathSource=items/ARRAY_ITEMS:label=path:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"items\":{}}},\"required\":[\"items\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/items:MANY:required:schema={\"type\":\"array\",\"items\":{}}:editor=-:label=items:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.collection.lookup",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:items:ONE:required:schema={}:editor=-:label=items:literal=false",
+      "INPUT:DATA:key:ONE:required:schema={\"type\":\"string\"}:editor=-:label=key:literal=false",
+      "INPUT:DATA:value:ONE:required:schema={\"anyOf\":[{\"type\":\"string\"},{\"type\":\"number\"},{\"type\":\"boolean\"},{\"type\":\"null\"}]}:editor=-:label=value:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"found\":{\"type\":\"boolean\"},\"index\":{\"anyOf\":[{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991},{\"type\":\"null\"}]},\"item\":{}},\"required\":[\"found\",\"index\",\"item\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/found:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=found:literal=false",
+      "OUTPUT:DATA:property/index:MANY:required:schema={\"anyOf\":[{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991},{\"type\":\"null\"}]}:editor=-:label=index:literal=false",
+      "OUTPUT:DATA:property/item:MANY:required:schema={}:editor=-:label=item:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.collection.lookupString",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:items:ONE:required:schema={}:editor=-:label=items:literal=false",
+      "INPUT:DATA:key:ONE:required:schema={\"type\":\"string\"}:editor=-:label=key:literal=false",
+      "INPUT:DATA:value:ONE:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false",
+      "INPUT:DATA:caseSensitive:ONE:required:schema={\"type\":\"boolean\"}:editor=-:label=caseSensitive:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"found\":{\"type\":\"boolean\"},\"index\":{\"anyOf\":[{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991},{\"type\":\"null\"}]},\"item\":{}},\"required\":[\"found\",\"index\",\"item\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/found:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=found:literal=false",
+      "OUTPUT:DATA:property/index:MANY:required:schema={\"anyOf\":[{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991},{\"type\":\"null\"}]}:editor=-:label=index:literal=false",
+      "OUTPUT:DATA:property/item:MANY:required:schema={}:editor=-:label=item:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.collection.filterString",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": [
+      "INPUT:DATA:items:ONE:required:schema={}:editor=-:label=items:literal=false",
+      "INPUT:DATA:path:ONE:required:schema={\"type\":\"string\"}:editor=SCHEMA_PATH:pathSource=items/ARRAY_ITEMS:label=path:literal=false",
+      "INPUT:DATA:operator:ONE:required:schema={\"type\":\"string\",\"enum\":[\"EQUALS\",\"NOT_EQUALS\"]}:editor=-:label=operator:literal=false",
+      "INPUT:DATA:value:ONE:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false",
+      "INPUT:DATA:caseSensitive:ONE:required:schema={\"type\":\"boolean\"}:editor=-:label=caseSensitive:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"items\":{},\"indices\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991}}},\"required\":[\"indices\",\"items\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/indices:MANY:required:schema={\"type\":\"array\",\"items\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991}}:editor=-:label=indices:literal=false",
+      "OUTPUT:DATA:property/items:MANY:required:schema={}:editor=-:label=items:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.collection.flatten",
+    "class": "TOOL/PURE_DATA/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": ["INPUT:DATA:items:ONE:required:schema={}:editor=-:label=items:literal=false"],
+    "outputs": [
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"items\":{\"type\":\"array\",\"items\":{}}},\"required\":[\"items\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/items:MANY:required:schema={\"type\":\"array\",\"items\":{}}:editor=-:label=items:literal=false"
+    ],
+    "fields": "[]"
+  },
+  {
+    "type": "tool.id.generate",
+    "class": "TOOL/CONTROLLED/EXECUTOR",
+    "initialData": "{}",
+    "initialInputValues": "{}",
+    "inputs": ["INPUT:CONTROL:in:ONE:label=in:literal=false"],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\"}},\"required\":[\"id\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/id:MANY:required:schema={\"type\":\"string\"}:editor=-:label=id:literal=false"
+    ],
+    "fields": "[]"
+  }
+]

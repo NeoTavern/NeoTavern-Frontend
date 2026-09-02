@@ -1,0 +1,150 @@
+{
+  "format": "NEOTAVERN_CUSTOM_AGENT_FLOW",
+  "agent": {
+    "id": "example-director",
+    "name": "Director",
+    "enabled": true,
+    "priority": 10,
+    "configurationSchema": { "type": "object", "additionalProperties": false },
+    "configurationDefaults": {},
+    "stateSchema": {
+      "type": "object",
+      "properties": { "direction": { "type": "string" } },
+      "required": ["direction"],
+      "additionalProperties": false
+    },
+    "initialState": { "direction": "" },
+    "views": [],
+    "flows": [
+      {
+        "id": "direct",
+        "name": "Direct",
+        "kind": "TRIGGER",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "trigger",
+            "type": "trigger.after-user",
+            "position": { "x": 0, "y": 0 },
+            "data": { "schedule": { "type": "ALWAYS" } },
+            "inputValues": {}
+          },
+          {
+            "id": "chance",
+            "type": "tool.random.chance",
+            "position": { "x": 220, "y": 0 },
+            "data": {},
+            "inputValues": { "probability": 0.2 }
+          },
+          {
+            "id": "branch",
+            "type": "control.branch",
+            "position": { "x": 440, "y": 0 },
+            "data": { "cases": [{ "id": "inject", "label": "Inject" }] },
+            "inputValues": {}
+          },
+          {
+            "id": "set-direction",
+            "type": "effect.set-state",
+            "position": { "x": 660, "y": -80 },
+            "data": { "path": "direction" },
+            "inputValues": { "value": "Introduce a complication." }
+          },
+          {
+            "id": "set-injection",
+            "type": "effect.set-injection",
+            "position": { "x": 880, "y": -80 },
+            "data": {
+              "injectionId": "director-task",
+              "placement": "relative",
+              "depth": 0,
+              "lifetime": { "type": "ONCE" },
+              "activation": { "type": "ALWAYS" }
+            },
+            "inputValues": { "content": "Introduce a subtle complication." }
+          }
+        ],
+        "edges": [
+          {
+            "id": "a-trigger-chance",
+            "kind": "CONTROL",
+            "source": { "nodeId": "trigger", "portId": "out" },
+            "target": { "nodeId": "chance", "portId": "in" }
+          },
+          {
+            "id": "b-chance-branch",
+            "kind": "CONTROL",
+            "source": { "nodeId": "chance", "portId": "out" },
+            "target": { "nodeId": "branch", "portId": "in" }
+          },
+          {
+            "id": "c-roll-condition",
+            "kind": "DATA",
+            "source": { "nodeId": "chance", "portId": "property/result" },
+            "target": { "nodeId": "branch", "portId": "condition.inject" }
+          },
+          {
+            "id": "d-branch-set",
+            "kind": "CONTROL",
+            "source": { "nodeId": "branch", "portId": "case.inject" },
+            "target": { "nodeId": "set-direction", "portId": "in" }
+          },
+          {
+            "id": "e-set-injection",
+            "kind": "CONTROL",
+            "source": { "nodeId": "set-direction", "portId": "out" },
+            "target": { "nodeId": "set-injection", "portId": "in" }
+          }
+        ]
+      },
+      {
+        "id": "cleanup",
+        "name": "Cleanup after generation",
+        "kind": "TRIGGER",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "cleanup-trigger",
+            "type": "trigger.after-generation",
+            "position": { "x": 0, "y": 0 },
+            "data": {
+              "generationModes": ["NEW", "REGENERATE", "ADD_SWIPE"],
+              "schedule": { "type": "ALWAYS" }
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "remove-injection",
+            "type": "effect.remove-injection",
+            "position": { "x": 240, "y": 0 },
+            "data": { "injectionId": "director-task" },
+            "inputValues": {}
+          },
+          {
+            "id": "clear-direction",
+            "type": "effect.set-state",
+            "position": { "x": 480, "y": 0 },
+            "data": { "path": "direction" },
+            "inputValues": { "value": "" }
+          }
+        ],
+        "edges": [
+          {
+            "id": "cleanup-trigger-remove",
+            "kind": "CONTROL",
+            "source": { "nodeId": "cleanup-trigger", "portId": "out" },
+            "target": { "nodeId": "remove-injection", "portId": "in" }
+          },
+          {
+            "id": "cleanup-remove-clear",
+            "kind": "CONTROL",
+            "source": { "nodeId": "remove-injection", "portId": "out" },
+            "target": { "nodeId": "clear-direction", "portId": "in" }
+          }
+        ]
+      }
+    ]
+  }
+}

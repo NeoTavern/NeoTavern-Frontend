@@ -1,0 +1,180 @@
+{
+  "scopeEntry": {
+    "inputs": [],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:argument:MANY:required:schema={\"type\":\"string\"}:editor=-:label=Argument:literal=true"
+    ]
+  },
+  "scopeReturn": {
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:returned:ONE:optional:schema={\"type\":\"number\"}:editor=-:label=Returned:literal=true"
+    ],
+    "outputs": []
+  },
+  "branch": {
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:condition.first:ONE:required:schema={\"type\":\"boolean\"}:editor=-:label=First:literal=true",
+      "INPUT:DATA:condition.second:ONE:required:schema={\"type\":\"boolean\"}:editor=-:label=Second:literal=true"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:case.first:MANY:label=First:literal=true",
+      "OUTPUT:CONTROL:case.second:MANY:label=Second:literal=true",
+      "OUTPUT:CONTROL:else:MANY:label=else:literal=false"
+    ]
+  },
+  "mergeAny": {
+    "inputs": [
+      "INPUT:CONTROL:in.plain:ONE:label=Plain:literal=true",
+      "INPUT:CONTROL:in.value:ONE:label=Value:literal=true",
+      "INPUT:DATA:value.value:ONE:required:schema={}:editor=-:label=Value:literal=true"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:value:MANY:optional:schema={}:editor=-:label=value:literal=false"
+    ]
+  },
+  "mergeAll": {
+    "inputs": [
+      "INPUT:CONTROL:in.left:ONE:label=Left:literal=true",
+      "INPUT:DATA:value.left:ONE:required:schema={}:editor=-:label=Left:literal=true",
+      "INPUT:CONTROL:in.right:ONE:label=Right:literal=true",
+      "INPUT:DATA:value.right:ONE:required:schema={}:editor=-:label=Right:literal=true"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:values:MANY:required:schema={\"type\":\"object\",\"properties\":{\"left\":{},\"right\":{}},\"required\":[\"left\",\"right\"],\"additionalProperties\":false}:editor=-:label=values:literal=false"
+    ]
+  },
+  "object": {
+    "inputs": [
+      "INPUT:DATA:field.name:ONE:required:schema={\"type\":\"string\"}:editor=-:label=name:literal=true",
+      "INPUT:DATA:field.score:ONE:required:schema={\"type\":\"number\"}:editor=-:label=score:literal=true"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:value:MANY:required:schema={\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"},\"score\":{\"type\":\"number\"}},\"required\":[\"name\",\"score\"],\"additionalProperties\":false}:editor=-:label=value:literal=false",
+      "OUTPUT:DATA:field.name:MANY:required:schema={\"type\":\"string\"}:editor=-:label=name:literal=true",
+      "OUTPUT:DATA:field.score:MANY:required:schema={\"type\":\"number\"}:editor=-:label=score:literal=true"
+    ]
+  },
+  "arrayKnown": {
+    "inputs": [
+      "INPUT:DATA:item.one:ONE:required:schema={}:editor=-:label=One:literal=true",
+      "INPUT:DATA:item.two:ONE:required:schema={}:editor=-:label=Two:literal=true"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:value:MANY:required:schema={\"type\":\"array\",\"items\":{\"type\":\"string\"}}:editor=-:label=value:literal=false"
+    ]
+  },
+  "all": {
+    "inputs": [
+      "INPUT:DATA:value.first:ONE:required:schema={\"type\":\"boolean\"}:editor=-:label=value:literal=true",
+      "INPUT:DATA:value.second:ONE:required:schema={\"type\":\"boolean\"}:editor=-:label=input:literal=true"
+    ],
+    "outputs": ["OUTPUT:DATA:result:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=result:literal=false"]
+  },
+  "any": {
+    "inputs": [
+      "INPUT:DATA:value.first:ONE:required:schema={\"type\":\"boolean\"}:editor=-:label=value:literal=true",
+      "INPUT:DATA:value.second:ONE:required:schema={\"type\":\"boolean\"}:editor=-:label=input:literal=true"
+    ],
+    "outputs": ["OUTPUT:DATA:result:MANY:required:schema={\"type\":\"boolean\"}:editor=-:label=result:literal=false"]
+  },
+  "template": {
+    "inputs": [
+      "INPUT:DATA:variable.first:ONE:required:schema={}:editor=-:label=value:literal=true",
+      "INPUT:DATA:variable.second:ONE:required:schema={}:editor=-:label=input:literal=true"
+    ],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false"]
+  },
+  "arrayMixed": {
+    "inputs": [
+      "INPUT:DATA:item.one:ONE:required:schema={}:editor=-:label=One:literal=true",
+      "INPUT:DATA:item.two:ONE:required:schema={}:editor=-:label=Two:literal=true"
+    ],
+    "outputs": [
+      "OUTPUT:DATA:value:MANY:required:schema={\"type\":\"array\",\"items\":{}}:editor=-:label=value:literal=false"
+    ]
+  },
+  "llm": {
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:variable.topic:ONE:required:schema={}:editor=-:label=topic:literal=true",
+      "INPUT:DATA:historyCount:ONE:required:schema={\"type\":\"integer\",\"minimum\":1}:editor=-:label=historyCount:literal=false",
+      "INPUT:DATA:connectionProfileId:ONE:optional:schema={\"type\":\"string\"}:editor=CONNECTION_PROFILE:label=connectionProfileId:literal=false",
+      "INPUT:DATA:structuredFormat:ONE:required:schema={\"type\":\"string\",\"enum\":[\"NATIVE\",\"JSON\",\"XML\"]}:editor=-:label=structuredFormat:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"answer\":{\"type\":\"string\"},\"score\":{\"type\":\"number\"}},\"required\":[\"answer\",\"score\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/answer:MANY:required:schema={\"type\":\"string\"}:editor=-:label=answer:literal=true",
+      "OUTPUT:DATA:property/score:MANY:required:schema={\"type\":\"number\"}:editor=-:label=score:literal=true"
+    ]
+  },
+  "runFlow": {
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:argument:ONE:required:schema={\"type\":\"string\"}:editor=-:label=Argument:literal=true"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:returned:MANY:optional:schema={\"type\":\"number\"}:editor=-:label=Returned:literal=true"
+    ]
+  },
+  "forEach": {
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:items:ONE:required:schema={\"type\":\"array\"}:editor=-:label=items:literal=false",
+      "INPUT:DATA:initialAccumulator:ONE:required:schema={}:editor=-:label=initialAccumulator:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:items:MANY:required:schema={\"type\":\"array\",\"items\":{\"type\":\"number\"}}:editor=-:label=items:literal=false",
+      "OUTPUT:DATA:accumulator:MANY:required:schema={\"type\":\"string\"}:editor=-:label=accumulator:literal=false"
+    ]
+  },
+  "configuration": {
+    "inputs": [],
+    "outputs": [
+      "OUTPUT:DATA:value:MANY:required:schema={\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}},\"required\":[\"name\"]}:editor=-:label=value:literal=false",
+      "OUTPUT:DATA:property/name:MANY:required:schema={\"type\":\"string\"}:editor=-:label=name:literal=true"
+    ]
+  },
+  "state": {
+    "inputs": [],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={\"type\":\"number\"}:editor=-:label=value:literal=false"]
+  },
+  "event": {
+    "inputs": [],
+    "outputs": [
+      "OUTPUT:DATA:value:MANY:required:schema={\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\"}},\"required\":[\"query\"],\"additionalProperties\":false}:editor=-:label=value:literal=false",
+      "OUTPUT:DATA:property/query:MANY:required:schema={\"type\":\"string\"}:editor=-:label=query:literal=true"
+    ]
+  },
+  "get": {
+    "inputs": ["INPUT:DATA:value:ONE:required:schema={}:editor=-:label=value:literal=false"],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false"]
+  },
+  "unpack": {
+    "inputs": ["INPUT:DATA:value:ONE:required:schema={\"type\":\"object\"}:editor=-:label=value:literal=false"],
+    "outputs": [
+      "OUTPUT:DATA:value:MANY:required:schema={\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}},\"required\":[\"name\"]}:editor=-:label=value:literal=false",
+      "OUTPUT:DATA:property/name:MANY:required:schema={\"type\":\"string\"}:editor=-:label=name:literal=true"
+    ]
+  },
+  "weightedTool": {
+    "inputs": [
+      "INPUT:CONTROL:in:ONE:label=in:literal=false",
+      "INPUT:DATA:items:ONE:required:schema={}:editor=-:label=items:literal=false"
+    ],
+    "outputs": [
+      "OUTPUT:CONTROL:out:MANY:label=out:literal=false",
+      "OUTPUT:DATA:result:MANY:required:schema={\"type\":\"object\",\"properties\":{\"index\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991},\"value\":{\"type\":\"string\"},\"weight\":{\"type\":\"number\"}},\"required\":[\"index\",\"value\",\"weight\"],\"additionalProperties\":false}:editor=-:label=result:literal=false",
+      "OUTPUT:DATA:property/index:MANY:required:schema={\"type\":\"integer\",\"minimum\":0,\"maximum\":9007199254740991}:editor=-:label=index:literal=false",
+      "OUTPUT:DATA:property/value:MANY:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false",
+      "OUTPUT:DATA:property/weight:MANY:required:schema={\"type\":\"number\"}:editor=-:label=weight:literal=false"
+    ]
+  }
+}
