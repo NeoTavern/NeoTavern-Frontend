@@ -196,6 +196,69 @@ describe('PromptBuilder', () => {
     expect(eventEmitter.emit).toHaveBeenCalledWith('prompt:built', messages, expect.anything());
   });
 
+  it('assembles contributed in-chat injections without re-evaluating their rendered macro-like content', async () => {
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: mockChatHistory,
+      samplerSettings: mockSamplerSettings,
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: mockMetadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'contributed-in-chat',
+      mediaContext: mockMediaContext,
+      promptInjections: [
+        {
+          id: 'task-injection',
+          content: '{{char}} authored task',
+          role: 'assistant',
+          name: 'Custom Agent',
+          placement: 'in-chat',
+          depth: 0,
+        },
+      ],
+    });
+
+    const messages = await builder.build();
+
+    expect(messages.at(-1)).toEqual({
+      role: 'assistant',
+      content: '{{char}} authored task',
+      name: 'Custom Agent',
+    });
+    expect(builder.includedPromptInjectionIds).toEqual(['task-injection']);
+    expect(eventEmitter.emit).toHaveBeenCalledWith('prompt:built', messages, {
+      generationId: 'contributed-in-chat',
+    });
+  });
+
+  it.each([
+    ['role', { role: 'tool' }, 'Unsupported role'],
+    ['depth', { injection_depth: -1 }, 'Invalid injection depth'],
+    ['order', { injection_order: Number.NaN }, 'Invalid injection order'],
+  ])('rejects invalid prompt %s values with prompt context', async (_field, overrides, error) => {
+    const prompt = {
+      ...mockSamplerSettings.prompts[0],
+      identifier: `invalid-${_field}` as KnownPromptIdentifiers,
+      ...overrides,
+    };
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: mockChatHistory,
+      samplerSettings: { ...mockSamplerSettings, prompts: [prompt] } as unknown as SamplerSettings,
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: mockMetadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: `invalid-${_field}`,
+      mediaContext: mockMediaContext,
+    });
+
+    await expect(builder.build()).rejects.toThrow(`${error} for prompt "invalid-${_field}"`);
+  });
+
   it('normalizes legacy numeric prompt positions at the runtime boundary', async () => {
     const samplerSettings = {
       ...mockSamplerSettings,
@@ -237,12 +300,7 @@ describe('PromptBuilder', () => {
 
     const messages = await builder.build();
 
-    expect(messages.map((message) => message.content)).toEqual([
-      'Legacy relative',
-      'Hello',
-      'Hi',
-      'Legacy in chat',
-    ]);
+    expect(messages.map((message) => message.content)).toEqual(['Legacy relative', 'Hello', 'Hi', 'Legacy in chat']);
     expect(samplerSettings.prompts[0].injection_position).toBe(0);
     expect(samplerSettings.prompts[2].injection_position).toBe(1);
   });
@@ -927,6 +985,218 @@ describe('PromptBuilder', () => {
     expect(structuredPrompt).toContain('"answer": "example"');
     expect(metadata.extra?.variables).toEqual({ origin: 'prompt', count: 1 });
     expect(builder.macroVariablesChanged).toBe(true);
+  });
+
+  it('assembles extension injections through fixed/depth ordering and history token budgeting', async () => {
+    (eventEmitter.emit as ReturnType<typeof vi.fn>).mockImplementationOnce(async (event: string, options: unknown) => {
+      if (event !== 'prompt:building-started') return;
+      const promptOptions = options as {
+        promptInjections?: Array<{
+          id: string;
+          content: string;
+          placement: 'relative' | 'in-chat';
+          depth: number;
+        }>;
+      };
+      promptOptions.promptInjections = [
+        { id: 'relative', content: 'Agent fixed', placement: 'relative', depth: 0 },
+        { id: 'depth-one', content: 'Agent depth 1', placement: 'in-chat', depth: 1 },
+      ];
+    });
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: mockChatHistory,
+      samplerSettings: { ...mockSamplerSettings, max_context: 95 },
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: mockMetadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'native-agent-injections',
+      mediaContext: mockMediaContext,
+    });
+
+    const messages = await builder.build();
+
+    expect(messages.map((message) => message.content)).toEqual([
+      'Agent fixed',
+      'I am Char1.',
+      'Hello',
+      'Agent depth 1',
+      'Hi',
+    ]);
+
+    const budgetedInjection = '123456789012345678901234567890';
+    (eventEmitter.emit as ReturnType<typeof vi.fn>).mockImplementationOnce(async (event: string, options: unknown) => {
+      if (event === 'prompt:building-started') {
+        (options as { promptInjections?: unknown[] }).promptInjections = [
+          { id: 'budgeted', content: budgetedInjection, placement: 'in-chat', depth: 0 },
+        ];
+      }
+    });
+    const budgetedBuilder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: mockChatHistory,
+      samplerSettings: { ...mockSamplerSettings, max_context: 95 },
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: mockMetadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'budgeted-agent-injection',
+      mediaContext: mockMediaContext,
+    });
+
+    expect((await budgetedBuilder.build()).map((message) => message.content)).toEqual([
+      'I am Char1.',
+      'Hi',
+      budgetedInjection,
+    ]);
+  });
+
+  it('acknowledges only contributed injections assembled after token budgeting', async () => {
+    const acknowledgements: Array<{ generationId: string; includedPromptInjectionIds: string[] }> = [];
+    (eventEmitter.emit as ReturnType<typeof vi.fn>).mockImplementation(
+      async (event: string, payload: unknown, context?: unknown) => {
+        if (event === 'prompt:building-started') {
+          (payload as { promptInjections?: unknown[] }).promptInjections = [
+            { id: 'included-relative', content: 'Fixed', placement: 'relative', depth: 0 },
+            { id: 'truncated-in-chat', content: 'x'.repeat(100), placement: 'in-chat', depth: 0 },
+          ];
+        } else if (event === 'prompt:built') {
+          acknowledgements.push(context as { generationId: string; includedPromptInjectionIds: string[] });
+        }
+      },
+    );
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: mockChatHistory,
+      samplerSettings: { ...mockSamplerSettings, max_context: 95 },
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: mockMetadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'acknowledged-injections',
+      mediaContext: mockMediaContext,
+    });
+
+    const messages = await builder.build();
+
+    expect(messages.map((message) => message.content)).not.toContain('x'.repeat(100));
+    expect(acknowledgements).toEqual([{ generationId: 'acknowledged-injections' }]);
+    expect(builder.includedPromptInjectionIds).toEqual(['included-relative']);
+    await builder.build();
+    expect(acknowledgements).toHaveLength(1);
+    (eventEmitter.emit as ReturnType<typeof vi.fn>).mockImplementation(async () => undefined);
+  });
+
+  it('does not acknowledge contributed injections when prompt assembly fails', async () => {
+    const acknowledgements: unknown[] = [];
+    (eventEmitter.emit as ReturnType<typeof vi.fn>).mockImplementation(
+      async (event: string, payload: unknown, context?: unknown) => {
+        if (event === 'prompt:building-started') {
+          (payload as { promptInjections?: unknown[] }).promptInjections = [
+            { id: 'failed', content: 'explode', placement: 'relative', depth: 0 },
+          ];
+        } else if (event === 'prompt:built') acknowledgements.push(context);
+      },
+    );
+    const failingTokenizer: Tokenizer = {
+      getTokenCount: vi.fn(async (text: string) => {
+        if (text === 'explode') throw new Error('tokenization failed');
+        return text.length;
+      }),
+    };
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: mockChatHistory,
+      samplerSettings: mockSamplerSettings,
+      persona: mockPersona,
+      tokenizer: failingTokenizer,
+      chatMetadata: mockMetadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'failed-injections',
+      mediaContext: mockMediaContext,
+    });
+
+    await expect(builder.build()).rejects.toThrow('tokenization failed');
+    expect(acknowledgements).toEqual([]);
+    (eventEmitter.emit as ReturnType<typeof vi.fn>).mockImplementation(async () => undefined);
+  });
+
+  it('combines contributed and native in-chat ordering without moving fixed prompts or prefills', async () => {
+    (eventEmitter.emit as ReturnType<typeof vi.fn>).mockImplementationOnce(async (event: string, options: unknown) => {
+      if (event === 'prompt:building-started') {
+        (options as { promptInjections?: unknown[] }).promptInjections = [
+          { id: 'relative', content: 'Contributed fixed', placement: 'relative', depth: 0 },
+          {
+            id: 'ordered-in-chat',
+            content: 'Contributed order 0',
+            placement: 'in-chat',
+            depth: 1,
+            order: 0,
+            role: 'assistant',
+          },
+        ];
+      }
+    });
+    const builder = new PromptBuilder({
+      characters: [mockCharacter],
+      chatHistory: mockChatHistory,
+      samplerSettings: {
+        ...mockSamplerSettings,
+        max_context: 300,
+        prompts: [
+          {
+            identifier: 'fixed-before' as KnownPromptIdentifiers,
+            name: 'Fixed before',
+            role: 'system',
+            content: 'Native fixed',
+            marker: false,
+            enabled: true,
+          },
+          { identifier: 'chatHistory', name: 'History', role: 'system', content: '', marker: true, enabled: true },
+          {
+            identifier: 'native-in-chat' as KnownPromptIdentifiers,
+            name: 'Native in chat',
+            role: 'user',
+            content: 'Native order 200',
+            marker: false,
+            enabled: true,
+            injection_position: 'in-chat',
+            injection_depth: 1,
+            injection_order: 200,
+          },
+          {
+            identifier: 'prefill' as KnownPromptIdentifiers,
+            name: 'Prefill',
+            role: 'assistant',
+            content: 'Native prefill',
+            marker: false,
+            enabled: true,
+          },
+        ],
+      },
+      persona: mockPersona,
+      tokenizer: mockTokenizer,
+      chatMetadata: mockMetadata,
+      worldInfo: mockWorldInfoSettings,
+      books: [],
+      generationId: 'combined-native-contributed-order',
+      mediaContext: mockMediaContext,
+    });
+
+    expect((await builder.build()).map((message) => message.content)).toEqual([
+      'Contributed fixed',
+      'Native fixed',
+      'Hello',
+      'Contributed order 0',
+      'Native order 200',
+      'Hi',
+      'Native prefill',
+    ]);
   });
 
   it('keeps relative prompts fixed and orders enabled in-chat prompts by depth, order, role, and configuration', async () => {

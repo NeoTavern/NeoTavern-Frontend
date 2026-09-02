@@ -231,6 +231,12 @@ const baseExtensionAPI: ExtensionAPI = {
       if (!store.activeChat) throw new Error('No active chat.');
       return deepClone(store.activeChat.messages);
     },
+    getChatExtensionData: (key) => {
+      const chat = useChatStore().activeChat;
+      if (!chat) throw new Error('No active chat.');
+      return deepClone(chat.metadata.extra?.[key]);
+    },
+    save: async () => await useChatStore().saveChat(),
     getChatInfo: () => {
       const store = useChatStore();
       return deepClone(
@@ -329,6 +335,27 @@ const baseExtensionAPI: ExtensionAPI = {
     updateMessageObject: async (index, updates) => {
       return await useChatStore().updateMessageObject(index, updates);
     },
+    setExtensionData: (location, key, value) => {
+      const store = useChatStore();
+      if (!store.activeChat) throw new Error('No active chat.');
+      let extra: Record<string, unknown>;
+      if (location.type === 'chat') {
+        store.activeChat.metadata.extra ??= {};
+        extra = store.activeChat.metadata.extra;
+      } else {
+        const messageIndex = location.type === 'message' ? location.index : location.messageIndex;
+        const message = store.activeChat.messages[messageIndex];
+        if (!message) throw new Error(`Message ${messageIndex} is unavailable.`);
+        if (location.type === 'message') extra = message.extra;
+        else {
+          const swipe = message.swipe_info[location.swipeIndex];
+          if (!swipe) throw new Error(`Swipe ${location.swipeIndex} is unavailable.`);
+          extra = swipe.extra;
+        }
+      }
+      if (value === undefined) delete extra[key];
+      else extra[key] = deepClone(value);
+    },
     deleteMessage: async (index) => {
       await useChatStore().deleteMessage(index);
     },
@@ -408,7 +435,6 @@ const baseExtensionAPI: ExtensionAPI = {
       const chatHistory = options?.chatHistory ?? [...(chatStore.activeChat?.messages ?? [])];
       const chatMetadata = options?.chatMetadata ?? chatStore.activeChat?.metadata;
       const persona = options?.persona ?? personaStore.activePersona;
-      if (chatHistory.length === 0) throw new Error('Chat history is empty.');
       if (!persona) throw new Error('No active persona.');
 
       // Determine the character context
@@ -479,6 +505,7 @@ const baseExtensionAPI: ExtensionAPI = {
         worldInfo: mergeWithUndefinedMulti({}, settingsStore.settings.worldInfo, options?.worldInfo),
         mediaContext,
         structuredResponse: options?.structuredResponse,
+        promptInjections: options?.promptInjections,
         macroEvaluation: 'preview',
         macroRandom: options?.macroRandom,
       });
@@ -550,6 +577,7 @@ const baseExtensionAPI: ExtensionAPI = {
         tokenizer: settingsStore.settings.api.tokenizer,
         presetName: chatMetadata?.connection_profile || settingsStore.settings.api.selectedSampler || 'Default',
         messages,
+        includedPromptInjectionIds: builder.includedPromptInjectionIds,
         breakdown,
         timestamp: Date.now(),
         worldInfoEntries: processedWorldInfo?.triggeredEntries ?? {},
@@ -712,12 +740,13 @@ const baseExtensionAPI: ExtensionAPI = {
 
       const characters = context?.characters ?? charStore.activeCharacters;
       const activeCharacter = context?.activeCharacter ?? characters[0];
-      const persona = context?.persona ?? personaStore.activePersona;
+      const hasPersonaOverride = context !== undefined && Object.hasOwn(context, 'persona');
+      const persona = hasPersonaOverride ? context.persona : (personaStore.activePersona ?? undefined);
       const chatHistory = context?.chatHistory ?? chatStore.activeChat?.messages;
       const chatMetadata = context?.chatMetadata ?? chatStore.activeChat?.metadata;
       const group = context?.group ?? getCharactersInMemberOrder(charStore.characters, chatMetadata?.members);
 
-      if (!persona) throw new Error('No active persona found for macro processing.');
+      if (!persona && !hasPersonaOverride) throw new Error('No active persona found for macro processing.');
 
       return macroService.process(text, {
         characters,
@@ -727,6 +756,7 @@ const baseExtensionAPI: ExtensionAPI = {
         chatHistory,
         chatMetadata,
         random: context?.random,
+        forbiddenMacros: context?.forbiddenMacros,
         additionalMacros,
       });
     },

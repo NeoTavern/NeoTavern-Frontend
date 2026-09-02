@@ -81,6 +81,12 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  async function saveChat(): Promise<void> {
+    triggerSave.cancel();
+    if (!activeChat.value || !activeChatFile.value) throw new Error('No active chat.');
+    await persistChat(activeChat.value, activeChatFile.value);
+  }
+
   // Consolidated Saving Logic
   const { trigger: triggerSave } = useAutoSave(
     async () => {
@@ -822,6 +828,7 @@ export const useChatStore = defineStore('chat', () => {
     updateChatName,
     syncSwipeToMes,
     triggerSave,
+    saveChat,
     deleteSelectedMessages,
     refreshChats,
     importChats,

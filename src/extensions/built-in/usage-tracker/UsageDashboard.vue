@@ -5,6 +5,7 @@ import { EmptyState, Pagination } from '../../../components/common';
 import { useExtensionStore } from '../../../stores/extension.store';
 import { POPUP_TYPE, type ExtensionAPI } from '../../../types';
 import CaptureViewer from './CaptureViewer.vue';
+import { formatGenerationTrace, selectGenerationTraceCaptures } from './generation-trace';
 import { UsageStorage } from './storage';
 import type {
   DashboardState,
@@ -16,8 +17,10 @@ import type {
   UsageChartPoint,
   UsageLogEntry,
   UsageStats,
+  UsageTrackerSettings,
   ViewMode,
 } from './types';
+import { DEFAULT_SETTINGS } from './types';
 
 const props = defineProps<{
   api: ExtensionAPI;
@@ -57,6 +60,7 @@ const sortOrderOptions: { label: string; value: SortOrder }[] = [
 const activeRange = ref<TimeRange>('24h');
 const viewMode = ref<ViewMode>('chart');
 const loading = ref(false);
+const copyingTrace = ref(false);
 
 // Stats & Data
 const stats = ref<UsageStats | null>(null);
@@ -159,6 +163,53 @@ async function showCapture(capture: UsageCaptureEntry) {
     okButton: true,
   });
 }
+
+async function copyGenerationTrace() {
+  const chatFile = props.api.chat.getChatInfo()?.file_id;
+  if (!chatFile) {
+    props.api.ui.showToast(t('extensionsBuiltin.usageTracker.traceNoActiveChat'), 'error');
+    return;
+  }
+
+  copyingTrace.value = true;
+  try {
+    const saved = props.api.settings.get() as Partial<UsageTrackerSettings> | undefined;
+    const settings = { ...DEFAULT_SETTINGS, ...(saved ?? {}) };
+    const chatCaptures = await props.storage.getCapturesForChat(chatFile);
+    const selected = selectGenerationTraceCaptures(chatCaptures, settings.traceGenerationCount);
+    if (!selected.length) {
+      props.api.ui.showToast(t('extensionsBuiltin.usageTracker.traceNoCaptures'), 'error');
+      return;
+    }
+    const trace = formatGenerationTrace(selected, {
+      requestMessageLimit: settings.traceRequestMessageLimit,
+      formatSource,
+      labels: {
+        request: t('extensionsBuiltin.usageTracker.request'),
+        response: t('extensionsBuiltin.usageTracker.response'),
+        type: t('extensionsBuiltin.usageTracker.type'),
+        messageIndex: t('extensionsBuiltin.usageTracker.messageIndex'),
+        model: t('extensionsBuiltin.usageTracker.model'),
+        status: t('extensionsBuiltin.usageTracker.status'),
+        prompt: t('extensionsBuiltin.usageTracker.prompt'),
+        message: t('extensionsBuiltin.usageTracker.message'),
+        toolCalls: t('extensionsBuiltin.usageTracker.toolCalls'),
+        reasoning: t('extensionsBuiltin.usageTracker.reasoning'),
+        images: t('extensionsBuiltin.usageTracker.images'),
+        error: t('extensionsBuiltin.usageTracker.error'),
+        noData: t('extensionsBuiltin.usageTracker.noDataCaptured'),
+      },
+    });
+    await navigator.clipboard.writeText(trace);
+    props.api.ui.showToast(t('extensionsBuiltin.usageTracker.traceCopied'), 'success');
+  } catch (error) {
+    console.error('[UsageTracker] Failed to copy generation trace:', error);
+    props.api.ui.showToast(t('extensionsBuiltin.usageTracker.traceCopyFailed'), 'error');
+  } finally {
+    copyingTrace.value = false;
+  }
+}
+
 async function refresh() {
   loading.value = true;
   try {
@@ -411,6 +462,16 @@ const chartYLabels = computed(() => {
             @click="viewMode = 'captures'"
           />
         </div>
+        <Button
+          v-if="viewMode === 'captures'"
+          icon="fa-copy"
+          :title="t('extensionsBuiltin.usageTracker.copyGenerationTrace')"
+          :loading="copyingTrace"
+          variant="ghost"
+          @click="copyGenerationTrace"
+        >
+          {{ t('extensionsBuiltin.usageTracker.copyTrace') }}
+        </Button>
         <Button icon="fa-rotate" :title="t('common.refresh')" variant="ghost" class="refresh-button" @click="refresh" />
         <Button
           icon="fa-trash-can"

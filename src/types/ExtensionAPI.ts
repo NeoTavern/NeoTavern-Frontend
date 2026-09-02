@@ -404,6 +404,8 @@ export interface ExtensionAPI<
       options?: { triggerGeneration?: boolean; generationId?: string },
     ) => Promise<void>;
     getHistory: () => TypedChatMessage<TMessageExtra>[];
+    getChatExtensionData: (key: string) => unknown;
+    save: () => Promise<void>;
     /**
      * Retrieves the current active chat filename (without extension).
      * Returns null if no chat is loaded.
@@ -418,6 +420,14 @@ export interface ExtensionAPI<
     ) => Promise<void>;
     updateMessage: (index: number, newContent: string, newReasoning?: string) => Promise<void>;
     updateMessageObject: (index: number, updates: DeepPartial<TypedChatMessage<TMessageExtra>>) => Promise<void>;
+    setExtensionData: (
+      location:
+        | { type: 'chat' }
+        | { type: 'message'; index: number }
+        | { type: 'swipe'; messageIndex: number; swipeIndex: number },
+      key: string,
+      value: unknown,
+    ) => void;
     deleteMessage: (index: number) => Promise<void>;
     generateResponse: (
       initialMode: GenerationMode,

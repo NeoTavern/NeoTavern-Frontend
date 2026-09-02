@@ -314,8 +314,22 @@ export type GenerationContext = {
   structuredResponse?: StructuredResponseOptions;
 } & { controller: AbortController };
 
+export type PromptInjectionAcknowledgementId = string;
+
+export type PromptInjection = {
+  id: PromptInjectionAcknowledgementId;
+  content: string;
+  role?: 'user' | 'assistant' | 'system';
+  name?: string;
+  placement: 'relative' | 'in-chat';
+  depth: number;
+  order?: number;
+};
+
 export type PromptBuilderOptions = {
   generationId: string;
+  /** Extension contributions assembled through PromptBuilder's normal fixed/history budget path. */
+  promptInjections?: PromptInjection[];
   characters: Character[];
   group?: Character[];
   chatMetadata?: ChatMetadata;
@@ -378,6 +392,8 @@ export interface ItemizedPrompt {
   presetName: string;
 
   messages: ApiChatMessage[];
+  /** One-off and persistent prompt contributions that survived shared prompt budgeting. */
+  includedPromptInjectionIds?: PromptInjectionAcknowledgementId[];
   breakdown: PromptTokenBreakdown;
 
   timestamp: number;

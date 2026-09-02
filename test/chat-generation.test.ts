@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatCompletionService } from '../src/api/generation';
 import { GenerationMode } from '../src/constants';
 import { useChatGeneration, type ChatStateRef } from '../src/composables/useChatGeneration';
+import { registerChatLifecycleHooks } from '../src/services/chat-lifecycle';
 import { createDefaultSettings } from '../src/services/settings-migration.service';
 import { useCharacterStore } from '../src/stores/character.store';
 import { usePersonaStore } from '../src/stores/persona.store';
 import { useSettingsStore } from '../src/stores/settings.store';
-import type { Character, ChatMetadata, FullChat, Persona } from '../src/types';
+import type { Character, ChatMessage, ChatMetadata, FullChat, Persona } from '../src/types';
 import { macroService } from '../src/services/macro-service';
+import { eventEmitter } from '../src/utils/extensions';
 import { ref } from 'vue';
 
 vi.mock('../src/composables/useStrictI18n', () => ({
@@ -66,6 +68,141 @@ describe('chat generation persistence integration', () => {
     const personaStore = usePersonaStore();
     personaStore.personas = [persona];
     personaStore.activePersonaId = persona.avatarId;
+  });
+
+  it('awaits hooks around live insertion and assistant finalization events', async () => {
+    const order: string[] = [];
+    const chat: ChatStateRef = { metadata: { integrity: 'chat' }, messages: [], fileName: 'chat' };
+    const unregisterHooks = registerChatLifecycleHooks({
+      afterUserMessage: async ({ message }) => {
+        expect(chat.messages.includes(message)).toBe(true);
+        order.push('after-user');
+      },
+      beforeGeneration: async () => {
+        order.push('before-generation');
+        return { assistantContent: 'supplied' };
+      },
+      afterGeneration: async ({ message }) => {
+        expect(chat.messages.includes(message)).toBe(true);
+        order.push('after-generation');
+      },
+    });
+    const unregisterCreated = eventEmitter.on('message:created', (message) => {
+      order.push(message.is_user ? 'user-created' : 'assistant-created');
+    });
+    const unregisterFinished = eventEmitter.on('generation:finished', () => {
+      order.push('generation-finished');
+    });
+    const generation = useChatGeneration({
+      activeChat: ref(chat),
+      syncSwipeToMes: vi.fn(),
+      stopAutoModeTimer: vi.fn(),
+      findToolChainStart: (index) => index,
+      triggerSave: vi.fn(),
+      persistChat: vi.fn(),
+    });
+    try {
+      await generation.sendMessage('hello', { triggerGeneration: false });
+      await generation.generateResponse(GenerationMode.NEW, { generationId: 'ordered' });
+    } finally {
+      unregisterFinished();
+      unregisterCreated();
+      unregisterHooks();
+    }
+    expect(order).toEqual([
+      'after-user',
+      'user-created',
+      'before-generation',
+      'assistant-created',
+      'after-generation',
+      'generation-finished',
+    ]);
+  });
+
+  it.each([GenerationMode.NEW, GenerationMode.REGENERATE, GenerationMode.ADD_SWIPE])(
+    'applies hook-provided content through the normal %s assistant path',
+    async (mode) => {
+      const assistant = (content: string): ChatMessage => ({
+        name: character.name,
+        mes: content,
+        is_user: false,
+        is_system: false,
+        original_avatar: character.avatar,
+        send_date: '',
+        swipes: [content],
+        swipe_id: 0,
+        swipe_info: [{ send_date: '', extra: {} }],
+        extra: {},
+      });
+      const messages = mode === GenerationMode.NEW ? [] : [assistant('old')];
+      const chat: ChatStateRef = { metadata: { integrity: 'chat' }, messages, fileName: 'chat' };
+      const provider = vi.spyOn(ChatCompletionService, 'generate');
+      const afterGeneration = vi.fn();
+      const unregister = registerChatLifecycleHooks({
+        beforeGeneration: async ({ generationMode }) => {
+          expect(generationMode).toBe(mode);
+          return { assistantContent: 'supplied', includedPromptInjectionIds: ['graph-prompt'] };
+        },
+        afterGeneration: async (context) => afterGeneration(context),
+      });
+      const generation = useChatGeneration({
+        activeChat: ref(chat),
+        syncSwipeToMes: async (index, swipe) => {
+          const target = chat.messages[index]!;
+          target.swipe_id = swipe;
+          target.mes = target.swipes[swipe]!;
+        },
+        stopAutoModeTimer: vi.fn(),
+        findToolChainStart: (index) => index,
+        triggerSave: vi.fn(),
+        persistChat: vi.fn(),
+      });
+      try {
+        await generation.generateResponse(mode, { generationId: `hook-${mode}` });
+      } finally {
+        unregister();
+      }
+
+      expect(provider).not.toHaveBeenCalled();
+      expect(chat.messages.at(-1)?.mes).toBe('supplied');
+      if (mode === GenerationMode.ADD_SWIPE) expect(chat.messages[0]?.swipes).toEqual(['old', 'supplied']);
+      expect(afterGeneration).toHaveBeenCalledOnce();
+      expect(afterGeneration.mock.calls[0]?.[0].includedPromptInjectionIds).toEqual(['graph-prompt']);
+    },
+  );
+
+  it('forwards only prompt-builder inclusion acknowledgements to after-generation', async () => {
+    useSettingsStore().settings.api.samplers.stream = false;
+    const chat: ChatStateRef = { metadata: { integrity: 'chat' }, messages: [], fileName: 'chat' };
+    vi.spyOn(ChatCompletionService, 'generate').mockResolvedValue({ content: 'default response' });
+    const acknowledged = vi.fn();
+    const unregister = registerChatLifecycleHooks({
+      beforeGeneration: async ({ promptInjections }) => {
+        promptInjections.push({
+          id: 'included-injection',
+          content: 'included prompt',
+          role: 'system',
+          name: 'Agent',
+          placement: 'relative',
+          depth: 0,
+        });
+      },
+      afterGeneration: async ({ includedPromptInjectionIds }) => acknowledged(includedPromptInjectionIds),
+    });
+    const generation = useChatGeneration({
+      activeChat: ref(chat),
+      syncSwipeToMes: vi.fn(),
+      stopAutoModeTimer: vi.fn(),
+      findToolChainStart: (index) => index,
+      triggerSave: vi.fn(),
+      persistChat: vi.fn(),
+    });
+    try {
+      await generation.generateResponse(GenerationMode.NEW, { generationId: 'normal-generation' });
+    } finally {
+      unregister();
+    }
+    expect(acknowledged).toHaveBeenCalledWith(['included-injection']);
   });
 
   it('saves origin-bound variables and reloads them without leaking into a replacement chat', async () => {

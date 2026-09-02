@@ -19,11 +19,7 @@ export function normalizeSamplerSettings<T extends Partial<SamplerSettings>>(set
       return {
         ...prompt,
         injection_position:
-          injectionPosition === 0
-            ? 'relative'
-            : injectionPosition === 1
-              ? 'in-chat'
-              : injectionPosition,
+          injectionPosition === 0 ? 'relative' : injectionPosition === 1 ? 'in-chat' : injectionPosition,
       };
     }) as T['prompts'];
   }

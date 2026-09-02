@@ -11,6 +11,8 @@ const props = defineProps<{
 
 const t = props.api.i18n.t;
 const storageLimitMb = ref(Math.round(DEFAULT_SETTINGS.captureStorageLimitBytes / 1024 / 1024));
+const traceGenerationCount = ref(DEFAULT_SETTINGS.traceGenerationCount);
+const traceRequestMessageLimit = ref(DEFAULT_SETTINGS.traceRequestMessageLimit);
 const settings = useExtensionSettings<UsageTrackerSettings>(
   props.api,
   { ...DEFAULT_SETTINGS },
@@ -18,6 +20,8 @@ const settings = useExtensionSettings<UsageTrackerSettings>(
   {
     onLoaded: (loadedSettings) => {
       storageLimitMb.value = Math.max(1, Math.round(loadedSettings.captureStorageLimitBytes / 1024 / 1024));
+      traceGenerationCount.value = loadedSettings.traceGenerationCount;
+      traceRequestMessageLimit.value = loadedSettings.traceRequestMessageLimit;
     },
   },
 );
@@ -25,6 +29,16 @@ const settings = useExtensionSettings<UsageTrackerSettings>(
 watch(storageLimitMb, (value) => {
   const normalized = typeof value === 'number' && Number.isFinite(value) ? Math.max(1, Math.round(value)) : 1;
   settings.value.captureStorageLimitBytes = normalized * 1024 * 1024;
+});
+
+watch(traceGenerationCount, (value) => {
+  const normalized = typeof value === 'number' && Number.isFinite(value) ? Math.max(1, Math.round(value)) : 1;
+  settings.value.traceGenerationCount = normalized;
+});
+
+watch(traceRequestMessageLimit, (value) => {
+  const normalized = typeof value === 'number' && Number.isFinite(value) ? Math.max(1, Math.round(value)) : 1;
+  settings.value.traceRequestMessageLimit = normalized;
 });
 </script>
 
@@ -35,6 +49,20 @@ watch(storageLimitMb, (value) => {
       :description="t('extensionsBuiltin.usageTracker.settings.keepFullPayloadsHint')"
     >
       <Toggle v-model="settings.captureFullPayloads" />
+    </FormItem>
+
+    <FormItem
+      :label="t('extensionsBuiltin.usageTracker.settings.traceGenerationCount')"
+      :description="t('extensionsBuiltin.usageTracker.settings.traceGenerationCountHint')"
+    >
+      <Input v-model.number="traceGenerationCount" type="number" :min="1" :step="1" />
+    </FormItem>
+
+    <FormItem
+      :label="t('extensionsBuiltin.usageTracker.settings.traceRequestMessageLimit')"
+      :description="t('extensionsBuiltin.usageTracker.settings.traceRequestMessageLimitHint')"
+    >
+      <Input v-model.number="traceRequestMessageLimit" type="number" :min="1" :step="1" />
     </FormItem>
 
     <FormItem

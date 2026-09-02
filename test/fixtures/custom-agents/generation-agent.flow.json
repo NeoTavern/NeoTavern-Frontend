@@ -1,0 +1,80 @@
+{
+  "format": "NEOTAVERN_CUSTOM_AGENT_FLOW",
+  "agent": {
+    "id": "example-owner",
+    "name": "Generation Owner",
+    "enabled": true,
+    "priority": 0,
+    "configurationSchema": { "type": "object", "additionalProperties": false },
+    "configurationDefaults": {},
+    "stateSchema": { "type": "object", "additionalProperties": false },
+    "initialState": {},
+    "views": [],
+    "flows": [
+      {
+        "id": "generate",
+        "name": "Generate",
+        "kind": "TRIGGER",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "trigger",
+            "type": "trigger.generate-assistant",
+            "position": { "x": 0, "y": 0 },
+            "data": { "generationModes": ["NEW", "REGENERATE", "ADD_SWIPE"], "schedule": { "type": "ALWAYS" } },
+            "inputValues": {}
+          },
+          {
+            "id": "llm",
+            "type": "llm.request",
+            "position": { "x": 240, "y": 0 },
+            "data": {
+              "prompt": "Write the response.",
+              "variables": [],
+              "assembly": {
+                "type": "NORMAL_CHAT",
+                "history": "FULL_CURRENT",
+                "placement": { "type": "AFTER_CONTEXT", "role": "SYSTEM" }
+              },
+              "outputSchema": {
+                "type": "object",
+                "properties": { "content": { "type": "string" } },
+                "required": ["content"],
+                "additionalProperties": false
+              }
+            },
+            "inputValues": { "structuredFormat": "NATIVE" }
+          },
+          {
+            "id": "response",
+            "type": "effect.generation-response",
+            "position": { "x": 520, "y": 0 },
+            "data": {},
+            "inputValues": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "control-trigger-llm",
+            "kind": "CONTROL",
+            "source": { "nodeId": "trigger", "portId": "out" },
+            "target": { "nodeId": "llm", "portId": "in" }
+          },
+          {
+            "id": "control-llm-response",
+            "kind": "CONTROL",
+            "source": { "nodeId": "llm", "portId": "out" },
+            "target": { "nodeId": "response", "portId": "in" }
+          },
+          {
+            "id": "data-response",
+            "kind": "DATA",
+            "source": { "nodeId": "llm", "portId": "property/content" },
+            "target": { "nodeId": "response", "portId": "content" }
+          }
+        ]
+      }
+    ]
+  }
+}

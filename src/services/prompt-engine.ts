@@ -12,6 +12,7 @@ import type {
   ProcessedWorldInfo,
   Prompt,
   PromptBuilderOptions,
+  PromptInjectionAcknowledgementId,
   SamplerSettings,
   StructuredResponseOptions,
   StructuredResponsePrompted,
@@ -80,6 +81,8 @@ export class PromptBuilder {
   public mediaTokenCost = 0;
   public mediaContext: MediaHydrationContext;
   public structuredResponse?: StructuredResponseOptions;
+  public promptInjections: PromptBuilderOptions['promptInjections'];
+  public includedPromptInjectionIds: PromptInjectionAcknowledgementId[] = [];
   public macroVariablesChanged = false;
 
   private macroSession?: MacroEvaluationSession;
@@ -113,6 +116,7 @@ export class PromptBuilder {
     generationId,
     mediaContext,
     structuredResponse,
+    promptInjections,
     macroEvaluation,
     macroRandom,
   }: PromptBuilderOptions) {
@@ -132,6 +136,7 @@ export class PromptBuilder {
     this.generationId = generationId;
     this.mediaContext = mediaContext;
     this.structuredResponse = structuredResponse;
+    this.promptInjections = promptInjections;
     this.macroEvaluation = macroEvaluation;
     this.macroRandom = macroRandom;
 
@@ -277,11 +282,17 @@ export class PromptBuilder {
       worldInfo: this.worldInfo,
       generationId: this.generationId,
       mediaContext: this.mediaContext,
+      promptInjections: this.promptInjections,
       macroEvaluation: this.macroEvaluation,
       macroRandom: this.macroRandom,
     };
     await eventEmitter.emit('prompt:building-started', options);
+    const promptInjections = (options.promptInjections ?? []).map((injection, configuredOrder) => ({
+      injection,
+      configuredOrder,
+    }));
     const finalMessages: ApiChatMessage[] = [];
+    const includedPromptInjectionIds = new Set<string>();
     let currentTokenCount = 0;
 
     // 1. Process World Info
@@ -409,6 +420,26 @@ export class PromptBuilder {
       }
     }
 
+    const relativeInjections = promptInjections
+      .filter(({ injection }) => injection.placement === 'relative')
+      .sort((left, right) =>
+        (left.injection.order ?? 100) !== (right.injection.order ?? 100)
+          ? (left.injection.order ?? 100) - (right.injection.order ?? 100)
+          : left.configuredOrder - right.configuredOrder,
+      );
+    fixedPrompts.unshift(
+      ...relativeInjections
+        .filter(({ injection }) => injection.content)
+        .map(({ injection }) => {
+          includedPromptInjectionIds.add(injection.id);
+          return {
+            role: injection.role ?? ('system' as const),
+            name: injection.name ?? 'System',
+            content: injection.content,
+          };
+        }),
+    );
+
     // Add structured response system prompt if needed
     if (this.structuredResponse && this.structuredResponse.format !== 'native') {
       const systemPrompt = buildStructuredResponseSystemPrompt(
@@ -433,14 +464,14 @@ export class PromptBuilder {
     const historyMessages: ApiChatMessage[] = [];
     let historyTokenCount = 0;
 
-    const insertMessages = async (
-      msgsWithTokens: { apiMessage: ApiChatMessage; tokens: number }[],
-    ): Promise<boolean> => {
+    type BudgetedMessage = { apiMessage: ApiChatMessage; tokens: number; promptInjectionId?: string };
+    const insertMessages = async (msgsWithTokens: BudgetedMessage[]): Promise<boolean> => {
       for (let i = msgsWithTokens.length - 1; i >= 0; i--) {
-        const { apiMessage, tokens } = msgsWithTokens[i];
+        const { apiMessage, tokens, promptInjectionId } = msgsWithTokens[i];
         if (historyTokenCount + tokens <= historyBudget) {
           historyTokenCount += tokens;
           historyMessages.unshift(apiMessage);
+          if (promptInjectionId) includedPromptInjectionIds.add(promptInjectionId);
         } else {
           return false;
         }
@@ -448,7 +479,7 @@ export class PromptBuilder {
       return true;
     };
 
-    const depthEntriesMap = new Map<number, { apiMessage: ApiChatMessage; tokens: number }[]>();
+    const depthEntriesMap = new Map<number, BudgetedMessage[]>();
     if (this.processedWorldInfo.depthEntries.length > 0) {
       for (const entryItem of this.processedWorldInfo.depthEntries) {
         const msgs = await Promise.all(
@@ -472,50 +503,69 @@ export class PromptBuilder {
       }
     }
 
-    const inChatPrompts = enabledPrompts
-      .filter(({ prompt }) => prompt.injection_position === 'in-chat')
-      .sort((a, b) => {
-        const depthA = a.prompt.injection_depth ?? 0;
-        const depthB = b.prompt.injection_depth ?? 0;
-        if (depthA !== depthB) return depthA - depthB;
+    const inChatEntries = [
+      ...enabledPrompts
+        .filter(({ prompt }) => prompt.injection_position === 'in-chat')
+        .map(({ prompt, configuredOrder }) => ({
+          kind: 'native' as const,
+          prompt,
+          depth: prompt.injection_depth ?? 0,
+          order: prompt.injection_order ?? 100,
+          role: prompt.role ?? ('system' as const),
+          configuredOrder,
+          sourceOrder: 0,
+        })),
+      ...promptInjections
+        .filter(({ injection }) => injection.placement === 'in-chat')
+        .map(({ injection, configuredOrder }) => ({
+          kind: 'contributed' as const,
+          injection,
+          depth: injection.depth,
+          order: injection.order ?? 100,
+          role: injection.role ?? ('system' as const),
+          configuredOrder,
+          sourceOrder: 1,
+        })),
+    ].sort((left, right) => {
+      if (left.depth !== right.depth) return left.depth - right.depth;
+      if (left.order !== right.order) return left.order - right.order;
+      const roleDifference = promptRolePriority[left.role] - promptRolePriority[right.role];
+      if (roleDifference) return roleDifference;
+      if (left.sourceOrder !== right.sourceOrder) return left.sourceOrder - right.sourceOrder;
+      return left.configuredOrder - right.configuredOrder;
+    });
 
-        const orderA = a.prompt.injection_order ?? 100;
-        const orderB = b.prompt.injection_order ?? 100;
-        if (orderA !== orderB) return orderA - orderB;
-
-        const roleA = promptRolePriority[a.prompt.role ?? 'system'];
-        const roleB = promptRolePriority[b.prompt.role ?? 'system'];
-        if (roleA !== roleB) return roleA - roleB;
-
-        return a.configuredOrder - b.configuredOrder;
+    for (const entry of inChatEntries) {
+      let apiMessage: ApiChatMessage;
+      if (entry.kind === 'native') {
+        const { prompt, depth, role } = entry;
+        if (prompt.marker || !prompt.content) continue;
+        const content = applyPromptRegexScripts(
+          this.macroSession.evaluate(prompt.content),
+          this.samplerSettings.regex_scripts,
+          { placement: role, depth },
+        );
+        if (!content) continue;
+        const name =
+          role === 'user'
+            ? this.persona.name || '{{#raw}}{{user}}{{/raw}}'
+            : role === 'assistant'
+              ? this.character?.name || '{{#raw}}{{char}}{{/raw}}'
+              : 'System';
+        apiMessage = { role, content, name };
+      } else {
+        const { injection, role } = entry;
+        if (!injection.content) continue;
+        apiMessage = { role, name: injection.name ?? 'System', content: injection.content };
+      }
+      const tokens = await countTokens(apiMessage.content, this.tokenizer);
+      const list = depthEntriesMap.get(entry.depth) ?? [];
+      list.push({
+        apiMessage,
+        tokens,
+        promptInjectionId: entry.kind === 'contributed' ? entry.injection.id : undefined,
       });
-
-    for (const { prompt } of inChatPrompts) {
-      if (prompt.marker || !prompt.content) continue;
-
-      const role = prompt.role ?? 'system';
-      const depth = prompt.injection_depth ?? 0;
-      const content = applyPromptRegexScripts(
-        this.macroSession.evaluate(prompt.content),
-        this.samplerSettings.regex_scripts,
-        {
-          placement: role,
-          depth,
-        },
-      );
-      if (!content) continue;
-
-      const name =
-        role === 'user'
-          ? this.persona.name || '{{#raw}}{{user}}{{/raw}}'
-          : role === 'assistant'
-            ? this.character?.name || '{{#raw}}{{char}}{{/raw}}'
-            : 'System';
-      const apiMessage: ApiChatMessage = { role, content, name };
-      const tokens = await countTokens(content, this.tokenizer);
-      const list = depthEntriesMap.get(depth) || [];
-      list.push({ apiMessage, tokens });
-      depthEntriesMap.set(depth, list);
+      depthEntriesMap.set(entry.depth, list);
     }
 
     // Current depth counter (starts at 0 = end of chat)
@@ -655,10 +705,11 @@ export class PromptBuilder {
       }
     }
 
-    await eventEmitter.emit('prompt:built', finalMessages, { generationId: this.generationId });
     if (this.macroEvaluation !== 'preview') {
       this.macroVariablesChanged = this.macroSession.commit();
     }
+    this.includedPromptInjectionIds = [...includedPromptInjectionIds];
+    await eventEmitter.emit('prompt:built', finalMessages, { generationId: this.generationId });
     this.builtMessages = finalMessages;
     return finalMessages;
   }

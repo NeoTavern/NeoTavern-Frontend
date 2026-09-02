@@ -151,6 +151,14 @@ export class UsageStorage {
     return entries.sort((a, b) => b.timestamp - a.timestamp);
   }
 
+  async getCapturesForChat(chatFile: string): Promise<UsageCaptureEntry[]> {
+    const entries: UsageCaptureEntry[] = [];
+    await this.capturesStore.iterate<UsageCaptureEntry, void>((entry) => {
+      if (entry.chatFile === chatFile) entries.push(entry);
+    });
+    return entries.sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id));
+  }
+
   async deleteCapturesForChat(chatFile: string | undefined): Promise<void> {
     const keys: string[] = [];
     await this.capturesStore.iterate<UsageCaptureEntry, void>((entry, key) => {

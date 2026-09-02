@@ -1,7 +1,13 @@
 import { markRaw } from 'vue';
-import { GenerationMode } from '../../../constants';
+import { EventPriority, GenerationMode } from '../../../constants';
 import { useExtensionStore } from '../../../stores/extension.store';
-import { POPUP_TYPE, type ExtensionAPI, type GenerationResponse, type StreamedChunk } from '../../../types';
+import {
+  POPUP_TYPE,
+  type ApiChatMessage,
+  type ExtensionAPI,
+  type GenerationResponse,
+  type StreamedChunk,
+} from '../../../types';
 import type { LlmUsageData } from '../../../types/events';
 import { MountableComponent } from '../../../types/ExtensionAPI';
 import type { ChatCompletionPayload } from '../../../types/generation';
@@ -24,6 +30,7 @@ type PendingCapture = {
   chatFile?: string;
   model: string;
   source: string;
+  traceMessages?: ApiChatMessage[];
   streamContent: string;
   streamReasoning?: string;
   streamImages: string[];
@@ -206,6 +213,17 @@ export function activate(api: ExtensionAPI<UsageTrackerSettings>) {
   );
 
   unbinds.push(
+    api.events.on(
+      'prompt:built',
+      (messages, context) => {
+        const capture = pending.get(context.generationId);
+        if (capture) capture.traceMessages = cloneJson(messages);
+      },
+      EventPriority.LOWEST,
+    ),
+  );
+
+  unbinds.push(
     api.events.on('process:request-payload', async (payload: ChatCompletionPayload, context) => {
       if (!isCaptureEnabled(api)) return;
       const capture = pending.get(context.generationId);
@@ -219,6 +237,7 @@ export function activate(api: ExtensionAPI<UsageTrackerSettings>) {
             source: capture?.source ?? context.source ?? 'unknown',
             model: capture?.model ?? context.model ?? String(payload.model ?? 'unknown'),
             request: cloneJson(payload),
+            traceMessages: capture?.traceMessages,
           },
           getSettings(api).captureStorageLimitBytes,
         );

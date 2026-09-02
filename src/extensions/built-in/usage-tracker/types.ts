@@ -1,3 +1,5 @@
+import type { ApiChatMessage } from '../../../types';
+
 export interface UsageLogEntry {
   id: string;
   source: string; // 'core' or extension ID
@@ -13,6 +15,8 @@ export interface UsageLogEntry {
 export interface UsageTrackerSettings {
   captureFullPayloads: boolean;
   captureStorageLimitBytes: number;
+  traceGenerationCount: number;
+  traceRequestMessageLimit: number;
 }
 
 export interface UsageCaptureEntry {
@@ -24,6 +28,7 @@ export interface UsageCaptureEntry {
   model: string;
   timestamp: number;
   request: unknown;
+  traceMessages?: ApiChatMessage[];
   response?: unknown;
   responseText?: string;
   status: 'pending' | 'complete' | 'aborted' | 'error';
@@ -69,4 +74,6 @@ export const STORE_NAME = 'NeoTavern_UsageTracker';
 export const DEFAULT_SETTINGS: UsageTrackerSettings = {
   captureFullPayloads: true,
   captureStorageLimitBytes: 50 * 1024 * 1024,
+  traceGenerationCount: 15,
+  traceRequestMessageLimit: 15,
 };

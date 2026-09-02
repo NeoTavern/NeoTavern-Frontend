@@ -9,6 +9,7 @@ import {
 import { getModelCapabilities } from '../api/provider-definitions';
 import { ApiTokenizer } from '../api/tokenizer';
 import { CustomPromptPostProcessing, default_user_avatar, GenerationMode } from '../constants';
+import { runAfterGeneration, runAfterUserMessage, runBeforeGeneration } from '../services/chat-lifecycle';
 import { PromptBuilder } from '../services/prompt-engine';
 import { ToolService } from '../services/tool.service';
 import { useApiStore } from '../stores/api.store';
@@ -28,6 +29,7 @@ import {
   type GenerationPayloadBuilderConfig,
   type GenerationResponse,
   type ItemizedPrompt,
+  type PromptInjection,
   type PromptTokenBreakdown,
   type StreamedChunk,
   type SwipeInfo,
@@ -59,6 +61,7 @@ export interface ChatGenerationDependencies {
 interface GenerationStepResult {
   message: ChatMessage | null;
   response: GenerationResponse;
+  includedPromptInjectionIds: readonly string[];
 }
 
 const MAX_TOOL_CALL_RECURSION = 5;
@@ -84,22 +87,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
   const worldInfoStore = useWorldInfoStore();
   const uiStore = useUiStore();
 
-  async function abortGeneration() {
-    if (generationController.value) {
-      generationController.value.abort();
-    }
-
-    const genId = currentGenerationId.value;
-
-    // Reset states
+  function abortGeneration() {
+    generationController.value?.abort();
     _isGenerating.value = false;
     isPreparing.value = false;
-    generationController.value = null;
-    currentGenerationId.value = null;
-
-    if (genId) {
-      await eventEmitter.emit('generation:aborted', { generationId: genId });
-    }
   }
 
   async function sendMessage(
@@ -159,8 +150,16 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       return;
     }
 
-    const messageIndex = deps.activeChat.value.messages.length;
-    deps.activeChat.value.messages.push(userMessage);
+    const messageIndex = currentChatContext.messages.length;
+    currentChatContext.messages.push(userMessage);
+    await runAfterUserMessage({
+      chatFile: currentChatContext.fileName,
+      messages: currentChatContext.messages,
+      metadata: currentChatContext.metadata,
+      message: userMessage,
+      messageIndex,
+      signal: createController.signal,
+    });
     await nextTick();
     await eventEmitter.emit('message:created', userMessage);
     updateUserMessageTokenCountLater(currentChatContext, messageIndex, trimmedMessage);
@@ -241,7 +240,27 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     const overallController = new AbortController();
     generationController.value = overallController;
 
-    let handledByExtension = false;
+    let finalMessage: ChatMessage | null = null;
+    let generationError: Error | undefined;
+    let terminalEmitted = false;
+    const finalizeGeneration = async (): Promise<void> => {
+      if (terminalEmitted) return;
+      terminalEmitted = true;
+      _isGenerating.value = false;
+      isPreparing.value = false;
+      if (generationController.value === overallController) generationController.value = null;
+      if (currentGenerationId.value === finalGenerationId) currentGenerationId.value = null;
+      await nextTick();
+      if (overallController.signal.aborted) {
+        await eventEmitter.emit('generation:aborted', { generationId: finalGenerationId });
+      } else {
+        await eventEmitter.emit(
+          'generation:finished',
+          { message: finalMessage, error: generationError },
+          { generationId: finalGenerationId, mode },
+        );
+      }
+    };
 
     const generationPayload = {
       mode: initialMode,
@@ -251,14 +270,59 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     await eventEmitter.emit('chat:generation-requested', generationPayload, { controller: overallController });
 
     if (overallController.signal.aborted) {
+      await finalizeGeneration();
       return;
     }
 
     if (generationPayload.handled) {
-      // Extension handled the generation request
-      handledByExtension = true;
+      // Extension handled the generation request before the lifecycle generation began.
+      if (generationController.value === overallController) generationController.value = null;
+      if (currentGenerationId.value === finalGenerationId) currentGenerationId.value = null;
       return;
     }
+
+    const generationTarget = (() => {
+      const target = currentChatContext.messages[currentChatContext.messages.length - 1];
+      if (mode === GenerationMode.NEW) return { messageIndex: currentChatContext.messages.length };
+      if (mode === GenerationMode.REGENERATE && target && !target.is_user) {
+        return { message: target, messageIndex: currentChatContext.messages.length - 1, swipeId: target.swipe_id ?? 0 };
+      }
+      if (mode === GenerationMode.ADD_SWIPE && target && !target.is_user) {
+        return {
+          message: target,
+          messageIndex: currentChatContext.messages.length - 1,
+          swipeId: Array.isArray(target.swipes) ? target.swipes.length : 1,
+        };
+      }
+      return undefined;
+    })();
+    const promptInjections: PromptInjection[] = [];
+    let beforeResult;
+    try {
+      beforeResult = [GenerationMode.NEW, GenerationMode.REGENERATE, GenerationMode.ADD_SWIPE].includes(mode)
+        ? await runBeforeGeneration({
+            chatFile: currentChatFile,
+            generationId: finalGenerationId,
+            generationMode: mode,
+            messages: currentChatContext.messages,
+            metadata: currentChatContext.metadata,
+            history: [...currentChatContext.messages],
+            ...(generationTarget ? { target: generationTarget } : {}),
+            promptInjections,
+            signal: overallController.signal,
+          })
+        : undefined;
+      overallController.signal.throwIfAborted();
+    } catch (error) {
+      generationError = error instanceof Error && error.name !== 'AbortError' ? error : undefined;
+      if (generationError) {
+        console.error('Generation Error:', generationError);
+        toast.error(generationError.message || t('chat.generate.errorFallback'));
+      }
+      await finalizeGeneration();
+      return;
+    }
+    historyForGen = [...currentChatContext.messages];
 
     // Handle Regenerate Logic (part 2: delete messages if not handled)
     if (initialMode === GenerationMode.REGENERATE) {
@@ -275,8 +339,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       }
     }
 
-    let finalMessage: ChatMessage | null = null;
-    let generationError: Error | undefined;
+    let finalIncludedPromptInjectionIds: readonly string[] = [];
 
     try {
       let activeCharacter: Character | undefined;
@@ -335,6 +398,8 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           currentChatFile,
           historyForGen,
           overallController,
+          promptInjections,
+          beforeResult?.assistantContent,
         );
 
         if (!stepResult || overallController.signal.aborted) {
@@ -343,6 +408,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         }
 
         finalMessage = stepResult.message;
+        finalIncludedPromptInjectionIds =
+          beforeResult?.assistantContent === undefined
+            ? stepResult.includedPromptInjectionIds
+            : (beforeResult.includedPromptInjectionIds ?? []);
         const toolCalls = stepResult.response.tool_calls;
 
         if (toolCalls && toolCalls.length > 0) {
@@ -401,6 +470,29 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       if (recursionDepth >= MAX_TOOL_CALL_RECURSION) {
         toast.warning(t('chat.generate.maxRecursionError'));
       }
+
+      if (
+        finalMessage &&
+        generationTarget &&
+        [GenerationMode.NEW, GenerationMode.REGENERATE, GenerationMode.ADD_SWIPE].includes(mode)
+      ) {
+        await runAfterGeneration({
+          chatFile: currentChatFile,
+          generationId: finalGenerationId,
+          generationMode: mode,
+          messages: currentChatContext.messages,
+          metadata: currentChatContext.metadata,
+          history: [...currentChatContext.messages],
+          target: {
+            message: finalMessage,
+            messageIndex: currentChatContext.messages.indexOf(finalMessage),
+            swipeId: finalMessage.swipe_id ?? 0,
+          },
+          message: finalMessage,
+          includedPromptInjectionIds: finalIncludedPromptInjectionIds,
+          signal: overallController.signal,
+        });
+      }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         // Silent catch for user abort
@@ -411,19 +503,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         toast.error(generationError.message || t('chat.generate.errorFallback'));
       }
     } finally {
-      // If we were generating (and not just prepping/handled), finalize
-      if (_isGenerating.value && !handledByExtension) {
-        _isGenerating.value = false;
-        generationController.value = null;
-        currentGenerationId.value = null;
-
-        await nextTick();
-        await eventEmitter.emit(
-          'generation:finished',
-          { message: finalMessage, error: generationError },
-          { generationId: finalGenerationId, mode },
-        );
-      }
+      await finalizeGeneration();
     }
   }
 
@@ -435,6 +515,8 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     chatFile: string | undefined,
     historyForStep: ChatMessage[],
     controller: AbortController,
+    promptInjections: PromptInjection[],
+    assistantContent?: string,
   ): Promise<GenerationStepResult | null> {
     const abortSignal = controller.signal;
     let generatedMessage: ChatMessage | null = null;
@@ -541,6 +623,13 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     await eventEmitter.emit('process:generation-context', context);
     if (context.controller.signal.aborted) return null;
 
+    const namePrefixRegex = new RegExp(`^\\s*${escapeRegExp(activeCharacter.name)}\\s*:\\s*`, 'i');
+    if (assistantContent !== undefined) {
+      const response: GenerationResponse = { content: assistantContent };
+      await handleGenerationResult(assistantContent);
+      return { message: generatedMessage, response, includedPromptInjectionIds: [] };
+    }
+
     const modelCapabilities = getModelCapabilities(effectiveProvider, effectiveModel, apiStore.modelList);
     const promptBuilder = new PromptBuilder({
       generationId,
@@ -567,6 +656,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         formatter: effectiveFormatter,
       },
       structuredResponse: context.structuredResponse,
+      promptInjections,
     });
 
     if (deps.activeChat.value !== chatContext) throw new Error('Context switched');
@@ -730,16 +820,14 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     if (requestPayloadController.signal.aborted) return null;
 
     // --- Generation Execution ---
-    const namePrefixRegex = new RegExp(`^\\s*${escapeRegExp(activeCharacter.name)}\\s*:\\s*`, 'i');
-
-    const handleGenerationResult = async (
+    async function handleGenerationResult(
       content: string,
       reasoning?: string,
       tokenCount?: number,
       images?: string[],
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       _tool_calls?: ApiChatToolCall[],
-    ) => {
+    ) {
       if (deps.activeChat.value !== chatContext) {
         console.warn('Chat context changed during generation. Result ignored.');
         return;
@@ -864,7 +952,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         await nextTick();
         await eventEmitter.emit('message:created', botMessage);
       }
-    };
+    }
 
     const generationOptions = {
       signal: abortSignal,
@@ -916,7 +1004,11 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           response.images,
           response.tool_calls,
         );
-        return { message: generatedMessage, response };
+        return {
+          message: generatedMessage,
+          response,
+          includedPromptInjectionIds: promptBuilder.includedPromptInjectionIds,
+        };
       }
     } else {
       // Streaming
@@ -955,6 +1047,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
             generationId,
           });
           if (chunkController.signal.aborted) {
+            // An extension cancellation aborts the whole generation and retains aborted terminal semantics.
             controller.abort();
             break;
           }
@@ -1053,7 +1146,8 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
             if (match) {
               const detectedName = match[1].trim();
               if (stopNames.has(detectedName)) {
-                controller.abort();
+                // This is a successful internal stop, not a user/extension cancellation. Breaking the
+                // async iteration closes the stream while preserving normal accepted-message finalization.
 
                 // Trim the unwanted line
                 const contentToKeep = lastNewLine === -1 ? '' : targetMessage.mes.slice(0, lastNewLine);
@@ -1149,6 +1243,9 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
             finalMessage.swipe_info = [swipeInfo];
           } else if (mode === GenerationMode.ADD_SWIPE) {
             finalMessage.swipe_info.push(swipeInfo);
+            await nextTick();
+            await eventEmitter.emit('message:updated', targetMessageIndex, finalMessage);
+            await eventEmitter.emit('message:swipe-changed', targetMessageIndex, finalMessage.swipe_id ?? 0);
           }
         }
         streamResponse = {
@@ -1159,7 +1256,11 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         };
       }
       if (streamShouldReturnNull || !streamResponse) return null;
-      return { message: generatedMessage, response: streamResponse };
+      return {
+        message: generatedMessage,
+        response: streamResponse,
+        includedPromptInjectionIds: promptBuilder.includedPromptInjectionIds,
+      };
     }
     return null;
   }

@@ -11,6 +11,7 @@ export interface MacroContextOverrides {
   chatHistory?: ChatMessage[];
   chatMetadata?: ChatMetadata;
   random?: () => number;
+  forbiddenMacros?: readonly string[];
 }
 
 export interface MacroContextData extends MacroContextOverrides {
@@ -194,6 +195,9 @@ export class MacroService {
       if (isStructured) {
         const separator = rawExpression.indexOf('::');
         const name = (separator === -1 ? rawExpression : rawExpression.slice(0, separator)).trim();
+        if (context.forbiddenMacros?.includes(name)) {
+          throw new MacroEvaluationError('This macro is forbidden in the current context.', name);
+        }
         let value: unknown;
         if (this.hasAdditionalMacro(context, name)) {
           value = context.additionalMacros?.[name];
