@@ -582,8 +582,6 @@
     "text": "Text",
     "import": "Import",
     "export": "Export",
-    "exportActive": "Export Active",
-    "importSingle": "Import Single",
     "edit": "Edit",
     "create": "Create",
     "rename": "Rename",
@@ -609,12 +607,15 @@
     "clearSelection": "Clear Selection",
     "apply": "Apply",
     "reload": "Reload",
-    "abort": "Abort",
     "newVersionAvailable": "New version available",
     "unknown": "Unknown",
     "untitled": "Untitled",
     "advanced": "Advanced",
-    "toggleFullScreen": "Toggle Full Screen"
+    "toggleFullScreen": "Toggle Full Screen",
+    "undo": "Undo",
+    "redo": "Redo",
+    "paste": "Paste",
+    "discard": "Discard"
   },
   "colorPicker": {
     "hex": "Hex",
@@ -1395,10 +1396,6 @@
         "name": "Model Randomizer",
         "description": "Randomize model and sampler settings for each generation to create varied responses."
       },
-      "mythicAgents": {
-        "name": "Mythic Agents (GME)",
-        "description": "Full Mythic GME 2e oracle, scenes, and UNE NPCs."
-      },
       "notebook": {
         "name": "Notebook",
         "description": "A rich text editor for taking notes."
@@ -2056,129 +2053,6 @@
         "shuffledMode": "World map {mode} shuffled."
       }
     },
-    "mythicAgents": {
-      "title": "Mythic Agents",
-      "navTitle": "Mythic Agents (GME)",
-      "validationErrors": "Validation Errors",
-      "resetToDefault": "Reset to Default",
-      "generalConfiguration": "General Configuration",
-      "enable": "Enable Mythic Agents Extension",
-      "autoAnalyze": "Auto-Analyze User Messages",
-      "autoAnalyzeHint": "Automatically analyze user messages for implied questions and roll fate when Mythic is active.",
-      "autoUpdateScene": "Auto-Update Scene",
-      "autoUpdateSceneHint": "Automatically update the scene state after each narration.",
-      "connectionProfile": "Connection Profile",
-      "connectionProfileHint": "The connection profile to use for LLM analysis and event generation.",
-      "defaultChaosRank": "Default Chaos Rank",
-      "defaultChaosRankHint": "The default chaos rank for new scenes (1-9).",
-      "language": "Language",
-      "languageHint": "The language for generated content.",
-      "languagePlaceholder": "English",
-      "requestFormat": "Request Format",
-      "requestFormatHint": "Format to enforce for Mythic structured responses.",
-      "eventFocusesWeighted": "Event Focuses (Weighted Table)",
-      "eventActions": "Event Actions",
-      "eventSubjects": "Event Subjects",
-      "characterTypes": "Character Types",
-      "modifiers": "Modifiers",
-      "nouns": "Nouns",
-      "motivationVerbs": "Motivation Verbs",
-      "motivationNouns": "Motivation Nouns",
-      "tabs": {
-        "general": "General",
-        "prompts": "Prompts",
-        "fateChart": "Fate Chart",
-        "eventTables": "Event Tables",
-        "une": "UNE"
-      },
-      "prompts": {
-        "initialScene": "Initial Scene",
-        "analysis": "Analysis",
-        "narration": "Narration"
-      },
-      "requestFormats": {
-        "native": "Native",
-        "json": "JSON",
-        "xml": "XML"
-      },
-      "eventTables": {
-        "actions": "actions",
-        "subjects": "subjects"
-      },
-      "popups": {
-        "enterPresetName": "Enter preset name:",
-        "enterNewPresetName": "Enter new preset name:",
-        "deletePreset": "Are you sure you want to delete preset \"{name}\"?",
-        "resetAllContent": "Are you sure you want to reset Mythic Agents prompts, presets, fate charts, event tables, and UNE data to default?",
-        "resetPromptContent": "Are you sure you want to reset this prompt to default?"
-      },
-      "toasts": {
-        "builtInReadOnly": "Built-in Mythic Agents presets are read-only. Create a preset to customize them.",
-        "fateChartUpdated": "Fate Chart updated",
-        "invalidJson": "Invalid JSON",
-        "eventFocusesUpdated": "Event Focuses updated",
-        "tableUpdated": "{table} updated",
-        "uneUpdated": "UNE settings updated",
-        "characterTypesUpdated": "Character Types updated",
-        "presetNameExists": "Preset name already exists",
-        "builtInCannotRename": "Built-in Mythic Agents presets cannot be renamed",
-        "builtInCannotDelete": "Built-in Mythic Agents presets cannot be deleted",
-        "cannotDeleteLastPreset": "Cannot delete the last preset",
-        "presetImported": "Preset imported",
-        "presetsImported": "Presets imported",
-        "invalidPresetFormat": "Invalid preset format",
-        "invalidFileFormat": "Invalid file format",
-        "contentReset": "Mythic Agents content reset",
-        "presetValidationErrors": "Preset \"{name}\" has validation errors. Please fix or reset.",
-        "loadPresetFailed": "Failed to load preset data. See console for details.",
-        "chatDataReset": "Mythic Agents chat data reset",
-        "sceneAbortRequested": "Scene reinitialization abort requested.",
-        "sceneAborted": "Scene reinitialization aborted.",
-        "runtimeError": "Mythic Agents encountered an error. Check console for details."
-      },
-      "panel": {
-        "tabs": {
-          "dashboard": "Dashboard",
-          "scene": "Scene",
-          "npcs": "NPCs",
-          "threads": "Threads",
-          "log": "Log"
-        },
-        "resetTitle": "Reset Mythic Agents",
-        "resetContent": "This will clear all mythic agents data (chaos, scene, action history, etc.). Are you sure?",
-        "chaosRank": "Chaos Rank",
-        "highChaos": "High Chaos: Expect the unexpected.",
-        "lowChaos": "Low Chaos: Things are calm.",
-        "npcs": "NPCs",
-        "threads": "Threads",
-        "recentActions": "Recent Actions",
-        "noActionsRecorded": "No actions recorded yet.",
-        "reinitializeScene": "Reinitialize Scene",
-        "generateIdentities": "Let LLM generate character identities",
-        "currentSceneDetails": "Current Scene Details",
-        "activeNpcs": "Active NPCs",
-        "openThreads": "Open Threads",
-        "noSceneData": "No scene data available. Start a new scene to begin.",
-        "addRandomNpc": "Add Random NPC",
-        "noCharacters": "No characters in current scene.",
-        "name": "Name",
-        "type": "Type",
-        "editNpc": "Edit NPC",
-        "removeNpc": "Remove NPC",
-        "identity": "Identity",
-        "regenerateUne": "Regenerate UNE",
-        "motivation": "Motivation",
-        "verb": "Verb",
-        "addThreadPlaceholder": "Add a new plot thread...",
-        "noOpenThreads": "No open threads. Add one to track plot points.",
-        "removeThread": "Remove Thread",
-        "resolvedThreads": "Resolved Threads",
-        "noHistoryRecorded": "No history recorded.",
-        "roll": "Roll",
-        "chaosDie": "Chaos Die",
-        "randomEvent": "Random Event"
-      }
-    },
     "standardTools": {
       "network": "Network",
       "corsProxy": "CORS Proxy",
@@ -2243,6 +2117,12 @@
       "response": "Response",
       "viewFullRequestResponse": "View full request/response",
       "viewCapture": "View capture",
+      "copyGenerationTrace": "Copy generation trace",
+      "copyTrace": "Copy trace",
+      "traceCopied": "Generation trace copied to clipboard.",
+      "traceCopyFailed": "Failed to copy generation trace.",
+      "traceNoActiveChat": "Open a chat before copying a generation trace.",
+      "traceNoCaptures": "No captured requests are associated with this chat.",
       "clearAllUsageData": "Clear All Usage Data",
       "clearAllUsageDataContent": "Are you sure you want to clear all usage logs? This action cannot be undone.",
       "clearLogs": "Clear Logs",
@@ -2275,6 +2155,8 @@
       "time": "Time",
       "source": "Source",
       "model": "Model",
+      "type": "Type",
+      "messageIndex": "Message index",
       "message": "Message",
       "prompt": "Prompt",
       "content": "Content",
@@ -2298,6 +2180,10 @@
       "settings": {
         "keepFullPayloads": "Keep Full Requests and Responses",
         "keepFullPayloadsHint": "Stores full LLM payloads and responses locally for inspection. This can include private chat content.",
+        "traceGenerationCount": "Generation Trace Message Count",
+        "traceGenerationCountHint": "Number of recent distinct chat message indices included when copying a generation trace.",
+        "traceRequestMessageLimit": "Request Context Message Count",
+        "traceRequestMessageLimitHint": "Maximum number of trailing request messages included for each copied capture.",
         "captureStorageLimit": "Capture Storage Limit",
         "captureStorageLimitHint": "Maximum local storage for captured request/response records."
       },
@@ -2496,6 +2382,540 @@
         "profileRenamed": "Profile renamed successfully.",
         "profileDeleted": "Profile deleted successfully.",
         "profileActivated": "Profile activated successfully."
+      }
+    },
+    "customAgents": {
+      "title": "Custom Agents",
+      "views": "Agent Views",
+      "noViews": "No enabled agent views are available.",
+      "noActiveChat": "Open a chat to view agent state.",
+      "create": "Create agent",
+      "duplicate": "Duplicate",
+      "collectionName": "Collection name",
+      "createCollection": "Create collection",
+      "duplicateCollection": "Duplicate collection",
+      "renameCollection": "Rename collection",
+      "deleteCollection": "Delete collection",
+      "confirmDeleteCollection": "Delete this collection?",
+      "exportActiveCollection": "Export active collection",
+      "exportAllCollections": "Export all collections",
+      "importSingleCollection": "Import one collection",
+      "importAllCollections": "Import multiple collections",
+      "agentId": "Agent ID",
+      "confirmDelete": "Delete this agent definition?",
+      "confirmReset": "Reset this agent at the selected branch tip?",
+      "id": "ID",
+      "name": "Name",
+      "priority": "Priority",
+      "enabled": "Enabled",
+      "resetBranch": "Reset selected branch state",
+      "importExport": "Whole-agent import / export",
+      "templates": "Built-in templates",
+      "installTemplate": "Install {name}",
+      "templateInstalled": "Template installed as a disabled editable agent.",
+      "metadata": "Agent metadata",
+      "configuration": "Configuration",
+      "noConfiguration": "This agent has no configuration fields.",
+      "state": "Selected branch state",
+      "noAgents": "No graph agents are installed.",
+      "imported": "Graph agent imported.",
+      "presetJson": "Graph preset JSON",
+      "clearRunOverlay": "Clear run overlay",
+      "actions": "Actions",
+      "runStatus": {
+        "running": "Running",
+        "completed": "Completed",
+        "skipped": "Skipped",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "editor": {
+        "flowEditor": "Custom Agent flow editor",
+        "nodePalette": "Node palette",
+        "nodes": "Nodes",
+        "searchNodes": "Search nodes",
+        "expandCategory": "Expand {category}",
+        "collapseCategory": "Collapse {category}",
+        "flows": "Flows",
+        "selectFlow": "Select {name}",
+        "actions": "Flow editor actions",
+        "duplicateFlow": "Duplicate flow",
+        "deleteFlow": "Delete flow",
+        "createTriggerFlow": "Create trigger flow",
+        "createSubflow": "Create subflow",
+        "backToParent": "Back to parent canvas",
+        "fitView": "Fit to view",
+        "fit": "Fit",
+        "smartLayout": "Smart layout",
+        "smartLayoutBusy": "Arranging nodes",
+        "smartLayoutCyclicUnavailable": "Smart layout is unavailable because the active scope contains a cycle",
+        "smartLayoutMeasurementUnavailable": "Smart layout could not measure every node in the active scope",
+        "smartLayoutUnavailable": "Smart layout is unavailable for the active scope",
+        "smartLayoutAll": "Smart layout all flows",
+        "smartLayoutAllProgress": "Arranging scope {completed} of {total}",
+        "smartLayoutAllCyclicUnavailable": "Smart layout all flows is unavailable because an agent scope contains a cycle",
+        "smartLayoutAllMeasurementUnavailable": "Smart layout all flows could not measure every node",
+        "smartLayoutAllUnavailable": "Smart layout all flows is unavailable for this agent",
+        "unsavedDraft": "Unsaved draft",
+        "discardDraft": "Discard draft",
+        "applyValidDraft": "Apply valid draft",
+        "subflowSignature": "Subflow signature",
+        "inputs": "Inputs",
+        "outputs": "Outputs",
+        "id": "ID",
+        "label": "Label",
+        "required": "Required",
+        "jsonSchema": "JSON Schema",
+        "movePortUp": "Move port up",
+        "movePortDown": "Move port down",
+        "removePort": "Remove port",
+        "addInput": "Add input",
+        "addOutput": "Add output",
+        "zoomIn": "Zoom in",
+        "zoomOut": "Zoom out",
+        "resizeNode": "Resize node",
+        "openBody": "Open body",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "addItem": "Add item",
+        "omitOptional": "Omit optional value",
+        "omit": "Omit",
+        "root": "(root)",
+        "connected": "Connected",
+        "advancedPath": "Advanced path",
+        "requiredUnbound": "Required input is unbound",
+        "stalePort": "Stale: {label}",
+        "clearInline": "Clear inline value",
+        "runDetails": "Run details",
+        "diagnosticCount": "No diagnostics | 1 diagnostic | {count} diagnostics",
+        "focusDiagnostic": "Focus diagnostic {code}",
+        "categories": {
+          "trigger": "Triggers",
+          "control": "Control",
+          "data": "Data",
+          "logic": "Logic",
+          "llm": "LLM",
+          "tool": "Tools",
+          "effect": "Effects"
+        },
+        "flowKinds": {
+          "trigger": "Trigger",
+          "subflow": "Subflow"
+        },
+        "portKinds": {
+          "control": "Control",
+          "string": "String",
+          "number": "Number",
+          "boolean": "Boolean",
+          "array": "Array",
+          "object": "Object",
+          "json": "JSON",
+          "null": "Null"
+        },
+        "severity": {
+          "error": "Error",
+          "warning": "Warning"
+        },
+        "errors": {
+          "inputSchema": "Value does not satisfy the input schema"
+        }
+      },
+      "catalog": {
+        "ADD_SWIPE": "Add Swipe",
+        "AFTER_CONTEXT": "After Context",
+        "ALWAYS": "Always",
+        "APPEND_TARGET": "Append Target",
+        "ASSISTANT": "Assistant",
+        "CREATE": "Create",
+        "EVERY_N_EVENTS": "Every N Events",
+        "FOR_N_GENERATIONS": "For N Generations",
+        "FULL_CURRENT": "Full Current",
+        "FULL_TARGET": "Full Target",
+        "IN_CHAT": "In Chat",
+        "NEW": "New",
+        "NONE": "None",
+        "NORMAL_CHAT": "Normal Chat",
+        "ONCE": "Once",
+        "PROBABILITY": "Probability",
+        "RECENT_CURRENT": "Recent Current",
+        "RECENT_TARGET": "Recent Target",
+        "REGENERATE": "Regenerate",
+        "REPLACE_TARGET": "Replace Target",
+        "STANDALONE": "Standalone",
+        "SYSTEM": "System",
+        "UNTIL_REMOVED": "Until Removed",
+        "USER": "User",
+        "accumulator": "Accumulator",
+        "activationType": "Activation Type",
+        "amount": "Amount",
+        "assemblyType": "Assembly Type",
+        "body": "Body",
+        "carriesValue": "Carries Value",
+        "caseSensitive": "Case Sensitive",
+        "cases": "Cases",
+        "collection": "Collection",
+        "condition": "Condition",
+        "connectionProfileId": "Connection Profile ID",
+        "content": "Content",
+        "count": "Count",
+        "depth": "Depth",
+        "else": "Else",
+        "event": "Event",
+        "expression": "Expression",
+        "fields": "Fields",
+        "flowId": "Flow ID",
+        "found": "Found",
+        "from": "From",
+        "generationMode": "Generation Mode",
+        "generationModes": "Generation Modes",
+        "generations": "Generations",
+        "history": "History",
+        "historyCount": "History Count",
+        "id": "ID",
+        "in": "In",
+        "index": "Index",
+        "indices": "Indices",
+        "input": "Input",
+        "initialAccumulator": "Initial Accumulator",
+        "injectionId": "Injection ID",
+        "inputSchema": "Input Schema",
+        "inputs": "Inputs",
+        "item": "Item",
+        "items": "Items",
+        "key": "Key",
+        "label": "Label",
+        "left": "Left",
+        "lifetimeType": "Lifetime Type",
+        "match": "Match",
+        "matched": "Matched",
+        "max": "Max",
+        "message": "Message",
+        "min": "Min",
+        "modifier": "Modifier",
+        "name": "Name",
+        "newValue": "New Value",
+        "number": "Number",
+        "operation": "Operation",
+        "operations": "Operations",
+        "operator": "Operator",
+        "out": "Out",
+        "outputSchema": "Output Schema",
+        "path": "Path",
+        "placement": "Placement",
+        "placementRole": "Placement Role",
+        "placementType": "Placement Type",
+        "prefix": "Prefix",
+        "probability": "Probability",
+        "prompt": "Prompt",
+        "relative": "Relative",
+        "replaced": "Replaced",
+        "result": "Result",
+        "right": "Right",
+        "roll": "Roll",
+        "rolls": "Rolls",
+        "rows": "Rows",
+        "scheduleInterval": "Schedule Interval",
+        "scheduleType": "Schedule Type",
+        "schema": "Schema",
+        "separator": "Separator",
+        "sides": "Sides",
+        "standaloneRole": "Standalone Role",
+        "structuredFormat": "Structured Format",
+        "table": "Table",
+        "targetMessage": "Target Message",
+        "template": "Template",
+        "to": "To",
+        "total": "Total",
+        "value": "Value",
+        "values": "Values",
+        "variables": "Variables",
+        "weight": "Weight",
+        "in_chat": "In Chat",
+        "property_value": "Value"
+      },
+      "nodes": {
+        "afterGeneration": {
+          "label": "After Generation",
+          "description": "After Generation node."
+        },
+        "afterUser": {
+          "label": "After User",
+          "description": "After User node."
+        },
+        "all": {
+          "label": "All",
+          "description": "All node."
+        },
+        "any": {
+          "label": "Any",
+          "description": "Any node."
+        },
+        "array": {
+          "label": "Array",
+          "description": "Array node."
+        },
+        "assert": {
+          "label": "Assert",
+          "description": "Assert node."
+        },
+        "beforeGeneration": {
+          "label": "Before Generation",
+          "description": "Before Generation node."
+        },
+        "branch": {
+          "label": "Branch",
+          "description": "Branch node."
+        },
+        "configuration": {
+          "label": "Configuration",
+          "description": "Configuration node."
+        },
+        "constant": {
+          "label": "Constant",
+          "description": "Constant node."
+        },
+        "event": {
+          "label": "Event",
+          "description": "Event node."
+        },
+        "exists": {
+          "label": "Exists",
+          "description": "Exists node."
+        },
+        "forEach": {
+          "label": "For Each",
+          "description": "For Each node."
+        },
+        "generateAssistant": {
+          "label": "Generate Assistant",
+          "description": "Generate Assistant node."
+        },
+        "generationResponse": {
+          "label": "Generation Response",
+          "description": "Generation Response node."
+        },
+        "get": {
+          "label": "Get",
+          "description": "Get node."
+        },
+        "in": {
+          "label": "In",
+          "description": "In node."
+        },
+        "llmRequest": {
+          "label": "LLM Request",
+          "description": "LLM Request node."
+        },
+        "manual": {
+          "label": "Manual",
+          "description": "Manual node."
+        },
+        "mergeAll": {
+          "label": "Merge All",
+          "description": "Merge All node."
+        },
+        "mergeAny": {
+          "label": "Merge Any",
+          "description": "Merge Any node."
+        },
+        "not": {
+          "label": "Not",
+          "description": "Not node."
+        },
+        "object": {
+          "label": "Object",
+          "description": "Object node."
+        },
+        "removeInjection": {
+          "label": "Remove Injection",
+          "description": "Remove Injection node."
+        },
+        "removeState": {
+          "label": "Remove State",
+          "description": "Remove State node."
+        },
+        "runFlow": {
+          "label": "Run Flow",
+          "description": "Run Flow node."
+        },
+        "scopeEntry": {
+          "label": "Scope Entry",
+          "description": "Scope Entry node."
+        },
+        "scopeReturn": {
+          "label": "Scope Return",
+          "description": "Scope Return node."
+        },
+        "setInjection": {
+          "label": "Set Injection",
+          "description": "Set Injection node."
+        },
+        "setState": {
+          "label": "Set State",
+          "description": "Set State node."
+        },
+        "state": {
+          "label": "State",
+          "description": "State node."
+        },
+        "stop": {
+          "label": "Stop",
+          "description": "Stop node."
+        },
+        "template": {
+          "label": "Template",
+          "description": "Template node."
+        },
+        "unpackObject": {
+          "label": "Unpack Object",
+          "description": "Unpack Object node."
+        },
+        "visibleMessage": {
+          "label": "Visible Message",
+          "description": "Visible Message node."
+        },
+        "tools": {
+          "random": {
+            "dice": {
+              "label": "Dice",
+              "description": "Run the random.dice tool."
+            },
+            "chance": {
+              "label": "Chance",
+              "description": "Run the random.chance tool."
+            },
+            "select": {
+              "label": "Select",
+              "description": "Run the random.select tool."
+            },
+            "selectWeighted": {
+              "label": "Select Weighted",
+              "description": "Run the random.selectWeighted tool."
+            },
+            "sampleWithoutReplacement": {
+              "label": "Sample Without Replacement",
+              "description": "Run the random.sampleWithoutReplacement tool."
+            }
+          },
+          "logic": {
+            "compare": {
+              "label": "Compare",
+              "description": "Run the logic.compare tool."
+            }
+          },
+          "number": {
+            "sum": {
+              "label": "Sum",
+              "description": "Run the number.sum tool."
+            },
+            "add": {
+              "label": "Add",
+              "description": "Run the number.add tool."
+            },
+            "clamp": {
+              "label": "Clamp",
+              "description": "Run the number.clamp tool."
+            }
+          },
+          "string": {
+            "fromPrimitive": {
+              "label": "From Primitive",
+              "description": "Run the string.fromPrimitive tool."
+            },
+            "transform": {
+              "label": "Transform",
+              "description": "Run the string.transform tool."
+            },
+            "concat": {
+              "label": "Concat",
+              "description": "Run the string.concat tool."
+            },
+            "removePrefix": {
+              "label": "Remove Prefix",
+              "description": "Run the string.removePrefix tool."
+            }
+          },
+          "table": {
+            "lookupKey": {
+              "label": "Lookup Key",
+              "description": "Run the table.lookupKey tool."
+            },
+            "lookupRange": {
+              "label": "Lookup Range",
+              "description": "Run the table.lookupRange tool."
+            }
+          },
+          "json": {
+            "set": {
+              "label": "Set",
+              "description": "Run the json.set tool."
+            },
+            "remove": {
+              "label": "Remove",
+              "description": "Run the json.remove tool."
+            },
+            "increment": {
+              "label": "Increment",
+              "description": "Run the json.increment tool."
+            },
+            "append": {
+              "label": "Append",
+              "description": "Run the json.append tool."
+            },
+            "prepend": {
+              "label": "Prepend",
+              "description": "Run the json.prepend tool."
+            },
+            "concat": {
+              "label": "Concat",
+              "description": "Run the json.concat tool."
+            },
+            "removeMatching": {
+              "label": "Remove Matching",
+              "description": "Run the json.removeMatching tool."
+            },
+            "upsertByKey": {
+              "label": "Upsert By Key",
+              "description": "Run the json.upsertByKey tool."
+            }
+          },
+          "collection": {
+            "filter": {
+              "label": "Filter",
+              "description": "Run the collection.filter tool."
+            },
+            "mapFields": {
+              "label": "Map Fields",
+              "description": "Run the collection.mapFields tool."
+            },
+            "extract": {
+              "label": "Extract",
+              "description": "Run the collection.extract tool."
+            },
+            "lookup": {
+              "label": "Lookup",
+              "description": "Run the collection.lookup tool."
+            },
+            "lookupString": {
+              "label": "Lookup String",
+              "description": "Run the collection.lookupString tool."
+            },
+            "filterString": {
+              "label": "Filter String",
+              "description": "Run the collection.filterString tool."
+            },
+            "flatten": {
+              "label": "Flatten",
+              "description": "Run the collection.flatten tool."
+            }
+          },
+          "id": {
+            "generate": {
+              "label": "Generate",
+              "description": "Run the id.generate tool."
+            }
+          }
+        }
       }
     }
   },

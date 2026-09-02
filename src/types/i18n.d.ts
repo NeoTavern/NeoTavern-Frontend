@@ -585,8 +585,6 @@ export interface MessageSchema {
     text: string;
     import: string;
     export: string;
-    exportActive: string;
-    importSingle: string;
     edit: string;
     create: string;
     rename: string;
@@ -612,12 +610,15 @@ export interface MessageSchema {
     clearSelection: string;
     apply: string;
     reload: string;
-    abort: string;
     newVersionAvailable: string;
     unknown: string;
     untitled: string;
     advanced: string;
     toggleFullScreen: string;
+    undo: string;
+    redo: string;
+    paste: string;
+    discard: string;
   };
   colorPicker: {
     hex: string;
@@ -1398,10 +1399,6 @@ export interface MessageSchema {
         name: string;
         description: string;
       };
-      mythicAgents: {
-        name: string;
-        description: string;
-      };
       notebook: {
         name: string;
         description: string;
@@ -2059,129 +2056,6 @@ export interface MessageSchema {
         shuffledMode: string;
       };
     };
-    mythicAgents: {
-      title: string;
-      navTitle: string;
-      validationErrors: string;
-      resetToDefault: string;
-      generalConfiguration: string;
-      enable: string;
-      autoAnalyze: string;
-      autoAnalyzeHint: string;
-      autoUpdateScene: string;
-      autoUpdateSceneHint: string;
-      connectionProfile: string;
-      connectionProfileHint: string;
-      defaultChaosRank: string;
-      defaultChaosRankHint: string;
-      language: string;
-      languageHint: string;
-      languagePlaceholder: string;
-      requestFormat: string;
-      requestFormatHint: string;
-      eventFocusesWeighted: string;
-      eventActions: string;
-      eventSubjects: string;
-      characterTypes: string;
-      modifiers: string;
-      nouns: string;
-      motivationVerbs: string;
-      motivationNouns: string;
-      tabs: {
-        general: string;
-        prompts: string;
-        fateChart: string;
-        eventTables: string;
-        une: string;
-      };
-      prompts: {
-        initialScene: string;
-        analysis: string;
-        narration: string;
-      };
-      requestFormats: {
-        native: string;
-        json: string;
-        xml: string;
-      };
-      eventTables: {
-        actions: string;
-        subjects: string;
-      };
-      popups: {
-        enterPresetName: string;
-        enterNewPresetName: string;
-        deletePreset: string;
-        resetAllContent: string;
-        resetPromptContent: string;
-      };
-      toasts: {
-        builtInReadOnly: string;
-        fateChartUpdated: string;
-        invalidJson: string;
-        eventFocusesUpdated: string;
-        tableUpdated: string;
-        uneUpdated: string;
-        characterTypesUpdated: string;
-        presetNameExists: string;
-        builtInCannotRename: string;
-        builtInCannotDelete: string;
-        cannotDeleteLastPreset: string;
-        presetImported: string;
-        presetsImported: string;
-        invalidPresetFormat: string;
-        invalidFileFormat: string;
-        contentReset: string;
-        presetValidationErrors: string;
-        loadPresetFailed: string;
-        chatDataReset: string;
-        sceneAbortRequested: string;
-        sceneAborted: string;
-        runtimeError: string;
-      };
-      panel: {
-        tabs: {
-          dashboard: string;
-          scene: string;
-          npcs: string;
-          threads: string;
-          log: string;
-        };
-        resetTitle: string;
-        resetContent: string;
-        chaosRank: string;
-        highChaos: string;
-        lowChaos: string;
-        npcs: string;
-        threads: string;
-        recentActions: string;
-        noActionsRecorded: string;
-        reinitializeScene: string;
-        generateIdentities: string;
-        currentSceneDetails: string;
-        activeNpcs: string;
-        openThreads: string;
-        noSceneData: string;
-        addRandomNpc: string;
-        noCharacters: string;
-        name: string;
-        type: string;
-        editNpc: string;
-        removeNpc: string;
-        identity: string;
-        regenerateUne: string;
-        motivation: string;
-        verb: string;
-        addThreadPlaceholder: string;
-        noOpenThreads: string;
-        removeThread: string;
-        resolvedThreads: string;
-        noHistoryRecorded: string;
-        roll: string;
-        chaosDie: string;
-        randomEvent: string;
-      };
-    };
     standardTools: {
       network: string;
       corsProxy: string;
@@ -2246,6 +2120,12 @@ export interface MessageSchema {
       response: string;
       viewFullRequestResponse: string;
       viewCapture: string;
+      copyGenerationTrace: string;
+      copyTrace: string;
+      traceCopied: string;
+      traceCopyFailed: string;
+      traceNoActiveChat: string;
+      traceNoCaptures: string;
       clearAllUsageData: string;
       clearAllUsageDataContent: string;
       clearLogs: string;
@@ -2278,6 +2158,8 @@ export interface MessageSchema {
       time: string;
       source: string;
       model: string;
+      type: string;
+      messageIndex: string;
       message: string;
       prompt: string;
       content: string;
@@ -2301,6 +2183,10 @@ export interface MessageSchema {
       settings: {
         keepFullPayloads: string;
         keepFullPayloadsHint: string;
+        traceGenerationCount: string;
+        traceGenerationCountHint: string;
+        traceRequestMessageLimit: string;
+        traceRequestMessageLimitHint: string;
         captureStorageLimit: string;
         captureStorageLimitHint: string;
       };
@@ -2499,6 +2385,540 @@ export interface MessageSchema {
         profileRenamed: string;
         profileDeleted: string;
         profileActivated: string;
+      };
+    };
+    customAgents: {
+      title: string;
+      views: string;
+      noViews: string;
+      noActiveChat: string;
+      create: string;
+      duplicate: string;
+      collectionName: string;
+      createCollection: string;
+      duplicateCollection: string;
+      renameCollection: string;
+      deleteCollection: string;
+      confirmDeleteCollection: string;
+      exportActiveCollection: string;
+      exportAllCollections: string;
+      importSingleCollection: string;
+      importAllCollections: string;
+      agentId: string;
+      confirmDelete: string;
+      confirmReset: string;
+      id: string;
+      name: string;
+      priority: string;
+      enabled: string;
+      resetBranch: string;
+      importExport: string;
+      templates: string;
+      installTemplate: string;
+      templateInstalled: string;
+      metadata: string;
+      configuration: string;
+      noConfiguration: string;
+      state: string;
+      noAgents: string;
+      imported: string;
+      presetJson: string;
+      clearRunOverlay: string;
+      actions: string;
+      runStatus: {
+        running: string;
+        completed: string;
+        skipped: string;
+        failed: string;
+        cancelled: string;
+      };
+      editor: {
+        flowEditor: string;
+        nodePalette: string;
+        nodes: string;
+        searchNodes: string;
+        expandCategory: string;
+        collapseCategory: string;
+        flows: string;
+        selectFlow: string;
+        actions: string;
+        duplicateFlow: string;
+        deleteFlow: string;
+        createTriggerFlow: string;
+        createSubflow: string;
+        backToParent: string;
+        fitView: string;
+        fit: string;
+        smartLayout: string;
+        smartLayoutBusy: string;
+        smartLayoutCyclicUnavailable: string;
+        smartLayoutMeasurementUnavailable: string;
+        smartLayoutUnavailable: string;
+        smartLayoutAll: string;
+        smartLayoutAllProgress: string;
+        smartLayoutAllCyclicUnavailable: string;
+        smartLayoutAllMeasurementUnavailable: string;
+        smartLayoutAllUnavailable: string;
+        unsavedDraft: string;
+        discardDraft: string;
+        applyValidDraft: string;
+        subflowSignature: string;
+        inputs: string;
+        outputs: string;
+        id: string;
+        label: string;
+        required: string;
+        jsonSchema: string;
+        movePortUp: string;
+        movePortDown: string;
+        removePort: string;
+        addInput: string;
+        addOutput: string;
+        zoomIn: string;
+        zoomOut: string;
+        resizeNode: string;
+        openBody: string;
+        moveUp: string;
+        moveDown: string;
+        addItem: string;
+        omitOptional: string;
+        omit: string;
+        root: string;
+        connected: string;
+        advancedPath: string;
+        requiredUnbound: string;
+        stalePort: string;
+        clearInline: string;
+        runDetails: string;
+        diagnosticCount: string;
+        focusDiagnostic: string;
+        categories: {
+          trigger: string;
+          control: string;
+          data: string;
+          logic: string;
+          llm: string;
+          tool: string;
+          effect: string;
+        };
+        flowKinds: {
+          trigger: string;
+          subflow: string;
+        };
+        portKinds: {
+          control: string;
+          string: string;
+          number: string;
+          boolean: string;
+          array: string;
+          object: string;
+          json: string;
+          null: string;
+        };
+        severity: {
+          error: string;
+          warning: string;
+        };
+        errors: {
+          inputSchema: string;
+        };
+      };
+      catalog: {
+        ADD_SWIPE: string;
+        AFTER_CONTEXT: string;
+        ALWAYS: string;
+        APPEND_TARGET: string;
+        ASSISTANT: string;
+        CREATE: string;
+        EVERY_N_EVENTS: string;
+        FOR_N_GENERATIONS: string;
+        FULL_CURRENT: string;
+        FULL_TARGET: string;
+        IN_CHAT: string;
+        NEW: string;
+        NONE: string;
+        NORMAL_CHAT: string;
+        ONCE: string;
+        PROBABILITY: string;
+        RECENT_CURRENT: string;
+        RECENT_TARGET: string;
+        REGENERATE: string;
+        REPLACE_TARGET: string;
+        STANDALONE: string;
+        SYSTEM: string;
+        UNTIL_REMOVED: string;
+        USER: string;
+        accumulator: string;
+        activationType: string;
+        amount: string;
+        assemblyType: string;
+        body: string;
+        carriesValue: string;
+        caseSensitive: string;
+        cases: string;
+        collection: string;
+        condition: string;
+        connectionProfileId: string;
+        content: string;
+        count: string;
+        depth: string;
+        else: string;
+        event: string;
+        expression: string;
+        fields: string;
+        flowId: string;
+        found: string;
+        from: string;
+        generationMode: string;
+        generationModes: string;
+        generations: string;
+        history: string;
+        historyCount: string;
+        id: string;
+        in: string;
+        index: string;
+        indices: string;
+        input: string;
+        initialAccumulator: string;
+        injectionId: string;
+        inputSchema: string;
+        inputs: string;
+        item: string;
+        items: string;
+        key: string;
+        label: string;
+        left: string;
+        lifetimeType: string;
+        match: string;
+        matched: string;
+        max: string;
+        message: string;
+        min: string;
+        modifier: string;
+        name: string;
+        newValue: string;
+        number: string;
+        operation: string;
+        operations: string;
+        operator: string;
+        out: string;
+        outputSchema: string;
+        path: string;
+        placement: string;
+        placementRole: string;
+        placementType: string;
+        prefix: string;
+        probability: string;
+        prompt: string;
+        relative: string;
+        replaced: string;
+        result: string;
+        right: string;
+        roll: string;
+        rolls: string;
+        rows: string;
+        scheduleInterval: string;
+        scheduleType: string;
+        schema: string;
+        separator: string;
+        sides: string;
+        standaloneRole: string;
+        structuredFormat: string;
+        table: string;
+        targetMessage: string;
+        template: string;
+        to: string;
+        total: string;
+        value: string;
+        values: string;
+        variables: string;
+        weight: string;
+        in_chat: string;
+        property_value: string;
+      };
+      nodes: {
+        afterGeneration: {
+          label: string;
+          description: string;
+        };
+        afterUser: {
+          label: string;
+          description: string;
+        };
+        all: {
+          label: string;
+          description: string;
+        };
+        any: {
+          label: string;
+          description: string;
+        };
+        array: {
+          label: string;
+          description: string;
+        };
+        assert: {
+          label: string;
+          description: string;
+        };
+        beforeGeneration: {
+          label: string;
+          description: string;
+        };
+        branch: {
+          label: string;
+          description: string;
+        };
+        configuration: {
+          label: string;
+          description: string;
+        };
+        constant: {
+          label: string;
+          description: string;
+        };
+        event: {
+          label: string;
+          description: string;
+        };
+        exists: {
+          label: string;
+          description: string;
+        };
+        forEach: {
+          label: string;
+          description: string;
+        };
+        generateAssistant: {
+          label: string;
+          description: string;
+        };
+        generationResponse: {
+          label: string;
+          description: string;
+        };
+        get: {
+          label: string;
+          description: string;
+        };
+        in: {
+          label: string;
+          description: string;
+        };
+        llmRequest: {
+          label: string;
+          description: string;
+        };
+        manual: {
+          label: string;
+          description: string;
+        };
+        mergeAll: {
+          label: string;
+          description: string;
+        };
+        mergeAny: {
+          label: string;
+          description: string;
+        };
+        not: {
+          label: string;
+          description: string;
+        };
+        object: {
+          label: string;
+          description: string;
+        };
+        removeInjection: {
+          label: string;
+          description: string;
+        };
+        removeState: {
+          label: string;
+          description: string;
+        };
+        runFlow: {
+          label: string;
+          description: string;
+        };
+        scopeEntry: {
+          label: string;
+          description: string;
+        };
+        scopeReturn: {
+          label: string;
+          description: string;
+        };
+        setInjection: {
+          label: string;
+          description: string;
+        };
+        setState: {
+          label: string;
+          description: string;
+        };
+        state: {
+          label: string;
+          description: string;
+        };
+        stop: {
+          label: string;
+          description: string;
+        };
+        template: {
+          label: string;
+          description: string;
+        };
+        unpackObject: {
+          label: string;
+          description: string;
+        };
+        visibleMessage: {
+          label: string;
+          description: string;
+        };
+        tools: {
+          random: {
+            dice: {
+              label: string;
+              description: string;
+            };
+            chance: {
+              label: string;
+              description: string;
+            };
+            select: {
+              label: string;
+              description: string;
+            };
+            selectWeighted: {
+              label: string;
+              description: string;
+            };
+            sampleWithoutReplacement: {
+              label: string;
+              description: string;
+            };
+          };
+          logic: {
+            compare: {
+              label: string;
+              description: string;
+            };
+          };
+          number: {
+            sum: {
+              label: string;
+              description: string;
+            };
+            add: {
+              label: string;
+              description: string;
+            };
+            clamp: {
+              label: string;
+              description: string;
+            };
+          };
+          string: {
+            fromPrimitive: {
+              label: string;
+              description: string;
+            };
+            transform: {
+              label: string;
+              description: string;
+            };
+            concat: {
+              label: string;
+              description: string;
+            };
+            removePrefix: {
+              label: string;
+              description: string;
+            };
+          };
+          table: {
+            lookupKey: {
+              label: string;
+              description: string;
+            };
+            lookupRange: {
+              label: string;
+              description: string;
+            };
+          };
+          json: {
+            set: {
+              label: string;
+              description: string;
+            };
+            remove: {
+              label: string;
+              description: string;
+            };
+            increment: {
+              label: string;
+              description: string;
+            };
+            append: {
+              label: string;
+              description: string;
+            };
+            prepend: {
+              label: string;
+              description: string;
+            };
+            concat: {
+              label: string;
+              description: string;
+            };
+            removeMatching: {
+              label: string;
+              description: string;
+            };
+            upsertByKey: {
+              label: string;
+              description: string;
+            };
+          };
+          collection: {
+            filter: {
+              label: string;
+              description: string;
+            };
+            mapFields: {
+              label: string;
+              description: string;
+            };
+            extract: {
+              label: string;
+              description: string;
+            };
+            lookup: {
+              label: string;
+              description: string;
+            };
+            lookupString: {
+              label: string;
+              description: string;
+            };
+            filterString: {
+              label: string;
+              description: string;
+            };
+            flatten: {
+              label: string;
+              description: string;
+            };
+          };
+          id: {
+            generate: {
+              label: string;
+              description: string;
+            };
+          };
+        };
       };
     };
   };

@@ -20,7 +20,7 @@
     "lint:fix": "oxlint --fix .",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
-    "test": "vitest run --coverage"
+    "test": "vitest run"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.4",
@@ -34,6 +34,7 @@
     "@tiptap/pm": "^3.27.1",
     "@tiptap/starter-kit": "^3.27.1",
     "@tiptap/vue-3": "^3.27.1",
+    "@vue-flow/core": "^1.48.2",
     "ajv": "^8.17.1",
     "bowser": "^2.14.1",
     "codemirror": "^6.0.2",
@@ -60,7 +61,6 @@
     "@types/jsdom": "^28.0.3",
     "@types/lodash-es": "^4.17.12",
     "@vitejs/plugin-vue": "^6.0.7",
-    "@vitest/coverage-istanbul": "^4.1.9",
     "glob": "^13.0.6",
     "jsdom": "^29.1.1",
     "oxfmt": "^0.57.0",
