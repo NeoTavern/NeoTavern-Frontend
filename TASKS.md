@@ -193,6 +193,31 @@ Revision 27 mechanically merged the former T001 lifecycle seam and T002 Custom A
 - Verification method: Focused editor-store/history operation-count and mixed-command tests; complete suite; formatting, i18n, lint, typecheck, build, diff check; independent verification.
 - Attempt count: 2
 - Latest result: Approved after correction. Movement, resizing, and both Smart Layout paths use sparse reversible geometry patches in the normal chronological history without compilation, validation, schema reconciliation, complete-agent cloning, or port-cache invalidation. All-scope measurement uses captured graph references without a temporary validating store and rejects concurrent semantic replacement. Geometry targets validate atomically, and failed undo/redo retains stack ownership. Focused layout/editor tests passed 3 files / 57 tests and the complete suite passed 43 files / 424 tests; formatting, lint, typecheck, build, diff checks, and independent reverification passed.
-- Verification method: Instrumented/unit assertions around preparation and runtime replacement, mounted activation/management test for deferred editor construction, focused host/management/editor suites, and complete repository gates.
-- Attempt count: 1
-- Latest result: Implementation underway.
+
+## T006 — Add the Narrative Momentum Director built-in template
+
+- Status: completed
+- Dependencies: T005
+- Integration milestone: M6
+- Objective: Add a restrained observer-only long-form roleplay director with persistent narrative direction, single-generation randomized influences, manual controls, and a schema-driven runtime view.
+- Source requirement IDs: REQ-009, REQ-010, REQ-016
+- In scope:
+  - one canonical `narrative-momentum-director.flow.json` preset built only from registered generic nodes;
+  - periodic structured after-generation direction auditing with `NONE`, `KEEP`, `CREATE`, `REPLACE`, and `REMOVE` outcomes;
+  - one active direction state value and one stable `UNTIL_REMOVED` direction injection;
+  - probabilistic `ONCE` random-influence injection selected from configurable non-escalatory defaults;
+  - manual force-audit and clear-direction flows reused by a generic runtime view;
+  - template catalog registration and focused shape/compiler/runtime/catalog tests;
+  - measured readable node geometry without production behavior specific to this template.
+- Out of scope:
+  - generation-response flows, autonomous assistant generation, template-specific TypeScript/Vue handlers, conversation summarization, thread databases, migration, compatibility aliases, or changes to the generic graph/runtime/editor contracts.
+- Acceptance criteria:
+  - The strict preset parser and compiler accept the checked-in asset, and installing it returns an independent editable clone.
+  - No flow is generation-capable; normal generation is influenced only through the two stable injection IDs.
+  - Audit execution creates/replaces, keeps, or removes the active direction exactly as directed by structured LLM output; clearing removes both state and injection.
+  - Random influence uses the configured probability, is `ONCE`, chooses from the configured non-empty list, and does not accumulate stale IDs.
+  - The runtime view exposes current direction plus force-audit and clear actions using only declared generic view components.
+  - Focused tests, complete behavioral suite, formatting, lint, typecheck, build, and `git diff --check` pass; `vite.config.ts` remains unchanged and unstaged.
+- Verification method: Strict parse/compiler/catalog assertions, deterministic runtime executions with stubbed LLM/random/host effects, complete repository gates, and independent verification.
+- Attempt count: 3
+- Latest result: Approved after live correction. Added a five-flow, 31-node observer-only preset with periodic/manual audit reuse, persistent direction state/injection, probabilistic one-generation influences, manual clearing, a generic runtime view, and catalog registration. A live smoke test exposed bare template variables; all now use the declared `input.*` namespace, with real host renderer coverage for random influence, direction injection, and nested configured audit prompts. The complete suite passed 44 files / 436 tests; build, typecheck, formatting, lint, diff checks, protected-file hash checks, independent verification, and focused macro reverification passed.

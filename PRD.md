@@ -3,7 +3,7 @@
 ## Authority and status
 
 - Status: Approved
-- Revision: 32
+- Revision: 33
 - Authoritative source: This document and the user's accepted simplification on the current `custom_agents` branch.
 - This revision supersedes the previous requirements for staged chat transactions, provisional projections, rollback, generation claims, and host-level generation arbitration.
 - The current visual graph format, node catalog, runtime views, management UI, and Mythic graph remain product scope. This is an architectural simplification, not a reset or a reduced node/view product.
@@ -235,6 +235,16 @@ Node movement, node resizing, single-scope Smart Layout, and all-scope Smart Lay
 A geometry command records only the node positions or sizes required to undo and redo that command. Applying or restoring it must not deep-clone the complete agent. It may issue the minimal reactive draft notification needed to update Vue Flow while preserving graph, schema, node data, input value, and flow-signature identities.
 
 Semantic edits, including nodes, edges, node data, input values, flow signatures, schemas, configuration, and views, retain full validation and existing snapshot history semantics. Geometry and semantic commands must interleave correctly through undo and redo. No debounce, delayed commit, worker, persistent cache, or alternate non-serialized viewport state may be introduced.
+
+### REQ-016 — Narrative Momentum Director template
+
+The built-in template catalog includes a generic observer-only Narrative Momentum Director preset for long-form roleplay. It must coexist with generation-capable agents by influencing normal generation only through extension-owned prompt injections; it must not provide assistant responses or add template-specific production handlers or components.
+
+A periodic after-generation audit uses a configurable connection profile and recent chat context to decide one of `NONE`, `KEEP`, `CREATE`, `REPLACE`, or `REMOVE`. It stores at most one active narrative direction and maintains one stable `UNTIL_REMOVED` injection. The audit prompt must favor restraint, preserve user agency, advance unresolved consequences or independent character activity only when useful, and remove directions that have entered the story or become irrelevant. Manual actions must reuse the same audit behavior and allow explicit clearing.
+
+A before-generation randomization flow selects from a configurable non-empty influence list and sets one stable probabilistic `ONCE` injection. Reusing the stable ID must prevent unconsumed influences from accumulating. Defaults must include quiet, delaying, callback, environmental, character-agency, emotional, and complication influences so randomization does not mean constant escalation.
+
+The preset is authored entirely from the public graph schema, generic node catalog, generic state/configuration, and schema-driven runtime views. It must be strictly parseable, compilable, installable as an independent editable clone, and covered by representative execution tests for create/keep/remove direction behavior, probabilistic one-generation influence behavior, manual actions, and catalog registration.
 
 ## Failure behavior
 

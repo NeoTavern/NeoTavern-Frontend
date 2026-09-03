@@ -202,7 +202,7 @@ describe('installed graph agent management and transfer', () => {
     invalidState.agent.initialState = { initialized: 'not-boolean' };
     expect(() => validateInstalledPreset(invalidConfiguration)).toThrow('CONFIGURATION_DEFAULTS');
     expect(() => validateInstalledPreset(invalidState)).toThrow('INITIAL_STATE');
-    expect(getGraphAgentTemplates()).toHaveLength(1);
+    expect(getGraphAgentTemplates()).toHaveLength(2);
   }, 60_000);
 
   it('prevalidates the whole payload and rejects duplicate ID or name without mutating settings', () => {

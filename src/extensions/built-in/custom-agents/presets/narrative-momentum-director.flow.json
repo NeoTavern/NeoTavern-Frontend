@@ -1,0 +1,622 @@
+{
+  "format": "NEOTAVERN_CUSTOM_AGENT_FLOW",
+  "agent": {
+    "id": "builtin-narrative-momentum-director",
+    "name": "Narrative Momentum Director",
+    "enabled": true,
+    "priority": 0,
+    "configurationSchema": {
+      "type": "object",
+      "properties": {
+        "connectionProfileId": { "type": "string" },
+        "structuredFormat": { "type": "string", "enum": ["NATIVE", "JSON", "XML"] },
+        "recentHistoryCount": { "type": "integer", "minimum": 1 },
+        "randomInfluenceProbability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "influences": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+        "auditPrompt": { "type": "string", "minLength": 1 }
+      },
+      "required": [
+        "connectionProfileId",
+        "structuredFormat",
+        "recentHistoryCount",
+        "randomInfluenceProbability",
+        "influences",
+        "auditPrompt"
+      ],
+      "additionalProperties": false
+    },
+    "configurationDefaults": {
+      "connectionProfileId": "",
+      "structuredFormat": "NATIVE",
+      "recentHistoryCount": 12,
+      "randomInfluenceProbability": 0.2,
+      "influences": [
+        "Allow a quiet beat or reflection instead of escalating.",
+        "Favor delay, restraint, or an unresolved pause.",
+        "Echo an earlier detail or callback only if it fits naturally.",
+        "Let the environment subtly affect the scene.",
+        "Let an NPC pursue an independent goal without overriding anyone's agency.",
+        "Emphasize emotional subtext rather than explicit explanation.",
+        "Offer a subtle complication that preserves continuity and character autonomy."
+      ],
+      "auditPrompt": "You are a restrained narrative momentum auditor. Review only the supplied recent current-chat history and the current direction. Preserve continuity and every character's autonomy. Never force or decide user actions, and do not require an immediate intervention. Only when useful, a direction may advance unresolved consequences or independent character activity. Return exactly one action and one direction. Use NONE when the story is progressing naturally. Use KEEP only when the active direction remains useful. Use CREATE only when there is no active direction and a concise direction would be useful. Use REPLACE only when a different concise direction would be more useful. Use REMOVE when the active direction has been realized or is no longer relevant. For NONE, KEEP, and REMOVE, direction MUST be an empty string. For CREATE or REPLACE, direction must be a restrained suggestion, not a command to characters.\n\nCurrent direction: {{{input.currentDirection}}}"
+    },
+    "stateSchema": {
+      "type": "object",
+      "properties": { "direction": { "type": "string" } },
+      "required": ["direction"],
+      "additionalProperties": false
+    },
+    "initialState": { "direction": "" },
+    "flows": [
+      {
+        "id": "periodic-direction-audit",
+        "name": "Periodic direction audit",
+        "kind": "TRIGGER",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "periodic-trigger",
+            "type": "trigger.after-generation",
+            "position": { "x": 0, "y": 0 },
+            "data": {
+              "generationModes": ["NEW", "REGENERATE", "ADD_SWIPE"],
+              "schedule": { "type": "EVERY_N_EVENTS", "interval": 3 }
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "periodic-run-audit",
+            "type": "control.run-flow",
+            "position": { "x": 400, "y": 0 },
+            "data": { "flowId": "audit-direction" },
+            "inputValues": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "periodic-trigger-run",
+            "kind": "CONTROL",
+            "source": { "nodeId": "periodic-trigger", "portId": "out" },
+            "target": { "nodeId": "periodic-run-audit", "portId": "in" }
+          }
+        ]
+      },
+      {
+        "id": "force-direction-audit",
+        "name": "Force direction audit",
+        "kind": "TRIGGER",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "force-trigger",
+            "type": "trigger.manual",
+            "position": { "x": 0, "y": 0 },
+            "data": { "inputSchema": { "type": "object", "additionalProperties": false } },
+            "inputValues": {}
+          },
+          {
+            "id": "force-run-audit",
+            "type": "control.run-flow",
+            "position": { "x": 400, "y": 0 },
+            "data": { "flowId": "audit-direction" },
+            "inputValues": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "force-trigger-run",
+            "kind": "CONTROL",
+            "source": { "nodeId": "force-trigger", "portId": "out" },
+            "target": { "nodeId": "force-run-audit", "portId": "in" }
+          }
+        ]
+      },
+      {
+        "id": "random-influence",
+        "name": "Random single-generation influence",
+        "kind": "TRIGGER",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "random-trigger",
+            "type": "trigger.before-generation",
+            "position": { "x": 0, "y": 0 },
+            "data": { "generationModes": ["NEW", "REGENERATE", "ADD_SWIPE"], "schedule": { "type": "ALWAYS" } },
+            "inputValues": {}
+          },
+          {
+            "id": "random-influences",
+            "type": "data.configuration",
+            "position": { "x": 0, "y": 160 },
+            "data": { "path": "influences" },
+            "inputValues": {}
+          },
+          {
+            "id": "random-select",
+            "type": "tool.random.select",
+            "position": { "x": 400, "y": 0 },
+            "data": {},
+            "inputValues": {}
+          },
+          {
+            "id": "random-wording",
+            "type": "data.template",
+            "position": { "x": 800, "y": 160 },
+            "data": {
+              "template": "For this generation only, gently consider this optional narrative influence when it fits; do not force user actions or disrupt continuity: {{{input.influence}}}",
+              "variables": [{ "id": "influence", "name": "influence" }]
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "random-probability",
+            "type": "data.configuration",
+            "position": { "x": 800, "y": 320 },
+            "data": { "path": "randomInfluenceProbability" },
+            "inputValues": {}
+          },
+          {
+            "id": "random-set-injection",
+            "type": "effect.set-injection",
+            "position": { "x": 1200, "y": 0 },
+            "data": {
+              "injectionId": "narrative-momentum-random-influence",
+              "placement": "relative",
+              "depth": 0,
+              "lifetime": { "type": "ONCE" },
+              "activation": { "type": "PROBABILITY" }
+            },
+            "inputValues": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "random-trigger-select",
+            "kind": "CONTROL",
+            "source": { "nodeId": "random-trigger", "portId": "out" },
+            "target": { "nodeId": "random-select", "portId": "in" }
+          },
+          {
+            "id": "random-list-select",
+            "kind": "DATA",
+            "source": { "nodeId": "random-influences", "portId": "value" },
+            "target": { "nodeId": "random-select", "portId": "items" }
+          },
+          {
+            "id": "random-select-template",
+            "kind": "DATA",
+            "source": { "nodeId": "random-select", "portId": "property/value" },
+            "target": { "nodeId": "random-wording", "portId": "variable.influence" }
+          },
+          {
+            "id": "random-select-set",
+            "kind": "CONTROL",
+            "source": { "nodeId": "random-select", "portId": "out" },
+            "target": { "nodeId": "random-set-injection", "portId": "in" }
+          },
+          {
+            "id": "random-template-set",
+            "kind": "DATA",
+            "source": { "nodeId": "random-wording", "portId": "value" },
+            "target": { "nodeId": "random-set-injection", "portId": "content" }
+          },
+          {
+            "id": "random-probability-set",
+            "kind": "DATA",
+            "source": { "nodeId": "random-probability", "portId": "value" },
+            "target": { "nodeId": "random-set-injection", "portId": "probability" }
+          }
+        ]
+      },
+      {
+        "id": "clear-direction",
+        "name": "Clear direction",
+        "kind": "TRIGGER",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "clear-trigger",
+            "type": "trigger.manual",
+            "position": { "x": 0, "y": 0 },
+            "data": { "inputSchema": { "type": "object", "additionalProperties": false } },
+            "inputValues": {}
+          },
+          {
+            "id": "clear-remove-injection",
+            "type": "effect.remove-injection",
+            "position": { "x": 400, "y": 0 },
+            "data": { "injectionId": "narrative-momentum-direction" },
+            "inputValues": {}
+          },
+          {
+            "id": "clear-state",
+            "type": "effect.set-state",
+            "position": { "x": 800, "y": 0 },
+            "data": { "path": "direction" },
+            "inputValues": { "value": "" }
+          }
+        ],
+        "edges": [
+          {
+            "id": "clear-trigger-remove",
+            "kind": "CONTROL",
+            "source": { "nodeId": "clear-trigger", "portId": "out" },
+            "target": { "nodeId": "clear-remove-injection", "portId": "in" }
+          },
+          {
+            "id": "clear-remove-state",
+            "kind": "CONTROL",
+            "source": { "nodeId": "clear-remove-injection", "portId": "out" },
+            "target": { "nodeId": "clear-state", "portId": "in" }
+          }
+        ]
+      },
+      {
+        "id": "audit-direction",
+        "name": "Audit direction",
+        "kind": "SUBFLOW",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          { "id": "audit-entry", "type": "scope.entry", "position": { "x": 0, "y": 0 }, "data": {}, "inputValues": {} },
+          {
+            "id": "audit-current-direction",
+            "type": "data.state",
+            "position": { "x": 0, "y": 160 },
+            "data": { "path": "direction" },
+            "inputValues": {}
+          },
+          {
+            "id": "audit-profile",
+            "type": "data.configuration",
+            "position": { "x": 0, "y": 320 },
+            "data": { "path": "connectionProfileId" },
+            "inputValues": {}
+          },
+          {
+            "id": "audit-format",
+            "type": "data.configuration",
+            "position": { "x": 0, "y": 480 },
+            "data": { "path": "structuredFormat" },
+            "inputValues": {}
+          },
+          {
+            "id": "audit-history-count",
+            "type": "data.configuration",
+            "position": { "x": 0, "y": 640 },
+            "data": { "path": "recentHistoryCount" },
+            "inputValues": {}
+          },
+          {
+            "id": "audit-request",
+            "type": "llm.request",
+            "position": { "x": 400, "y": 0 },
+            "data": {
+              "prompt": "{{{config.auditPrompt}}}",
+              "variables": [{ "id": "current-direction", "name": "currentDirection" }],
+              "assembly": {
+                "type": "NORMAL_CHAT",
+                "history": "RECENT_CURRENT",
+                "placement": { "type": "AFTER_CONTEXT", "role": "SYSTEM" }
+              },
+              "outputSchema": {
+                "type": "object",
+                "properties": {
+                  "action": { "type": "string", "enum": ["NONE", "KEEP", "CREATE", "REPLACE", "REMOVE"] },
+                  "direction": { "type": "string" }
+                },
+                "required": ["action", "direction"],
+                "additionalProperties": false
+              }
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "audit-is-create",
+            "type": "tool.logic.compare",
+            "position": { "x": 800, "y": 160 },
+            "data": {},
+            "inputValues": { "operator": "EQUALS", "right": "CREATE" }
+          },
+          {
+            "id": "audit-is-replace",
+            "type": "tool.logic.compare",
+            "position": { "x": 800, "y": 320 },
+            "data": {},
+            "inputValues": { "operator": "EQUALS", "right": "REPLACE" }
+          },
+          {
+            "id": "audit-is-remove",
+            "type": "tool.logic.compare",
+            "position": { "x": 800, "y": 480 },
+            "data": {},
+            "inputValues": { "operator": "EQUALS", "right": "REMOVE" }
+          },
+          {
+            "id": "audit-branch",
+            "type": "control.branch",
+            "position": { "x": 1200, "y": 0 },
+            "data": {
+              "cases": [
+                { "id": "create", "label": "Create" },
+                { "id": "replace", "label": "Replace" },
+                { "id": "remove", "label": "Remove" }
+              ]
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "audit-create-replace",
+            "type": "control.merge-any",
+            "position": { "x": 1600, "y": 0 },
+            "data": {
+              "inputs": [
+                { "id": "create", "label": "Create", "carriesValue": false },
+                { "id": "replace", "label": "Replace", "carriesValue": false }
+              ]
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "audit-store-direction",
+            "type": "effect.set-state",
+            "position": { "x": 2000, "y": 0 },
+            "data": { "path": "direction" },
+            "inputValues": {}
+          },
+          {
+            "id": "audit-direction-wording",
+            "type": "data.template",
+            "position": { "x": 2000, "y": 160 },
+            "data": {
+              "template": "Ongoing narrative direction (guidance only): {{{input.direction}}} Preserve continuity and character autonomy; never force the user's actions.",
+              "variables": [{ "id": "direction", "name": "direction" }]
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "audit-set-injection",
+            "type": "effect.set-injection",
+            "position": { "x": 2400, "y": 0 },
+            "data": {
+              "injectionId": "narrative-momentum-direction",
+              "placement": "relative",
+              "depth": 0,
+              "lifetime": { "type": "UNTIL_REMOVED" },
+              "activation": { "type": "ALWAYS" }
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "audit-remove-injection",
+            "type": "effect.remove-injection",
+            "position": { "x": 1600, "y": 480 },
+            "data": { "injectionId": "narrative-momentum-direction" },
+            "inputValues": {}
+          },
+          {
+            "id": "audit-clear-state",
+            "type": "effect.set-state",
+            "position": { "x": 2000, "y": 480 },
+            "data": { "path": "direction" },
+            "inputValues": { "value": "" }
+          },
+          {
+            "id": "audit-completion",
+            "type": "control.merge-any",
+            "position": { "x": 2800, "y": 0 },
+            "data": {
+              "inputs": [
+                { "id": "updated", "label": "Updated", "carriesValue": false },
+                { "id": "removed", "label": "Removed", "carriesValue": false },
+                { "id": "unchanged", "label": "Unchanged", "carriesValue": false }
+              ]
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "audit-return",
+            "type": "scope.return",
+            "position": { "x": 3200, "y": 0 },
+            "data": {},
+            "inputValues": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "audit-entry-request",
+            "kind": "CONTROL",
+            "source": { "nodeId": "audit-entry", "portId": "out" },
+            "target": { "nodeId": "audit-request", "portId": "in" }
+          },
+          {
+            "id": "audit-direction-request",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-current-direction", "portId": "value" },
+            "target": { "nodeId": "audit-request", "portId": "variable.current-direction" }
+          },
+          {
+            "id": "audit-profile-request",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-profile", "portId": "value" },
+            "target": { "nodeId": "audit-request", "portId": "connectionProfileId" }
+          },
+          {
+            "id": "audit-format-request",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-format", "portId": "value" },
+            "target": { "nodeId": "audit-request", "portId": "structuredFormat" }
+          },
+          {
+            "id": "audit-count-request",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-history-count", "portId": "value" },
+            "target": { "nodeId": "audit-request", "portId": "historyCount" }
+          },
+          {
+            "id": "audit-request-branch",
+            "kind": "CONTROL",
+            "source": { "nodeId": "audit-request", "portId": "out" },
+            "target": { "nodeId": "audit-branch", "portId": "in" }
+          },
+          {
+            "id": "audit-action-create",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-request", "portId": "property/action" },
+            "target": { "nodeId": "audit-is-create", "portId": "left" }
+          },
+          {
+            "id": "audit-action-replace",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-request", "portId": "property/action" },
+            "target": { "nodeId": "audit-is-replace", "portId": "left" }
+          },
+          {
+            "id": "audit-action-remove",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-request", "portId": "property/action" },
+            "target": { "nodeId": "audit-is-remove", "portId": "left" }
+          },
+          {
+            "id": "audit-create-condition",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-is-create", "portId": "property/result" },
+            "target": { "nodeId": "audit-branch", "portId": "condition.create" }
+          },
+          {
+            "id": "audit-replace-condition",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-is-replace", "portId": "property/result" },
+            "target": { "nodeId": "audit-branch", "portId": "condition.replace" }
+          },
+          {
+            "id": "audit-remove-condition",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-is-remove", "portId": "property/result" },
+            "target": { "nodeId": "audit-branch", "portId": "condition.remove" }
+          },
+          {
+            "id": "audit-branch-create",
+            "kind": "CONTROL",
+            "source": { "nodeId": "audit-branch", "portId": "case.create" },
+            "target": { "nodeId": "audit-create-replace", "portId": "in.create" }
+          },
+          {
+            "id": "audit-branch-replace",
+            "kind": "CONTROL",
+            "source": { "nodeId": "audit-branch", "portId": "case.replace" },
+            "target": { "nodeId": "audit-create-replace", "portId": "in.replace" }
+          },
+          {
+            "id": "audit-merge-store",
+            "kind": "CONTROL",
+            "source": { "nodeId": "audit-create-replace", "portId": "out" },
+            "target": { "nodeId": "audit-store-direction", "portId": "in" }
+          },
+          {
+            "id": "audit-direction-store",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-request", "portId": "property/direction" },
+            "target": { "nodeId": "audit-store-direction", "portId": "value" }
+          },
+          {
+            "id": "audit-direction-template",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-request", "portId": "property/direction" },
+            "target": { "nodeId": "audit-direction-wording", "portId": "variable.direction" }
+          },
+          {
+            "id": "audit-store-set",
+            "kind": "CONTROL",
+            "source": { "nodeId": "audit-store-direction", "portId": "out" },
+            "target": { "nodeId": "audit-set-injection", "portId": "in" }
+          },
+          {
+            "id": "audit-template-set",
+            "kind": "DATA",
+            "source": { "nodeId": "audit-direction-wording", "portId": "value" },
+            "target": { "nodeId": "audit-set-injection", "portId": "content" }
+          },
+          {
+            "id": "audit-branch-remove",
+            "kind": "CONTROL",
+            "source": { "nodeId": "audit-branch", "portId": "case.remove" },
+            "target": { "nodeId": "audit-remove-injection", "portId": "in" }
+          },
+          {
+            "id": "audit-remove-clear",
+            "kind": "CONTROL",
+            "source": { "nodeId": "audit-remove-injection", "portId": "out" },
+            "target": { "nodeId": "audit-clear-state", "portId": "in" }
+          },
+          {
+            "id": "audit-updated-completion",
+            "kind": "CONTROL",
+            "source": { "nodeId": "audit-set-injection", "portId": "out" },
+            "target": { "nodeId": "audit-completion", "portId": "in.updated" }
+          },
+          {
+            "id": "audit-removed-completion",
+            "kind": "CONTROL",
+            "source": { "nodeId": "audit-clear-state", "portId": "out" },
+            "target": { "nodeId": "audit-completion", "portId": "in.removed" }
+          },
+          {
+            "id": "audit-unchanged-completion",
+            "kind": "CONTROL",
+            "source": { "nodeId": "audit-branch", "portId": "else" },
+            "target": { "nodeId": "audit-completion", "portId": "in.unchanged" }
+          },
+          {
+            "id": "audit-completion-return",
+            "kind": "CONTROL",
+            "source": { "nodeId": "audit-completion", "portId": "out" },
+            "target": { "nodeId": "audit-return", "portId": "in" }
+          }
+        ]
+      }
+    ],
+    "views": [
+      {
+        "id": "narrative-momentum-director",
+        "title": "Narrative Momentum Director",
+        "root": {
+          "id": "director-section",
+          "component": "SECTION",
+          "title": "Direction",
+          "components": [
+            {
+              "id": "current-direction",
+              "component": "SCALAR",
+              "label": "Current direction",
+              "binding": { "$ref": "state.direction" },
+              "format": "TEXT"
+            },
+            {
+              "id": "force-audit",
+              "component": "BUTTON",
+              "label": "Force direction audit",
+              "action": {
+                "label": "Force direction audit",
+                "workflowId": "force-direction-audit",
+                "input": {},
+                "confirm": false
+              }
+            },
+            {
+              "id": "clear-direction",
+              "component": "BUTTON",
+              "label": "Clear direction",
+              "action": { "label": "Clear direction", "workflowId": "clear-direction", "input": {}, "confirm": false }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
