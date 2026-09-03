@@ -145,7 +145,9 @@ describe('Narrative Momentum Director preset', () => {
       'NONE, KEEP, and REMOVE, direction MUST be an empty string',
     ])
       expect(prompt).toContain(phrase);
-    const influences = (defaults.influences as JsonValue[]).join(' ');
+    const influenceDefaults = defaults.influences as JsonValue[];
+    expect(influenceDefaults).toHaveLength(28);
+    const influences = influenceDefaults.join(' ');
     for (const intent of [
       'quiet beat',
       'delay',
@@ -153,7 +155,12 @@ describe('Narrative Momentum Director preset', () => {
       'environment',
       'independent goal',
       'emotional subtext',
-      'subtle complication',
+      'complication',
+      'consequence',
+      'opportunity',
+      'relationship',
+      'restraint',
+      'different phase',
     ])
       expect(influences).toContain(intent);
     expect(defaults).toMatchObject({
@@ -231,8 +238,11 @@ describe('Narrative Momentum Director preset', () => {
       lifetime: { type: 'ONCE' },
       activation: { type: 'PROBABILITY', probability: 0.37 },
     });
-    expect(JSON.stringify(result.effects[0])).toContain('second');
-    expect(JSON.stringify(result.effects[0])).toContain('For this generation only');
+    const effect = JSON.stringify(result.effects[0]);
+    expect(effect).toContain('second');
+    expect(effect).toContain('For this generation, incorporate the following narrative direction:');
+    expect(effect).not.toContain('gently consider');
+    expect(effect).not.toContain('optional narrative influence');
   });
 
   it('passes configured audit settings, current direction, and bounded current history to the LLM', async () => {
