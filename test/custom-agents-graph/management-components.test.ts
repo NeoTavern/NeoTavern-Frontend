@@ -17,6 +17,7 @@ import type { GraphPreset } from '../../src/extensions/built-in/custom-agents/gr
 import { compileGraphPreset } from '../../src/extensions/built-in/custom-agents/graph/compile';
 import { builtinNodeRegistry } from '../../src/extensions/built-in/custom-agents/registry/builtin-nodes';
 import { executeGraphPlan } from '../../src/extensions/built-in/custom-agents/runtime/execute-plan';
+import { prepareInstalledGraphAgentsSettings } from '../../src/extensions/built-in/custom-agents/settings/store';
 
 class ResizeObserverStub {
   observe() {}
@@ -34,6 +35,10 @@ afterEach(() => {
 });
 
 function mount(component: object, props: Record<string, unknown>): HTMLElement {
+  if (component === AgentManager && !props.prepared) {
+    const api = props.api as CustomAgentsHostAPI;
+    props = { ...props, prepared: prepareInstalledGraphAgentsSettings(api.settings.get()) };
+  }
   const host = document.createElement('div');
   document.body.append(host);
   const app = createApp(component, props);
@@ -48,12 +53,12 @@ function mount(component: object, props: Record<string, unknown>): HTMLElement {
 }
 
 function runtimeFor(preset = createGraphPreset('mounted-agent', 'Mounted agent')): GraphCustomAgentsRuntime {
-  const agents = compileGraphAgents([preset]);
+  let agents = compileGraphAgents([preset]);
   const listeners = new Set<() => void>();
   return {
     getAgents: () => agents,
     execute: vi.fn(),
-    getSelectedAgentContext: () => undefined,
+    getSelectedAgentContext: vi.fn(() => undefined),
     getDiagnostics: () => [],
     clearDiagnostics: vi.fn(),
     subscribe: (listener) => {
@@ -61,6 +66,10 @@ function runtimeFor(preset = createGraphPreset('mounted-agent', 'Mounted agent')
       return () => listeners.delete(listener);
     },
     invalidate: () => listeners.forEach((listener) => listener()),
+    replacePrepared: vi.fn((prepared) => {
+      agents = prepared.agents;
+      listeners.forEach((listener) => listener());
+    }),
     setGenerationInjections: vi.fn(),
     beginManual: vi.fn(() => new AbortController().signal),
     finishManual: vi.fn(),
@@ -93,6 +102,30 @@ describe('graph management and views components', () => {
     expect(host.textContent).toContain('extensionsBuiltin.customAgents.noActiveChat');
     expect(host.querySelector('.custom-agent-flow')).not.toBeNull();
     expect(host.querySelector('[aria-label="Node palette"]')).not.toBeNull();
+  });
+
+  it('updates local settings before replacement notifications when deleting the selected agent', async () => {
+    const preset = createGraphPreset('mounted-agent', 'Mounted agent');
+    const api = apiFor({ presets: [preset] });
+    const runtime = runtimeFor(preset);
+    vi.mocked(runtime.getSelectedAgentContext).mockImplementation((agentId) => {
+      if (!runtime.getAgents().some((agent) => agent.definition.id === agentId))
+        throw new Error(`Unknown agent ${agentId}`);
+      return undefined;
+    });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const host = mount(AgentManager, { api, runtime });
+
+    const deleteButton = [...host.querySelectorAll('button')].find(
+      (button) => button.textContent?.trim() === 'common.delete',
+    );
+    expect(deleteButton).toBeDefined();
+    deleteButton!.click();
+    await nextTick();
+
+    expect(api.settings.get()).toEqual({ presets: [] });
+    expect(runtime.replacePrepared).toHaveBeenCalledOnce();
+    expect(host.textContent).toContain('extensionsBuiltin.customAgents.noAgents');
   });
 
   it('projects runtime branch skips and cancellation distinctly through the mounted production overlay', async () => {

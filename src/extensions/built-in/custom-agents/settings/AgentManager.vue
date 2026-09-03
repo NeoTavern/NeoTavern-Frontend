@@ -12,7 +12,7 @@ import { resetSelectedGraphAgent } from '../host/generation';
 import AgentMetadataPanel from './AgentMetadataPanel.vue';
 import ConfigurationPanel from './ConfigurationPanel.vue';
 import StatePanel from './StatePanel.vue';
-import { getGraphAgentTemplates } from './catalog';
+import { graphAgentTemplateDefinitions } from './catalog';
 import {
   addInstalledPreset,
   createGraphPreset,
@@ -23,12 +23,20 @@ import {
   replaceInstalledPreset,
   setInstalledPresetEnabled,
 } from './management';
-import { loadInstalledGraphAgents, saveInstalledGraphAgents, type InstalledGraphAgentsSettings } from './store';
+import {
+  persistPreparedInstalledGraphAgents,
+  type InstalledGraphAgentsSettings,
+  type PreparedInstalledGraphAgents,
+} from './store';
 import { exportGraphPreset, importGraphPreset } from './transfer';
 
-const props = defineProps<{ api: CustomAgentsHostAPI; runtime: GraphCustomAgentsRuntime }>();
+const props = defineProps<{
+  api: CustomAgentsHostAPI;
+  runtime: GraphCustomAgentsRuntime;
+  prepared: PreparedInstalledGraphAgents;
+}>();
 const t = props.api.i18n.t;
-const settings = shallowRef<InstalledGraphAgentsSettings>(loadInstalledGraphAgents(props.api));
+const settings = shallowRef<InstalledGraphAgentsSettings>(props.prepared.settings);
 const selectedId = ref(settings.value.presets[0]?.agent.id ?? '');
 const transfer = ref('');
 const message = ref('');
@@ -36,7 +44,7 @@ const runtimeError = ref('');
 const resetBusy = ref(false);
 const selectedContext = shallowRef<GraphSelectedAgentContext>();
 const editors = new Map<string, GraphEditorStore>();
-const templates = getGraphAgentTemplates();
+const templates = graphAgentTemplateDefinitions;
 let localSequence = 0;
 const ids = {
   generate: () => `id-${props.api.uuid().replaceAll(/[^A-Za-z0-9_-]/g, '-')}-${++localSequence}`,
@@ -61,9 +69,10 @@ const editor = computed(() => {
   return store;
 });
 
-function persist(next: InstalledGraphAgentsSettings): void {
-  settings.value = saveInstalledGraphAgents(props.api, next);
-  props.runtime.invalidate();
+function persist(prepared: PreparedInstalledGraphAgents): void {
+  persistPreparedInstalledGraphAgents(props.api, prepared);
+  settings.value = prepared.settings;
+  props.runtime.replacePrepared(prepared);
   refreshRuntime();
 }
 
@@ -169,7 +178,7 @@ function synchronizeMetadata(preset: GraphPreset): void {
   store.revalidate();
 }
 
-function updateInstalled(mutator: (preset: GraphPreset) => InstalledGraphAgentsSettings): void {
+function updateInstalled(mutator: (preset: GraphPreset) => PreparedInstalledGraphAgents): void {
   const preset = selected.value;
   if (!preset) return;
   attempt(() => {
@@ -227,9 +236,9 @@ function doExport(): void {
 
 function doImport(): void {
   attempt(() => {
-    const next = importGraphPreset(settings.value, transfer.value);
-    const imported = next.presets.at(-1)!;
-    persist(next);
+    const prepared = importGraphPreset(settings.value, transfer.value);
+    const imported = prepared.settings.presets.at(-1)!;
+    persist(prepared);
     choose(imported.agent.id);
     message.value = t('extensionsBuiltin.customAgents.imported');
   });

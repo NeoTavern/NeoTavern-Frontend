@@ -53,34 +53,34 @@ describe('installed graph agent management and transfer', () => {
     template.agent.name = 'Mutated caller clone';
     expect(getGraphAgentTemplates()[0]).toEqual(pristine);
 
-    const installed = installGraphTemplate({ presets: [] }, pristine);
+    const installed = installGraphTemplate({ presets: [] }, pristine).settings;
     installed.presets[0]!.agent.name = 'Editable installed copy';
     expect(getGraphAgentTemplates()[0]).toEqual(pristine);
     const source = exportGraphPreset({ presets: [pristine] }, pristine.agent.id);
-    expect(importGraphPreset({ presets: [] }, source).presets[0]).toEqual(pristine);
+    expect(importGraphPreset({ presets: [] }, source).settings.presets[0]).toEqual(pristine);
   }, 60_000);
 
   it('creates, duplicates, renames, enables, replaces, and deletes definitions with stable IDs', () => {
     const created = createGraphPreset('created-agent', 'Created agent');
-    let settings = addInstalledPreset({ presets: [] }, created);
-    settings = duplicateInstalledPreset(settings, 'created-agent', 'copied-agent', 'Copied agent');
+    let settings = addInstalledPreset({ presets: [] }, created).settings;
+    settings = duplicateInstalledPreset(settings, 'created-agent', 'copied-agent', 'Copied agent').settings;
     expect(settings.presets.map((preset) => preset.agent.id)).toEqual(['created-agent', 'copied-agent']);
     expect(settings.presets[1]!.agent.enabled).toBe(false);
 
-    settings = renameInstalledPreset(settings, 'created-agent', 'Renamed agent');
-    settings = setInstalledPresetEnabled(settings, 'created-agent', true);
+    settings = renameInstalledPreset(settings, 'created-agent', 'Renamed agent').settings;
+    settings = setInstalledPresetEnabled(settings, 'created-agent', true).settings;
     expect(settings.presets[0]!.agent).toMatchObject({ id: 'created-agent', name: 'Renamed agent', enabled: true });
 
     const replacement = structuredClone(settings.presets[0]!);
     replacement.agent.priority = 7;
-    settings = replaceInstalledPreset(settings, 'created-agent', replacement);
+    settings = replaceInstalledPreset(settings, 'created-agent', replacement).settings;
     expect(settings.presets[0]!.agent.priority).toBe(7);
     expect(() => {
       replacement.agent.id = 'changed-agent';
       replaceInstalledPreset(settings, 'created-agent', replacement);
     }).toThrow('stable');
 
-    settings = deleteInstalledPreset(settings, 'created-agent');
+    settings = deleteInstalledPreset(settings, 'created-agent').settings;
     expect(settings.presets.map((preset) => preset.agent.id)).toEqual(['copied-agent']);
   });
 
@@ -88,7 +88,7 @@ describe('installed graph agent management and transfer', () => {
     const template = fixture();
     template.agent.enabled = true;
     const original = structuredClone(template);
-    const installed = installGraphTemplate({ presets: [] }, template);
+    const installed = installGraphTemplate({ presets: [] }, template).settings;
     installed.presets[0]!.agent.name = 'Edited installed copy';
     expect(template).toEqual(original);
     expect(installed.presets[0]!.agent.enabled).toBe(false);
@@ -99,7 +99,7 @@ describe('installed graph agent management and transfer', () => {
     const settings = { presets: [preset] };
     const source = exportGraphPreset(settings, preset.agent.id);
     expect(JSON.parse(source)).toEqual(preset);
-    const imported = importGraphPreset({ presets: [] }, source);
+    const imported = importGraphPreset({ presets: [] }, source).settings;
     expect(imported.presets[0]).toEqual(preset);
     expect(source).not.toContain('runOverlay');
     expect(source).not.toContain('viewport');

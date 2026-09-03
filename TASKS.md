@@ -1,6 +1,6 @@
 # Simplified Visual Custom Agents implementation tasks
 
-Plan revision: 29
+Plan revision: 30
 
 `PRD.md` is authoritative. This plan modifies the current branch in place. It retains the complete graph/node/view/Mythic product while removing the transaction and generation-ownership architecture from core.
 
@@ -21,6 +21,7 @@ Revision 27 mechanically merged the former T001 lifecycle seam and T002 Custom A
 | --------- | ------------------------------------------------------------------------------------------- | ------- |
 | M1        | Core and Custom Agents cut over atomically to minimal awaited hooks and direct live effects | T001    |
 | M2        | Obsolete collateral is removed and the remaining core diff is minimal                       | T002    |
+| M3        | Custom Agent activation performs one retained graph preparation and no hidden editor work   | T003    |
 
 ## T001 — Cut over to minimal lifecycle hooks and direct effects
 
@@ -103,3 +104,34 @@ Revision 27 mechanically merged the former T001 lifecycle seam and T002 Custom A
 - Verification method: Main-branch diff audit, forbidden-symbol searches, focused tests, complete `npm test`, typecheck, build, and M2 integration review.
 - Attempt count: 2
 - Latest result: Approved. The cumulative diff retains only the narrow lifecycle/chat/prompt/registration/style/localization/Vue Flow boundaries outside Custom Agents and removes collateral API, edit, migration, event, media, utility, and test changes. The Usage Tracker generation-trace copy action remains available for debugging core and extension requests. Complete behavioral suite passed; formatting, i18n, lint, typecheck, build, diff/dependency searches, independent verification, and final M2 integration review passed.
+
+## T003 — Remove repeated activation compilation and hidden editor initialization
+
+- Status: completed
+- Dependencies: T002
+- Integration milestone: M3
+- Objective: Make Custom Agent activation prepare installed graphs once, retain that compiled snapshot for runtime reads, and remove redundant catalog validation without changing the editor-opening UX.
+- Source requirement IDs: REQ-001, REQ-002, REQ-010, REQ-013
+- In scope:
+  - one preparation result containing canonical installed settings and their compiled runtime agents;
+  - reuse that result across activation, runtime registration, and initial management state;
+  - O(1) runtime agent reads until a successful settings mutation supplies a replacement prepared result;
+  - one strict candidate preparation before atomic persistence and runtime replacement;
+  - removal of redundant activation loads, discarded plans, collection stringification, and module-evaluation catalog compilation;
+  - automatic display of the selected graph editor without an extra interaction;
+  - focused regression tests proving snapshot reuse and mutation replacement.
+- Out of scope:
+  - persistent compiled caches, workers, background initialization, compiler redesign, incremental validation, activation concurrency, visibility observers, or core extension-loader changes;
+  - changing graph serialization, runtime behavior, strict import/install validation, or existing editor functionality.
+- Acceptance criteria:
+  - Activation parses, validates, and compiles each unchanged installed preset through one preparation path and passes that result to runtime and management.
+  - Repeated lifecycle, view, and `getAgents()` reads perform no settings reload, graph serialization, validation, or compilation.
+  - A successful management mutation prepares the complete candidate once before persistence and runtime replacement; invalid candidates change neither.
+  - Activation does not validate or compile the Mythic template catalog.
+  - The selected graph editor remains displayed automatically with complete existing behavior, and template installation remains strict and atomic.
+  - Focused tests, complete behavioral suite, formatting, i18n, lint, typecheck, build, and `git diff --check` pass; `vite.config.ts` remains unchanged and unstaged.
+- Attempt count: 1
+- Latest result: Approved. Activation now prepares installed definitions and compiled plans once, passes the same snapshot to runtime and management, and uses O(1) runtime reads until a successfully prepared settings change replaces it. Template module evaluation no longer validates or compiles Mythic, and the editor remains automatic without new visibility machinery. Focused tests passed 3 files / 18 tests; the complete suite passed 43 files / 410 tests; formatting, i18n, lint, typecheck, build, diff checks, and independent verification passed.
+- Verification method: Instrumented/unit assertions around preparation and runtime replacement, mounted activation/management test for deferred editor construction, focused host/management/editor suites, and complete repository gates.
+- Attempt count: 1
+- Latest result: Implementation underway.

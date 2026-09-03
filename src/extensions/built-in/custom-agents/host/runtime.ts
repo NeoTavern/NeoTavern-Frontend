@@ -11,6 +11,7 @@ import type { RunDiagnostic } from '../runtime/diagnostics';
 import type { CompiledGraphAgent, GraphLifecycleExecutor } from './lifecycle';
 import { GraphHostLlmDispatcher, GraphHostTemplateRenderer, promptContextFromHost } from './prompt';
 import { registerGraphCustomAgentsGeneration } from './generation';
+import type { PreparedInstalledGraphAgents } from '../settings/store';
 
 export interface GraphSelectedAgentContext {
   state: JsonObject;
@@ -32,6 +33,7 @@ export interface GraphCustomAgentsRuntime extends GraphLifecycleExecutor {
   clearDiagnostics(agentId?: string): void;
   subscribe(listener: () => void): () => void;
   invalidate(): void;
+  replacePrepared(prepared: PreparedInstalledGraphAgents): void;
   setGenerationInjections(
     generationId: string,
     value: { injections: PromptInjection[]; acknowledge(ids: readonly string[]): void } | undefined,
@@ -63,7 +65,7 @@ export function compileGraphAgents(presets: readonly GraphPreset[]): readonly Co
 
 export function createGraphCustomAgentsRuntime(
   api: CustomAgentsHostAPI,
-  getPresets: () => readonly GraphPreset[],
+  initial: PreparedInstalledGraphAgents,
 ): GraphCustomAgentsRuntime {
   const generationInjections = new Map<
     string,
@@ -105,20 +107,10 @@ export function createGraphCustomAgentsRuntime(
       throw new AggregateError([error, ...cleanupErrors], 'Graph Custom Agents runtime creation failed during cleanup');
     throw error;
   }
-  let executableSignature: string | undefined;
-  let agents: readonly CompiledGraphAgent[] = [];
-  const resolveAgents = (): readonly CompiledGraphAgent[] => {
-    const current = getPresets();
-    const signature = JSON.stringify(current);
-    if (signature !== executableSignature) {
-      agents = compileGraphAgents(current);
-      executableSignature = signature;
-    }
-    return agents;
-  };
+  let agents = initial.agents;
 
   return {
-    getAgents: resolveAgents,
+    getAgents: () => agents,
     execute: async (request): Promise<GraphExecutionResult> => {
       const key = `${request.agent.definition.id}/${request.flow.id}`;
       const result = await executeGraphPlan({
@@ -153,7 +145,7 @@ export function createGraphCustomAgentsRuntime(
       return result;
     },
     getSelectedAgentContext: (agentId) => {
-      const agent = resolveAgents().find((candidate) => candidate.definition.id === agentId)?.definition;
+      const agent = agents.find((candidate) => candidate.definition.id === agentId)?.definition;
       if (!agent) throw new Error(`Unknown agent ${agentId}`);
       const chatInfo = api.chat.getChatInfo();
       if (!chatInfo) return undefined;
@@ -192,6 +184,10 @@ export function createGraphCustomAgentsRuntime(
       return () => listeners.delete(listener);
     },
     invalidate: notify,
+    replacePrepared: (prepared) => {
+      agents = prepared.agents;
+      notify();
+    },
     setGenerationInjections: (generationId, value) => {
       if (value) generationInjections.set(generationId, value);
       else generationInjections.delete(generationId);
@@ -228,14 +224,12 @@ export function createGraphCustomAgentsRuntime(
 
 export function activateGraphCustomAgentsHost(
   api: CustomAgentsHostAPI,
-  getPresets: () => readonly GraphPreset[],
+  prepared: PreparedInstalledGraphAgents,
   options: { random?: () => number } = {},
 ): { runtime: GraphCustomAgentsRuntime; dispose(): void } {
-  const runtime = createGraphCustomAgentsRuntime(api, getPresets);
+  const runtime = createGraphCustomAgentsRuntime(api, prepared);
   let unregister: (() => void) | undefined;
   try {
-    // Compile before registering observers so an invalid definition cannot leave a partial activation.
-    runtime.getAgents();
     unregister = registerGraphCustomAgentsGeneration(api, runtime, options);
   } catch (error) {
     runtime.dispose();

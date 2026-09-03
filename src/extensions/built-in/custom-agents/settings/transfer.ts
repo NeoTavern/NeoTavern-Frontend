@@ -1,6 +1,5 @@
-import type { InstalledGraphAgentsSettings } from './store';
-import { addInstalledPreset } from './management';
-import { validateInstalledGraphAgentsSettings, validateInstalledPreset } from './store';
+import type { InstalledGraphAgentsSettings, PreparedInstalledGraphAgents } from './store';
+import { prepareInstalledGraphAgentsSettings, validateInstalledGraphAgentsSettings } from './store';
 
 export function exportGraphPreset(settings: InstalledGraphAgentsSettings, id: string): string {
   const validated = validateInstalledGraphAgentsSettings(settings);
@@ -13,17 +12,12 @@ export function exportGraphPreset(settings: InstalledGraphAgentsSettings, id: st
 export function importGraphPreset(
   settings: InstalledGraphAgentsSettings,
   source: string,
-): InstalledGraphAgentsSettings {
+): PreparedInstalledGraphAgents {
   let payload: unknown;
   try {
     payload = JSON.parse(source);
   } catch (error) {
     throw new Error(`Invalid preset JSON: ${error instanceof Error ? error.message : String(error)}`);
   }
-  const preset = validateInstalledPreset(payload);
-  if (settings.presets.some((candidate) => candidate.agent.id === preset.agent.id))
-    throw new Error(`Duplicate agent ID ${preset.agent.id}`);
-  if (settings.presets.some((candidate) => candidate.agent.name === preset.agent.name))
-    throw new Error(`Duplicate agent name ${preset.agent.name}`);
-  return addInstalledPreset(settings, preset);
+  return prepareInstalledGraphAgentsSettings({ presets: [...settings.presets, payload] });
 }

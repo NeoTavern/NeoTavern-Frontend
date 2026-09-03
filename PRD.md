@@ -3,7 +3,7 @@
 ## Authority and status
 
 - Status: Approved
-- Revision: 29
+- Revision: 30
 - Authoritative source: This document and the user's accepted simplification on the current `custom_agents` branch.
 - This revision supersedes the previous requirements for staged chat transactions, provisional projections, rollback, generation claims, and host-level generation arbitration.
 - The current visual graph format, node catalog, runtime views, management UI, and Mythic graph remain product scope. This is an architectural simplification, not a reset or a reduced node/view product.
@@ -16,6 +16,7 @@
 - Integrate Custom Agents through a small explicit set of awaited lifecycle hooks.
 - Delete transaction machinery and generalized host orchestration added only for Custom Agents.
 - Make failures and code terminology describe user operations rather than internal transaction concepts.
+- Keep Custom Agent activation proportional to one required preparation of installed graphs rather than repeated validation, compilation, or hidden editor initialization.
 
 ## Non-goals
 
@@ -206,6 +207,16 @@ Every production change outside `src/extensions/built-in/custom-agents/` must be
 Changes to unrelated extension behavior, generic chat serialization, autosave queuing, message editing, usage storage, group-chat generation, media utilities, preset APIs, settings migration, or generic event semantics are prohibited unless compilation proves a concrete necessary call-site adjustment. Such an adjustment must be smaller than preserving the branch's generalized Custom Agent framework.
 
 The implementation must delete obsolete transaction and orchestration production code and tests rather than leave dead adapters, aliases, optional legacy callbacks, or compatibility wrappers.
+
+### REQ-013 — Bounded activation work
+
+Custom Agent activation prepares installed settings once and retains both the canonical definitions and compiled runtime plans. Runtime reads reuse that in-memory snapshot until a successful settings mutation replaces it; they must not reload, stringify, validate, or compile the installed collection on every lifecycle or view read.
+
+A settings mutation remains strict and atomic: its candidate collection is validated and compiled before persistence or runtime replacement, and the same prepared result supplies both operations. Activation and settings mutation must not validate or compile the same unchanged graph through separate store, runtime, or management paths.
+
+Activation must not validate or compile the bundled template catalog merely because the extension settings container exists. The selected agent's editor remains displayed automatically without an additional open-editor interaction; deferment or visibility-observer machinery is not part of this optimization. Installing a template still performs normal strict collection validation before changing installed settings.
+
+This optimization must use one direct prepared-snapshot owner. Do not add persistent compiled caches, workers, background initialization, compatibility APIs, generalized repositories, invalid-data fallbacks, or changes to core extension activation ordering.
 
 ## Failure behavior
 

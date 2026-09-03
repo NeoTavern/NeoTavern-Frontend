@@ -3,7 +3,11 @@ import AgentManager from './settings/AgentManager.vue';
 import ViewsPanel from './views/ViewsPanel.vue';
 import type { CustomAgentsHostAPI } from './host/api';
 import { activateGraphCustomAgentsHost } from './host/runtime';
-import { emptyInstalledGraphAgents, loadInstalledGraphAgents, saveInstalledGraphAgents } from './settings/store';
+import {
+  emptyInstalledGraphAgents,
+  persistPreparedInstalledGraphAgents,
+  prepareInstalledGraphAgentsSettings,
+} from './settings/store';
 
 export { manifest };
 export * from './graph/contracts';
@@ -24,8 +28,12 @@ export * from './views/actions';
 export * from './registry/tools';
 
 export async function activate(api: CustomAgentsHostAPI): Promise<() => void> {
-  if (api.settings.get() === undefined) saveInstalledGraphAgents(api, emptyInstalledGraphAgents());
-  loadInstalledGraphAgents(api);
+  const stored = api.settings.get();
+  const prepared =
+    stored === undefined
+      ? prepareInstalledGraphAgentsSettings(emptyInstalledGraphAgents())
+      : prepareInstalledGraphAgentsSettings(stored);
+  if (stored === undefined) persistPreparedInstalledGraphAgents(api, prepared);
 
   const cleanups: Array<() => void> = [];
   let active = true;
@@ -43,7 +51,7 @@ export async function activate(api: CustomAgentsHostAPI): Promise<() => void> {
   };
 
   try {
-    const host = activateGraphCustomAgentsHost(api, () => loadInstalledGraphAgents(api).presets);
+    const host = activateGraphCustomAgentsHost(api, prepared);
     const runtime = host.runtime;
     cleanups.push(() => host.dispose());
 
@@ -52,7 +60,7 @@ export async function activate(api: CustomAgentsHostAPI): Promise<() => void> {
 
     const settingsContainer = document.getElementById(api.meta.containerId);
     if (settingsContainer) {
-      const settingsApp = api.ui.mount(settingsContainer, AgentManager, { api, runtime });
+      const settingsApp = api.ui.mount(settingsContainer, AgentManager, { api, runtime, prepared });
       cleanups.push(() => settingsApp.unmount());
     }
 

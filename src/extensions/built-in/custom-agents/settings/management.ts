@@ -1,6 +1,6 @@
 import { GRAPH_PRESET_FORMAT, type GraphPreset } from '../graph/contracts';
-import type { InstalledGraphAgentsSettings } from './store';
-import { validateInstalledGraphAgentsSettings, validateInstalledPreset } from './store';
+import type { InstalledGraphAgentsSettings, PreparedInstalledGraphAgents } from './store';
+import { prepareInstalledGraphAgentsSettings } from './store';
 
 const clone = <Value>(value: Value): Value => structuredClone(value);
 
@@ -12,7 +12,7 @@ function assertAvailable(settings: InstalledGraphAgentsSettings, id: string, nam
 }
 
 export function createGraphPreset(id: string, name: string): GraphPreset {
-  return validateInstalledPreset({
+  return {
     format: GRAPH_PRESET_FORMAT,
     agent: {
       id,
@@ -26,31 +26,29 @@ export function createGraphPreset(id: string, name: string): GraphPreset {
       flows: [],
       views: [],
     },
-  });
+  };
 }
 
 export function addInstalledPreset(
   settings: InstalledGraphAgentsSettings,
   preset: GraphPreset,
-): InstalledGraphAgentsSettings {
-  const validated = validateInstalledPreset(preset);
-  assertAvailable(settings, validated.agent.id, validated.agent.name);
-  return validateInstalledGraphAgentsSettings({ presets: [...settings.presets, validated] });
+): PreparedInstalledGraphAgents {
+  assertAvailable(settings, preset.agent.id, preset.agent.name);
+  return prepareInstalledGraphAgentsSettings({ presets: [...settings.presets, preset] });
 }
 
 export function replaceInstalledPreset(
   settings: InstalledGraphAgentsSettings,
   originalId: string,
   preset: GraphPreset,
-): InstalledGraphAgentsSettings {
+): PreparedInstalledGraphAgents {
   const index = settings.presets.findIndex((candidate) => candidate.agent.id === originalId);
   if (index < 0) throw new Error(`Unknown agent ${originalId}`);
-  const validated = validateInstalledPreset(preset);
-  if (validated.agent.id !== originalId) throw new Error('Agent IDs are stable and cannot be changed');
-  assertAvailable(settings, validated.agent.id, validated.agent.name, originalId);
+  if (preset.agent.id !== originalId) throw new Error('Agent IDs are stable and cannot be changed');
+  assertAvailable(settings, preset.agent.id, preset.agent.name, originalId);
   const presets = clone(settings.presets);
-  presets[index] = validated;
-  return validateInstalledGraphAgentsSettings({ presets });
+  presets[index] = preset;
+  return prepareInstalledGraphAgentsSettings({ presets });
 }
 
 export function duplicateInstalledPreset(
@@ -58,21 +56,22 @@ export function duplicateInstalledPreset(
   sourceId: string,
   id: string,
   name: string,
-): InstalledGraphAgentsSettings {
+): PreparedInstalledGraphAgents {
   const source = settings.presets.find((preset) => preset.agent.id === sourceId);
   if (!source) throw new Error(`Unknown agent ${sourceId}`);
+  assertAvailable(settings, id, name);
   const copy = clone(source);
   copy.agent.id = id;
   copy.agent.name = name;
   copy.agent.enabled = false;
-  return addInstalledPreset(settings, copy);
+  return prepareInstalledGraphAgentsSettings({ presets: [...settings.presets, copy] });
 }
 
 export function renameInstalledPreset(
   settings: InstalledGraphAgentsSettings,
   id: string,
   name: string,
-): InstalledGraphAgentsSettings {
+): PreparedInstalledGraphAgents {
   const preset = settings.presets.find((candidate) => candidate.agent.id === id);
   if (!preset) throw new Error(`Unknown agent ${id}`);
   const next = clone(preset);
@@ -84,7 +83,7 @@ export function setInstalledPresetEnabled(
   settings: InstalledGraphAgentsSettings,
   id: string,
   enabled: boolean,
-): InstalledGraphAgentsSettings {
+): PreparedInstalledGraphAgents {
   const preset = settings.presets.find((candidate) => candidate.agent.id === id);
   if (!preset) throw new Error(`Unknown agent ${id}`);
   const next = clone(preset);
@@ -95,19 +94,18 @@ export function setInstalledPresetEnabled(
 export function deleteInstalledPreset(
   settings: InstalledGraphAgentsSettings,
   id: string,
-): InstalledGraphAgentsSettings {
+): PreparedInstalledGraphAgents {
   if (!settings.presets.some((preset) => preset.agent.id === id)) throw new Error(`Unknown agent ${id}`);
-  return validateInstalledGraphAgentsSettings({
-    presets: settings.presets.filter((preset) => preset.agent.id !== id),
-  });
+  return prepareInstalledGraphAgentsSettings({ presets: settings.presets.filter((preset) => preset.agent.id !== id) });
 }
 
-/** Catalog definitions remain immutable; installation always validates and clones a disabled copy. */
+/** Catalog definitions remain immutable; installation prepares a strict disabled collection candidate. */
 export function installGraphTemplate(
   settings: InstalledGraphAgentsSettings,
   template: GraphPreset,
-): InstalledGraphAgentsSettings {
-  const copy = validateInstalledPreset(clone(template));
+): PreparedInstalledGraphAgents {
+  const copy = clone(template);
   copy.agent.enabled = false;
-  return addInstalledPreset(settings, copy);
+  assertAvailable(settings, copy.agent.id, copy.agent.name);
+  return prepareInstalledGraphAgentsSettings({ presets: [...settings.presets, copy] });
 }

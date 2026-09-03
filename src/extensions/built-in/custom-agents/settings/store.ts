@@ -1,9 +1,15 @@
 import type { GraphPreset } from '../graph/contracts';
-import { parseGraphPresetShape } from '../graph/schemas';
-import { compileGraphPreset } from '../graph/compile';
+import { compileValidatedGraph } from '../graph/compile';
+import { validateGraphPreset } from '../graph/validate';
 import { builtinNodeRegistry } from '../registry/builtin-nodes';
+import type { CompiledGraphAgent } from '../host/lifecycle';
 
 export type InstalledGraphAgentsSettings = { presets: GraphPreset[] };
+
+export type PreparedInstalledGraphAgents = {
+  settings: InstalledGraphAgentsSettings;
+  agents: readonly CompiledGraphAgent[];
+};
 
 export interface GraphSettingsAPI {
   settings: {
@@ -20,17 +26,18 @@ function objectKeysEqual(value: Record<string, unknown>, keys: readonly string[]
   return actual.length === keys.length && actual.every((key, index) => key === [...keys].sort()[index]);
 }
 
-export function validateInstalledPreset(value: unknown): GraphPreset {
-  const parsed = parseGraphPresetShape(value);
-  if (!parsed.success)
-    throw new Error(parsed.issues.map((issue) => `${issue.path.join('.') || 'preset'}: ${issue.message}`).join('\n'));
-  const compiled = compileGraphPreset(parsed.value, builtinNodeRegistry);
-  if (!compiled.success)
-    throw new Error(compiled.diagnostics.map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`).join('\n'));
-  return clone(parsed.value);
+function preparePreset(value: unknown): { preset: GraphPreset; agent: CompiledGraphAgent } {
+  const validated = validateGraphPreset(value, builtinNodeRegistry);
+  if (!validated.valid)
+    throw new Error(validated.diagnostics.map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`).join('\n'));
+  const preset = clone(validated.value.preset) as GraphPreset;
+  return {
+    preset,
+    agent: Object.freeze({ definition: clone(preset.agent), plan: compileValidatedGraph(validated.value) }),
+  };
 }
 
-export function validateInstalledGraphAgentsSettings(value: unknown): InstalledGraphAgentsSettings {
+export function prepareInstalledGraphAgentsSettings(value: unknown): PreparedInstalledGraphAgents {
   if (
     value === null ||
     typeof value !== 'object' ||
@@ -40,17 +47,17 @@ export function validateInstalledGraphAgentsSettings(value: unknown): InstalledG
     throw new Error('Custom Agents settings must contain exactly presets');
   const presets = (value as { presets?: unknown }).presets;
   if (!Array.isArray(presets)) throw new Error('Custom Agents settings presets must be an array');
-  const validated = presets.map(validateInstalledPreset);
+  const prepared = presets.map(preparePreset);
   const ids = new Set<string>();
   const names = new Set<string>();
-  for (const preset of validated) {
+  for (const { preset } of prepared) {
     if (ids.has(preset.agent.id)) throw new Error(`Duplicate agent ID ${preset.agent.id}`);
     if (names.has(preset.agent.name)) throw new Error(`Duplicate agent name ${preset.agent.name}`);
     ids.add(preset.agent.id);
     names.add(preset.agent.name);
   }
-  const generationAgents = validated.filter(
-    (preset) =>
+  const generationAgents = prepared.filter(
+    ({ preset }) =>
       preset.agent.enabled &&
       preset.agent.flows.some(
         (flow) => flow.kind === 'TRIGGER' && flow.nodes.some((node) => node.type === 'trigger.generate-assistant'),
@@ -59,24 +66,46 @@ export function validateInstalledGraphAgentsSettings(value: unknown): InstalledG
   if (generationAgents.length > 1)
     throw new Error(
       `Only one enabled generation-capable Custom Agent is allowed: ${generationAgents
-        .map((preset) => preset.agent.name)
+        .map(({ preset }) => preset.agent.name)
         .join(', ')}`,
     );
-  return { presets: validated };
+  return {
+    settings: { presets: prepared.map(({ preset }) => preset) },
+    agents: Object.freeze(prepared.map(({ agent }) => agent)),
+  };
+}
+
+export function validateInstalledPreset(value: unknown): GraphPreset {
+  return preparePreset(value).preset;
+}
+
+export function validateInstalledGraphAgentsSettings(value: unknown): InstalledGraphAgentsSettings {
+  return prepareInstalledGraphAgentsSettings(value).settings;
+}
+
+export function loadPreparedInstalledGraphAgents(api: GraphSettingsAPI): PreparedInstalledGraphAgents {
+  return prepareInstalledGraphAgentsSettings(api.settings.get());
 }
 
 export function loadInstalledGraphAgents(api: GraphSettingsAPI): InstalledGraphAgentsSettings {
-  return validateInstalledGraphAgentsSettings(api.settings.get());
+  return loadPreparedInstalledGraphAgents(api).settings;
+}
+
+export function persistPreparedInstalledGraphAgents(
+  api: GraphSettingsAPI,
+  prepared: PreparedInstalledGraphAgents,
+): void {
+  api.settings.set(undefined, clone(prepared.settings));
+  api.settings.save();
 }
 
 export function saveInstalledGraphAgents(
   api: GraphSettingsAPI,
   value: InstalledGraphAgentsSettings,
 ): InstalledGraphAgentsSettings {
-  const validated = validateInstalledGraphAgentsSettings(value);
-  api.settings.set(undefined, clone(validated));
-  api.settings.save();
-  return validated;
+  const prepared = prepareInstalledGraphAgentsSettings(value);
+  persistPreparedInstalledGraphAgents(api, prepared);
+  return prepared.settings;
 }
 
 export function emptyInstalledGraphAgents(): InstalledGraphAgentsSettings {
