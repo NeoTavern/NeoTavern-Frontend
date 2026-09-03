@@ -66,6 +66,17 @@ function structured(key: string, text: string): void {
   }
 }
 
+function numericValue(key: string): string {
+  return buffers.value[key] ?? String(props.preset.agent.configurationDefaults[key] ?? '');
+}
+
+function numeric(key: string, type: 'number' | 'integer', text: string): void {
+  buffers.value = { ...buffers.value, [key]: text };
+  const value = Number(text);
+  if (text.trim() === '' || !Number.isFinite(value) || (type === 'integer' && !Number.isInteger(value))) return;
+  commit(key, value);
+}
+
 function mapSchema(schema: PropertySchema): NamedMapSchema | undefined {
   return namedMapSchema(schema as ConfigurationProperty);
 }
@@ -290,10 +301,16 @@ function enumOptions(schema: PropertySchema) {
         @update:model-value="commit(key, schema.enum![Number($event)]!)"
       />
       <Input
-        v-else-if="schema.type === 'string' || schema.type === 'number' || schema.type === 'integer'"
-        :type="schema.type === 'string' ? 'text' : 'number'"
-        :model-value="(preset.agent.configurationDefaults[key] as string | number) ?? ''"
-        @update:model-value="commit(key, schema.type === 'string' ? String($event) : Number($event))"
+        v-else-if="schema.type === 'string'"
+        type="text"
+        :model-value="(preset.agent.configurationDefaults[key] as string) ?? ''"
+        @update:model-value="commit(key, String($event))"
+      />
+      <Input
+        v-else-if="schema.type === 'number' || schema.type === 'integer'"
+        type="text"
+        :model-value="numericValue(key)"
+        @update:model-value="numeric(key, schema.type, String($event))"
       />
       <Textarea
         v-else
