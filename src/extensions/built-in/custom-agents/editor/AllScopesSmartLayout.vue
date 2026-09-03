@@ -5,7 +5,13 @@ import type { ReadonlyNodeRegistry } from '../registry/node-definition';
 import { GraphEditorStore, type ScopeLayoutPositions } from './editor-store';
 import NodeCard from './NodeCard.vue';
 import { smartLayout, smartLayoutAvailability } from './smart-layout';
-import { resolveEditorScope, toVueFlow, type EditorNodeData, type ResolvedEditorNode } from './vue-flow-adapter';
+import {
+  EditorPortResolutionCache,
+  resolveEditorScope,
+  toVueFlow,
+  type EditorNodeData,
+  type ResolvedEditorNode,
+} from './vue-flow-adapter';
 
 const props = defineProps<{ store: GraphEditorStore; registry: ReadonlyNodeRegistry }>();
 const emit = defineEmits<{
@@ -14,7 +20,7 @@ const emit = defineEmits<{
   progress: [completed: number, total: number];
   succeeded: [];
 }>();
-type ScopeTask = { flowId: string; path: readonly string[] };
+type ScopeTask = { flow: GraphFlow; graph: ScopeGraph; path: readonly string[] };
 type Measurement = {
   store: GraphEditorStore;
   flow: GraphFlow;
@@ -35,7 +41,7 @@ function scopeFromNode(node: ScopeGraph['nodes'][number]): ScopeGraph | undefine
 }
 
 function collectTasks(flow: GraphFlow, graph: ScopeGraph, path: readonly string[], tasks: ScopeTask[]): void {
-  tasks.push({ flowId: flow.id, path });
+  tasks.push({ flow, graph, path });
   for (const node of graph.nodes) {
     const body = scopeFromNode(node);
     if (body) collectTasks(flow, body, [...path, node.id], tasks);
@@ -84,49 +90,29 @@ async function applySmartLayoutAll(): Promise<boolean> {
   running = true;
   emit('busy', true);
   try {
-    const source = structuredClone(props.store.draft.value);
-    let generatedId = 0;
-    const measurementStore = new GraphEditorStore({
-      executable: source,
-      registry: props.registry,
-      ids: { generate: () => `layout-measure-${++generatedId}` },
-      apply: () => undefined,
-    });
+    const draft = props.store.draft.value;
+    const agent = draft.agent;
     const tasks: ScopeTask[] = [];
-    for (const flow of source.agent.flows) collectTasks(flow, flow, [], tasks);
-    if (
-      tasks.some((task) => {
-        measurementStore.selectFlow(task.flowId);
-        measurementStore.scopePath.value = task.path;
-        const graph = measurementStore.currentGraph;
-        return !graph || !smartLayoutAvailability(graph).available;
-      })
-    ) {
+    for (const flow of agent.flows) collectTasks(flow, flow, [], tasks);
+    if (tasks.some((task) => !smartLayoutAvailability(task.graph).available)) {
       emit('failed', 'CYCLIC');
       return false;
     }
     const layouts: ScopeLayoutPositions[] = [];
+    const portCache = new EditorPortResolutionCache();
 
     for (const [index, task] of tasks.entries()) {
-      measurementStore.selectFlow(task.flowId);
-      measurementStore.scopePath.value = task.path;
-      const flow = measurementStore.selectedFlow;
-      const graph = measurementStore.currentGraph;
-      if (!flow || !graph) {
-        emit('failed', 'UNAVAILABLE');
-        return false;
-      }
-      const rootResolved = resolveEditorScope(source.agent, flow, [], props.registry)?.resolved;
-      const resolved = resolveEditorScope(source.agent, flow, task.path, props.registry)?.resolved;
+      const rootResolved = resolveEditorScope(agent, task.flow, [], props.registry, portCache)?.resolved;
+      const resolved = resolveEditorScope(agent, task.flow, task.path, props.registry, portCache)?.resolved;
       if (!rootResolved || !resolved) {
         emit('failed', 'UNAVAILABLE');
         return false;
       }
-      const rendered = toVueFlow(graph, resolved, new Set(), new Set());
+      const rendered = toVueFlow(task.graph, resolved, new Set(), new Set());
       measurement.value = {
-        store: measurementStore,
-        flow,
-        graph,
+        store: props.store,
+        flow: task.flow,
+        graph: task.graph,
         nodes: rendered.nodes.flatMap((node) => (node.data ? [node.data] : [])),
         resolved,
         rootResolved,
@@ -134,19 +120,27 @@ async function applySmartLayoutAll(): Promise<boolean> {
       await nextTick();
       await nextRenderFrame();
       await nextTick();
+      if (props.store.draft.value !== draft) {
+        emit('failed', 'UNAVAILABLE');
+        return false;
+      }
       const result = smartLayout(
-        graph,
-        measuredNodeDimensions(graph.nodes.map((node) => node.id)),
-        layoutPortOrders(graph, resolved),
+        task.graph,
+        measuredNodeDimensions(task.graph.nodes.map((node) => node.id)),
+        layoutPortOrders(task.graph, resolved),
       );
       if (!result.available) {
         emit('failed', result.reason);
         return false;
       }
-      layouts.push({ flowId: task.flowId, scopePath: task.path, positions: result.positions });
+      layouts.push({ flowId: task.flow.id, scopePath: task.path, positions: result.positions });
       emit('progress', index + 1, tasks.length);
     }
 
+    if (props.store.draft.value !== draft) {
+      emit('failed', 'UNAVAILABLE');
+      return false;
+    }
     props.store.layoutScopes(layouts);
     emit('succeeded');
     return true;

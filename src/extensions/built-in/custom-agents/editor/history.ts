@@ -1,8 +1,16 @@
-export type EditCommand<Value> = {
+export type SnapshotEditCommand<Value> = {
   label: string;
   before: Value;
   after: Value;
 };
+
+export type ReversibleEditCommand = {
+  label: string;
+  undo: () => void;
+  redo: () => void;
+};
+
+export type EditCommand<Value> = SnapshotEditCommand<Value> | ReversibleEditCommand;
 
 export class CommandHistory<Value> {
   readonly #limit: number;
@@ -28,17 +36,21 @@ export class CommandHistory<Value> {
   }
 
   undo(): Value | undefined {
-    const command = this.#undo.pop();
+    const command = this.#undo.at(-1);
     if (!command) return undefined;
+    if (!('before' in command)) command.undo();
+    this.#undo.pop();
     this.#redo.push(command);
-    return command.before;
+    return 'before' in command ? command.before : undefined;
   }
 
   redo(): Value | undefined {
-    const command = this.#redo.pop();
+    const command = this.#redo.at(-1);
     if (!command) return undefined;
+    if (!('after' in command)) command.redo();
+    this.#redo.pop();
     this.#undo.push(command);
-    return command.after;
+    return 'after' in command ? command.after : undefined;
   }
 
   clear(): void {

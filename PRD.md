@@ -3,7 +3,7 @@
 ## Authority and status
 
 - Status: Approved
-- Revision: 31
+- Revision: 32
 - Authoritative source: This document and the user's accepted simplification on the current `custom_agents` branch.
 - This revision supersedes the previous requirements for staged chat transactions, provisional projections, rollback, generation claims, and host-level generation arbitration.
 - The current visual graph format, node catalog, runtime views, management UI, and Mythic graph remain product scope. This is an architectural simplification, not a reset or a reduced node/view product.
@@ -227,6 +227,14 @@ The editor may trust the already prepared installed definition when it is first 
 Changing agent name, priority, or enabled state still performs the one required strict installed-collection preparation from REQ-013, including generation-owner checks. Synchronizing those metadata fields into an existing editor must not trigger a second complete graph validation. Configuration, schema, flow, node, edge, and view changes retain normal graph validation.
 
 Use direct dependency ordering, pre-indexed edges, and draft-scoped memoization only where required by these operations. Do not add workers, background validation, persistent caches, debounce delays, arbitrary performance thresholds, or a generalized incremental compiler.
+
+### REQ-015 — Geometry-only editor commands
+
+Node movement, node resizing, single-scope Smart Layout, and all-scope Smart Layout change only serialized presentation geometry. These operations must remain undoable in normal chronological history, but must not compile or validate the graph, reconcile schema-editor buffers, or invalidate resolved port derivation for unchanged graph semantics.
+
+A geometry command records only the node positions or sizes required to undo and redo that command. Applying or restoring it must not deep-clone the complete agent. It may issue the minimal reactive draft notification needed to update Vue Flow while preserving graph, schema, node data, input value, and flow-signature identities.
+
+Semantic edits, including nodes, edges, node data, input values, flow signatures, schemas, configuration, and views, retain full validation and existing snapshot history semantics. Geometry and semantic commands must interleave correctly through undo and redo. No debounce, delayed commit, worker, persistent cache, or alternate non-serialized viewport state may be introduced.
 
 ## Failure behavior
 

@@ -1,4 +1,4 @@
-import { computed, shallowRef, type ComputedRef, type ShallowRef } from 'vue';
+import { computed, shallowRef, triggerRef, type ComputedRef, type ShallowRef } from 'vue';
 import { compileGraphPreset } from '../graph/compile';
 import { GRAPH_NODE_MIN_HEIGHT, GRAPH_NODE_MIN_WIDTH } from '../graph/contracts';
 import type { GraphDiagnostic } from '../graph/diagnostics';
@@ -23,6 +23,25 @@ export type ScopeLayoutPositions = {
   scopePath: readonly string[];
   positions: Readonly<Record<string, { x: number; y: number }>>;
 };
+type NodePosition = GraphNode['position'];
+type NodeSize = NonNullable<GraphNode['size']>;
+type GeometryPatch =
+  | {
+      kind: 'position';
+      flowId: string;
+      scopePath: readonly string[];
+      nodeId: string;
+      before: NodePosition;
+      after: NodePosition;
+    }
+  | {
+      kind: 'size';
+      flowId: string;
+      scopePath: readonly string[];
+      nodeId: string;
+      before: NodeSize | undefined;
+      after: NodeSize;
+    };
 export type RunOverlayInvocation = {
   scopeInvocationId: string;
   status: 'RUNNING' | 'COMPLETED' | 'SKIPPED' | 'FAILED' | 'CANCELLED';
@@ -269,6 +288,48 @@ export class GraphEditorStore {
     mutate(graph);
   }
 
+  private applyGeometryPatches(patches: readonly GeometryPatch[], side: 'before' | 'after'): void {
+    const targets = patches.map((patch) => {
+      const flow = this.draft.value.agent.flows.find((candidate) => candidate.id === patch.flowId);
+      if (!flow) {
+        throw new Error(`Geometry patch invariant violated: flow "${patch.flowId}" is missing`);
+      }
+      const graph = locateScope(flow, patch.scopePath);
+      if (!graph) {
+        throw new Error(
+          `Geometry patch invariant violated: scope ${JSON.stringify(patch.scopePath)} in flow "${patch.flowId}" is missing`,
+        );
+      }
+      const node = graph.nodes.find((candidate) => candidate.id === patch.nodeId);
+      if (!node) {
+        throw new Error(
+          `Geometry patch invariant violated: node "${patch.nodeId}" in flow "${patch.flowId}" scope ${JSON.stringify(patch.scopePath)} is missing`,
+        );
+      }
+      return { patch, node };
+    });
+
+    for (const { patch, node } of targets) {
+      if (patch.kind === 'position') node.position = { ...patch[side] };
+      else {
+        const size = patch[side];
+        if (size) node.size = { ...size };
+        else delete node.size;
+      }
+    }
+    triggerRef(this.draft);
+  }
+
+  private commitGeometry(label: string, patches: readonly GeometryPatch[]): void {
+    if (patches.length === 0) return;
+    this.#history.record({
+      label,
+      undo: () => this.applyGeometryPatches(patches, 'before'),
+      redo: () => this.applyGeometryPatches(patches, 'after'),
+    });
+    this.applyGeometryPatches(patches, 'after');
+  }
+
   revalidate(): void {
     const result = compileGraphPreset(this.draft.value, this.#registry);
     this.diagnostics.value = result.success ? [] : result.diagnostics;
@@ -411,34 +472,44 @@ export class GraphEditorStore {
   }
 
   moveNodes(positions: Readonly<Record<string, { x: number; y: number }>>): void {
-    this.commit('Move nodes', (draft) =>
-      this.mutateCurrentGraph(draft, (graph) => {
-        for (const node of graph.nodes) if (positions[node.id]) node.position = { ...positions[node.id]! };
-      }),
-    );
+    const flowId = this.selectedFlowId.value;
+    const scopePath = [...this.scopePath.value];
+    const patches: GeometryPatch[] = [];
+    for (const node of this.currentGraph?.nodes ?? []) {
+      const position = positions[node.id];
+      if (!position || (position.x === node.position.x && position.y === node.position.y)) continue;
+      patches.push({
+        kind: 'position',
+        flowId,
+        scopePath,
+        nodeId: node.id,
+        before: { ...node.position },
+        after: { ...position },
+      });
+    }
+    this.commitGeometry('Move nodes', patches);
   }
 
   layoutScopes(layouts: readonly ScopeLayoutPositions[]): void {
-    const changed = layouts.some((layout) => {
+    const patches: GeometryPatch[] = [];
+    for (const layout of layouts) {
       const flow = this.draft.value.agent.flows.find((candidate) => candidate.id === layout.flowId);
       const graph = flow && locateScope(flow, layout.scopePath);
-      return graph?.nodes.some((node) => {
+      if (!graph) continue;
+      for (const node of graph.nodes) {
         const position = layout.positions[node.id];
-        return position && (position.x !== node.position.x || position.y !== node.position.y);
-      });
-    });
-    if (!changed) return;
-    this.commit('Smart layout all flows', (draft) => {
-      for (const layout of layouts) {
-        const flow = draft.agent.flows.find((candidate) => candidate.id === layout.flowId);
-        const graph = flow && locateScope(flow, layout.scopePath);
-        if (!graph) continue;
-        for (const node of graph.nodes) {
-          const position = layout.positions[node.id];
-          if (position) node.position = { ...position };
-        }
+        if (!position || (position.x === node.position.x && position.y === node.position.y)) continue;
+        patches.push({
+          kind: 'position',
+          flowId: layout.flowId,
+          scopePath: [...layout.scopePath],
+          nodeId: node.id,
+          before: { ...node.position },
+          after: { ...position },
+        });
       }
-    });
+    }
+    this.commitGeometry('Smart layout all flows', patches);
   }
 
   resizeNode(nodeId: string, size: { width: number; height: number }): void {
@@ -450,12 +521,16 @@ export class GraphEditorStore {
     if (!currentNode) return;
     const current = currentNode.size;
     if (current?.width === normalized.width && current.height === normalized.height) return;
-    this.commit('Resize node', (draft) =>
-      this.mutateCurrentGraph(draft, (graph) => {
-        const node = graph.nodes.find((candidate) => candidate.id === nodeId);
-        if (node) node.size = normalized;
-      }),
-    );
+    this.commitGeometry('Resize node', [
+      {
+        kind: 'size',
+        flowId: this.selectedFlowId.value,
+        scopePath: [...this.scopePath.value],
+        nodeId,
+        before: current ? { ...current } : undefined,
+        after: normalized,
+      },
+    ]);
   }
 
   updateNodeData(nodeId: string, path: string, value: JsonValue): void {

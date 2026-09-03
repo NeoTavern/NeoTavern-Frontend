@@ -778,9 +778,11 @@ describe('FlowEditor component', () => {
       apply: vi.fn(),
     });
     store.selectFlow('accumulate');
+    store.selectedNodeIds.value = ['loop'];
     const before = structuredClone(store.draft.value);
     const selectedFlowBefore = store.selectedFlowId.value;
     const scopePathBefore = [...store.scopePath.value];
+    const selectedNodesBefore = [...store.selectedNodeIds.value];
     const width = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function () {
       return this.hasAttribute('data-layout-node') ? 320 : 0;
     });
@@ -790,6 +792,8 @@ describe('FlowEditor component', () => {
     const host = await mountEditor(store);
 
     const layoutAllButton = host.querySelector<HTMLButtonElement>('button[title="Smart layout all flows"]')!;
+    const revalidate = vi.spyOn(store, 'revalidate');
+    const completeClone = vi.spyOn(globalThis, 'structuredClone');
     expect(layoutAllButton.disabled).toBe(false);
     layoutAllButton.click();
     await vi.waitFor(() => expect(store.canUndo).toBe(true));
@@ -798,9 +802,56 @@ describe('FlowEditor component', () => {
     expect(store.draft.value).not.toEqual(before);
     expect(store.selectedFlowId.value).toBe(selectedFlowBefore);
     expect(store.scopePath.value).toEqual(scopePathBefore);
+    expect(store.selectedNodeIds.value).toEqual(selectedNodesBefore);
+    expect(revalidate).not.toHaveBeenCalled();
+    expect(
+      completeClone.mock.calls.some(
+        ([value]) =>
+          value === store.draft.value ||
+          value === store.draft.value.agent ||
+          (typeof value === 'object' &&
+            value !== null &&
+            (Object.hasOwn(value, 'agent') || Object.hasOwn(value, 'flows'))),
+      ),
+    ).toBe(false);
     store.undo();
     expect(store.draft.value).toEqual(before);
     expect(store.canUndo).toBe(false);
+    width.mockRestore();
+    height.mockRestore();
+  });
+
+  it('rejects all-scope layout results after a concurrent semantic draft replacement', async () => {
+    const store = new GraphEditorStore({
+      executable: fixture('nested-subflow'),
+      registry: builtinNodeRegistry,
+      ids: { generate: () => 'concurrent-layout-id' },
+      apply: vi.fn(),
+    });
+    const width = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function () {
+      return this.hasAttribute('data-layout-node') ? 320 : 0;
+    });
+    const height = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function () {
+      return this.hasAttribute('data-layout-node') ? 140 : 0;
+    });
+    const host = await mountEditor(store);
+    const replacement = structuredClone(store.draft.value);
+    const replacementPositions = replacement.agent.flows.map((flow) =>
+      flow.nodes.map((node) => ({ ...node.position })),
+    );
+
+    host.querySelector<HTMLButtonElement>('button[title="Smart layout all flows"]')!.click();
+    store.draft.value = replacement;
+
+    await vi.waitFor(() =>
+      expect(host.querySelector('[role="status"]')?.textContent).toContain(
+        'Smart layout all flows is unavailable for this agent',
+      ),
+    );
+    expect(store.canUndo).toBe(false);
+    expect(store.draft.value.agent.flows.map((flow) => flow.nodes.map((node) => node.position))).toEqual(
+      replacementPositions,
+    );
     width.mockRestore();
     height.mockRestore();
   });

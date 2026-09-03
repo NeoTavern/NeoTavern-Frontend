@@ -124,6 +124,7 @@ type NodeRenderCacheEntry = {
   fingerprint: string;
   value: Node<EditorNodeData>;
   node: GraphNode;
+  position: GraphNode['position'];
   ports: ResolvedEditorNode;
   graphEdges: ScopeGraph['edges'];
   invalid: boolean;
@@ -407,6 +408,7 @@ export function toVueFlow(
       const cached = cache.nodes.get(node.id);
       if (
         cached?.node === node &&
+        cached.position === node.position &&
         cached.ports === ports &&
         cached.graphEdges === graph.edges &&
         cached.invalid === invalid &&
@@ -472,6 +474,7 @@ export function toVueFlow(
         cache.nodes.set(node.id, {
           ...cached,
           node,
+          position: node.position,
           ports,
           graphEdges: graph.edges,
           invalid,
@@ -503,6 +506,7 @@ export function toVueFlow(
         fingerprint,
         value,
         node,
+        position: node.position,
         ports,
         graphEdges: graph.edges,
         invalid,

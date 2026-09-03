@@ -1,6 +1,6 @@
 # Simplified Visual Custom Agents implementation tasks
 
-Plan revision: 31
+Plan revision: 32
 
 `PRD.md` is authoritative. This plan modifies the current branch in place. It retains the complete graph/node/view/Mythic product while removing the transaction and generation-ownership architecture from core.
 
@@ -23,6 +23,7 @@ Revision 27 mechanically merged the former T001 lifecycle seam and T002 Custom A
 | M2        | Obsolete collateral is removed and the remaining core diff is minimal                       | T002    |
 | M3        | Custom Agent activation reuses one retained graph preparation                               | T003    |
 | M4        | Flow navigation and metadata updates avoid repeated whole-agent derivation                  | T004    |
+| M5        | Presentation-only canvas edits avoid semantic graph work                                    | T005    |
 
 ## T001 — Cut over to minimal lifecycle hooks and direct effects
 
@@ -164,6 +165,34 @@ Revision 27 mechanically merged the former T001 lifecycle seam and T002 Custom A
 - Verification method: Focused resolver call-count/order/schema tests and mounted navigation/metadata tests; complete behavioral suite; formatting, i18n, lint, typecheck, build, diff check; independent verification.
 - Attempt count: 2
 - Latest result: Approved after correction. Port derivation now uses one deterministic dependency-ordered pass with indexed edges and nested-scope reuse; cache entries include effective graph/signature/registry context while metadata-only changes remain cache hits. Prepared editor initialization avoids duplicate compilation, metadata synchronization avoids editor revalidation, and undo/redo preserve current installed metadata. Focused editor/management tests passed 2 files / 32 tests, the Custom Agents graph suite passed 16 files / 148 tests, and the complete suite passed 43 files / 418 tests. Formatting, lint, typecheck, build, diff checks, and independent reverification passed.
+
+## T005 — Separate geometry-only editor history from semantic edits
+
+- Status: completed
+- Dependencies: T004
+- Integration milestone: M5
+- Objective: Make movement, resizing, and layout update only serialized node geometry while retaining chronological undo/redo and avoiding whole-agent semantic work.
+- Source requirement IDs: REQ-001, REQ-010, REQ-014, REQ-015
+- In scope:
+  - a direct history-command representation that supports existing snapshot semantic commands and sparse geometry undo/redo in one ordered stack;
+  - sparse before/after position patches for movement and both Smart Layout operations;
+  - sparse before/after size patches for resizing;
+  - minimal reactive draft notification while preserving graph-semantic identities and resolved-port cache hits;
+  - no-op detection for unchanged geometry;
+  - focused tests proving zero compile/revalidation, no whole-agent replacement, preserved serialization, cache reuse, and correct mixed geometry/semantic undo/redo ordering.
+- Out of scope:
+  - changing graph serialization, viewport storage, drag frequency, Vue Flow behavior, semantic validation, or apply behavior;
+  - debounce, delayed persistence, workers, background work, persistent caches, timing assertions, or generalized incremental validation.
+- Acceptance criteria:
+  - Moving or resizing nodes and applying single/all-scope layout records one undoable command and updates the serialized geometry.
+  - Geometry apply/undo/redo invokes no graph compilation, validation, or schema-buffer reconciliation and preserves graph-affecting identities used by port-resolution caching.
+  - Geometry commands store only relevant position/size patches rather than complete preset snapshots or deep clones.
+  - Geometry and semantic commands interleave correctly through undo and redo; a new command still clears redo history.
+  - Existing graph-affecting operations retain strict validation, diagnostics, history behavior, and apply semantics.
+  - Focused tests, complete behavioral suite, formatting, i18n, lint, typecheck, build, and `git diff --check` pass; `vite.config.ts` remains unchanged and unstaged.
+- Verification method: Focused editor-store/history operation-count and mixed-command tests; complete suite; formatting, i18n, lint, typecheck, build, diff check; independent verification.
+- Attempt count: 2
+- Latest result: Approved after correction. Movement, resizing, and both Smart Layout paths use sparse reversible geometry patches in the normal chronological history without compilation, validation, schema reconciliation, complete-agent cloning, or port-cache invalidation. All-scope measurement uses captured graph references without a temporary validating store and rejects concurrent semantic replacement. Geometry targets validate atomically, and failed undo/redo retains stack ownership. Focused layout/editor tests passed 3 files / 57 tests and the complete suite passed 43 files / 424 tests; formatting, lint, typecheck, build, diff checks, and independent reverification passed.
 - Verification method: Instrumented/unit assertions around preparation and runtime replacement, mounted activation/management test for deferred editor construction, focused host/management/editor suites, and complete repository gates.
 - Attempt count: 1
 - Latest result: Implementation underway.

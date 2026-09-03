@@ -4,6 +4,7 @@ import {
   GRAPH_NODE_MIN_HEIGHT,
   GRAPH_NODE_MIN_WIDTH,
   type FlowSignature,
+  type GraphNode,
   type GraphPreset,
   type ScopeGraph,
 } from '../../src/extensions/built-in/custom-agents/graph/contracts';
@@ -12,6 +13,7 @@ import { graphNodeSchema } from '../../src/extensions/built-in/custom-agents/gra
 import type { GraphDiagnostic } from '../../src/extensions/built-in/custom-agents/graph/diagnostics';
 import { copySelection, pasteClipboard } from '../../src/extensions/built-in/custom-agents/editor/clipboard';
 import { GraphEditorStore } from '../../src/extensions/built-in/custom-agents/editor/editor-store';
+import { CommandHistory } from '../../src/extensions/built-in/custom-agents/editor/history';
 import {
   createVueFlowRenderCache,
   fromVueFlow,
@@ -219,6 +221,262 @@ describe('Custom Agent graph editor', () => {
     expect(clipboard.nodes[0]?.size).toEqual({ width: GRAPH_NODE_MIN_WIDTH, height: GRAPH_NODE_MIN_HEIGHT });
     const pasted = pasteClipboard(clipboard, new Set(flow.nodes.map((node) => node.id)), ids('sized-copy'));
     expect(pasted.nodes[0]?.size).toEqual({ width: GRAPH_NODE_MIN_WIDTH, height: GRAPH_NODE_MIN_HEIGHT });
+  });
+
+  it('patches geometry in place without semantic work and keeps port-resolution identities cached', () => {
+    let registryGets = 0;
+    const registry: ReadonlyNodeRegistry = {
+      get: (type) => {
+        registryGets++;
+        return builtinNodeRegistry.get(type);
+      },
+      list: () => builtinNodeRegistry.list(),
+    };
+    const store = new GraphEditorStore({
+      executable: fixture('minimal-observer'),
+      registry,
+      ids: ids(),
+      apply: vi.fn(),
+      validatedExecutable: true,
+    });
+    const revalidate = vi.spyOn(store, 'revalidate');
+    const draft = store.draft.value;
+    const agent = draft.agent;
+    const flows = agent.flows;
+    const flow = store.selectedFlow!;
+    const nodes = flow.nodes;
+    const edges = flow.edges;
+    const increment = nodes.find((node) => node.id === 'increment')!;
+    const nodeData = increment.data;
+    const inputValues = increment.inputValues;
+    const configurationSchema = agent.configurationSchema;
+    const stateSchema = agent.stateSchema;
+    const signatureInputs = flow.inputs;
+    const signatureOutputs = flow.outputs;
+    const diagnostics = store.diagnostics.value;
+    const schemaBuffers = store.signatureSchemaBuffers.value;
+    const cache = new EditorPortResolutionCache();
+    const initiallyResolved = resolveEditorPorts(agent, flow, flow, registry, undefined, cache);
+    const renderCache = createVueFlowRenderCache();
+    const initiallyRendered = toVueFlow(
+      flow,
+      initiallyResolved,
+      new Set(),
+      new Set(),
+      {},
+      new Set(),
+      undefined,
+      renderCache,
+    );
+    registryGets = 0;
+
+    store.moveNodes({ increment: { x: 401, y: 302 } });
+
+    expect(registryGets).toBe(0);
+    expect(revalidate).not.toHaveBeenCalled();
+    expect(store.draft.value).toBe(draft);
+    expect(store.draft.value.agent).toBe(agent);
+    expect(agent.flows).toBe(flows);
+    expect(store.selectedFlow).toBe(flow);
+    expect(flow.nodes).toBe(nodes);
+    expect(flow.edges).toBe(edges);
+    expect(flow.nodes.find((node) => node.id === 'increment')).toBe(increment);
+    expect(increment.data).toBe(nodeData);
+    expect(increment.inputValues).toBe(inputValues);
+    expect(agent.configurationSchema).toBe(configurationSchema);
+    expect(agent.stateSchema).toBe(stateSchema);
+    expect(flow.inputs).toBe(signatureInputs);
+    expect(flow.outputs).toBe(signatureOutputs);
+    expect(store.diagnostics.value).toBe(diagnostics);
+    expect(store.signatureSchemaBuffers.value).toBe(schemaBuffers);
+    expect(resolveEditorPorts(agent, flow, flow, registry, undefined, cache)).toBe(initiallyResolved);
+    expect(registryGets).toBe(0);
+    const rendered = toVueFlow(flow, initiallyResolved, new Set(), new Set(), {}, new Set(), undefined, renderCache);
+    expect(rendered.nodes.find((node) => node.id === 'increment')).toMatchObject({ position: { x: 401, y: 302 } });
+    expect(rendered.nodes.find((node) => node.id === 'increment')).not.toBe(
+      initiallyRendered.nodes.find((node) => node.id === 'increment'),
+    );
+    expect(
+      JSON.parse(JSON.stringify(store.draft.value)).agent.flows[0].nodes.find(
+        (node: GraphNode) => node.id === 'increment',
+      ).position,
+    ).toEqual({
+      x: 401,
+      y: 302,
+    });
+
+    store.undo();
+    expect(registryGets).toBe(0);
+    expect(store.draft.value).toBe(draft);
+    expect(increment.position).not.toEqual({ x: 401, y: 302 });
+    store.redo();
+    expect(registryGets).toBe(0);
+    expect(revalidate).not.toHaveBeenCalled();
+    expect(increment.position).toEqual({ x: 401, y: 302 });
+  });
+
+  it('interleaves sparse geometry and semantic snapshots and detects geometry no-ops', () => {
+    let registryGets = 0;
+    const registry: ReadonlyNodeRegistry = {
+      get: (type) => {
+        registryGets++;
+        return builtinNodeRegistry.get(type);
+      },
+      list: () => builtinNodeRegistry.list(),
+    };
+    const store = new GraphEditorStore({
+      executable: fixture('minimal-observer'),
+      registry,
+      ids: ids(),
+      apply: vi.fn(),
+      validatedExecutable: true,
+    });
+    const originalPosition = { ...store.currentGraph!.nodes.find((node) => node.id === 'increment')!.position };
+
+    store.updateInputValue('increment', 'amount', 2);
+    store.moveNodes({ increment: { x: 500, y: 600 } });
+    const getsAfterMove = registryGets;
+    store.updateInputValue('increment', 'amount', 3);
+    store.undo();
+    const getsAfterSemanticUndo = registryGets;
+    expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')).toMatchObject({
+      position: { x: 500, y: 600 },
+      inputValues: { amount: 2 },
+    });
+    store.undo();
+    expect(registryGets).toBe(getsAfterSemanticUndo);
+    expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')).toMatchObject({
+      position: originalPosition,
+      inputValues: { amount: 2 },
+    });
+    store.undo();
+    expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')?.inputValues.amount).toBe(1);
+    store.redo();
+    store.redo();
+    expect(registryGets).toBeGreaterThan(getsAfterMove);
+    expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')).toMatchObject({
+      position: { x: 500, y: 600 },
+      inputValues: { amount: 2 },
+    });
+
+    store.undo();
+    expect(store.canRedo).toBe(true);
+    store.moveNodes({ increment: originalPosition });
+    expect(store.canRedo).toBe(true);
+    store.resizeNode('increment', { width: 320, height: 96 });
+    expect(store.canRedo).toBe(false);
+    const getsAfterResize = registryGets;
+    store.resizeNode('increment', { width: 320, height: 96 });
+    expect(registryGets).toBe(getsAfterResize);
+    store.undo();
+    expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')?.size).toBeUndefined();
+  });
+
+  it('keeps reversible history commands on their original stack when callbacks throw', () => {
+    const history = new CommandHistory<object>();
+    const undo = vi.fn(() => {
+      throw new Error('undo failed');
+    });
+    const redo = vi.fn(() => {
+      throw new Error('redo failed');
+    });
+    history.record({ label: 'fallible', undo, redo });
+
+    expect(() => history.undo()).toThrow('undo failed');
+    expect(history.canUndo).toBe(true);
+    expect(history.canRedo).toBe(false);
+    undo.mockImplementation(() => undefined);
+    history.undo();
+    expect(history.canUndo).toBe(false);
+    expect(history.canRedo).toBe(true);
+
+    expect(() => history.redo()).toThrow('redo failed');
+    expect(history.canUndo).toBe(false);
+    expect(history.canRedo).toBe(true);
+    redo.mockImplementation(() => undefined);
+    history.redo();
+    expect(history.canUndo).toBe(true);
+    expect(history.canRedo).toBe(false);
+  });
+
+  it('validates every recorded geometry target before undo or redo mutates any node', () => {
+    const store = new GraphEditorStore({
+      executable: fixture('minimal-observer'),
+      registry: builtinNodeRegistry,
+      ids: ids(),
+      apply: vi.fn(),
+      validatedExecutable: true,
+    });
+    const graph = store.currentGraph!;
+    const first = graph.nodes[0]!;
+    const second = graph.nodes[1]!;
+    const firstBefore = { ...first.position };
+    const secondBefore = { ...second.position };
+    const firstAfter = { x: 701, y: 702 };
+    const secondAfter = { x: 801, y: 802 };
+    store.layoutScopes([
+      {
+        flowId: store.selectedFlowId.value,
+        scopePath: [],
+        positions: { [first.id]: firstAfter, [second.id]: secondAfter },
+      },
+    ]);
+    const secondIndex = graph.nodes.indexOf(second);
+    graph.nodes.splice(secondIndex, 1);
+
+    expect(() => store.undo()).toThrow(`Geometry patch invariant violated: node "${second.id}"`);
+    expect(first.position).toEqual(firstAfter);
+    expect(store.canUndo).toBe(true);
+    expect(store.canRedo).toBe(false);
+
+    graph.nodes.splice(secondIndex, 0, second);
+    store.undo();
+    expect(first.position).toEqual(firstBefore);
+    expect(second.position).toEqual(secondBefore);
+    expect(store.canRedo).toBe(true);
+    graph.nodes.splice(secondIndex, 1);
+
+    expect(() => store.redo()).toThrow(`Geometry patch invariant violated: node "${second.id}"`);
+    expect(first.position).toEqual(firstBefore);
+    expect(store.canUndo).toBe(false);
+    expect(store.canRedo).toBe(true);
+
+    graph.nodes.splice(secondIndex, 0, second);
+    store.redo();
+    expect(first.position).toEqual(firstAfter);
+    expect(second.position).toEqual(secondAfter);
+    expect(store.canUndo).toBe(true);
+    expect(store.canRedo).toBe(false);
+  });
+
+  it('applies all-scope layout as one sparse command and restores every scope with one undo', () => {
+    const store = new GraphEditorStore({
+      executable: fixture('nested-subflow'),
+      registry: builtinNodeRegistry,
+      ids: ids(),
+      apply: vi.fn(),
+      validatedExecutable: true,
+    });
+    const revalidate = vi.spyOn(store, 'revalidate');
+    const flow = store.draft.value.agent.flows.find((candidate) => candidate.id === 'accumulate')!;
+    const body = flow.nodes.find((node) => node.id === 'loop')!.data.body as ScopeGraph;
+    const rootNode = flow.nodes[0]!;
+    const bodyNode = body.nodes[0]!;
+    const rootBefore = { ...rootNode.position };
+    const bodyBefore = { ...bodyNode.position };
+
+    store.layoutScopes([
+      { flowId: flow.id, scopePath: [], positions: { [rootNode.id]: { x: 701, y: 702 } } },
+      { flowId: flow.id, scopePath: ['loop'], positions: { [bodyNode.id]: { x: 801, y: 802 } } },
+    ]);
+    expect(rootNode.position).toEqual({ x: 701, y: 702 });
+    expect(bodyNode.position).toEqual({ x: 801, y: 802 });
+    expect(revalidate).not.toHaveBeenCalled();
+    store.undo();
+    expect(rootNode.position).toEqual(rootBefore);
+    expect(bodyNode.position).toEqual(bodyBefore);
+    expect(store.canUndo).toBe(false);
+    expect(revalidate).not.toHaveBeenCalled();
   });
 
   it('reuses cached node and edge render objects unless their actual inputs or selection change', () => {
