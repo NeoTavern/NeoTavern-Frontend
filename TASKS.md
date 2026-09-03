@@ -1,6 +1,6 @@
 # Simplified Visual Custom Agents implementation tasks
 
-Plan revision: 30
+Plan revision: 31
 
 `PRD.md` is authoritative. This plan modifies the current branch in place. It retains the complete graph/node/view/Mythic product while removing the transaction and generation-ownership architecture from core.
 
@@ -21,7 +21,8 @@ Revision 27 mechanically merged the former T001 lifecycle seam and T002 Custom A
 | --------- | ------------------------------------------------------------------------------------------- | ------- |
 | M1        | Core and Custom Agents cut over atomically to minimal awaited hooks and direct live effects | T001    |
 | M2        | Obsolete collateral is removed and the remaining core diff is minimal                       | T002    |
-| M3        | Custom Agent activation performs one retained graph preparation and no hidden editor work   | T003    |
+| M3        | Custom Agent activation reuses one retained graph preparation                               | T003    |
+| M4        | Flow navigation and metadata updates avoid repeated whole-agent derivation                  | T004    |
 
 ## T001 — Cut over to minimal lifecycle hooks and direct effects
 
@@ -132,6 +133,37 @@ Revision 27 mechanically merged the former T001 lifecycle seam and T002 Custom A
   - Focused tests, complete behavioral suite, formatting, i18n, lint, typecheck, build, and `git diff --check` pass; `vite.config.ts` remains unchanged and unstaged.
 - Attempt count: 1
 - Latest result: Approved. Activation now prepares installed definitions and compiled plans once, passes the same snapshot to runtime and management, and uses O(1) runtime reads until a successfully prepared settings change replaces it. Template module evaluation no longer validates or compiles Mythic, and the editor remains automatic without new visibility machinery. Focused tests passed 3 files / 18 tests; the complete suite passed 43 files / 410 tests; formatting, i18n, lint, typecheck, build, diff checks, and independent verification passed.
+
+## T004 — Remove repeated editor derivation and metadata validation
+
+- Status: completed
+- Dependencies: T003
+- Integration milestone: M4
+- Objective: Make flow/scope navigation derive ports once in dependency order and prevent metadata-only synchronization from recompiling an unchanged editor graph.
+- Source requirement IDs: REQ-001, REQ-009, REQ-010, REQ-013, REQ-014
+- In scope:
+  - replace unconditional node-count port-resolution passes with deterministic dependency ordering that remains cycle-safe for invalid drafts;
+  - build and reuse direct incoming-edge/dependent indexes instead of scanning every edge for every node;
+  - resolve each nested For Each body only when its owner requires it, without repeated recursive work;
+  - replace large serialized per-node fingerprints with cache ownership tied directly to the current draft/scope identity;
+  - reuse unchanged scope resolution when navigating away and back within the same draft;
+  - initialize the editor from the already prepared valid definition without a duplicate compile;
+  - synchronize name, priority, and enabled metadata without a second editor-wide validation while preserving unsaved draft content;
+  - focused performance-invariant and behavior tests for dependency-derived ports, invalid cycles, flow navigation, cache invalidation, metadata updates, and normal validation after graph edits.
+- Out of scope:
+  - changing serialized graph/runtime semantics, relaxing strict candidate preparation, or skipping generation-owner validation;
+  - workers, background validation, persistent caches, debounce delays, arbitrary timing assertions, generalized incremental compilation, or core changes.
+- Acceptance criteria:
+  - Selecting another flow performs no graph compilation and no node-count fixed-point passes; valid data dependencies still produce the same schemas and ports regardless of serialized node order.
+  - Returning to an unchanged scope reuses its resolved result; replacing the draft invalidates that reuse and derives the changed scope correctly.
+  - Invalid cyclic drafts remain diagnosable and editor rendering terminates deterministically.
+  - Initial editor construction for a prepared installed agent does not compile the same definition again.
+  - Name, priority, and enabled changes perform one strict collection preparation but no additional `GraphEditorStore.revalidate()`; unsaved graph edits and diagnostics are preserved.
+  - Graph-affecting edits, undo, redo, reset, and apply eligibility retain strict validation and existing editor behavior.
+  - Focused tests, complete behavioral suite, formatting, i18n, lint, typecheck, build, and `git diff --check` pass; `vite.config.ts` remains unchanged and unstaged.
+- Verification method: Focused resolver call-count/order/schema tests and mounted navigation/metadata tests; complete behavioral suite; formatting, i18n, lint, typecheck, build, diff check; independent verification.
+- Attempt count: 2
+- Latest result: Approved after correction. Port derivation now uses one deterministic dependency-ordered pass with indexed edges and nested-scope reuse; cache entries include effective graph/signature/registry context while metadata-only changes remain cache hits. Prepared editor initialization avoids duplicate compilation, metadata synchronization avoids editor revalidation, and undo/redo preserve current installed metadata. Focused editor/management tests passed 2 files / 32 tests, the Custom Agents graph suite passed 16 files / 148 tests, and the complete suite passed 43 files / 418 tests. Formatting, lint, typecheck, build, diff checks, and independent reverification passed.
 - Verification method: Instrumented/unit assertions around preparation and runtime replacement, mounted activation/management test for deferred editor construction, focused host/management/editor suites, and complete repository gates.
 - Attempt count: 1
 - Latest result: Implementation underway.

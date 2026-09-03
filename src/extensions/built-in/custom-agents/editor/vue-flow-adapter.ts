@@ -51,7 +51,75 @@ function sourcePort(
   return port?.kind === 'DATA' ? port : undefined;
 }
 
-export type EditorPortResolutionCache = Map<string, { fingerprint: string; resolved: ResolvedEditorNode }>;
+type EditorPortResolution = {
+  resolved: Map<string, ResolvedEditorNode>;
+  incomingData: Map<string, Map<string, GraphEdge>>;
+  nestedSignatures: Map<string, FlowSignature>;
+};
+type EditorPortResolutionEntry = EditorPortResolution & {
+  agentFlows: GraphAgent['flows'];
+  configurationSchema: GraphAgent['configurationSchema'];
+  stateSchema: GraphAgent['stateSchema'];
+  flow: GraphFlow;
+  signatureInputs: FlowSignature['inputs'];
+  signatureOutputs: FlowSignature['outputs'];
+  scopeSignatureKind: NodePortContext['scopeSignatureKind'];
+};
+
+export class EditorPortResolutionCache {
+  readonly #registries = new WeakMap<ReadonlyNodeRegistry, WeakMap<ScopeGraph, EditorPortResolutionEntry[]>>();
+
+  get(
+    registry: ReadonlyNodeRegistry,
+    graph: ScopeGraph,
+    agent: GraphAgent,
+    flow: GraphFlow,
+    signature: FlowSignature,
+    scopeSignatureKind: NodePortContext['scopeSignatureKind'],
+  ): EditorPortResolution | undefined {
+    return this.#registries
+      .get(registry)
+      ?.get(graph)
+      ?.find(
+        (entry) =>
+          entry.agentFlows === agent.flows &&
+          entry.configurationSchema === agent.configurationSchema &&
+          entry.stateSchema === agent.stateSchema &&
+          entry.flow === flow &&
+          entry.signatureInputs === signature.inputs &&
+          entry.signatureOutputs === signature.outputs &&
+          entry.scopeSignatureKind === scopeSignatureKind,
+      );
+  }
+
+  set(
+    registry: ReadonlyNodeRegistry,
+    graph: ScopeGraph,
+    agent: GraphAgent,
+    flow: GraphFlow,
+    signature: FlowSignature,
+    scopeSignatureKind: NodePortContext['scopeSignatureKind'],
+    resolution: EditorPortResolution,
+  ): void {
+    let scopes = this.#registries.get(registry);
+    if (!scopes) {
+      scopes = new WeakMap();
+      this.#registries.set(registry, scopes);
+    }
+    const entries = scopes.get(graph) ?? [];
+    entries.push({
+      ...resolution,
+      agentFlows: agent.flows,
+      configurationSchema: agent.configurationSchema,
+      stateSchema: agent.stateSchema,
+      flow,
+      signatureInputs: signature.inputs,
+      signatureOutputs: signature.outputs,
+      scopeSignatureKind,
+    });
+    scopes.set(graph, entries);
+  }
+}
 type NodeRenderCacheEntry = {
   fingerprint: string;
   value: Node<EditorNodeData>;
@@ -82,17 +150,30 @@ export function createVueFlowRenderCache(): VueFlowRenderCache {
   return { nodes: new Map(), edges: new Map() };
 }
 
+type IncomingDataEdges = ReadonlyMap<string, ReadonlyMap<string, GraphEdge>>;
+
+function indexIncomingDataEdges(graph: ScopeGraph): Map<string, Map<string, GraphEdge>> {
+  const incoming = new Map<string, Map<string, GraphEdge>>();
+  for (const edge of graph.edges) {
+    if (edge.kind !== 'DATA') continue;
+    let ports = incoming.get(edge.target.nodeId);
+    if (!ports) {
+      ports = new Map();
+      incoming.set(edge.target.nodeId, ports);
+    }
+    if (!ports.has(edge.target.portId)) ports.set(edge.target.portId, edge);
+  }
+  return incoming;
+}
+
 export function deriveForEachBodySignature(
   node: GraphNode,
   graph: ScopeGraph,
   resolved: ReadonlyMap<string, ResolvedEditorNode>,
+  incomingData: IncomingDataEdges = indexIncomingDataEdges(graph),
 ): FlowSignature {
   const bindingSchema = (portId: string): JsonObject => {
-    const edge = graph.edges.find(
-      (candidate) =>
-        candidate.kind === 'DATA' && candidate.target.nodeId === node.id && candidate.target.portId === portId,
-    );
-    const source = sourcePort(edge, resolved);
+    const source = sourcePort(incomingData.get(node.id)?.get(portId), resolved);
     if (source) return source.schema;
     return Object.hasOwn(node.inputValues, portId) ? schemaFromConstant(node.inputValues[portId]!) : {};
   };
@@ -143,7 +224,7 @@ export function resolveEditorScope(
   flow: GraphFlow,
   scopePath: readonly string[],
   registry: ReadonlyNodeRegistry,
-  cache: EditorPortResolutionCache = new Map(),
+  cache: EditorPortResolutionCache = new EditorPortResolutionCache(),
 ): { graph: ScopeGraph; signature: FlowSignature; resolved: Map<string, ResolvedEditorNode> } | undefined {
   let graph: ScopeGraph = flow;
   let signature: FlowSignature = { inputs: flow.inputs, outputs: flow.outputs };
@@ -153,7 +234,8 @@ export function resolveEditorScope(
     const owner = graph.nodes.find((node) => node.id === ownerId);
     const body = owner && asScopeGraph(owner.data.body);
     if (!owner || owner.type !== 'control.for-each' || !body) return undefined;
-    signature = deriveForEachBodySignature(owner, graph, resolved);
+    const resolution = cache.get(registry, graph, agent, flow, signature, signatureKind);
+    signature = resolution?.nestedSignatures.get(owner.id) ?? deriveForEachBodySignature(owner, graph, resolved);
     signatureKind = 'FOR_EACH';
     graph = body;
     resolved = resolveEditorPorts(agent, flow, graph, registry, signature, cache, signatureKind);
@@ -167,98 +249,100 @@ export function resolveEditorPorts(
   graph: ScopeGraph,
   registry: ReadonlyNodeRegistry,
   signature = { inputs: flow.inputs, outputs: flow.outputs },
-  cache: EditorPortResolutionCache = new Map(),
+  cache: EditorPortResolutionCache = new EditorPortResolutionCache(),
   scopeSignatureKind: NodePortContext['scopeSignatureKind'] = 'AUTHORED',
 ): Map<string, ResolvedEditorNode> {
-  let resolved = new Map<string, ResolvedEditorNode>(
-    graph.nodes.flatMap((node) => {
-      const cached = cache.get(node.id);
-      return cached ? [[node.id, { ...cached.resolved, node }] as const] : [];
-    }),
-  );
-  for (let pass = 0; pass <= graph.nodes.length; pass++) {
-    const next = new Map<string, ResolvedEditorNode>();
-    for (const node of graph.nodes) {
-      const definition = registry.get(node.type);
-      const parsed = definition?.dataSchema.safeParse(node.data);
-      if (!definition || !parsed?.success) {
-        next.set(node.id, { node, inputs: [], outputs: [] });
-        continue;
-      }
-      const binding = (portId: string): ResolvedInputBinding => {
-        const incoming = graph.edges.find(
-          (edge) => edge.kind === 'DATA' && edge.target.nodeId === node.id && edge.target.portId === portId,
-        );
-        const source = sourcePort(incoming, resolved);
-        if (source) return { kind: 'EDGE', source };
-        if (Object.hasOwn(node.inputValues, portId)) return { kind: 'INLINE', value: node.inputValues[portId]! };
-        return { kind: 'UNBOUND' };
-      };
-      const nestedSources = new Map<string, DataPortDefinition>();
-      if (node.type === 'control.for-each') {
-        const body = asScopeGraph(node.data.body);
-        if (body) {
-          const bodySignature = deriveForEachBodySignature(node, graph, resolved);
-          const bodyResolved = resolveEditorPorts(agent, flow, body, registry, bodySignature, cache, 'FOR_EACH');
-          const returned = body.nodes.find((candidate) => candidate.type === 'scope.return');
-          if (returned)
-            for (const returnPort of bodySignature.outputs) {
-              const edge = body.edges.find(
-                (candidate) =>
-                  candidate.kind === 'DATA' &&
-                  candidate.target.nodeId === returned.id &&
-                  candidate.target.portId === returnPort.id,
-              );
-              const source = sourcePort(edge, bodyResolved);
-              if (source) nestedSources.set(returnPort.id, source);
-            }
-        }
-      }
-      try {
-        const dependencyFingerprint = graph.edges
-          .filter((edge) => edge.target.nodeId === node.id)
-          .map((edge) => [
-            edge,
-            resolved.get(edge.source.nodeId)?.outputs.find((port) => port.id === edge.source.portId),
-          ])
-          .map(([edge, port]) => `${JSON.stringify(edge)}:${JSON.stringify(port)}`)
-          .sort()
-          .join('|');
-        const fingerprint = JSON.stringify([
-          node.type,
-          node.data,
-          node.inputValues,
-          dependencyFingerprint,
-          signature,
-          scopeSignatureKind,
-          agent.configurationSchema,
-          agent.stateSchema,
-          agent.flows.map(({ id, inputs, outputs }) => ({ id, inputs, outputs })),
-        ]);
-        const cached = cache.get(node.id);
-        if (cached?.fingerprint === fingerprint) {
-          next.set(node.id, { ...cached.resolved, node });
-          continue;
-        }
-        const ports = definition.ports(parsed.data, {
-          agent,
-          flow,
-          nodeId: node.id,
-          scopeSignature: signature,
-          scopeSignatureKind,
-          resolveSubflow: (flowId) => agent.flows.find((candidate) => candidate.id === flowId),
-          resolveInputBinding: binding,
-          resolveNestedReturnSource: (portId) => nestedSources.get(portId),
-        });
-        const result = { node, inputs: ports.inputs, outputs: ports.outputs };
-        cache.set(node.id, { fingerprint, resolved: result });
-        next.set(node.id, result);
-      } catch {
-        next.set(node.id, { node, inputs: [], outputs: [] });
+  const cached = cache.get(registry, graph, agent, flow, signature, scopeSignatureKind);
+  if (cached) return cached.resolved;
+
+  const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const incomingData = indexIncomingDataEdges(graph);
+  const dependents = new Map<string, Set<string>>();
+  const dependencyCount = new Map(graph.nodes.map((node) => [node.id, 0]));
+  for (const edge of graph.edges) {
+    if (edge.kind !== 'DATA' || !nodesById.has(edge.source.nodeId) || !nodesById.has(edge.target.nodeId)) continue;
+    const targets = dependents.get(edge.source.nodeId) ?? new Set<string>();
+    if (!targets.has(edge.target.nodeId)) {
+      targets.add(edge.target.nodeId);
+      dependents.set(edge.source.nodeId, targets);
+      dependencyCount.set(edge.target.nodeId, dependencyCount.get(edge.target.nodeId)! + 1);
+    }
+  }
+
+  const ready = graph.nodes
+    .filter((node) => dependencyCount.get(node.id) === 0)
+    .map((node) => node.id)
+    .sort();
+  const order: string[] = [];
+  while (ready.length) {
+    const nodeId = ready.shift()!;
+    order.push(nodeId);
+    for (const dependentId of [...(dependents.get(nodeId) ?? [])].sort()) {
+      const remaining = dependencyCount.get(dependentId)! - 1;
+      dependencyCount.set(dependentId, remaining);
+      if (remaining === 0) {
+        ready.push(dependentId);
+        ready.sort();
       }
     }
-    resolved = next;
   }
+  const ordered = new Set(order);
+  order.push(
+    ...graph.nodes
+      .map((node) => node.id)
+      .filter((id) => !ordered.has(id))
+      .sort(),
+  );
+
+  const resolved = new Map<string, ResolvedEditorNode>();
+  const nestedSignatures = new Map<string, FlowSignature>();
+  for (const nodeId of order) {
+    const node = nodesById.get(nodeId)!;
+    const definition = registry.get(node.type);
+    const parsed = definition?.dataSchema.safeParse(node.data);
+    if (!definition || !parsed?.success) {
+      resolved.set(node.id, { node, inputs: [], outputs: [] });
+      continue;
+    }
+    const binding = (portId: string): ResolvedInputBinding => {
+      const source = sourcePort(incomingData.get(node.id)?.get(portId), resolved);
+      if (source) return { kind: 'EDGE', source };
+      if (Object.hasOwn(node.inputValues, portId)) return { kind: 'INLINE', value: node.inputValues[portId]! };
+      return { kind: 'UNBOUND' };
+    };
+    const nestedSources = new Map<string, DataPortDefinition>();
+    if (node.type === 'control.for-each') {
+      const body = asScopeGraph(node.data.body);
+      if (body) {
+        const bodySignature = deriveForEachBodySignature(node, graph, resolved, incomingData);
+        nestedSignatures.set(node.id, bodySignature);
+        const bodyResolved = resolveEditorPorts(agent, flow, body, registry, bodySignature, cache, 'FOR_EACH');
+        const returned = body.nodes.find((candidate) => candidate.type === 'scope.return');
+        const bodyIncoming = cache.get(registry, body, agent, flow, bodySignature, 'FOR_EACH')!.incomingData;
+        if (returned)
+          for (const returnPort of bodySignature.outputs) {
+            const source = sourcePort(bodyIncoming.get(returned.id)?.get(returnPort.id), bodyResolved);
+            if (source) nestedSources.set(returnPort.id, source);
+          }
+      }
+    }
+    try {
+      const ports = definition.ports(parsed.data, {
+        agent,
+        flow,
+        nodeId: node.id,
+        scopeSignature: signature,
+        scopeSignatureKind,
+        resolveSubflow: (flowId) => agent.flows.find((candidate) => candidate.id === flowId),
+        resolveInputBinding: binding,
+        resolveNestedReturnSource: (portId) => nestedSources.get(portId),
+      });
+      resolved.set(node.id, { node, inputs: ports.inputs, outputs: ports.outputs });
+    } catch {
+      resolved.set(node.id, { node, inputs: [], outputs: [] });
+    }
+  }
+  cache.set(registry, graph, agent, flow, signature, scopeSignatureKind, { resolved, incomingData, nestedSignatures });
   return resolved;
 }
 

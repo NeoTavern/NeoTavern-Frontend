@@ -10,14 +10,14 @@ import GraphDiagnostics from './GraphDiagnostics.vue';
 import NodePalette from './NodePalette.vue';
 import type { GraphEditorStore } from './editor-store';
 import { smartLayoutAvailability } from './smart-layout';
-import { resolveEditorScope, type EditorPortResolutionCache } from './vue-flow-adapter';
+import { EditorPortResolutionCache, resolveEditorScope } from './vue-flow-adapter';
 import { useEditorI18n } from './editor-i18n';
 
 const props = defineProps<{ store: GraphEditorStore; registry: ReadonlyNodeRegistry }>();
 const { t } = useEditorI18n();
 const canvas = ref<InstanceType<typeof FlowCanvas>>();
 const allScopesLayout = ref<InstanceType<typeof AllScopesSmartLayout>>();
-const portCache: EditorPortResolutionCache = new Map();
+const portCache = new EditorPortResolutionCache();
 const flow = computed(() => props.store.selectedFlow);
 const rootScope = computed(() =>
   flow.value ? resolveEditorScope(props.store.draft.value.agent, flow.value, [], props.registry, portCache) : undefined,

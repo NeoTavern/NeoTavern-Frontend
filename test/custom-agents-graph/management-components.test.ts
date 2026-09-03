@@ -6,6 +6,7 @@ import { createApp, nextTick } from 'vue';
 import { createI18n } from 'vue-i18n';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import AgentManager from '../../src/extensions/built-in/custom-agents/settings/AgentManager.vue';
+import { GraphEditorStore } from '../../src/extensions/built-in/custom-agents/editor/editor-store';
 import ViewsPanel from '../../src/extensions/built-in/custom-agents/views/ViewsPanel.vue';
 import { createGraphPreset } from '../../src/extensions/built-in/custom-agents/settings/management';
 import {
@@ -102,6 +103,36 @@ describe('graph management and views components', () => {
     expect(host.textContent).toContain('extensionsBuiltin.customAgents.noActiveChat');
     expect(host.querySelector('.custom-agent-flow')).not.toBeNull();
     expect(host.querySelector('[aria-label="Node palette"]')).not.toBeNull();
+  });
+
+  it('uses prepared editor initialization and metadata preparation without editor revalidation', async () => {
+    const preset = JSON.parse(
+      fs.readFileSync('test/fixtures/custom-agents/minimal-observer.flow.json', 'utf8'),
+    ) as GraphPreset;
+    const prepared = prepareInstalledGraphAgentsSettings({ presets: [preset] });
+    const api = apiFor(prepared.settings);
+    const runtime = runtimeFor(preset);
+    const revalidate = vi.spyOn(GraphEditorStore.prototype, 'revalidate');
+    const host = mount(AgentManager, { api, runtime, prepared });
+    await nextTick();
+    expect(revalidate).not.toHaveBeenCalled();
+
+    const runFlow = [...host.querySelectorAll<HTMLButtonElement>('.custom-agent-flow__palette button')].find(
+      (button) => button.textContent?.trim() === 'Run Flow',
+    )!;
+    runFlow.click();
+    await nextTick();
+    expect(revalidate).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('.custom-agent-flow__diagnostics')).not.toBeNull();
+
+    const name = host.querySelectorAll<HTMLInputElement>('.custom-agent-panel input')[1]!;
+    name.value = 'Renamed agent';
+    name.dispatchEvent(new Event('change', { bubbles: true }));
+    await nextTick();
+    expect(revalidate).toHaveBeenCalledTimes(1);
+    expect(runtime.replacePrepared).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('.custom-agent-flow__diagnostics')).not.toBeNull();
+    expect(host.querySelector<HTMLButtonElement>('button[title="Apply valid draft"]')?.disabled).toBe(true);
   });
 
   it('updates local settings before replacement notifications when deleting the selected agent', async () => {

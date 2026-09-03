@@ -38,6 +38,7 @@ export type EditorStoreOptions = {
   registry: ReadonlyNodeRegistry;
   ids: IdSource;
   apply: (definition: GraphPreset) => void;
+  validatedExecutable?: boolean;
 };
 
 function clone<Value>(value: Value): Value {
@@ -208,7 +209,7 @@ export class GraphEditorStore {
         JSON.stringify(this.draft.value) !== JSON.stringify(this.executable.value) ||
         Object.keys(this.inspectorJsonErrors.value).length > 0,
     );
-    this.revalidate();
+    if (!options.validatedExecutable) this.revalidate();
   }
 
   get canUndo(): boolean {
@@ -273,6 +274,20 @@ export class GraphEditorStore {
     this.diagnostics.value = result.success ? [] : result.diagnostics;
   }
 
+  synchronizeMetadata(metadata: Pick<GraphPreset['agent'], 'name' | 'priority' | 'enabled'>): void {
+    const synchronize = (preset: GraphPreset): GraphPreset => ({
+      ...preset,
+      agent: {
+        ...preset.agent,
+        name: metadata.name,
+        priority: metadata.priority,
+        enabled: metadata.enabled,
+      },
+    });
+    this.executable.value = synchronize(this.executable.value);
+    this.draft.value = synchronize(this.draft.value);
+  }
+
   inspectorJsonKey(nodeId: string, kind: 'field' | 'input', path: string): string {
     return JSON.stringify([this.selectedFlowId.value, ...this.scopePath.value, nodeId, kind, path]);
   }
@@ -330,24 +345,25 @@ export class GraphEditorStore {
     this.revalidate();
   }
 
+  private restoreHistoryValue(value: GraphPreset): void {
+    const previous = this.draft.value;
+    const restored = clone(value);
+    restored.agent.name = previous.agent.name;
+    restored.agent.priority = previous.agent.priority;
+    restored.agent.enabled = previous.agent.enabled;
+    this.draft.value = restored;
+    this.reconcileSignatureSchemaDrafts(previous, restored);
+    this.revalidate();
+  }
+
   undo(): void {
     const value = this.#history.undo();
-    if (value) {
-      const previous = this.draft.value;
-      this.draft.value = clone(value);
-      this.reconcileSignatureSchemaDrafts(previous, this.draft.value);
-      this.revalidate();
-    }
+    if (value) this.restoreHistoryValue(value);
   }
 
   redo(): void {
     const value = this.#history.redo();
-    if (value) {
-      const previous = this.draft.value;
-      this.draft.value = clone(value);
-      this.reconcileSignatureSchemaDrafts(previous, this.draft.value);
-      this.revalidate();
-    }
+    if (value) this.restoreHistoryValue(value);
   }
 
   selectFlow(flowId: string): void {

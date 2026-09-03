@@ -1,26 +1,25 @@
 # Simplified Visual Custom Agents execution state
 
-- Current plan revision: 30
-- Current milestone: M3 — Activation preparation optimization complete
+- Current plan revision: 31
+- Current milestone: M4 — Responsive editor derivation and metadata updates complete
 - Current or next bundle: Complete
-- Last completed bundle: T003 — Remove repeated activation compilation while retaining automatic editor display
+- Last completed bundle: T004 — Remove repeated editor derivation and metadata validation
 - Blocker: None
 - Failed-attempt count: 0
-- Latest important verification: Independent T003 verification passed. Focused tests passed 3 files / 18 tests; complete suite passed 43 files / 410 tests; formatting, i18n, lint, typecheck, build, and diff checks passed.
-- Exact next action: None — revision-30 activation optimization is complete.
+- Latest important verification: T004 independent reverification passed. Focused editor/management tests passed 2 files / 32 tests, Custom Agents graph tests passed 16 files / 148 tests, and the complete suite passed 43 files / 418 tests; formatting, lint, typecheck, build, and diff checks passed.
+- Exact next action: None — revision-31 performance work is complete.
 
 ## Accepted clarifications
 
 - Work proceeds on the current branch; do not reset to `main`.
 - Nodes, schema-driven views, editor/management behavior, and Mythic remain in scope.
-- Core exposes only one small single-owner awaited lifecycle provider with after-user, before-generation, and after-generation hooks.
-- Graph effects mutate live selected chat/checkpoint state directly; completed effects are not rolled back after later failure or cancellation.
-- Old ordered-step formats and revision-25 transaction APIs receive no compatibility layer.
-- Revision 30 uses one in-memory prepared installed-agent snapshot. It adds no persistent cache, worker, background initialization, generalized repository, visibility observer, or core activation change.
-- Strict candidate validation remains atomic; the same successful preparation supplies persistence and runtime replacement.
-- The selected graph editor remains automatic without an open-editor interaction.
-- The unrelated modified `vite.config.ts` must remain byte-for-byte unchanged and unstaged.
+- Installed agents use one prepared snapshot for runtime and management reads.
+- Flow navigation performs one dependency-ordered port derivation per changed scope and reuses unchanged scope results.
+- Initial editor construction trusts the exact prepared installed definition; graph-affecting changes retain strict validation.
+- Name, priority, and enabled synchronization does not trigger a second editor-wide validation or port derivation.
+- No worker, background validation, persistent cache, debounce, generalized incremental compiler, visibility observer, or core activation change was added.
+- The unrelated modified `vite.config.ts` remains byte-for-byte unchanged and unstaged.
 
 ## Major current risks
 
-- Retaining automatic editor construction leaves its actual UI initialization cost in activation. Further optimization requires post-refactor profiling rather than speculative machinery.
+- None identified by T004 reverification. Any further performance work should use browser profiling of the remaining Vue Flow rendering path.

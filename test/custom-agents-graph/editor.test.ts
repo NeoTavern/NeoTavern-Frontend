@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   GRAPH_NODE_MIN_HEIGHT,
   GRAPH_NODE_MIN_WIDTH,
+  type FlowSignature,
   type GraphPreset,
   type ScopeGraph,
 } from '../../src/extensions/built-in/custom-agents/graph/contracts';
@@ -18,7 +19,7 @@ import {
   resolveEditorPorts,
   resolveEditorScope,
   toVueFlow,
-  type EditorPortResolutionCache,
+  EditorPortResolutionCache,
 } from '../../src/extensions/built-in/custom-agents/editor/vue-flow-adapter';
 import { builtinNodeRegistry } from '../../src/extensions/built-in/custom-agents/registry/builtin-nodes';
 import type { ReadonlyNodeRegistry } from '../../src/extensions/built-in/custom-agents/registry/node-definition';
@@ -78,6 +79,70 @@ describe('Custom Agent graph editor', () => {
     expect(store.diagnostics.value).toEqual([]);
     expect(store.apply()).toBe(true);
     expect(apply).toHaveBeenCalledWith(original);
+  });
+
+  it('trusts an explicitly prepared initial executable while standalone construction and later edits validate', () => {
+    const invalid = fixture('minimal-observer');
+    invalid.agent.flows[0]!.nodes.find((node) => node.id === 'save-count')!.data.path = '';
+    const preparedStore = new GraphEditorStore({
+      executable: invalid,
+      registry: builtinNodeRegistry,
+      ids: ids(),
+      apply: vi.fn(),
+      validatedExecutable: true,
+    });
+    expect(preparedStore.diagnostics.value).toEqual([]);
+    preparedStore.updateInputValue('increment', 'amount', 2);
+    expect(preparedStore.diagnostics.value.length).toBeGreaterThan(0);
+
+    const standalone = new GraphEditorStore({
+      executable: invalid,
+      registry: builtinNodeRegistry,
+      ids: ids(),
+      apply: vi.fn(),
+    });
+    expect(standalone.diagnostics.value.length).toBeGreaterThan(0);
+  });
+
+  it('synchronizes installed metadata without losing a dirty draft or its diagnostics', () => {
+    const original = fixture('minimal-observer');
+    const store = new GraphEditorStore({
+      executable: original,
+      registry: builtinNodeRegistry,
+      ids: ids(),
+      apply: vi.fn(),
+    });
+    store.updateNodeData('save-count', 'path', '');
+    const dirtyFlow = store.draft.value.agent.flows;
+    const diagnostics = store.diagnostics.value;
+    store.synchronizeMetadata({ name: 'Renamed', priority: 7, enabled: true });
+    expect(store.executable.value.agent).toMatchObject({ name: 'Renamed', priority: 7, enabled: true });
+    expect(store.draft.value.agent).toMatchObject({ name: 'Renamed', priority: 7, enabled: true });
+    expect(store.draft.value.agent.flows).toBe(dirtyFlow);
+    expect(store.diagnostics.value).toBe(diagnostics);
+    expect(store.isDirty.value).toBe(true);
+  });
+
+  it('preserves synchronized metadata through undo, redo, and apply', () => {
+    const original = fixture('minimal-observer');
+    const apply = vi.fn();
+    const store = new GraphEditorStore({
+      executable: original,
+      registry: builtinNodeRegistry,
+      ids: ids(),
+      apply,
+    });
+    store.updateInputValue('increment', 'amount', 2);
+    store.synchronizeMetadata({ name: 'Installed name', priority: 9, enabled: false });
+
+    store.undo();
+    expect(store.draft.value.agent).toMatchObject({ name: 'Installed name', priority: 9, enabled: false });
+    expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')?.inputValues.amount).toBe(1);
+    store.redo();
+    expect(store.draft.value.agent).toMatchObject({ name: 'Installed name', priority: 9, enabled: false });
+    expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')?.inputValues.amount).toBe(2);
+    expect(store.apply()).toBe(true);
+    expect(apply.mock.calls[0]![0].agent).toMatchObject({ name: 'Installed name', priority: 9, enabled: false });
   });
 
   it('makes connect, inline removal, movement, deletion, and undo atomic commands', () => {
@@ -562,10 +627,10 @@ describe('Custom Agent graph editor', () => {
     expect(roundTrip.edges).toEqual(stale.edges);
   });
 
-  it('caches port derivation for unchanged off-screen nodes on unrelated edits', () => {
-    const preset = fixture('mythic');
+  it('derives each node once in data-dependency order and reuses only the unchanged draft scope', () => {
+    const preset = fixture('minimal-observer');
     const flow = preset.agent.flows[0]!;
-    const calls = new Map<string, number>();
+    const calls: string[] = [];
     const registry: ReadonlyNodeRegistry = {
       list: () => builtinNodeRegistry.list(),
       get: (type) => {
@@ -574,21 +639,168 @@ describe('Custom Agent graph editor', () => {
         return {
           ...definition,
           ports: (data, context) => {
-            calls.set(context.nodeId, (calls.get(context.nodeId) ?? 0) + 1);
+            calls.push(context.nodeId);
             return definition.ports(data, context);
           },
         };
       },
     };
-    const cache: EditorPortResolutionCache = new Map();
-    resolveEditorPorts(preset.agent, flow, flow, registry, undefined, cache);
-    calls.clear();
-    const edited = structuredClone(flow);
-    const changed = edited.nodes.find((node) => node.id === 'generate-assistant-analysis')!;
-    changed.data.prompt = `${String(changed.data.prompt)}\n`;
-    resolveEditorPorts(preset.agent, edited, edited, registry, undefined, cache);
-    expect(calls.get(changed.id)).toBeGreaterThan(0);
-    expect([...calls.keys()]).toEqual([changed.id]);
+    const cache = new EditorPortResolutionCache();
+    const first = resolveEditorPorts(preset.agent, flow, flow, registry, undefined, cache);
+    expect(calls).toHaveLength(flow.nodes.length);
+    expect(calls.indexOf('read-count')).toBeLessThan(calls.indexOf('increment'));
+    calls.length = 0;
+    expect(resolveEditorPorts(preset.agent, flow, flow, registry, undefined, cache)).toBe(first);
+    expect(calls).toEqual([]);
+
+    const replacement = structuredClone(preset);
+    const replacementFlow = replacement.agent.flows[0]!;
+    replacementFlow.nodes.find((node) => node.id === 'increment')!.inputValues.amount = 3;
+    resolveEditorPorts(replacement.agent, replacementFlow, replacementFlow, registry, undefined, cache);
+    expect(calls).toHaveLength(replacementFlow.nodes.length);
+  });
+
+  it('separates cached schemas for the same agent and scope under different effective signatures', () => {
+    const preset = fixture('nested-subflow');
+    const flow = preset.agent.flows.find((candidate) => candidate.id === 'accumulate')!;
+    const loop = flow.nodes.find((node) => node.id === 'loop')!;
+    const body = loop.data.body as unknown as ScopeGraph;
+    const cache = new EditorPortResolutionCache();
+    const signature = (type: 'string' | 'number'): FlowSignature => ({
+      inputs: [{ id: 'item', label: 'item', required: true, cardinality: 'ONE', schema: { type } }],
+      outputs: [],
+    });
+
+    const strings = resolveEditorPorts(
+      preset.agent,
+      flow,
+      body,
+      builtinNodeRegistry,
+      signature('string'),
+      cache,
+      'FOR_EACH',
+    );
+    const numbers = resolveEditorPorts(
+      preset.agent,
+      flow,
+      body,
+      builtinNodeRegistry,
+      signature('number'),
+      cache,
+      'FOR_EACH',
+    );
+    expect(strings.get('body-entry')?.outputs.find((port) => port.id === 'item')).toMatchObject({
+      kind: 'DATA',
+      schema: { type: 'string' },
+    });
+    expect(numbers.get('body-entry')?.outputs.find((port) => port.id === 'item')).toMatchObject({
+      kind: 'DATA',
+      schema: { type: 'number' },
+    });
+  });
+
+  it('reuses port derivation across metadata-only agent identity replacement', () => {
+    const preset = fixture('minimal-observer');
+    let calls = 0;
+    const registry: ReadonlyNodeRegistry = {
+      list: () => builtinNodeRegistry.list(),
+      get: (type) => {
+        const definition = builtinNodeRegistry.get(type);
+        return definition
+          ? {
+              ...definition,
+              ports: (data, context) => {
+                calls += 1;
+                return definition.ports(data, context);
+              },
+            }
+          : undefined;
+      },
+    };
+    const store = new GraphEditorStore({ executable: preset, registry, ids: ids(), apply: vi.fn() });
+    const flow = store.selectedFlow!;
+    calls = 0;
+    const cache = new EditorPortResolutionCache();
+    resolveEditorScope(store.draft.value.agent, flow, [], registry, cache);
+    expect(calls).toBe(flow.nodes.length);
+    calls = 0;
+
+    store.synchronizeMetadata({ name: 'Metadata only', priority: 4, enabled: false });
+    expect(store.selectedFlow).toBe(flow);
+    resolveEditorScope(store.draft.value.agent, store.selectedFlow!, [], registry, cache);
+    expect(calls).toBe(0);
+  });
+
+  it('resolves a nested body once and reuses it when navigating away and back in one draft', () => {
+    const preset = fixture('nested-subflow');
+    const flow = preset.agent.flows.find((candidate) => candidate.id === 'accumulate')!;
+    const calls = new Map<string, number>();
+    const registry: ReadonlyNodeRegistry = {
+      list: () => builtinNodeRegistry.list(),
+      get: (type) => {
+        const definition = builtinNodeRegistry.get(type);
+        return definition
+          ? {
+              ...definition,
+              ports: (data, context) => {
+                calls.set(context.nodeId, (calls.get(context.nodeId) ?? 0) + 1);
+                return definition.ports(data, context);
+              },
+            }
+          : undefined;
+      },
+    };
+    const cache = new EditorPortResolutionCache();
+    resolveEditorScope(preset.agent, flow, ['loop'], registry, cache);
+    expect([...calls.values()].every((count) => count === 1)).toBe(true);
+    const firstCalls = new Map(calls);
+    resolveEditorScope(preset.agent, flow, [], registry, cache);
+    resolveEditorScope(preset.agent, flow, ['loop'], registry, cache);
+    expect(calls).toEqual(firstCalls);
+  });
+
+  it('derives identical schemas regardless of serialized node order and terminates cyclic invalid drafts once per node', () => {
+    const preset = fixture('minimal-observer');
+    const flow = preset.agent.flows[0]!;
+    const reversed = structuredClone(preset);
+    reversed.agent.flows[0]!.nodes.reverse();
+    const schemas = (definition: GraphPreset) => {
+      const target = definition.agent.flows[0]!;
+      const ports = resolveEditorPorts(definition.agent, target, target, builtinNodeRegistry);
+      return Object.fromEntries(
+        [...ports].map(([id, resolved]) => [
+          id,
+          resolved.outputs.map((port) => [port.id, port.kind === 'DATA' ? port.schema : 'CONTROL']),
+        ]),
+      );
+    };
+    expect(schemas(reversed)).toEqual(schemas(preset));
+
+    flow.edges.push({
+      id: 'invalid-data-cycle',
+      kind: 'DATA',
+      source: { nodeId: 'increment', portId: 'property/value' },
+      target: { nodeId: 'read-count', portId: 'legacy-input' },
+    });
+    const calls = new Map<string, number>();
+    const registry: ReadonlyNodeRegistry = {
+      list: () => builtinNodeRegistry.list(),
+      get: (type) => {
+        const definition = builtinNodeRegistry.get(type);
+        return definition
+          ? {
+              ...definition,
+              ports: (data, context) => {
+                calls.set(context.nodeId, (calls.get(context.nodeId) ?? 0) + 1);
+                return definition.ports(data, context);
+              },
+            }
+          : undefined;
+      },
+    };
+    const resolved = resolveEditorPorts(preset.agent, flow, flow, registry);
+    expect(resolved.size).toBe(flow.nodes.length);
+    expect([...calls.values()]).toEqual(new Array(flow.nodes.length).fill(1));
   });
 
   it('keeps viewport and transient run diagnostics outside serialized drafts', () => {

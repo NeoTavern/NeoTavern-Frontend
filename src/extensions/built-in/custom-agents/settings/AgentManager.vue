@@ -60,6 +60,7 @@ const editor = computed(() => {
       executable: preset,
       registry: builtinNodeRegistry,
       ids,
+      validatedExecutable: true,
       apply: (definition) => {
         persist(replaceInstalledPreset(settings.value, preset.agent.id, definition));
       },
@@ -73,7 +74,6 @@ function persist(prepared: PreparedInstalledGraphAgents): void {
   persistPreparedInstalledGraphAgents(props.api, prepared);
   settings.value = prepared.settings;
   props.runtime.replacePrepared(prepared);
-  refreshRuntime();
 }
 
 function overlay(): Record<string, RunOverlayRecord> {
@@ -165,17 +165,7 @@ function remove(): void {
 function synchronizeMetadata(preset: GraphPreset): void {
   const store = editor.value;
   if (!store) return;
-  const executable = structuredClone(store.executable.value);
-  executable.agent.name = preset.agent.name;
-  executable.agent.priority = preset.agent.priority;
-  executable.agent.enabled = preset.agent.enabled;
-  store.executable.value = executable;
-  const draft = structuredClone(store.draft.value);
-  draft.agent.name = preset.agent.name;
-  draft.agent.priority = preset.agent.priority;
-  draft.agent.enabled = preset.agent.enabled;
-  store.draft.value = draft;
-  store.revalidate();
+  store.synchronizeMetadata(preset.agent);
 }
 
 function updateInstalled(mutator: (preset: GraphPreset) => PreparedInstalledGraphAgents): void {

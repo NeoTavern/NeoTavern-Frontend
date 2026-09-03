@@ -3,7 +3,7 @@
 ## Authority and status
 
 - Status: Approved
-- Revision: 30
+- Revision: 31
 - Authoritative source: This document and the user's accepted simplification on the current `custom_agents` branch.
 - This revision supersedes the previous requirements for staged chat transactions, provisional projections, rollback, generation claims, and host-level generation arbitration.
 - The current visual graph format, node catalog, runtime views, management UI, and Mythic graph remain product scope. This is an architectural simplification, not a reset or a reduced node/view product.
@@ -217,6 +217,16 @@ A settings mutation remains strict and atomic: its candidate collection is valid
 Activation must not validate or compile the bundled template catalog merely because the extension settings container exists. The selected agent's editor remains displayed automatically without an additional open-editor interaction; deferment or visibility-observer machinery is not part of this optimization. Installing a template still performs normal strict collection validation before changing installed settings.
 
 This optimization must use one direct prepared-snapshot owner. Do not add persistent compiled caches, workers, background initialization, compatibility APIs, generalized repositories, invalid-data fallbacks, or changes to core extension activation ordering.
+
+### REQ-014 — Responsive editor derivation and metadata updates
+
+Selecting a flow or nested scope is a navigation operation. It must not validate or compile the complete agent. Editor port derivation must follow data dependencies deterministically without unconditional node-count passes, repeated full-edge scans, recursive re-resolution of the same nested body, or large serialized cache fingerprints. Reopening an unchanged scope may reuse its resolved result for the current draft identity; any draft replacement invalidates that reuse directly.
+
+The editor may trust the already prepared installed definition when it is first constructed instead of compiling that same definition again. Subsequent graph edits, reset, undo, redo, and apply eligibility retain strict diagnostics.
+
+Changing agent name, priority, or enabled state still performs the one required strict installed-collection preparation from REQ-013, including generation-owner checks. Synchronizing those metadata fields into an existing editor must not trigger a second complete graph validation. Configuration, schema, flow, node, edge, and view changes retain normal graph validation.
+
+Use direct dependency ordering, pre-indexed edges, and draft-scoped memoization only where required by these operations. Do not add workers, background validation, persistent caches, debounce delays, arbitrary performance thresholds, or a generalized incremental compiler.
 
 ## Failure behavior
 
