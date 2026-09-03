@@ -176,6 +176,8 @@ describe('Narrative Momentum Director preset', () => {
       expect(result.effects[1]).toMatchObject({
         type: 'INJECTION_SET',
         injectionId: 'narrative-momentum-direction',
+        placement: 'in-chat',
+        depth: 0,
         lifetime: { type: 'UNTIL_REMOVED' },
         activation: { type: 'ALWAYS' },
       });
@@ -224,6 +226,8 @@ describe('Narrative Momentum Director preset', () => {
     expect(result.effects[0]).toMatchObject({
       type: 'INJECTION_SET',
       injectionId: 'narrative-momentum-random-influence',
+      placement: 'in-chat',
+      depth: 0,
       lifetime: { type: 'ONCE' },
       activation: { type: 'PROBABILITY', probability: 0.37 },
     });

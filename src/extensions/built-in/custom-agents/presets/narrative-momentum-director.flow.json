@@ -165,7 +165,7 @@
             "position": { "x": 1200, "y": 0 },
             "data": {
               "injectionId": "narrative-momentum-random-influence",
-              "placement": "relative",
+              "placement": "in-chat",
               "depth": 0,
               "lifetime": { "type": "ONCE" },
               "activation": { "type": "PROBABILITY" }
@@ -385,7 +385,7 @@
             "position": { "x": 2400, "y": 0 },
             "data": {
               "injectionId": "narrative-momentum-direction",
-              "placement": "relative",
+              "placement": "in-chat",
               "depth": 0,
               "lifetime": { "type": "UNTIL_REMOVED" },
               "activation": { "type": "ALWAYS" }
