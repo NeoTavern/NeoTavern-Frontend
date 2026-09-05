@@ -32,7 +32,8 @@ export function useRewriteOneShot(api: ExtensionAPI<RewriteSettings>) {
     lastAssistantMessage?: string,
     referenceMessageIndex?: number,
   ) {
-    if (!selectedProfile) {
+    const connectionProfile = resolveConnectionProfile(api, selectedProfile);
+    if (!connectionProfile) {
       api.ui.showToast(t('extensionsBuiltin.rewrite.errors.selectProfile'), 'error');
       return;
     }
@@ -51,7 +52,7 @@ export function useRewriteOneShot(api: ExtensionAPI<RewriteSettings>) {
       const response = await service.generateRewrite(
         inputToProcess,
         selectedTemplateId,
-        resolveConnectionProfile(api, selectedProfile),
+        connectionProfile,
         promptToUse,
         deepToRaw(contextData),
         deepToRaw(additionalMacros),

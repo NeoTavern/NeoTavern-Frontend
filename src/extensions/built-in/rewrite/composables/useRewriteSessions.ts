@@ -103,7 +103,13 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
     t: (key: string) => string,
     referenceMessageIndex?: number,
   ) {
-    if (!activeSession.value || !selectedProfile) return;
+    if (!activeSession.value) return;
+
+    const connectionProfile = resolveConnectionProfile(api, selectedProfile);
+    if (!connectionProfile) {
+      api.ui.showToast(t('extensionsBuiltin.rewrite.errors.selectProfile'), 'error');
+      return;
+    }
 
     beginGeneration();
 
@@ -114,7 +120,7 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
     await saveActiveSession();
 
     await executeSessionGeneration(
-      selectedProfile,
+      connectionProfile,
       structuredResponseFormat,
       availableFields,
       t,
@@ -123,13 +129,13 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
   }
 
   async function executeSessionGeneration(
-    selectedProfile: string,
+    connectionProfile: string,
     structuredResponseFormat: StructuredResponseFormat,
     availableFields: RewriteField[],
     t: (key: string) => string,
     referenceMessageIndex?: number,
   ) {
-    if (!activeSession.value || !selectedProfile) return;
+    if (!activeSession.value) return;
 
     let iterations = 0;
     const maxIterations = 3;
@@ -140,7 +146,7 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
           activeSession.value.messages,
           structuredResponseFormat,
           deepToRaw(availableFields),
-          resolveConnectionProfile(api, selectedProfile),
+          connectionProfile,
           abortController.value?.signal,
           referenceMessageIndex,
         );
@@ -230,6 +236,12 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
   ) {
     if (!activeSession.value) return;
 
+    const connectionProfile = resolveConnectionProfile(api, selectedProfile);
+    if (!connectionProfile) {
+      api.ui.showToast(t('extensionsBuiltin.rewrite.errors.selectProfile'), 'error');
+      return;
+    }
+
     const lastMsg = activeSession.value.messages[activeSession.value.messages.length - 1];
     if (!lastMsg) return;
 
@@ -241,7 +253,7 @@ export function useRewriteSessions(api: ExtensionAPI<RewriteSettings>) {
 
     beginGeneration();
     await executeSessionGeneration(
-      selectedProfile,
+      connectionProfile,
       structuredResponseFormat,
       availableFields,
       t,
