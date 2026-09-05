@@ -236,12 +236,26 @@ export class RewriteService {
       });
     }
 
+    const systemPrompts = apiMessages
+      .filter((message) => message.role === 'system')
+      .map((message) => ({
+        content: typeof message.content === 'string' ? message.content : JSON.stringify(message.content),
+        enabled: true,
+        identifier: 'jailbreak' as const,
+        marker: false,
+        name: message.name || 'Rewrite Instructions',
+        role: 'system' as const,
+      }));
+
     apiMessages = (
       await this.api.chat.buildPrompt({
-        chatHistory: apiMessages,
+        chatHistory: apiMessages.filter((message) => message.role !== 'system'),
         structuredResponse: structuredResponseOptions,
         samplerSettings: {
-          prompts: [{ content: '', enabled: true, identifier: 'chatHistory', marker: true, name: 'Chat History' }],
+          prompts: [
+            ...systemPrompts,
+            { content: '', enabled: true, identifier: 'chatHistory', marker: true, name: 'Chat History' },
+          ],
         },
       })
     ).messages;
