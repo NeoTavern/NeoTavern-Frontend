@@ -266,7 +266,11 @@ describe('Narrative Momentum Director preset', () => {
   it('is catalogued beside Mythic and returns independent editable clones', () => {
     const first = getGraphAgentTemplates();
     const second = getGraphAgentTemplates();
-    expect(first.map((item) => item.agent.id)).toEqual(['builtin-mythic', 'builtin-narrative-momentum-director']);
+    expect(first.map((item) => item.agent.id)).toEqual([
+      'builtin-mythic',
+      'builtin-narrative-momentum-director',
+      'builtin-sequential-roleplay-response-editor',
+    ]);
     first[1]!.agent.name = 'changed';
     (first[1]!.agent.configurationDefaults.influences as JsonValue[])[0] = 'changed';
     expect(second[1]!.agent.name).toBe('Narrative Momentum Director');

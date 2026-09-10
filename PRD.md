@@ -3,7 +3,7 @@
 ## Authority and status
 
 - Status: Approved
-- Revision: 33
+- Revision: 34
 - Authoritative source: This document and the user's accepted simplification on the current `custom_agents` branch.
 - This revision supersedes the previous requirements for staged chat transactions, provisional projections, rollback, generation claims, and host-level generation arbitration.
 - The current visual graph format, node catalog, runtime views, management UI, and Mythic graph remain product scope. This is an architectural simplification, not a reset or a reduced node/view product.
@@ -245,6 +245,14 @@ A periodic after-generation audit uses a configurable connection profile and rec
 A before-generation randomization flow selects from a configurable non-empty influence list and sets one stable probabilistic `ONCE` injection. Reusing the stable ID must prevent unconsumed influences from accumulating. Defaults must include quiet, delaying, callback, environmental, character-agency, emotional, and complication influences so randomization does not mean constant escalation.
 
 The preset is authored entirely from the public graph schema, generic node catalog, generic state/configuration, and schema-driven runtime views. It must be strictly parseable, compilable, installable as an independent editable clone, and covered by representative execution tests for create/keep/remove direction behavior, probabilistic one-generation influence behavior, manual actions, and catalog registration.
+
+### REQ-017 — Sequential Roleplay Response Editor template
+
+The built-in template catalog includes an observer-only Sequential Roleplay Response Editor that rewrites each completed assistant response through exactly four LLM passes in this order: Simulation and continuity, Character behavior, Repetition and prose, Final restraint. Each pass receives the output of the preceding pass, and the final pass replaces the accepted assistant target through the normal after-generation visible-message effect and save path.
+
+The four passes are separate generic subflows with focused editable prompts. They share configurable connection profile, structured-response format, and bounded recent target history, and return a required non-empty response string. Every pass sees the established conversation context and the exact current response it must rewrite. The prompts preserve user-authored facts as canon; prevent unsupported simulation, knowledge, and continuity changes; preserve established character development and resistance; remove formulaic AI prose and redundant sensory/emotional narration; and finally compress without inventing or escalating content.
+
+The preset must run for `NEW`, `REGENERATE`, and `ADD_SWIPE`, but must not define an assistant-generation trigger or generation-response effect. It remains stateless, uses only public generic graph nodes and schema-driven configuration, and adds no template-specific production handlers, components, compatibility paths, or alternate generation pipeline. Strict parsing, compilation, template cloning, sequence wiring, prompt intent, per-pass request chaining, final target replacement, and catalog registration require focused coverage.
 
 ## Failure behavior
 

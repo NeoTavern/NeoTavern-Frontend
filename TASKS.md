@@ -221,3 +221,32 @@ Revision 27 mechanically merged the former T001 lifecycle seam and T002 Custom A
 - Verification method: Strict parse/compiler/catalog assertions, deterministic runtime executions with stubbed LLM/random/host effects, complete repository gates, and independent verification.
 - Attempt count: 3
 - Latest result: Approved after live correction. Added a five-flow, 31-node observer-only preset with periodic/manual audit reuse, persistent direction state/injection, probabilistic one-generation influences, manual clearing, a generic runtime view, and catalog registration. A live smoke test exposed bare template variables; all now use the declared `input.*` namespace, with real host renderer coverage for random influence, direction injection, and nested configured audit prompts. The complete suite passed 44 files / 436 tests; build, typecheck, formatting, lint, diff checks, protected-file hash checks, independent verification, and focused macro reverification passed.
+
+## T007 — Add the Sequential Roleplay Response Editor template
+
+- Status: completed
+- Dependencies: T006
+- Integration milestone: M7
+- Objective: Add a modular observer-only postprocessor that rewrites accepted roleplay responses through simulation, character, prose, and restraint passes in that exact order.
+- Source requirement IDs: REQ-009, REQ-010, REQ-017
+- In scope:
+  - one canonical `sequential-roleplay-response-editor.flow.json` built solely from registered generic graph nodes;
+  - one after-generation coordinator for NEW, REGENERATE, and ADD_SWIPE;
+  - four focused LLM subflows with the user-provided prompts and strict string outputs;
+  - explicit data chaining from the accepted response through all four passes;
+  - final `REPLACE_TARGET` visible-message effect through the normal lifecycle path;
+  - shared connection profile, structured format, recent-target history count, and editable per-pass prompts;
+  - catalog registration and focused parser/compiler/runtime/sequence/prompt/clone tests;
+  - readable non-overlapping serialized geometry.
+- Out of scope:
+  - generation-capable flows, additional passes, optional pass toggles, parallel execution, state, views, template-specific TypeScript/Vue behavior, migration, compatibility aliases, or core generation changes.
+- Acceptance criteria:
+  - Strict parsing and compilation accept the preset, and the catalog returns independent editable clones.
+  - The coordinator runs exactly Simulation → Character → Prose → Restraint and replaces only the current assistant target with the fourth result.
+  - Each request receives bounded recent target history, the configured profile/format, and the immediately preceding response through declared `input.*` macros.
+  - Prompt defaults materially preserve every requirement in the supplied four-pass plan without adding stylistic or narrative behavior outside that plan.
+  - The preset is observer-only, stateless, and contains no generation-response or template-specific production path.
+  - Focused tests, complete behavioral suite, formatting, lint, typecheck, build, and `git diff --check` pass; `vite.config.ts` remains unchanged and unstaged.
+- Verification method: Strict parser/compiler/catalog assertions, deterministic four-response runtime execution with request capture and final effect assertion, macro renderer checks, complete repository gates, and independent verification.
+- Attempt count: 4
+- Latest result: Approved after correction. Added a stateless five-flow observer template that chains Simulation → Character → Prose → Restraint through four focused LLM subflows and replaces the accepted target with only the fourth result. Removed four disconnected prompt lookup nodes found by review and added exhaustive node-incidence coverage. A final formatter-only rejection was corrected with semantic JSON identity preserved. The complete suite passed 46 files / 444 tests; strict parsing/compiler, macro rendering, sequence/runtime, catalog cloning, formatting, lint, typecheck, build, diff checks, and protected-file checks passed.
