@@ -89,6 +89,12 @@
     ],
     "outputs": ["OUTPUT:DATA:value:MANY:required:schema={\"type\":\"string\"}:editor=-:label=value:literal=false"]
   },
+  "javascript": {
+    "inputs": [
+      "INPUT:DATA:input.messages:ONE:required:schema={\"type\":\"array\",\"items\":{\"type\":\"object\"}}:editor=-:label=messages:literal=true"
+    ],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={\"type\":\"number\"}:editor=-:label=value:literal=false"]
+  },
   "arrayMixed": {
     "inputs": [
       "INPUT:DATA:item.one:ONE:required:schema={}:editor=-:label=One:literal=true",

@@ -188,6 +188,29 @@ describe('Custom Agent graph editor', () => {
     expect(graphNodeSchema.safeParse({ ...node, size: { width: 320, height: 96, depth: 1 } }).success).toBe(false);
   });
 
+  it('creates configurable JavaScript inputs with stable schemas', () => {
+    const store = new GraphEditorStore({
+      executable: fixture('minimal-observer'),
+      registry: builtinNodeRegistry,
+      ids: ids('javascript'),
+      apply: vi.fn(),
+    });
+    const nodeId = store.addNode('data.javascript', { x: 10, y: 20 })!;
+    store.addRepeaterItem(nodeId, 'inputs');
+    expect(store.currentGraph?.nodes.find((node) => node.id === nodeId)?.data).toEqual({
+      code: 'return null;',
+      inputs: [{ id: 'javascript2', name: 'input1', schema: {} }],
+      outputSchema: {},
+    });
+    const ports = resolveEditorPorts(
+      store.draft.value.agent,
+      store.selectedFlow!,
+      store.currentGraph!,
+      builtinNodeRegistry,
+    ).get(nodeId);
+    expect(ports?.inputs).toMatchObject([{ id: 'input.javascript2', labelKey: 'input1', schema: {} }]);
+  });
+
   it('persists clamped node resizing as one undoable command and carries size through adapters and clipboard', () => {
     const store = new GraphEditorStore({
       executable: fixture('minimal-observer'),

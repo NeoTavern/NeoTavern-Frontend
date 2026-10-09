@@ -35,7 +35,14 @@ export type DataPortDefinition = {
 export type PortDefinition = ControlPortDefinition | DataPortDefinition;
 
 export type InspectorFieldDefinition =
-  | { id: string; path: string; labelKey: string; control: 'INPUT' | 'TEXTAREA' | 'NUMBER' | 'TOGGLE' }
+  | {
+      id: string;
+      path: string;
+      labelKey: string;
+      control: 'INPUT' | 'TEXTAREA' | 'NUMBER' | 'TOGGLE';
+      rows?: number;
+      allowMaximize?: boolean;
+    }
   | { id: string; path: string; labelKey: string; control: 'JSON'; optional?: boolean }
   | {
       id: string;

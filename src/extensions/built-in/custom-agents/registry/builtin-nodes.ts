@@ -24,6 +24,7 @@ import { unpackObjectNodeDefinition } from '../nodes/data/unpack-object';
 import { objectNodeDefinition } from '../nodes/data/object';
 import { arrayNodeDefinition } from '../nodes/data/array';
 import { templateNodeDefinition } from '../nodes/data/template';
+import { javascriptNodeDefinition } from '../nodes/data/javascript';
 import { allNodeDefinition } from '../nodes/logic/all';
 import { anyNodeDefinition } from '../nodes/logic/any';
 import { notNodeDefinition } from '../nodes/logic/not';
@@ -61,6 +62,7 @@ export const handwrittenNodeDefinitions: readonly RegisteredNodeDefinition[] = O
   objectNodeDefinition,
   arrayNodeDefinition,
   templateNodeDefinition,
+  javascriptNodeDefinition,
   allNodeDefinition,
   anyNodeDefinition,
   notNodeDefinition,

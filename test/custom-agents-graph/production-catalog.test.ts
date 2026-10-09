@@ -151,10 +151,10 @@ function request(
 }
 
 describe('production custom-agent node catalog', () => {
-  it('enumerates the exact closed 66-node API', () => {
+  it('enumerates the exact closed 67-node API', () => {
     const types = builtinNodeRegistry.list().map((item) => item.type);
-    expect(types).toHaveLength(66);
-    expect(new Set(types).size).toBe(66);
+    expect(types).toHaveLength(67);
+    expect(new Set(types).size).toBe(67);
     expect(types.filter((type) => type.startsWith('tool.'))).toHaveLength(31);
   });
   it('resolves every fixed English catalog label emitted by the closed API', () => {
@@ -332,7 +332,7 @@ describe('production custom-agent node catalog', () => {
         fields: JSON.stringify(item.fields(initialData)),
       };
     });
-    expect(contracts).toHaveLength(66);
+    expect(contracts).toHaveLength(67);
     expect(contracts).toEqual(jsonFixture('production-catalog-defaults.snapshot.json'));
   });
   it('declares exact value versus array-item sources for every tool schema path port', () => {
@@ -527,6 +527,17 @@ describe('production custom-agent node catalog', () => {
           { id: 'first', name: 'value' },
           { id: 'second', name: 'input' },
         ],
+      }),
+      javascript: portContract(definition('data.javascript'), {
+        code: 'return inputs.messages.length;',
+        inputs: [
+          {
+            id: 'messages',
+            name: 'messages',
+            schema: { type: 'array', items: { type: 'object' } },
+          },
+        ],
+        outputSchema: { type: 'number' },
       }),
       arrayMixed: portContract(
         definition('data.array'),
@@ -1004,6 +1015,74 @@ describe('production custom-agent node catalog', () => {
       status: 'COMPLETED',
       state: { score: 9 },
     });
+  });
+  it('executes JavaScript as a pure typed calculation over frozen dynamic inputs', async () => {
+    const data = {
+      code: `return {
+        count: inputs.messages.length,
+        last: inputs.messages.at(-1).content,
+      };`,
+      inputs: [
+        {
+          id: 'messages',
+          name: 'messages',
+          schema: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { content: { type: 'string' } },
+              required: ['content'],
+            },
+          },
+        },
+      ],
+      outputSchema: {
+        type: 'object',
+        properties: { count: { type: 'number' }, last: { type: 'string' } },
+        required: ['count', 'last'],
+        additionalProperties: false,
+      },
+    };
+    const messages = [{ content: 'first' }, { content: 'second' }];
+    await expect(executeDefinition('data.javascript', data, { 'input.messages': messages })).resolves.toEqual({
+      control: [],
+      effects: [],
+      outputs: { value: { count: 2, last: 'second' }, 'property/count': 2, 'property/last': 'second' },
+    });
+    expect(messages).toEqual([{ content: 'first' }, { content: 'second' }]);
+
+    await expect(
+      executeDefinition(
+        'data.javascript',
+        { ...data, code: `inputs.messages.push({ content: 'third' });` },
+        {
+          'input.messages': messages,
+        },
+      ),
+    ).rejects.toThrow();
+    await expect(
+      executeDefinition(
+        'data.javascript',
+        { ...data, code: `return { count: 'wrong', last: 'second' };` },
+        {
+          'input.messages': messages,
+        },
+      ),
+    ).rejects.toThrow('does not satisfy its schema');
+
+    const invalidPreset = fixture('minimal-observer');
+    invalidPreset.agent.flows[0]!.nodes.push({
+      id: 'invalid-javascript',
+      type: 'data.javascript',
+      position: { x: 0, y: 0 },
+      data: { code: 'return (', inputs: [], outputSchema: {} },
+      inputValues: {},
+    });
+    const compiled = compileGraphPreset(invalidPreset, builtinNodeRegistry);
+    expect(compiled.success).toBe(false);
+    expect(compiled.success ? [] : compiled.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 'JAVASCRIPT_SYNTAX' })]),
+    );
   });
   it('publishes no graph effects when an LLM capability fails', async () => {
     const plan = compile(fixture('generation-agent'));

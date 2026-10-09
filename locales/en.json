@@ -2568,6 +2568,7 @@
         "caseSensitive": "Case Sensitive",
         "cases": "Cases",
         "collection": "Collection",
+        "code": "Code",
         "condition": "Condition",
         "connectionProfileId": "Connection Profile ID",
         "content": "Content",
@@ -2715,6 +2716,10 @@
         "in": {
           "label": "In",
           "description": "In node."
+        },
+        "javascript": {
+          "label": "JavaScript",
+          "description": "Calculate a JSON value from configurable inputs using JavaScript."
         },
         "llmRequest": {
           "label": "LLM Request",

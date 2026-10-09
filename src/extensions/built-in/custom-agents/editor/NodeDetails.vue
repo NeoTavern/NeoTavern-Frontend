@@ -317,6 +317,8 @@ function combinedPath(field: InspectorFieldDefinition, index: number, itemField:
         v-else-if="field.control === 'TEXTAREA'"
         :model-value="String(fieldValue(field.path) ?? '')"
         :label="translateKey(field.labelKey)"
+        :rows="field.rows"
+        :allow-maximize="field.allowMaximize"
         @update:model-value="update(field.path, $event)"
       />
       <Toggle

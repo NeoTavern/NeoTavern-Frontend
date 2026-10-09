@@ -592,6 +592,7 @@ export class GraphEditorStore {
         if (node.type === 'data.object') item = { id, key: `field${index}`, schema: {} };
         else if (node.type === 'data.array') item = { id, label: `Item ${index}` };
         else if (node.type === 'data.template' || node.type === 'llm.request') item = { id, name: `value${index}` };
+        else if (node.type === 'data.javascript') item = { id, name: `input${index}`, schema: {} };
         else if (node.type === 'control.branch') item = { id, label: `Case ${index}` };
         else if (node.type === 'control.merge-any' || node.type === 'control.merge-all')
           item = { id, label: `Input ${index}`, carriesValue: false };

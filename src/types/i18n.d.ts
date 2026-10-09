@@ -2571,6 +2571,7 @@ export interface MessageSchema {
         caseSensitive: string;
         cases: string;
         collection: string;
+        code: string;
         condition: string;
         connectionProfileId: string;
         content: string;
@@ -2716,6 +2717,10 @@ export interface MessageSchema {
           description: string;
         };
         in: {
+          label: string;
+          description: string;
+        };
+        javascript: {
           label: string;
           description: string;
         };

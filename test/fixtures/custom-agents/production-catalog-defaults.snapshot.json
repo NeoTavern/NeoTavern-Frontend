@@ -255,6 +255,15 @@
     "fields": "[{\"id\":\"template\",\"path\":\"template\",\"labelKey\":\"template\",\"control\":\"TEXTAREA\"},{\"id\":\"variables\",\"path\":\"variables\",\"labelKey\":\"variables\",\"control\":\"REPEATER\",\"minimum\":0,\"itemFields\":[{\"id\":\"name\",\"path\":\"name\",\"labelKey\":\"name\",\"control\":\"INPUT\"}]}]"
   },
   {
+    "type": "data.javascript",
+    "class": "DATA/PURE_DATA/EXECUTOR",
+    "initialData": "{\"code\":\"return null;\",\"inputs\":[],\"outputSchema\":{}}",
+    "initialInputValues": "{}",
+    "inputs": [],
+    "outputs": ["OUTPUT:DATA:value:MANY:required:schema={}:editor=-:label=value:literal=false"],
+    "fields": "[{\"id\":\"code\",\"path\":\"code\",\"labelKey\":\"code\",\"control\":\"TEXTAREA\",\"rows\":10,\"allowMaximize\":true},{\"id\":\"inputs\",\"path\":\"inputs\",\"labelKey\":\"inputs\",\"control\":\"REPEATER\",\"minimum\":0,\"itemFields\":[{\"id\":\"name\",\"path\":\"name\",\"labelKey\":\"name\",\"control\":\"INPUT\"},{\"id\":\"schema\",\"path\":\"schema\",\"labelKey\":\"schema\",\"control\":\"JSON\"}]},{\"id\":\"outputSchema\",\"path\":\"outputSchema\",\"labelKey\":\"outputSchema\",\"control\":\"JSON\"}]"
+  },
+  {
     "type": "logic.all",
     "class": "LOGIC/PURE_DATA/EXECUTOR",
     "initialData": "{\"inputs\":[{\"id\":\"generated-1\",\"label\":\"Value 1\"}]}",
