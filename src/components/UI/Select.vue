@@ -417,122 +417,124 @@ function getFlatIndex(opt: Option<T>) {
     </div>
 
     <!-- Dropdown -->
-    <Transition name="fade-fast">
-      <div
-        v-if="isOpen"
-        :id="listboxId"
-        ref="dropdownRef"
-        class="select-dropdown"
-        :style="floatingStyles"
-        role="listbox"
-        :aria-multiselectable="multiple"
-        :aria-labelledby="label ? labelId : undefined"
-        :tabindex="-1"
-        :aria-activedescendant="activeDescendantId"
-        @keydown="onKeydown"
-      >
-        <!-- Search Input -->
-        <div v-show="searchable" class="select-search-container" @click.stop>
-          <input
-            ref="searchInputRef"
-            v-model="searchQuery"
-            type="text"
-            class="select-search-input"
-            :placeholder="placeholder || t('a11y.select.searchPlaceholder')"
-            :aria-label="t('a11y.select.filterOptions')"
-            role="combobox"
-            aria-autocomplete="list"
-            :aria-expanded="true"
-            :aria-controls="listboxId"
-            :aria-activedescendant="activeDescendantId"
-            @keydown="onKeydown"
-          />
-          <Icon icon="fa-magnifying-glass" class="select-search-icon" aria-hidden="true" />
-        </div>
+    <Teleport to="body">
+      <Transition name="fade-fast">
+        <div
+          v-if="isOpen"
+          :id="listboxId"
+          ref="dropdownRef"
+          class="select-dropdown"
+          :style="floatingStyles"
+          role="listbox"
+          :aria-multiselectable="multiple"
+          :aria-labelledby="label ? labelId : undefined"
+          :tabindex="-1"
+          :aria-activedescendant="activeDescendantId"
+          @keydown="onKeydown"
+        >
+          <!-- Search Input -->
+          <div v-show="searchable" class="select-search-container" @click.stop>
+            <input
+              ref="searchInputRef"
+              v-model="searchQuery"
+              type="text"
+              class="select-search-input"
+              :placeholder="placeholder || t('a11y.select.searchPlaceholder')"
+              :aria-label="t('a11y.select.filterOptions')"
+              role="combobox"
+              aria-autocomplete="list"
+              :aria-expanded="true"
+              :aria-controls="listboxId"
+              :aria-activedescendant="activeDescendantId"
+              @keydown="onKeydown"
+            />
+            <Icon icon="fa-magnifying-glass" class="select-search-icon" aria-hidden="true" />
+          </div>
 
-        <div v-if="filteredOptions.length === 0" class="select-option is-disabled" role="option" aria-disabled="true">
-          {{ t('a11y.select.noOptions') }}
-        </div>
+          <div v-if="filteredOptions.length === 0" class="select-option is-disabled" role="option" aria-disabled="true">
+            {{ t('a11y.select.noOptions') }}
+          </div>
 
-        <template v-for="(item, index) in filteredOptions" :key="index">
-          <!-- Group -->
-          <div v-if="isGroup(item)" class="select-group" role="group" :aria-label="item.label">
-            <div
-              v-if="item.label"
-              class="select-group-label"
-              :class="{ 'is-interactive': multiple && groupSelect }"
-              role="presentation"
-              @click.stop="toggleGroup(item)"
-            >
-              <div v-if="multiple && groupSelect" class="option-checkbox">
-                <Icon v-if="isGroupSelected(item)" icon="fa-check" class="check-icon" aria-hidden="true" />
+          <template v-for="(item, index) in filteredOptions" :key="index">
+            <!-- Group -->
+            <div v-if="isGroup(item)" class="select-group" role="group" :aria-label="item.label">
+              <div
+                v-if="item.label"
+                class="select-group-label"
+                :class="{ 'is-interactive': multiple && groupSelect }"
+                role="presentation"
+                @click.stop="toggleGroup(item)"
+              >
+                <div v-if="multiple && groupSelect" class="option-checkbox">
+                  <Icon v-if="isGroupSelected(item)" icon="fa-check" class="check-icon" aria-hidden="true" />
+                  <Icon
+                    v-else-if="isGroupPartiallySelected(item)"
+                    icon="fa-minus"
+                    class="check-icon"
+                    style="font-size: 0.7em"
+                    aria-hidden="true"
+                  />
+                </div>
+                <span class="group-label-text">{{ item.label }}</span>
+              </div>
+
+              <div
+                v-for="opt in item.options"
+                :id="getOptionId(getFlatIndex(opt))"
+                :key="String(opt.value)"
+                class="select-option is-nested"
+                :class="{
+                  'is-selected': isSelected(opt.value),
+                  'is-highlighted': highlightedIndex === getFlatIndex(opt),
+                  'is-disabled': opt.disabled,
+                }"
+                role="option"
+                :aria-selected="isSelected(opt.value)"
+                :aria-disabled="opt.disabled"
+                @click.stop="selectOption(opt)"
+              >
+                <div v-if="multiple" class="option-checkbox">
+                  <Icon v-if="isSelected(opt.value)" icon="fa-check" class="check-icon" aria-hidden="true" />
+                </div>
+                <span class="option-label">{{ opt.label }}</span>
                 <Icon
-                  v-else-if="isGroupPartiallySelected(item)"
-                  icon="fa-minus"
-                  class="check-icon"
-                  style="font-size: 0.7em"
+                  v-if="!multiple && isSelected(opt.value)"
+                  icon="fa-check"
+                  class="check-icon-single"
                   aria-hidden="true"
                 />
               </div>
-              <span class="group-label-text">{{ item.label }}</span>
             </div>
 
+            <!-- Single Option -->
             <div
-              v-for="opt in item.options"
-              :id="getOptionId(getFlatIndex(opt))"
-              :key="String(opt.value)"
-              class="select-option is-nested"
+              v-else
+              :id="getOptionId(getFlatIndex(item))"
+              class="select-option"
               :class="{
-                'is-selected': isSelected(opt.value),
-                'is-highlighted': highlightedIndex === getFlatIndex(opt),
-                'is-disabled': opt.disabled,
+                'is-selected': isSelected(item.value),
+                'is-highlighted': highlightedIndex === getFlatIndex(item),
+                'is-disabled': item.disabled,
               }"
               role="option"
-              :aria-selected="isSelected(opt.value)"
-              :aria-disabled="opt.disabled"
-              @click.stop="selectOption(opt)"
+              :aria-selected="isSelected(item.value)"
+              :aria-disabled="item.disabled"
+              @click.stop="selectOption(item)"
             >
               <div v-if="multiple" class="option-checkbox">
-                <Icon v-if="isSelected(opt.value)" icon="fa-check" class="check-icon" aria-hidden="true" />
+                <Icon v-if="isSelected(item.value)" icon="fa-check" class="check-icon" aria-hidden="true" />
               </div>
-              <span class="option-label">{{ opt.label }}</span>
+              <span class="option-label">{{ item.label }}</span>
               <Icon
-                v-if="!multiple && isSelected(opt.value)"
+                v-if="!multiple && isSelected(item.value)"
                 icon="fa-check"
                 class="check-icon-single"
                 aria-hidden="true"
               />
             </div>
-          </div>
-
-          <!-- Single Option -->
-          <div
-            v-else
-            :id="getOptionId(getFlatIndex(item))"
-            class="select-option"
-            :class="{
-              'is-selected': isSelected(item.value),
-              'is-highlighted': highlightedIndex === getFlatIndex(item),
-              'is-disabled': item.disabled,
-            }"
-            role="option"
-            :aria-selected="isSelected(item.value)"
-            :aria-disabled="item.disabled"
-            @click.stop="selectOption(item)"
-          >
-            <div v-if="multiple" class="option-checkbox">
-              <Icon v-if="isSelected(item.value)" icon="fa-check" class="check-icon" aria-hidden="true" />
-            </div>
-            <span class="option-label">{{ item.label }}</span>
-            <Icon
-              v-if="!multiple && isSelected(item.value)"
-              icon="fa-check"
-              class="check-icon-single"
-              aria-hidden="true"
-            />
-          </div>
-        </template>
-      </div>
-    </Transition>
+          </template>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>

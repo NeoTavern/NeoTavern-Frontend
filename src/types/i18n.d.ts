@@ -2389,6 +2389,17 @@ export interface MessageSchema {
     };
     customAgents: {
       title: string;
+      description: string;
+      workspace: string;
+      chooseAgent: string;
+      sections: string;
+      workflow: string;
+      settings: string;
+      installTemplateAction: string;
+      templateInstalledShort: string;
+      templateContents: string;
+      importExportDescription: string;
+      presetJsonPlaceholder: string;
       views: string;
       noViews: string;
       noActiveChat: string;
@@ -2414,13 +2425,13 @@ export interface MessageSchema {
       resetBranch: string;
       importExport: string;
       templates: string;
-      installTemplate: string;
       templateInstalled: string;
       metadata: string;
       configuration: string;
       noConfiguration: string;
       state: string;
       noAgents: string;
+      noAgentsDescription: string;
       imported: string;
       presetJson: string;
       clearRunOverlay: string;
@@ -2463,6 +2474,8 @@ export interface MessageSchema {
         discardDraft: string;
         applyValidDraft: string;
         subflowSignature: string;
+        signatureSummary: string;
+        noPorts: string;
         inputs: string;
         outputs: string;
         id: string;
@@ -2480,6 +2493,7 @@ export interface MessageSchema {
         openBody: string;
         moveUp: string;
         moveDown: string;
+        itemNumber: string;
         addItem: string;
         omitOptional: string;
         omit: string;

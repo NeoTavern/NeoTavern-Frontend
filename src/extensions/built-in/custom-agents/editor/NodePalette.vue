@@ -56,26 +56,31 @@ function categoryId(category: string): string {
         <Button
           type="button"
           class="custom-agent-flow__category-toggle"
-          :icon="collapsedCategories.has(category) ? 'fa-chevron-right' : 'fa-chevron-down'"
+          :icon="collapsedCategories.has(category) && !query.trim() ? 'fa-chevron-right' : 'fa-chevron-down'"
           :title="
             t(
-              collapsedCategories.has(category)
+              collapsedCategories.has(category) && !query.trim()
                 ? 'extensionsBuiltin.customAgents.editor.expandCategory'
                 : 'extensionsBuiltin.customAgents.editor.collapseCategory',
               { category: t(`extensionsBuiltin.customAgents.editor.categories.${category.toLowerCase()}`) },
             )
           "
-          :aria-expanded="!collapsedCategories.has(category)"
+          :aria-expanded="Boolean(query.trim()) || !collapsedCategories.has(category)"
           :aria-controls="categoryId(category)"
           @click="toggleCategory(category)"
         >
           {{ t(`extensionsBuiltin.customAgents.editor.categories.${category.toLowerCase()}`) }}
         </Button>
-        <div v-if="!collapsedCategories.has(category)" :id="categoryId(category)" class="custom-agent-flow__category">
+        <div
+          v-if="query.trim() || !collapsedCategories.has(category)"
+          :id="categoryId(category)"
+          class="custom-agent-flow__category"
+        >
           <Button
             v-for="definition in definitions"
             type="button"
             :key="definition.type"
+            :data-node-type="definition.type"
             :title="translateKey(definition.descriptionKey)"
             @click="emit('add', definition.type)"
           >

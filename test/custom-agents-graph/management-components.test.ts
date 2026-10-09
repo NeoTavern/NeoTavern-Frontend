@@ -103,6 +103,19 @@ describe('graph management and views components', () => {
     expect(host.textContent).toContain('extensionsBuiltin.customAgents.noActiveChat');
     expect(host.querySelector('.custom-agent-flow')).not.toBeNull();
     expect(host.querySelector('[aria-label="Node palette"]')).not.toBeNull();
+
+    const workflow = host.querySelector<HTMLElement>('.custom-agent-settings__workflow')!;
+    const configuration = host.querySelector<HTMLElement>('.custom-agent-settings__configuration')!;
+    expect(workflow.style.display).not.toBe('none');
+    expect(configuration.style.display).toBe('none');
+
+    const settingsTab = [...host.querySelectorAll<HTMLButtonElement>('.custom-agent-settings__sections button')].find(
+      (button) => button.textContent?.includes('extensionsBuiltin.customAgents.settings'),
+    )!;
+    settingsTab.click();
+    await nextTick();
+    expect(workflow.style.display).toBe('none');
+    expect(configuration.style.display).not.toBe('none');
   });
 
   it('uses prepared editor initialization and metadata preparation without editor revalidation', async () => {

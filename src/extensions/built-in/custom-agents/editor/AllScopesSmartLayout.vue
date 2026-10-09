@@ -176,6 +176,7 @@ defineExpose({ applySmartLayoutAll });
         :graph="measurement!.graph"
         :all-resolved="measurement!.resolved"
         :root-resolved="measurement!.rootResolved"
+        :port-handles="false"
       />
     </div>
   </div>

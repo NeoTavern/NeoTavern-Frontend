@@ -9,16 +9,20 @@ import NodeRunOverlay from './NodeRunOverlay.vue';
 import type { EditorNodeData, ResolvedEditorNode } from './vue-flow-adapter';
 import { useEditorI18n } from './editor-i18n';
 
-const props = defineProps<{
-  data: EditorNodeData;
-  registry: ReadonlyNodeRegistry;
-  store: GraphEditorStore;
-  flow: GraphFlow;
-  graph: ScopeGraph;
-  allResolved: ReadonlyMap<string, ResolvedEditorNode>;
-  rootResolved: ReadonlyMap<string, ResolvedEditorNode>;
-  selected?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    data: EditorNodeData;
+    registry: ReadonlyNodeRegistry;
+    store: GraphEditorStore;
+    flow: GraphFlow;
+    graph: ScopeGraph;
+    allResolved: ReadonlyMap<string, ResolvedEditorNode>;
+    rootResolved: ReadonlyMap<string, ResolvedEditorNode>;
+    selected?: boolean;
+    portHandles?: boolean;
+  }>(),
+  { portHandles: true },
+);
 const emit = defineEmits<{
   openBody: [nodeId: string];
   resizeStart: [payload: { nodeId: string; event: PointerEvent }];
@@ -40,19 +44,21 @@ const heightConstrained = computed(() => dataSize.value !== undefined);
     }"
     :data-node-id="data.node.id"
   >
-    <header>{{ nodeLabel }}</header>
-    <p v-if="definition" class="custom-agent-flow__node-description">{{ translateKey(definition.descriptionKey) }}</p>
+    <header :title="definition ? translateKey(definition.descriptionKey) : undefined">{{ nodeLabel }}</header>
     <code>{{ data.node.id }}</code>
-    <NodeDetails
-      :store="store"
-      :registry="registry"
-      :flow="flow"
-      :graph="graph"
-      :resolved="data"
-      :all-resolved="allResolved"
-      :root-resolved="rootResolved"
-      @open-body="emit('openBody', $event)"
-    />
+    <div class="custom-agent-flow__node-inspector">
+      <NodeDetails
+        :store="store"
+        :registry="registry"
+        :flow="flow"
+        :graph="graph"
+        :resolved="data"
+        :all-resolved="allResolved"
+        :root-resolved="rootResolved"
+        :show-port-handles="portHandles !== false"
+        @open-body="emit('openBody', $event)"
+      />
+    </div>
     <slot />
     <NodeRunOverlay :record="data.runRecord" />
     <Button

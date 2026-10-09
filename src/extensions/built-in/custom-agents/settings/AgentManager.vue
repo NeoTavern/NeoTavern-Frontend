@@ -39,6 +39,7 @@ const t = props.api.i18n.t;
 const settings = shallowRef<InstalledGraphAgentsSettings>(props.prepared.settings);
 const selectedId = ref(settings.value.presets[0]?.agent.id ?? '');
 const transfer = ref('');
+const activeSection = ref<'workflow' | 'settings' | 'transfer'>('workflow');
 const message = ref('');
 const runtimeError = ref('');
 const resetBusy = ref(false);
@@ -69,6 +70,7 @@ const editor = computed(() => {
   }
   return store;
 });
+const hasRunOverlay = computed(() => Object.keys(editor.value?.runOverlay.value ?? {}).length > 0);
 
 function persist(prepared: PreparedInstalledGraphAgents): void {
   persistPreparedInstalledGraphAgents(props.api, prepared);
@@ -207,6 +209,10 @@ function updateConfiguration(configuration: JsonObject): void {
   });
 }
 
+function templateInstalled(template: GraphPreset): boolean {
+  return settings.value.presets.some((preset) => preset.agent.id === template.agent.id);
+}
+
 function install(template: GraphPreset): void {
   attempt(() => {
     persist(installGraphTemplate(settings.value, template));
@@ -266,29 +272,31 @@ function attempt(action: () => void): void {
 
 <template>
   <div class="custom-agent-settings">
-    <header class="custom-agent-settings__actions">
-      <Button type="button" @click="create">{{ t('extensionsBuiltin.customAgents.create') }}</Button>
-      <Button type="button" :disabled="!selected" @click="duplicate">{{
-        t('extensionsBuiltin.customAgents.duplicate')
-      }}</Button>
-      <Button type="button" variant="danger" :disabled="!selected" @click="remove">{{ t('common.delete') }}</Button>
+    <header class="custom-agent-settings__header">
+      <div class="custom-agent-settings__identity">
+        <span class="custom-agent-settings__eyebrow">{{ t('extensionsBuiltin.customAgents.workspace') }}</span>
+        <h2>{{ selected?.agent.name ?? t('extensionsBuiltin.customAgents.title') }}</h2>
+        <code v-if="selected">{{ selected.agent.id }}</code>
+      </div>
+      <div class="custom-agent-settings__actions">
+        <Button type="button" icon="fa-plus" @click="create">{{ t('extensionsBuiltin.customAgents.create') }}</Button>
+        <Button type="button" icon="fa-copy" :disabled="!selected" @click="duplicate">{{
+          t('extensionsBuiltin.customAgents.duplicate')
+        }}</Button>
+        <Button type="button" icon="fa-trash" variant="danger" :disabled="!selected" @click="remove">{{
+          t('common.delete')
+        }}</Button>
+      </div>
     </header>
-    <section v-if="templates.length" class="custom-agent-settings__catalog">
-      <h3>{{ t('extensionsBuiltin.customAgents.templates') }}</h3>
-      <Button v-for="template in templates" :key="template.agent.id" type="button" @click="install(template)">
-        {{ t('extensionsBuiltin.customAgents.installTemplate', { name: template.agent.name }) }}
-      </Button>
-    </section>
-    <p v-if="message" role="status">{{ message }}</p>
-    <Select
-      v-if="settings.presets.length"
-      :model-value="selectedId"
-      :options="settings.presets.map((preset) => ({ label: preset.agent.name, value: preset.agent.id }))"
-      @update:model-value="choose($event as string)"
-    />
-    <p v-else>{{ t('extensionsBuiltin.customAgents.noAgents') }}</p>
-    <template v-if="selected">
-      <FormItem :label="t('extensionsBuiltin.customAgents.enabled')" horizontal>
+
+    <div v-if="settings.presets.length" class="custom-agent-settings__picker">
+      <Select
+        :label="t('extensionsBuiltin.customAgents.chooseAgent')"
+        :model-value="selectedId"
+        :options="settings.presets.map((preset) => ({ label: preset.agent.name, value: preset.agent.id }))"
+        @update:model-value="choose($event as string)"
+      />
+      <FormItem v-if="selected" :label="t('extensionsBuiltin.customAgents.enabled')" horizontal>
         <Toggle
           :model-value="selected.agent.enabled"
           :label="t('extensionsBuiltin.customAgents.enabled')"
@@ -297,27 +305,123 @@ function attempt(action: () => void): void {
           "
         />
       </FormItem>
-      <AgentMetadataPanel
-        :preset="selected"
-        :t="t"
-        @rename="updateInstalled((preset) => renameInstalledPreset(settings, preset.agent.id, $event))"
-        @priority="updatePriority"
-      />
-      <ConfigurationPanel :preset="selected" :t="t" @update="updateConfiguration" />
-      <StatePanel :context="selectedContext" :t="t" :busy="resetBusy" @reset="resetState" />
-      <p v-if="runtimeError" class="error">{{ runtimeError }}</p>
-      <FlowEditor v-if="editor" :key="selected.agent.id" :store="editor" :registry="builtinNodeRegistry" />
-      <Button type="button" variant="ghost" @click="clearOverlay">{{
-        t('extensionsBuiltin.customAgents.clearRunOverlay')
-      }}</Button>
-      <section class="custom-agent-settings__transfer">
-        <h3>{{ t('extensionsBuiltin.customAgents.importExport') }}</h3>
-        <Button type="button" variant="ghost" @click="doExport">{{ t('common.export') }}</Button>
-        <Button type="button" variant="confirm" @click="doImport">{{ t('common.import') }}</Button>
+    </div>
+
+    <details v-if="templates.length" class="custom-agent-settings__catalog">
+      <summary>
+        <i class="fa-solid fa-box-open" aria-hidden="true" />
+        {{ t('extensionsBuiltin.customAgents.templates') }}
+        <span>{{ templates.length }}</span>
+      </summary>
+      <div>
+        <article v-for="template in templates" :key="template.agent.id">
+          <i class="fa-solid fa-diagram-project" aria-hidden="true" />
+          <div>
+            <strong>{{ template.agent.name }}</strong>
+            <small>
+              {{
+                t('extensionsBuiltin.customAgents.templateContents', {
+                  flows: template.agent.flows.length,
+                  views: template.agent.views.length,
+                })
+              }}
+            </small>
+          </div>
+          <Button
+            type="button"
+            :icon="templateInstalled(template) ? 'fa-check' : 'fa-plus'"
+            :disabled="templateInstalled(template)"
+            @click="install(template)"
+          >
+            {{
+              t(
+                templateInstalled(template)
+                  ? 'extensionsBuiltin.customAgents.templateInstalledShort'
+                  : 'extensionsBuiltin.customAgents.installTemplateAction',
+              )
+            }}
+          </Button>
+        </article>
+      </div>
+    </details>
+
+    <p v-if="message" class="custom-agent-settings__notice" role="status">{{ message }}</p>
+    <section v-if="!settings.presets.length" class="custom-agent-settings__empty">
+      <i class="fa-solid fa-robot" aria-hidden="true" />
+      <h3>{{ t('extensionsBuiltin.customAgents.noAgents') }}</h3>
+      <p>{{ t('extensionsBuiltin.customAgents.noAgentsDescription') }}</p>
+      <Button type="button" icon="fa-plus" @click="create">{{ t('extensionsBuiltin.customAgents.create') }}</Button>
+    </section>
+
+    <template v-if="selected">
+      <nav class="custom-agent-settings__sections" :aria-label="t('extensionsBuiltin.customAgents.sections')">
+        <button
+          type="button"
+          :class="{ 'is-active': activeSection === 'workflow' }"
+          @click="activeSection = 'workflow'"
+        >
+          <i class="fa-solid fa-diagram-project" aria-hidden="true" />
+          {{ t('extensionsBuiltin.customAgents.workflow') }}
+        </button>
+        <button
+          type="button"
+          :class="{ 'is-active': activeSection === 'settings' }"
+          @click="activeSection = 'settings'"
+        >
+          <i class="fa-solid fa-sliders" aria-hidden="true" />
+          {{ t('extensionsBuiltin.customAgents.settings') }}
+        </button>
+        <button
+          type="button"
+          :class="{ 'is-active': activeSection === 'transfer' }"
+          @click="activeSection = 'transfer'"
+        >
+          <i class="fa-solid fa-file-code" aria-hidden="true" />
+          {{ t('extensionsBuiltin.customAgents.importExport') }}
+        </button>
+      </nav>
+
+      <section v-show="activeSection === 'workflow'" class="custom-agent-settings__workflow">
+        <FlowEditor v-if="editor" :key="selected.agent.id" :store="editor" :registry="builtinNodeRegistry" />
+        <Button
+          v-if="hasRunOverlay"
+          class="custom-agent-settings__clear"
+          type="button"
+          variant="ghost"
+          @click="clearOverlay"
+          >{{ t('extensionsBuiltin.customAgents.clearRunOverlay') }}</Button
+        >
+      </section>
+
+      <section v-show="activeSection === 'settings'" class="custom-agent-settings__configuration">
+        <AgentMetadataPanel
+          :preset="selected"
+          :t="t"
+          @rename="updateInstalled((preset) => renameInstalledPreset(settings, preset.agent.id, $event))"
+          @priority="updatePriority"
+        />
+        <ConfigurationPanel :preset="selected" :t="t" @update="updateConfiguration" />
+        <StatePanel :context="selectedContext" :t="t" :busy="resetBusy" @reset="resetState" />
+        <p v-if="runtimeError" class="error">{{ runtimeError }}</p>
+      </section>
+
+      <section v-show="activeSection === 'transfer'" class="custom-agent-settings__transfer">
+        <header>
+          <div>
+            <h3>{{ t('extensionsBuiltin.customAgents.importExport') }}</h3>
+            <p>{{ t('extensionsBuiltin.customAgents.importExportDescription') }}</p>
+          </div>
+          <div>
+            <Button type="button" icon="fa-download" variant="ghost" @click="doExport">{{ t('common.export') }}</Button>
+            <Button type="button" icon="fa-upload" variant="confirm" @click="doImport">{{ t('common.import') }}</Button>
+          </div>
+        </header>
         <Textarea
           :label="t('extensionsBuiltin.customAgents.presetJson')"
           :model-value="transfer"
-          :rows="12"
+          :placeholder="t('extensionsBuiltin.customAgents.presetJsonPlaceholder')"
+          :rows="14"
+          allow-maximize
           @update:model-value="transfer = $event"
         />
       </section>
@@ -326,21 +430,240 @@ function attempt(action: () => void): void {
 </template>
 
 <style scoped>
-.custom-agent-settings,
-.custom-agent-panel,
+.custom-agent-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 100%;
+  padding: 1rem;
+  color: var(--theme-text-color);
+}
+.custom-agent-settings__header,
+.custom-agent-settings__picker,
+.custom-agent-settings__actions,
+.custom-agent-settings__transfer header,
+.custom-agent-settings__transfer header > div:last-child {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+.custom-agent-settings__header {
+  justify-content: space-between;
+}
+.custom-agent-settings__identity {
+  min-width: 0;
+}
+.custom-agent-settings__identity h2 {
+  margin: 0.1rem 0;
+  overflow-wrap: anywhere;
+  font-size: 1.35rem;
+  line-height: 1.2;
+}
+.custom-agent-settings__identity code {
+  color: var(--theme-text-color-secondary, var(--theme-text-color));
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+.custom-agent-settings__eyebrow {
+  color: var(--theme-accent-color);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.custom-agent-settings__actions {
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.custom-agent-settings__picker {
+  display: grid;
+  grid-template-columns: minmax(15rem, 1fr) auto;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--theme-border-color);
+  border-radius: calc(var(--border-radius) + 2px);
+  background: color-mix(in srgb, var(--theme-background-tint), transparent 20%);
+}
+.custom-agent-settings__picker > :first-child {
+  min-width: 0;
+}
+.custom-agent-settings__catalog {
+  border: 1px solid var(--theme-border-color);
+  border-radius: var(--border-radius);
+  background: color-mix(in srgb, var(--theme-background-tint), transparent 35%);
+}
+.custom-agent-settings__catalog summary {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.custom-agent-settings__catalog summary span {
+  display: inline-grid;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--theme-accent-color), transparent 75%);
+  font-size: 0.7rem;
+}
+.custom-agent-settings__catalog > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.6rem;
+  padding: 0 0.75rem 0.75rem;
+}
+.custom-agent-settings__catalog article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  min-height: 4.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--theme-border-color);
+  border-radius: var(--border-radius);
+  background: color-mix(in srgb, var(--theme-background-tint), black 2%);
+}
+.custom-agent-settings__catalog article > i {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: var(--border-radius);
+  color: var(--theme-accent-color);
+  background: color-mix(in srgb, var(--theme-accent-color), transparent 86%);
+}
+.custom-agent-settings__catalog article > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.custom-agent-settings__catalog article strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.custom-agent-settings__catalog small {
+  opacity: 0.6;
+}
+.custom-agent-settings__sections {
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.3rem;
+  border: 1px solid var(--theme-border-color);
+  border-radius: calc(var(--border-radius) + 2px);
+  background: var(--theme-background-color, #171717);
+}
+.custom-agent-settings__sections button {
+  display: flex;
+  flex: 0 1 auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.6rem 0.9rem;
+  border: 0;
+  border-radius: var(--border-radius);
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+.custom-agent-settings__sections button:hover {
+  background: color-mix(in srgb, var(--theme-text-color), transparent 92%);
+}
+.custom-agent-settings__sections button.is-active {
+  color: var(--theme-accent-color);
+  background: color-mix(in srgb, var(--theme-accent-color), transparent 86%);
+  box-shadow: inset 0 -2px var(--theme-accent-color);
+}
+.custom-agent-settings__workflow {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--theme-border-color);
+  border-radius: calc(var(--border-radius) + 2px);
+}
+.custom-agent-settings__clear {
+  margin: 0.5rem;
+}
+.custom-agent-settings__configuration {
+  display: grid;
+  grid-template-columns: minmax(16rem, 0.75fr) minmax(22rem, 1.5fr);
+  gap: 1rem;
+  align-items: start;
+}
+.custom-agent-settings__configuration :deep(.custom-agent-panel) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-width: 0;
+  margin: 0;
+  padding: 1rem;
+  border: 1px solid var(--theme-border-color);
+  border-radius: calc(var(--border-radius) + 2px);
+  background: color-mix(in srgb, var(--theme-background-tint), transparent 20%);
+}
+.custom-agent-settings__configuration :deep(.custom-agent-panel:nth-child(2)) {
+  grid-row: span 2;
+}
+.custom-agent-settings__configuration :deep(legend) {
+  padding: 0 0.4rem;
+  color: var(--theme-accent-color);
+  font-weight: 750;
+}
 .custom-agent-settings__transfer {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--theme-border-color);
+  border-radius: calc(var(--border-radius) + 2px);
+  background: color-mix(in srgb, var(--theme-background-tint), transparent 20%);
 }
-.custom-agent-settings {
-  padding: 0.75rem;
+.custom-agent-settings__transfer header {
+  justify-content: space-between;
 }
-.custom-agent-settings__actions,
-.custom-agent-settings__catalog {
+.custom-agent-settings__transfer h3,
+.custom-agent-settings__transfer p {
+  margin: 0;
+}
+.custom-agent-settings__transfer p {
+  margin-top: 0.25rem;
+  opacity: 0.65;
+}
+.custom-agent-settings__notice {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius);
+  background: color-mix(in srgb, var(--theme-accent-color), transparent 88%);
+}
+.custom-agent-settings__empty {
   display: flex;
+  min-height: 15rem;
+  flex-direction: column;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  border: 1px dashed var(--theme-border-color);
+  border-radius: calc(var(--border-radius) + 2px);
+  text-align: center;
+}
+.custom-agent-settings__empty > i {
+  color: var(--theme-accent-color);
+  font-size: 2rem;
+}
+.custom-agent-settings__empty h3,
+.custom-agent-settings__empty p {
+  margin: 0;
+}
+.custom-agent-settings__empty p {
+  max-width: 28rem;
+  opacity: 0.65;
 }
 .error {
   color: var(--theme-error-color);
@@ -349,5 +672,26 @@ function attempt(action: () => void): void {
 pre {
   max-height: 24rem;
   overflow: auto;
+}
+@media (max-width: 760px) {
+  .custom-agent-settings__header,
+  .custom-agent-settings__transfer header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .custom-agent-settings__actions {
+    justify-content: flex-start;
+  }
+  .custom-agent-settings__picker,
+  .custom-agent-settings__configuration {
+    grid-template-columns: 1fr;
+  }
+  .custom-agent-settings__configuration :deep(.custom-agent-panel:nth-child(2)) {
+    grid-row: auto;
+  }
+  .custom-agent-settings__sections button {
+    flex: 1;
+    justify-content: center;
+  }
 }
 </style>

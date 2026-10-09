@@ -211,6 +211,14 @@ describe('Custom Agent graph editor', () => {
     const adapted = toVueFlow(flow, ports, new Set(), new Set());
     const increment = adapted.nodes.find((node) => node.id === 'increment')!;
     expect(increment).toMatchObject({ width: GRAPH_NODE_MIN_WIDTH, height: GRAPH_NODE_MIN_HEIGHT });
+    const selectedIncrement = toVueFlow(flow, ports, new Set(), new Set(), {}, new Set(['increment'])).nodes.find(
+      (node) => node.id === 'increment',
+    )!;
+    expect(selectedIncrement).toMatchObject({
+      width: increment.width,
+      height: increment.height,
+      selected: true,
+    });
     expect(fromVueFlow(flow, adapted.nodes, adapted.edges).nodes.find((node) => node.id === 'increment')?.size).toEqual(
       {
         width: GRAPH_NODE_MIN_WIDTH,
@@ -1079,6 +1087,17 @@ describe('Custom Agent graph editor', () => {
     });
     expect(JSON.stringify(store.draft.value)).toBe(serialized);
     expect(store.viewport).toEqual({ x: 12, y: 15, zoom: 1.4 });
+
+    const firstScopeKey = store.currentScopeKey;
+    const secondFlowId = store.createFlow('SUBFLOW');
+    const secondScopeKey = store.currentScopeKey;
+    store.setViewport({ x: -30, y: 45, zoom: 0.7 });
+    store.selectFlow(firstScopeKey);
+    expect(store.viewport).toEqual({ x: 12, y: 15, zoom: 1.4 });
+    store.setViewport({ x: 90, y: 100, zoom: 2 }, secondScopeKey);
+    expect(store.viewport).toEqual({ x: 12, y: 15, zoom: 1.4 });
+    store.selectFlow(secondFlowId);
+    expect(store.viewport).toEqual({ x: 90, y: 100, zoom: 2 });
   });
 
   it('keeps Vue Flow imports confined to editor modules', () => {

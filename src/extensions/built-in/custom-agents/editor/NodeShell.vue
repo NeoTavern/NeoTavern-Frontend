@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core';
+import { computed } from 'vue';
 import type { GraphFlow, ScopeGraph } from '../graph/contracts';
 import { schemaValueType } from '../graph/schema-ports';
 import type { ReadonlyNodeRegistry } from '../registry/node-definition';
@@ -36,18 +37,19 @@ const portTitle = (port: EditorPortDefinition) =>
 const portPosition = (index: number, count: number) => `${((index + 1) / (count + 1)) * 100}%`;
 const portClass = (port: EditorPortDefinition) =>
   port.kind === 'CONTROL' ? 'is-control' : `is-${schemaValueType(port.schema).toLowerCase()}`;
+const shellInputs = computed(() => props.data.inputs.filter((port) => port.kind === 'CONTROL'));
 </script>
 
 <template>
   <NodeCard v-bind="props" @open-body="emit('openBody', $event)" @resize-start="emit('resizeStart', $event)">
     <Handle
-      v-for="(port, index) in data.inputs"
+      v-for="(port, index) in shellInputs"
       :id="port.id"
       :key="`input:${port.id}`"
       type="target"
       :position="Position.Left"
       :class="portClass(port)"
-      :style="{ top: portPosition(index, data.inputs.length) }"
+      :style="{ top: portPosition(index, shellInputs.length) }"
       :title="portTitle(port)"
     />
     <Handle

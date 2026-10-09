@@ -108,7 +108,8 @@ describe('FlowEditor component', () => {
     const addedNode = host.querySelector('[data-node-id="ui1"]')!;
     expect(host.querySelector('.custom-agent-flow__inspector')).toBeNull();
     expect(addedNode.querySelector('header')?.textContent?.trim()).toBe('Constant');
-    expect(addedNode.textContent).toContain('Constant node.');
+    expect(addedNode.querySelector('header')?.title).toBe('Constant node.');
+    expect(addedNode.textContent).not.toContain('Constant node.');
     expect(addedNode.textContent).toContain('Value');
     expect(addedNode.textContent).not.toContain('extensionsBuiltin.customAgents.nodes.constant');
     expect(host.querySelector('[data-node-id="ui1"] .vue-flow__handle')?.getAttribute('title')).toBe('Value (JSON)');
@@ -124,6 +125,10 @@ describe('FlowEditor component', () => {
     expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')?.inputValues.amount).toBe(2);
 
     store.selectedNodeIds.value = ['increment'];
+    await nextTick();
+    const amountPort = host.querySelector<HTMLElement>('[data-node-id="increment"] [data-input-port-id="amount"]')!;
+    expect(amountPort.querySelector('.vue-flow__handle[data-handleid="amount"]')).not.toBeNull();
+
     const inlineButton = [...host.querySelectorAll<HTMLButtonElement>('[data-node-id="increment"] button')].find(
       (button) => button.textContent?.trim() === 'Clear',
     )!;
@@ -247,7 +252,11 @@ describe('FlowEditor component', () => {
       const nodeX = nodeId === 'tall-target' ? 650 : 0;
       const nodeHeight = Number.parseFloat(renderedNode.style.height) || 400;
       if (this.classList.contains('vue-flow__handle')) {
-        const top = (Number.parseFloat(this.style.top) / 100) * nodeHeight;
+        const inputPort = this.closest<HTMLElement>('[data-input-port-id]');
+        const inputPorts = inputPort ? [...renderedNode.querySelectorAll<HTMLElement>('[data-input-port-id]')] : [];
+        const top = inputPort
+          ? ((inputPorts.indexOf(inputPort) + 1) / (inputPorts.length + 1)) * nodeHeight
+          : (Number.parseFloat(this.style.top) / 100) * nodeHeight;
         return new DOMRect(nodeX + (this.classList.contains('source') ? 420 : 0), top, 10, 10);
       }
       return new DOMRect(nodeX, 0, 420, nodeHeight);
@@ -267,7 +276,11 @@ describe('FlowEditor component', () => {
       tops.forEach((top, index) => expect(top).toBeCloseTo(((index + 1) / 6) * 100));
     };
     expectDistributed('tall-source');
-    expectDistributed('tall-target');
+    const targetInputPorts = [
+      ...host.querySelectorAll<HTMLElement>('[data-node-id="tall-target"] [data-input-port-id]'),
+    ];
+    expect(targetInputPorts.map((port) => port.dataset.inputPortId)).toEqual(ports.map((port) => port.id));
+    for (const port of targetInputPorts) expect(port.querySelector('.vue-flow__handle')).not.toBeNull();
     const edgePaths = () =>
       [...host.querySelectorAll<SVGPathElement>('.vue-flow__edge-path')].map((path) => path.getAttribute('d'));
     expect(new Set(edgePaths()).size).toBe(5);

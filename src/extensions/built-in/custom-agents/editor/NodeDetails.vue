@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Handle, Position } from '@vue-flow/core';
 import { computed, toRaw } from 'vue';
 import { Button, Checkbox, Input, Select, Textarea, Toggle } from '../../../../components/UI';
 import ConnectionProfileSelector from '../../../../components/common/ConnectionProfileSelector.vue';
@@ -18,6 +19,7 @@ const props = defineProps<{
   resolved?: ResolvedEditorNode;
   allResolved: ReadonlyMap<string, ResolvedEditorNode>;
   rootResolved: ReadonlyMap<string, ResolvedEditorNode>;
+  showPortHandles?: boolean;
 }>();
 const emit = defineEmits<{ openBody: [nodeId: string] }>();
 const { t, translateKey } = useEditorI18n();
@@ -94,6 +96,11 @@ function omitJson(path: string): void {
   const key = jsonKey('field', path);
   props.store.clearInspectorJsonDraft(key);
   props.store.removeNodeData(node.value.id, path);
+}
+function inputPortTitle(port: DataPortDefinition): string {
+  const label = port.literalLabel ? port.labelKey : translateKey(port.labelKey);
+  const type = t(`extensionsBuiltin.customAgents.editor.portKinds.${schemaValueType(port.schema).toLowerCase()}`);
+  return `${label} (${type})`;
 }
 function inputConnected(portId: string): boolean {
   return props.graph.edges.some(
@@ -225,7 +232,31 @@ function combinedPath(field: InspectorFieldDefinition, index: number, itemField:
           :key="String(item.id ?? index)"
           class="custom-agent-flow__repeater-item"
         >
-          <template v-for="itemField in field.itemFields" :key="itemField.id">
+          <header>
+            <span>{{ t('extensionsBuiltin.customAgents.editor.itemNumber', { number: index + 1 }) }}</span>
+            <div class="custom-agent-flow__repeater-actions">
+              <Button
+                :title="t('extensionsBuiltin.customAgents.editor.moveUp')"
+                icon="fa-arrow-up"
+                :disabled="index === 0"
+                @click="store.moveRepeaterItem(node.id, field.path, index, -1)"
+              />
+              <Button
+                :title="t('extensionsBuiltin.customAgents.editor.moveDown')"
+                icon="fa-arrow-down"
+                :disabled="index === repeaterItems(field).length - 1"
+                @click="store.moveRepeaterItem(node.id, field.path, index, 1)"
+              />
+              <Button
+                variant="danger"
+                :title="t('common.remove')"
+                icon="fa-trash"
+                :disabled="repeaterItems(field).length <= field.minimum"
+                @click="store.removeRepeaterItem(node.id, field.path, index, field.minimum)"
+              />
+            </div>
+          </header>
+          <div v-for="itemField in field.itemFields" :key="itemField.id" class="custom-agent-flow__repeater-field">
             <Input
               v-if="itemField.control === 'INPUT'"
               :model-value="String(fieldValue(combinedPath(field, index, itemField)) ?? '')"
@@ -257,26 +288,7 @@ function combinedPath(field: InspectorFieldDefinition, index: number, itemField:
               :label="translateKey(itemField.labelKey)"
               @update:model-value="updateJson('field', combinedPath(field, index, itemField), $event, itemField)"
             />
-          </template>
-          <Button
-            :title="t('extensionsBuiltin.customAgents.editor.moveUp')"
-            icon="fa-arrow-up"
-            :disabled="index === 0"
-            @click="store.moveRepeaterItem(node.id, field.path, index, -1)"
-          />
-          <Button
-            :title="t('extensionsBuiltin.customAgents.editor.moveDown')"
-            icon="fa-arrow-down"
-            :disabled="index === repeaterItems(field).length - 1"
-            @click="store.moveRepeaterItem(node.id, field.path, index, 1)"
-          />
-          <Button
-            variant="danger"
-            :title="t('common.remove')"
-            icon="fa-trash"
-            :disabled="repeaterItems(field).length <= field.minimum"
-            @click="store.removeRepeaterItem(node.id, field.path, index, field.minimum)"
-          />
+          </div>
         </div>
         <Button
           icon="fa-plus"
@@ -369,24 +381,43 @@ function combinedPath(field: InspectorFieldDefinition, index: number, itemField:
     </section>
 
     <h3 v-if="dataInputs.length">{{ t('extensionsBuiltin.customAgents.editor.inputs') }}</h3>
-    <section v-for="port in dataInputs" :key="port.id" class="custom-agent-flow__field">
-      <strong
-        >{{ port.literalLabel ? port.labelKey : translateKey(port.labelKey) }} ·
-        {{ t(`extensionsBuiltin.customAgents.editor.portKinds.${schemaValueType(port.schema).toLowerCase()}`) }}</strong
-      >
-      <span v-if="inputConnected(port.id)">{{ t('extensionsBuiltin.customAgents.editor.connected') }}</span>
-      <template v-else-if="port.inlineEditor === 'CONNECTION_PROFILE'">
+    <section
+      v-for="port in dataInputs"
+      :key="port.id"
+      class="custom-agent-flow__field custom-agent-flow__input-port"
+      :class="{ 'is-connected': inputConnected(port.id) }"
+      :data-input-port-id="port.id"
+    >
+      <Handle
+        v-if="showPortHandles"
+        :id="port.id"
+        type="target"
+        :position="Position.Left"
+        :class="`is-${schemaValueType(port.schema).toLowerCase()}`"
+        :title="inputPortTitle(port)"
+      />
+      <header>
+        <strong>{{ port.literalLabel ? port.labelKey : translateKey(port.labelKey) }}</strong>
+        <span class="custom-agent-flow__type-badge">
+          {{ t(`extensionsBuiltin.customAgents.editor.portKinds.${schemaValueType(port.schema).toLowerCase()}`) }}
+        </span>
+        <span v-if="inputConnected(port.id)" class="custom-agent-flow__connected-badge">
+          <i class="fa-solid fa-link" aria-hidden="true" />
+          {{ t('extensionsBuiltin.customAgents.editor.connected') }}
+        </span>
+      </header>
+      <template v-if="!inputConnected(port.id) && port.inlineEditor === 'CONNECTION_PROFILE'">
         <ConnectionProfileSelector
           :model-value="String(inputValue(port) ?? '')"
           @update:model-value="updateInline(port, $event ?? '')"
         />
       </template>
       <Textarea
-        v-else-if="port.inlineEditor === 'TEXTAREA'"
+        v-else-if="!inputConnected(port.id) && port.inlineEditor === 'TEXTAREA'"
         :model-value="String(inputValue(port) ?? '')"
         @update:model-value="updateInline(port, $event)"
       />
-      <template v-else-if="port.inlineEditor === 'SCHEMA_PATH'">
+      <template v-else-if="!inputConnected(port.id) && port.inlineEditor === 'SCHEMA_PATH'">
         <Select
           v-if="knownSchemaPaths(inlineSchemaRoot(port), false).known"
           data-path-editor="select"
@@ -404,30 +435,30 @@ function combinedPath(field: InspectorFieldDefinition, index: number, itemField:
         />
       </template>
       <Select
-        v-else-if="Array.isArray(port.schema.enum)"
+        v-else-if="!inputConnected(port.id) && Array.isArray(port.schema.enum)"
         :model-value="enumSelection(port.schema.enum, inputValue(port))"
         :options="enumOptions(port)"
         @update:model-value="updateInline(port, port.schema.enum![Number($event)]!)"
       />
       <Toggle
-        v-else-if="schemaValueType(port.schema) === 'BOOLEAN'"
+        v-else-if="!inputConnected(port.id) && schemaValueType(port.schema) === 'BOOLEAN'"
         :model-value="inputValue(port) === true"
         @update:model-value="updateInline(port, $event)"
       />
       <Input
-        v-else-if="schemaValueType(port.schema) === 'STRING'"
+        v-else-if="!inputConnected(port.id) && schemaValueType(port.schema) === 'STRING'"
         :model-value="String(inputValue(port) ?? '')"
         @update:model-value="updateInline(port, String($event))"
       />
       <Input
-        v-else-if="schemaValueType(port.schema) === 'NUMBER'"
+        v-else-if="!inputConnected(port.id) && schemaValueType(port.schema) === 'NUMBER'"
         type="number"
         :min="typeof port.schema.minimum === 'number' ? port.schema.minimum : undefined"
         :max="typeof port.schema.maximum === 'number' ? port.schema.maximum : undefined"
         :model-value="typeof inputValue(port) === 'number' ? (inputValue(port) as number) : ''"
         @update:model-value="updateInline(port, Number($event))"
       />
-      <template v-else>
+      <template v-else-if="!inputConnected(port.id)">
         <Textarea
           :model-value="jsonText('input', port.id, inputValue(port))"
           @update:model-value="updateJson('input', port.id, $event, undefined, port)"

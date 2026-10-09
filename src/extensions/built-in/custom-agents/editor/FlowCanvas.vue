@@ -8,7 +8,7 @@ import {
   type NodeMouseEvent,
   type ViewportTransform,
 } from '@vue-flow/core';
-import { computed, nextTick, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 import { Button } from '../../../../components/UI';
 import { GRAPH_NODE_MIN_HEIGHT, GRAPH_NODE_MIN_WIDTH } from '../graph/contracts';
 import type { ReadonlyNodeRegistry } from '../registry/node-definition';
@@ -38,8 +38,10 @@ const emit = defineEmits<{
   smartLayoutSucceeded: [];
 }>();
 const { t } = useEditorI18n();
-const flowId = computed(() => props.store.currentScopeKey);
-const vueFlow = useVueFlow(flowId.value);
+const scopeKey = props.store.currentScopeKey;
+const flowId = scopeKey;
+const initialViewport = props.store.viewportFor(scopeKey);
+const vueFlow = useVueFlow(scopeKey);
 const { fitView, getViewport, project, setViewport, updateNodeInternals, zoomIn, zoomOut } = vueFlow;
 const flow = computed(() => props.store.selectedFlow);
 const graph = computed(() => props.store.currentGraph);
@@ -92,13 +94,15 @@ const elements = computed(() =>
     : { nodes: [], edges: [] },
 );
 
-watch(
-  () => props.store.currentScopeKey,
-  async () => {
-    await nextTick();
-    await setViewport(props.store.viewport);
-  },
-);
+async function restoreViewport() {
+  await nextTick();
+  await nextRenderFrame();
+  await setViewport(initialViewport);
+}
+
+onBeforeUnmount(() => {
+  props.store.setViewport(viewportFromVue(getViewport()), scopeKey);
+});
 watch(
   () => props.store.focusRequest.value?.sequence,
   async () => {
@@ -152,7 +156,7 @@ function nodeDragStop(event: NodeDragEvent) {
   props.store.moveNodes(nodePositionsFromVue(dragged));
 }
 function viewportChanged(viewport: ViewportTransform) {
-  props.store.setViewport(viewportFromVue(viewport));
+  props.store.setViewport(viewportFromVue(viewport), scopeKey);
 }
 function nextRenderFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
@@ -321,7 +325,7 @@ defineExpose({ fitView: () => fitView({ padding: 0.15 }), applySmartLayout });
       :id="flowId"
       :nodes="elements.nodes"
       :edges="elements.edges"
-      :default-viewport="store.viewport"
+      :default-viewport="initialViewport"
       :is-valid-connection="valid"
       :delete-key-code="null"
       :only-render-visible-elements="!renderAllNodes"
@@ -341,6 +345,7 @@ defineExpose({ fitView: () => fitView({ padding: 0.15 }), applySmartLayout });
       "
       @edges-change="edgeChanges"
       @node-drag-stop="nodeDragStop"
+      @init="restoreViewport"
       @viewport-change-end="viewportChanged"
     >
       <template #node-graph="slotProps">

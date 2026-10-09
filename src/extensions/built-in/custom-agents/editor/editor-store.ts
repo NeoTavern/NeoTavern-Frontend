@@ -248,7 +248,11 @@ export class GraphEditorStore {
     return [this.selectedFlowId.value, ...this.scopePath.value].join('/');
   }
   get viewport(): EditorViewport {
-    return this.viewportByScope.value[this.currentScopeKey] ?? { x: 0, y: 0, zoom: 1 };
+    return this.viewportFor(this.currentScopeKey);
+  }
+
+  viewportFor(scopeKey: string): EditorViewport {
+    return this.viewportByScope.value[scopeKey] ?? { x: 0, y: 0, zoom: 1 };
   }
 
   private uniqueIdSource(extraIds: readonly string[] = []): IdSource {
@@ -449,8 +453,8 @@ export class GraphEditorStore {
     this.selectedEdgeId.value = undefined;
   }
 
-  setViewport(viewport: EditorViewport): void {
-    this.viewportByScope.value = { ...this.viewportByScope.value, [this.currentScopeKey]: { ...viewport } };
+  setViewport(viewport: EditorViewport, scopeKey = this.currentScopeKey): void {
+    this.viewportByScope.value = { ...this.viewportByScope.value, [scopeKey]: { ...viewport } };
   }
 
   addNode(type: string, position = { x: 80, y: 80 }): string | undefined {
