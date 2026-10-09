@@ -1,0 +1,2221 @@
+{
+  "format": "NEOTAVERN_CUSTOM_AGENT_FLOW",
+  "agent": {
+    "id": "builtin-scored-roleplay-quality-gate",
+    "name": "Scored Roleplay Quality Gate",
+    "enabled": true,
+    "priority": 0,
+    "configurationSchema": {
+      "type": "object",
+      "properties": {
+        "connectionProfileId": {
+          "type": "string"
+        },
+        "structuredFormat": {
+          "type": "string",
+          "enum": ["NATIVE", "JSON", "XML"]
+        },
+        "recentHistoryCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "evaluatorPrompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revisionPrompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trackedPhrases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "connectionProfileId",
+        "structuredFormat",
+        "recentHistoryCount",
+        "trackedPhrases",
+        "evaluatorPrompt",
+        "revisionPrompt"
+      ],
+      "additionalProperties": false
+    },
+    "configurationDefaults": {
+      "connectionProfileId": "",
+      "structuredFormat": "NATIVE",
+      "recentHistoryCount": 30,
+      "evaluatorPrompt": "You are a strict quality evaluator for third-person roleplay responses. Evaluate concrete hard violations and score narrative quality using the supplied recent conversation, candidate response, and mechanical repetition report. Return exactly one JSON object and no surrounding text. Do not rewrite the response. Do not decide whether the benchmark retries; report your assessment without considering downstream consequences.\n\nHARD CHECKS\nCharacters represented by USER-role messages are controlled exclusively by the human. A user_agency_violation occurs when the candidate invents or continues that character's dialogue, decision, intention, opinion, private thought, emotion, or voluntary action that the latest user message did not establish. Direct physical consequences and information plainly available to that character's senses are allowed. Quoting or briefly referring to an action already present in the latest user message is allowed. Approaching with an object does not authorize completing a handoff: if Luke picks up a wrench and approaches Hazel, \"He puts it in her hand\" is a violation; Hazel may reach out or ask for it instead. A non-user character may guess, question, accuse, or misinterpret the user character's feelings, motives, history, or actions when the prose clearly presents it as that character's uncertain belief rather than confirming it as narrative fact.\n\nA role_or_format_leak occurs when the candidate exposes transcript labels such as a user-character label or Narrator:, discusses prompts or roleplay mechanics, leaks a planning checklist, or outputs commentary instead of remaining inside the fiction. Ordinary dialogue attribution in prose is allowed. In-fiction dialogue may naturally use words such as narrator, story, role, or prompt without becoming a format leak when the character refers to something inside the fictional world. An optional block in exactly this form is permitted after story prose and is not a format or response-contract violation: <details><summary>🧠 INTERNAL THOUGHTS</summary><br>- <b>[Non-user Character]</b> | Thoughts: [brief immediate private thought]<br></details>. It remains a violation if it contains the user character's private thoughts, unavailable knowledge, meta-commentary, or a planning checklist.\n\nA continuity_contradiction requires a direct, material contradiction of an explicit established fact that changes identity, location, injury, a scene-relevant possession, chronology, relationship state, stakes, or available actions. Do not flag incidental interchangeable descriptor drift that has no effect on the scene, such as calling established sneakers boots. Do not flag a detail merely because it is new, uncertain, or creatively inferred. A non-user character's dialogue may express a lie, mistake, uncertainty, accusation, incomplete recollection, or disputed interpretation that conflicts with canon; this is not itself a contradiction unless the narration or resulting action endorses the claim as objective fact.\n\nA knowledge_boundary_violation occurs when a non-user character demonstrably acts on private or unavailable information as established fact. Reasonable observation and inference are allowed.\n\nA response_contract_violation occurs when the response is empty, materially incomplete, not primarily in-fiction prose, or contains prohibited structural material. Do not use it as a catch-all quality judgment.\n\nSCORED DIMENSIONS\nScore each dimension independently from 0 to 4. A 4 is exceptional and requires concrete positive evidence. Merely avoiding a defect earns at most 3. Do not inflate a score because the response is generally competent, and do not lower a score merely because the response is imperfect.\n\ncharacter_relationship_continuity:\n4 = creates meaningful new trust, intimacy, conflict development, or character revelation while remaining consistent;\n3 = naturally preserves accumulated characterization and relationship state;\n2 = noticeably reuses a familiar defense or interaction pattern without fully resetting development;\n1 = materially resets trust, boundaries, resolved conflict, or emotional development without a new cause;\n0 = fundamentally replaces the established character or relationship.\n\nprogression_causality:\n4 = materially changes goals, stakes, information, location, relationship, or available choices through clear causality;\n3 = completes a useful supporting action or modest forward beat;\n2 = extends or repeats the current beat with little state change;\n1 = reopens a resolved beat, materially stalls on the same obstacle, or manufactures another version of the same dispute;\n0 = reverses or invalidates scene progress.\n\nprose_freshness_subtext:\n4 = uses distinctive, precise prose that is demonstrably fresh relative to recent assistant turns and trusts action and dialogue;\n3 = competent prose with only minor harmless recurrence;\n2 = contains a clearly noticeable repeated sentence frame, gesture, image, static detail, or explanation of already-clear subtext;\n1 = is dominated by recent prose machinery, near-duplicate sentences, or redundant explanation;\n0 = is substantially duplicated or templated.\n\npacing_interactivity:\n4 = is efficient, contains no materially removable section, and stops at an especially productive opening for the user;\n3 = is appropriately paced with only minor excess or compression;\n2 = contains a materially redundant, overextended, rushed, or over-completed section;\n1 = seriously stalls, repeats micro-decisions, or takes substantial control away from the interaction;\n0 = takes over the scene or fails to provide a playable response.\n\nCompare the candidate explicitly with the recent accepted assistant turns. For character/relationship and progression, distinguish preserving state from actually developing or changing it. For prose, look for semantic recurrence even when wording differs. For example, repeating a valve-wait scene, the same ambient drip, and the same \"you may leave / or stay\" offer in consecutive turns should normally score 2 for both progression and prose. A tracked word used in a different ordinary sense, such as pressing a towel flat rather than repeatedly describing a voice as flat, is not a prose defect.\n\nREPETITION REPORT\nThe repetition_report contains mechanical observations, not violations. Do not lower prose_freshness_subtext merely because a listed word or phrase appears frequently. Names, pronouns, dialogue attribution, necessary scene objects, technical terms, continuity anchors, deliberate rhetorical repetition, and details whose state materially changed often repeat legitimately. Treat repetition as a defect only when it is distinctive, unnecessary, replaceable, and repeated enough to make the prose templated, redundant, or stalled. Give more weight to repeated multiword phrases, sentence structures, gestures, images, explanations, and near-duplicate sentences than isolated words.\n\nCreative interpolation is allowed. Do not penalize coherent ordinary details merely because they were not previously stated. Do not reward generic polished prose over character-specific useful prose.\n\nOUTPUT RULES\nFor every hard check, violated true requires exact quoted evidence and a concise reason. When violated is false, evidence and reason may be null or may contain a concise explanation of why the check passes. Every score requires a concise reason. Scores 0, 1, and 4 require candidate_evidence: low scores must quote the defect, while 4 must cite the exceptional positive achievement. history_evidence should be supplied whenever the judgment depends on prior context. Scores 0, 1, or 2 require specific repair guidance. preserve must list compliant events, non-user actions, dialogue, details, and progression that should survive any revision; it may be empty when no defect exists. revision_guidance must be a concise complete-response revision instruction when any hard check is violated or any score is 0, 1, or 2, and null otherwise. Do not output a retry verdict.\n\nReturn exactly this shape: {\"checks\":{\"user_agency_violation\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null},\"role_or_format_leak\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null},\"continuity_contradiction\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null},\"knowledge_boundary_violation\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null},\"response_contract_violation\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null}},\"scores\":{\"character_relationship_continuity\":{\"score\":integer,\"candidate_evidence\":string|null,\"history_evidence\":string|null,\"reason\":string,\"repair\":string|null},\"progression_causality\":{\"score\":integer,\"candidate_evidence\":string|null,\"history_evidence\":string|null,\"reason\":string,\"repair\":string|null},\"prose_freshness_subtext\":{\"score\":integer,\"candidate_evidence\":string|null,\"history_evidence\":string|null,\"reason\":string,\"repair\":string|null},\"pacing_interactivity\":{\"score\":integer,\"candidate_evidence\":string|null,\"history_evidence\":string|null,\"reason\":string,\"repair\":string|null}},\"preserve\":[string],\"revision_guidance\":string|null}.\n\nMechanical repetition report:\n{{{input.repetitionReport}}}\n\nCandidate response:\n{{{input.currentResponse}}}",
+      "revisionPrompt": "You are performing one conservative quality repair on the assistant's latest roleplay response. Return one complete replacement response and nothing else.\n\nTreat the rejected response as a draft, not canon. Follow the revision guidance. Preserve every compliant event, non-user character action, dialogue exchange, useful detail, and scene advancement listed in the preservation data unless it depends on the defect. Make only the minimum changes needed. If a defective passage supports later valid material, repair the connection rather than deleting the later material. Never mention this evaluation or revision. Never add dialogue, decisions, thoughts, emotions, intentions, or voluntary actions for the user-controlled character.\n\nRevision guidance:\n{{{input.revisionGuidance}}}\n\nMaterial to preserve (JSON array):\n{{{input.preserveJson}}}\n\nRejected response:\n{{{input.currentResponse}}}",
+      "trackedPhrases": []
+    },
+    "stateSchema": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "initialState": {},
+    "flows": [
+      {
+        "id": "quality-gate",
+        "name": "Evaluate and repair generated response",
+        "kind": "TRIGGER",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "after-generation",
+            "type": "trigger.after-generation",
+            "position": {
+              "x": 0,
+              "y": 0
+            },
+            "data": {
+              "generationModes": ["NEW", "REGENERATE", "ADD_SWIPE"],
+              "schedule": {
+                "type": "ALWAYS"
+              }
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "message-content",
+            "type": "data.get",
+            "position": {
+              "x": 0,
+              "y": 180
+            },
+            "data": {
+              "path": "content"
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "initial-candidate",
+            "type": "data.javascript",
+            "position": {
+              "x": 240,
+              "y": 180
+            },
+            "data": {
+              "code": "return { candidate: inputs.candidate, accepted: false, revisionCount: 0 };",
+              "inputs": [
+                {
+                  "id": "candidate",
+                  "name": "candidate",
+                  "schema": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              ],
+              "outputSchema": {
+                "type": "object",
+                "properties": {
+                  "candidate": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "accepted": {
+                    "type": "boolean"
+                  },
+                  "revisionCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 3
+                  }
+                },
+                "required": ["candidate", "accepted", "revisionCount"],
+                "additionalProperties": false
+              }
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "attempts",
+            "type": "data.constant",
+            "position": {
+              "x": 240,
+              "y": 340
+            },
+            "data": {
+              "value": [true, true, true, false]
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "quality-attempts",
+            "type": "control.for-each",
+            "position": {
+              "x": 520,
+              "y": 0
+            },
+            "data": {
+              "accumulator": true,
+              "body": {
+                "nodes": [
+                  {
+                    "id": "iteration-entry",
+                    "type": "scope.entry",
+                    "position": {
+                      "x": 0,
+                      "y": 0
+                    },
+                    "data": {},
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "accumulator-candidate",
+                    "type": "data.get",
+                    "position": {
+                      "x": 220,
+                      "y": 180
+                    },
+                    "data": {
+                      "path": "candidate"
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "accumulator-accepted",
+                    "type": "data.get",
+                    "position": {
+                      "x": 220,
+                      "y": 340
+                    },
+                    "data": {
+                      "path": "accepted"
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "already-accepted",
+                    "type": "control.branch",
+                    "position": {
+                      "x": 220,
+                      "y": 0
+                    },
+                    "data": {
+                      "cases": [
+                        {
+                          "id": "yes",
+                          "label": "Already accepted"
+                        }
+                      ]
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "history-transcript",
+                    "type": "data.template",
+                    "position": {
+                      "x": 0,
+                      "y": 500
+                    },
+                    "data": {
+                      "template": "{{#each chatHistory}}\u001e{{#if is_system}}system{{else}}{{#if is_user}}user{{else}}assistant{{/if}}{{/if}}\u001f{{{mes}}}{{/each}}",
+                      "variables": []
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "tracked-phrases",
+                    "type": "data.configuration",
+                    "position": {
+                      "x": 0,
+                      "y": 660
+                    },
+                    "data": {
+                      "path": "trackedPhrases"
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "profile",
+                    "type": "data.configuration",
+                    "position": {
+                      "x": 0,
+                      "y": 820
+                    },
+                    "data": {
+                      "path": "connectionProfileId"
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "format",
+                    "type": "data.configuration",
+                    "position": {
+                      "x": 0,
+                      "y": 980
+                    },
+                    "data": {
+                      "path": "structuredFormat"
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "history-count",
+                    "type": "data.configuration",
+                    "position": {
+                      "x": 0,
+                      "y": 1140
+                    },
+                    "data": {
+                      "path": "recentHistoryCount"
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "repetition-report",
+                    "type": "data.javascript",
+                    "position": {
+                      "x": 460,
+                      "y": 260
+                    },
+                    "data": {
+                      "code": "const RS = \"\\u001e\";\nconst US = \"\\u001f\";\nconst clean = (text) => text.replace(/<summary>.*?<\\/summary>/gis, \" \").replace(/<[^>]+>/g, \" \").replace(/\\bThoughts:\\s*/gi, \"\");\nconst tokenize = (text) => [...clean(text).matchAll(/[A-Za-z0-9]+(?:['’][A-Za-z0-9]+)?/g)].map((match) => match[0].toLowerCase().replaceAll(\"’\", \"'\"));\nconst sentenceList = (text) => clean(text).split(/(?<=[.!?])\\s+|\\n+/).map((part) => part.trim()).filter((part) => tokenize(part).length >= 3);\nconst grams = (values, size) => Array.from({ length: Math.max(0, values.length - size + 1) }, (_, index) => values.slice(index, index + size).join(\" \"));\nconst count = (values) => { const result = new Map(); for (const value of values) result.set(value, (result.get(value) ?? 0) + 1); return result; };\nconst similarity = (left, right) => {\n  if (left === right) return 1;\n  if (!left.length || !right.length) return 0;\n  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);\n  for (let i = 1; i <= left.length; i += 1) {\n    const current = [i];\n    for (let j = 1; j <= right.length; j += 1) current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (left[i - 1] === right[j - 1] ? 0 : 1));\n    previous = current;\n  }\n  return 1 - previous[right.length] / Math.max(left.length, right.length);\n};\nconst stop = new Set([\"a\",\"an\",\"and\",\"are\",\"as\",\"at\",\"be\",\"been\",\"but\",\"by\",\"for\",\"from\",\"had\",\"has\",\"have\",\"he\",\"her\",\"hers\",\"him\",\"his\",\"i\",\"if\",\"in\",\"into\",\"is\",\"it\",\"its\",\"me\",\"my\",\"not\",\"of\",\"on\",\"or\",\"our\",\"she\",\"so\",\"that\",\"the\",\"their\",\"them\",\"then\",\"there\",\"they\",\"this\",\"to\",\"up\",\"was\",\"we\",\"were\",\"what\",\"when\",\"where\",\"which\",\"who\",\"with\",\"you\",\"your\"]);\nconst records = inputs.transcript.split(RS).slice(1).map((record) => { const split = record.indexOf(US); return { role: record.slice(0, split), content: record.slice(split + 1) }; });\nconst assistant = records.filter((record) => record.role === \"assistant\").map((record) => record.content);\nif (assistant.length) assistant.pop();\nconst recentStart = Math.max(0, assistant.length - 8);\nconst candidateTokens = tokenize(inputs.candidate);\nconst historyTokens = assistant.map(tokenize);\nconst recentTokens = historyTokens.slice(recentStart);\nconst items = [];\nconst tracked = new Set(inputs.trackedPhrases.map((phrase) => phrase.trim().toLowerCase()).filter(Boolean));\nfor (const phrase of tracked) {\n  const phraseTokens = tokenize(phrase); if (!phraseTokens.length) continue;\n  const normalized = phraseTokens.join(\" \");\n  const candidateCount = count(grams(candidateTokens, phraseTokens.length)).get(normalized) ?? 0;\n  const byTurn = historyTokens.map((turn) => count(grams(turn, phraseTokens.length)).get(normalized) ?? 0);\n  const historyCount = byTurn.reduce((sum, value) => sum + value, 0);\n  if (!candidateCount || historyCount < 2) continue;\n  items.push({ kind: phraseTokens.length === 1 ? \"tracked_word\" : \"tracked_phrase\", text: normalized, candidate_count: candidateCount, recent_count: byTurn.slice(recentStart).reduce((sum, value) => sum + value, 0), history_count: historyCount });\n}\nconst candidateWords = count(candidateTokens), historyWords = count(historyTokens.flat()), recentWords = count(recentTokens.flat());\nfor (const [word, candidateCount] of candidateWords) {\n  const historyCount = historyWords.get(word) ?? 0;\n  if (historyCount < 2 || tracked.has(word) || stop.has(word) || word.length < 4) continue;\n  items.push({ kind: \"word\", text: word, candidate_count: candidateCount, recent_count: recentWords.get(word) ?? 0, history_count: historyCount });\n}\nfor (let size = 2; size <= 6; size += 1) {\n  const candidateGrams = count(grams(candidateTokens, size));\n  const historyGrams = count(historyTokens.flatMap((turn) => grams(turn, size)));\n  const recentGrams = count(recentTokens.flatMap((turn) => grams(turn, size)));\n  for (const [phrase, candidateCount] of candidateGrams) {\n    const historyCount = historyGrams.get(phrase) ?? 0;\n    if (historyCount < 2 || phrase.split(\" \").every((word) => stop.has(word))) continue;\n    items.push({ kind: \"phrase\", text: phrase, candidate_count: candidateCount, recent_count: recentGrams.get(phrase) ?? 0, history_count: historyCount });\n  }\n}\nconst candidateSentences = sentenceList(inputs.candidate);\nconst historySentences = assistant.flatMap((text, index) => sentenceList(text).map((sentence) => ({ turn: index + 1, sentence })));\nfor (const candidate of candidateSentences) {\n  const normalized = tokenize(candidate).join(\" \"); let best;\n  for (const prior of historySentences) { const value = similarity(normalized, tokenize(prior.sentence).join(\" \")); if (value >= 0.82 && (!best || value > best.similarity)) best = { similarity: value, ...prior }; }\n  if (best) items.push({ kind: \"similar_sentence\", candidate, prior: best.sentence, prior_history_assistant_turn: best.turn, similarity: Math.round(best.similarity * 1000) / 1000 });\n}\nconst candidateOpenings = count(candidateSentences.map((sentence) => tokenize(sentence).slice(0, 3).join(\" \")));\nconst historyOpenings = new Map();\nassistant.forEach((text, index) => { for (const sentence of sentenceList(text)) { const opening = tokenize(sentence).slice(0, 3).join(\" \"); historyOpenings.set(opening, (historyOpenings.get(opening) ?? 0) + 1); } });\nconst recentOpenings = count(assistant.slice(recentStart).flatMap((text) => sentenceList(text).map((sentence) => tokenize(sentence).slice(0, 3).join(\" \"))));\nfor (const [opening, candidateCount] of candidateOpenings) { const historyCount = historyOpenings.get(opening) ?? 0; if (historyCount >= 2) items.push({ kind: \"sentence_opening\", text: opening, candidate_count: candidateCount, recent_count: recentOpenings.get(opening) ?? 0, history_count: historyCount }); }\nconst phraseItems = items.filter((item) => item.kind === \"phrase\").sort((left, right) => right.text.split(\" \").length - left.text.split(\" \").length || right.history_count - left.history_count);\nconst deduplicatedPhrases = [];\nfor (const item of phraseItems) {\n  const wrapped = ` ${item.text} `;\n  const covered = deduplicatedPhrases.some((longer) => longer.candidate_count === item.candidate_count && ` ${longer.text} `.includes(wrapped));\n  if (!covered) deduplicatedPhrases.push(item);\n}\nconst compactItems = [...items.filter((item) => item.kind !== \"phrase\"), ...deduplicatedPhrases];\nconst priority = { similar_sentence: 6, tracked_phrase: 5, tracked_word: 5, phrase: 4, sentence_opening: 3, word: 1 };\ncompactItems.sort((left, right) => (priority[right.kind] ?? 0) - (priority[left.kind] ?? 0) || (right.recent_count ?? 0) - (left.recent_count ?? 0) || (right.history_count ?? 0) - (left.history_count ?? 0) || (right.similarity ?? 0) - (left.similarity ?? 0) || String(right.text ?? right.candidate ?? \"\").length - String(left.text ?? left.candidate ?? \"\").length);\nreturn JSON.stringify({ candidate_word_count: candidateTokens.length, history_assistant_turn_count: assistant.length, recent_assistant_turns_examined: Math.min(8, assistant.length), items: compactItems.slice(0, 20) });",
+                      "inputs": [
+                        {
+                          "id": "transcript",
+                          "name": "transcript",
+                          "schema": {
+                            "type": "string"
+                          }
+                        },
+                        {
+                          "id": "candidate",
+                          "name": "candidate",
+                          "schema": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        {
+                          "id": "tracked-phrases",
+                          "name": "trackedPhrases",
+                          "schema": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      ],
+                      "outputSchema": {
+                        "type": "string"
+                      }
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "evaluate-candidate",
+                    "type": "llm.request",
+                    "position": {
+                      "x": 700,
+                      "y": 0
+                    },
+                    "data": {
+                      "prompt": "{{{config.evaluatorPrompt}}}",
+                      "variables": [
+                        {
+                          "id": "current-response",
+                          "name": "currentResponse"
+                        },
+                        {
+                          "id": "repetition-report",
+                          "name": "repetitionReport"
+                        }
+                      ],
+                      "assembly": {
+                        "type": "NORMAL_CHAT",
+                        "history": "RECENT_TARGET",
+                        "placement": {
+                          "type": "AFTER_CONTEXT",
+                          "role": "SYSTEM"
+                        }
+                      },
+                      "outputSchema": {
+                        "type": "object",
+                        "properties": {
+                          "checks": {
+                            "type": "object",
+                            "properties": {
+                              "user_agency_violation": {
+                                "type": "object",
+                                "properties": {
+                                  "violated": {
+                                    "type": "boolean"
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["violated", "evidence", "reason"],
+                                "additionalProperties": false
+                              },
+                              "role_or_format_leak": {
+                                "type": "object",
+                                "properties": {
+                                  "violated": {
+                                    "type": "boolean"
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["violated", "evidence", "reason"],
+                                "additionalProperties": false
+                              },
+                              "continuity_contradiction": {
+                                "type": "object",
+                                "properties": {
+                                  "violated": {
+                                    "type": "boolean"
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["violated", "evidence", "reason"],
+                                "additionalProperties": false
+                              },
+                              "knowledge_boundary_violation": {
+                                "type": "object",
+                                "properties": {
+                                  "violated": {
+                                    "type": "boolean"
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["violated", "evidence", "reason"],
+                                "additionalProperties": false
+                              },
+                              "response_contract_violation": {
+                                "type": "object",
+                                "properties": {
+                                  "violated": {
+                                    "type": "boolean"
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["violated", "evidence", "reason"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "user_agency_violation",
+                              "role_or_format_leak",
+                              "continuity_contradiction",
+                              "knowledge_boundary_violation",
+                              "response_contract_violation"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "scores": {
+                            "type": "object",
+                            "properties": {
+                              "character_relationship_continuity": {
+                                "type": "object",
+                                "properties": {
+                                  "score": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 4
+                                  },
+                                  "candidate_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "history_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "repair": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["score", "candidate_evidence", "history_evidence", "reason", "repair"],
+                                "additionalProperties": false
+                              },
+                              "progression_causality": {
+                                "type": "object",
+                                "properties": {
+                                  "score": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 4
+                                  },
+                                  "candidate_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "history_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "repair": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["score", "candidate_evidence", "history_evidence", "reason", "repair"],
+                                "additionalProperties": false
+                              },
+                              "prose_freshness_subtext": {
+                                "type": "object",
+                                "properties": {
+                                  "score": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 4
+                                  },
+                                  "candidate_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "history_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "repair": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["score", "candidate_evidence", "history_evidence", "reason", "repair"],
+                                "additionalProperties": false
+                              },
+                              "pacing_interactivity": {
+                                "type": "object",
+                                "properties": {
+                                  "score": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 4
+                                  },
+                                  "candidate_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "history_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "repair": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["score", "candidate_evidence", "history_evidence", "reason", "repair"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "character_relationship_continuity",
+                              "progression_causality",
+                              "prose_freshness_subtext",
+                              "pacing_interactivity"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "preserve": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "revision_guidance": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["checks", "scores", "preserve", "revision_guidance"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "compute-retry",
+                    "type": "data.javascript",
+                    "position": {
+                      "x": 920,
+                      "y": 260
+                    },
+                    "data": {
+                      "code": "const hard = Object.values(inputs.checks).some((check) => check.violated === true);\nconst values = Object.values(inputs.scores).map((score) => score.score);\nreturn { retry: hard || values.some((score) => score <= 1) || values.filter((score) => score <= 2).length >= 2 };",
+                      "inputs": [
+                        {
+                          "id": "checks",
+                          "name": "checks",
+                          "schema": {
+                            "type": "object",
+                            "properties": {
+                              "user_agency_violation": {
+                                "type": "object",
+                                "properties": {
+                                  "violated": {
+                                    "type": "boolean"
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["violated", "evidence", "reason"],
+                                "additionalProperties": false
+                              },
+                              "role_or_format_leak": {
+                                "type": "object",
+                                "properties": {
+                                  "violated": {
+                                    "type": "boolean"
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["violated", "evidence", "reason"],
+                                "additionalProperties": false
+                              },
+                              "continuity_contradiction": {
+                                "type": "object",
+                                "properties": {
+                                  "violated": {
+                                    "type": "boolean"
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["violated", "evidence", "reason"],
+                                "additionalProperties": false
+                              },
+                              "knowledge_boundary_violation": {
+                                "type": "object",
+                                "properties": {
+                                  "violated": {
+                                    "type": "boolean"
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["violated", "evidence", "reason"],
+                                "additionalProperties": false
+                              },
+                              "response_contract_violation": {
+                                "type": "object",
+                                "properties": {
+                                  "violated": {
+                                    "type": "boolean"
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["violated", "evidence", "reason"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "user_agency_violation",
+                              "role_or_format_leak",
+                              "continuity_contradiction",
+                              "knowledge_boundary_violation",
+                              "response_contract_violation"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        {
+                          "id": "scores",
+                          "name": "scores",
+                          "schema": {
+                            "type": "object",
+                            "properties": {
+                              "character_relationship_continuity": {
+                                "type": "object",
+                                "properties": {
+                                  "score": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 4
+                                  },
+                                  "candidate_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "history_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "repair": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["score", "candidate_evidence", "history_evidence", "reason", "repair"],
+                                "additionalProperties": false
+                              },
+                              "progression_causality": {
+                                "type": "object",
+                                "properties": {
+                                  "score": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 4
+                                  },
+                                  "candidate_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "history_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "repair": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["score", "candidate_evidence", "history_evidence", "reason", "repair"],
+                                "additionalProperties": false
+                              },
+                              "prose_freshness_subtext": {
+                                "type": "object",
+                                "properties": {
+                                  "score": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 4
+                                  },
+                                  "candidate_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "history_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "repair": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["score", "candidate_evidence", "history_evidence", "reason", "repair"],
+                                "additionalProperties": false
+                              },
+                              "pacing_interactivity": {
+                                "type": "object",
+                                "properties": {
+                                  "score": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 4
+                                  },
+                                  "candidate_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "history_evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "repair": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["score", "candidate_evidence", "history_evidence", "reason", "repair"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "character_relationship_continuity",
+                              "progression_causality",
+                              "prose_freshness_subtext",
+                              "pacing_interactivity"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      ],
+                      "outputSchema": {
+                        "type": "object",
+                        "properties": {
+                          "retry": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": ["retry"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "retry-candidate",
+                    "type": "control.branch",
+                    "position": {
+                      "x": 1160,
+                      "y": 0
+                    },
+                    "data": {
+                      "cases": [
+                        {
+                          "id": "yes",
+                          "label": "Retry"
+                        }
+                      ]
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "can-revise",
+                    "type": "control.branch",
+                    "position": {
+                      "x": 1400,
+                      "y": 180
+                    },
+                    "data": {
+                      "cases": [
+                        {
+                          "id": "yes",
+                          "label": "Revision available"
+                        }
+                      ]
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "serialize-preserve",
+                    "type": "data.javascript",
+                    "position": {
+                      "x": 1160,
+                      "y": 420
+                    },
+                    "data": {
+                      "code": "return JSON.stringify(inputs.preserve);",
+                      "inputs": [
+                        {
+                          "id": "preserve",
+                          "name": "preserve",
+                          "schema": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          }
+                        }
+                      ],
+                      "outputSchema": {
+                        "type": "string"
+                      }
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "revise-candidate",
+                    "type": "llm.request",
+                    "position": {
+                      "x": 1400,
+                      "y": 0
+                    },
+                    "data": {
+                      "prompt": "{{{config.revisionPrompt}}}",
+                      "variables": [
+                        {
+                          "id": "current-response",
+                          "name": "currentResponse"
+                        },
+                        {
+                          "id": "revision-guidance",
+                          "name": "revisionGuidance"
+                        },
+                        {
+                          "id": "preserve-json",
+                          "name": "preserveJson"
+                        }
+                      ],
+                      "assembly": {
+                        "type": "NORMAL_CHAT",
+                        "history": "RECENT_TARGET",
+                        "placement": {
+                          "type": "AFTER_CONTEXT",
+                          "role": "SYSTEM"
+                        }
+                      },
+                      "outputSchema": {
+                        "type": "object",
+                        "properties": {
+                          "response": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "required": ["response"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "mark-accepted",
+                    "type": "data.javascript",
+                    "position": {
+                      "x": 1400,
+                      "y": 500
+                    },
+                    "data": {
+                      "code": "return { ...inputs.accumulator, accepted: true };",
+                      "inputs": [
+                        {
+                          "id": "accumulator",
+                          "name": "accumulator",
+                          "schema": {
+                            "type": "object",
+                            "properties": {
+                              "candidate": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "accepted": {
+                                "type": "boolean"
+                              },
+                              "revisionCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 3
+                              }
+                            },
+                            "required": ["candidate", "accepted", "revisionCount"],
+                            "additionalProperties": false
+                          }
+                        }
+                      ],
+                      "outputSchema": {
+                        "type": "object",
+                        "properties": {
+                          "candidate": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "accepted": {
+                            "type": "boolean"
+                          },
+                          "revisionCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 3
+                          }
+                        },
+                        "required": ["candidate", "accepted", "revisionCount"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "advance-candidate",
+                    "type": "data.javascript",
+                    "position": {
+                      "x": 1640,
+                      "y": 260
+                    },
+                    "data": {
+                      "code": "return { candidate: inputs.candidate, accepted: false, revisionCount: inputs.accumulator.revisionCount + 1 };",
+                      "inputs": [
+                        {
+                          "id": "accumulator",
+                          "name": "accumulator",
+                          "schema": {
+                            "type": "object",
+                            "properties": {
+                              "candidate": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "accepted": {
+                                "type": "boolean"
+                              },
+                              "revisionCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 3
+                              }
+                            },
+                            "required": ["candidate", "accepted", "revisionCount"],
+                            "additionalProperties": false
+                          }
+                        },
+                        {
+                          "id": "candidate",
+                          "name": "candidate",
+                          "schema": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      ],
+                      "outputSchema": {
+                        "type": "object",
+                        "properties": {
+                          "candidate": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "accepted": {
+                            "type": "boolean"
+                          },
+                          "revisionCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 3
+                          }
+                        },
+                        "required": ["candidate", "accepted", "revisionCount"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "merge-iteration-result",
+                    "type": "control.merge-any",
+                    "position": {
+                      "x": 1900,
+                      "y": 0
+                    },
+                    "data": {
+                      "inputs": [
+                        {
+                          "id": "skip",
+                          "label": "Already accepted",
+                          "carriesValue": true
+                        },
+                        {
+                          "id": "accepted",
+                          "label": "Accepted now",
+                          "carriesValue": true
+                        },
+                        {
+                          "id": "revised",
+                          "label": "Revised candidate",
+                          "carriesValue": true
+                        },
+                        {
+                          "id": "exhausted",
+                          "label": "Rejected final candidate",
+                          "carriesValue": true
+                        }
+                      ]
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "iteration-return",
+                    "type": "scope.return",
+                    "position": {
+                      "x": 2140,
+                      "y": 0
+                    },
+                    "data": {},
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "assert-revision-available",
+                    "type": "data.assert",
+                    "position": {
+                      "x": 1160,
+                      "y": 600
+                    },
+                    "data": {
+                      "schema": {
+                        "type": "boolean"
+                      }
+                    },
+                    "inputValues": {}
+                  },
+                  {
+                    "id": "assert-iteration-result",
+                    "type": "data.assert",
+                    "position": {
+                      "x": 2020,
+                      "y": 180
+                    },
+                    "data": {
+                      "schema": {
+                        "type": "object",
+                        "properties": {
+                          "candidate": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "accepted": {
+                            "type": "boolean"
+                          },
+                          "revisionCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 3
+                          }
+                        },
+                        "required": ["candidate", "accepted", "revisionCount"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "inputValues": {}
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "control-entry-accepted",
+                    "kind": "CONTROL",
+                    "source": {
+                      "nodeId": "iteration-entry",
+                      "portId": "out"
+                    },
+                    "target": {
+                      "nodeId": "already-accepted",
+                      "portId": "in"
+                    }
+                  },
+                  {
+                    "id": "data-entry-candidate",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "iteration-entry",
+                      "portId": "accumulator"
+                    },
+                    "target": {
+                      "nodeId": "accumulator-candidate",
+                      "portId": "value"
+                    }
+                  },
+                  {
+                    "id": "data-entry-accepted",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "iteration-entry",
+                      "portId": "accumulator"
+                    },
+                    "target": {
+                      "nodeId": "accumulator-accepted",
+                      "portId": "value"
+                    }
+                  },
+                  {
+                    "id": "data-accepted-branch",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "accumulator-accepted",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "already-accepted",
+                      "portId": "condition.yes"
+                    }
+                  },
+                  {
+                    "id": "control-skip-merge",
+                    "kind": "CONTROL",
+                    "source": {
+                      "nodeId": "already-accepted",
+                      "portId": "case.yes"
+                    },
+                    "target": {
+                      "nodeId": "merge-iteration-result",
+                      "portId": "in.skip"
+                    }
+                  },
+                  {
+                    "id": "data-skip-merge",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "iteration-entry",
+                      "portId": "accumulator"
+                    },
+                    "target": {
+                      "nodeId": "merge-iteration-result",
+                      "portId": "value.skip"
+                    }
+                  },
+                  {
+                    "id": "control-evaluate",
+                    "kind": "CONTROL",
+                    "source": {
+                      "nodeId": "already-accepted",
+                      "portId": "else"
+                    },
+                    "target": {
+                      "nodeId": "evaluate-candidate",
+                      "portId": "in"
+                    }
+                  },
+                  {
+                    "id": "data-history-repetition",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "history-transcript",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "repetition-report",
+                      "portId": "input.transcript"
+                    }
+                  },
+                  {
+                    "id": "data-candidate-repetition",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "accumulator-candidate",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "repetition-report",
+                      "portId": "input.candidate"
+                    }
+                  },
+                  {
+                    "id": "data-tracked-repetition",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "tracked-phrases",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "repetition-report",
+                      "portId": "input.tracked-phrases"
+                    }
+                  },
+                  {
+                    "id": "data-candidate-evaluate",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "accumulator-candidate",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "evaluate-candidate",
+                      "portId": "variable.current-response"
+                    }
+                  },
+                  {
+                    "id": "data-repetition-evaluate",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "repetition-report",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "evaluate-candidate",
+                      "portId": "variable.repetition-report"
+                    }
+                  },
+                  {
+                    "id": "data-profile-evaluate",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "profile",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "evaluate-candidate",
+                      "portId": "connectionProfileId"
+                    }
+                  },
+                  {
+                    "id": "data-format-evaluate",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "format",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "evaluate-candidate",
+                      "portId": "structuredFormat"
+                    }
+                  },
+                  {
+                    "id": "data-count-evaluate",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "history-count",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "evaluate-candidate",
+                      "portId": "historyCount"
+                    }
+                  },
+                  {
+                    "id": "control-evaluate-retry",
+                    "kind": "CONTROL",
+                    "source": {
+                      "nodeId": "evaluate-candidate",
+                      "portId": "out"
+                    },
+                    "target": {
+                      "nodeId": "retry-candidate",
+                      "portId": "in"
+                    }
+                  },
+                  {
+                    "id": "data-checks-decision",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "evaluate-candidate",
+                      "portId": "property/checks"
+                    },
+                    "target": {
+                      "nodeId": "compute-retry",
+                      "portId": "input.checks"
+                    }
+                  },
+                  {
+                    "id": "data-scores-decision",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "evaluate-candidate",
+                      "portId": "property/scores"
+                    },
+                    "target": {
+                      "nodeId": "compute-retry",
+                      "portId": "input.scores"
+                    }
+                  },
+                  {
+                    "id": "data-decision-retry",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "compute-retry",
+                      "portId": "property/retry"
+                    },
+                    "target": {
+                      "nodeId": "retry-candidate",
+                      "portId": "condition.yes"
+                    }
+                  },
+                  {
+                    "id": "control-accepted-merge",
+                    "kind": "CONTROL",
+                    "source": {
+                      "nodeId": "retry-candidate",
+                      "portId": "else"
+                    },
+                    "target": {
+                      "nodeId": "merge-iteration-result",
+                      "portId": "in.accepted"
+                    }
+                  },
+                  {
+                    "id": "data-entry-mark-accepted",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "iteration-entry",
+                      "portId": "accumulator"
+                    },
+                    "target": {
+                      "nodeId": "mark-accepted",
+                      "portId": "input.accumulator"
+                    }
+                  },
+                  {
+                    "id": "data-accepted-merge",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "mark-accepted",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "merge-iteration-result",
+                      "portId": "value.accepted"
+                    }
+                  },
+                  {
+                    "id": "control-retry-can-revise",
+                    "kind": "CONTROL",
+                    "source": {
+                      "nodeId": "retry-candidate",
+                      "portId": "case.yes"
+                    },
+                    "target": {
+                      "nodeId": "can-revise",
+                      "portId": "in"
+                    }
+                  },
+                  {
+                    "id": "data-item-can-revise",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "iteration-entry",
+                      "portId": "item"
+                    },
+                    "target": {
+                      "nodeId": "assert-revision-available",
+                      "portId": "value"
+                    }
+                  },
+                  {
+                    "id": "data-preserve-serialize",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "evaluate-candidate",
+                      "portId": "property/preserve"
+                    },
+                    "target": {
+                      "nodeId": "serialize-preserve",
+                      "portId": "input.preserve"
+                    }
+                  },
+                  {
+                    "id": "control-revise",
+                    "kind": "CONTROL",
+                    "source": {
+                      "nodeId": "can-revise",
+                      "portId": "case.yes"
+                    },
+                    "target": {
+                      "nodeId": "revise-candidate",
+                      "portId": "in"
+                    }
+                  },
+                  {
+                    "id": "data-candidate-revise",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "accumulator-candidate",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "revise-candidate",
+                      "portId": "variable.current-response"
+                    }
+                  },
+                  {
+                    "id": "data-guidance-revise",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "evaluate-candidate",
+                      "portId": "property/revision_guidance"
+                    },
+                    "target": {
+                      "nodeId": "revise-candidate",
+                      "portId": "variable.revision-guidance"
+                    }
+                  },
+                  {
+                    "id": "data-preserve-revise",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "serialize-preserve",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "revise-candidate",
+                      "portId": "variable.preserve-json"
+                    }
+                  },
+                  {
+                    "id": "data-profile-revise",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "profile",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "revise-candidate",
+                      "portId": "connectionProfileId"
+                    }
+                  },
+                  {
+                    "id": "data-format-revise",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "format",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "revise-candidate",
+                      "portId": "structuredFormat"
+                    }
+                  },
+                  {
+                    "id": "data-count-revise",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "history-count",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "revise-candidate",
+                      "portId": "historyCount"
+                    }
+                  },
+                  {
+                    "id": "control-revised-merge",
+                    "kind": "CONTROL",
+                    "source": {
+                      "nodeId": "revise-candidate",
+                      "portId": "out"
+                    },
+                    "target": {
+                      "nodeId": "merge-iteration-result",
+                      "portId": "in.revised"
+                    }
+                  },
+                  {
+                    "id": "data-entry-advance",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "iteration-entry",
+                      "portId": "accumulator"
+                    },
+                    "target": {
+                      "nodeId": "advance-candidate",
+                      "portId": "input.accumulator"
+                    }
+                  },
+                  {
+                    "id": "data-revision-advance",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "revise-candidate",
+                      "portId": "property/response"
+                    },
+                    "target": {
+                      "nodeId": "advance-candidate",
+                      "portId": "input.candidate"
+                    }
+                  },
+                  {
+                    "id": "data-revised-merge",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "advance-candidate",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "merge-iteration-result",
+                      "portId": "value.revised"
+                    }
+                  },
+                  {
+                    "id": "control-exhausted-merge",
+                    "kind": "CONTROL",
+                    "source": {
+                      "nodeId": "can-revise",
+                      "portId": "else"
+                    },
+                    "target": {
+                      "nodeId": "merge-iteration-result",
+                      "portId": "in.exhausted"
+                    }
+                  },
+                  {
+                    "id": "data-exhausted-merge",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "iteration-entry",
+                      "portId": "accumulator"
+                    },
+                    "target": {
+                      "nodeId": "merge-iteration-result",
+                      "portId": "value.exhausted"
+                    }
+                  },
+                  {
+                    "id": "control-merge-return",
+                    "kind": "CONTROL",
+                    "source": {
+                      "nodeId": "merge-iteration-result",
+                      "portId": "out"
+                    },
+                    "target": {
+                      "nodeId": "iteration-return",
+                      "portId": "in"
+                    }
+                  },
+                  {
+                    "id": "data-merge-return",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "merge-iteration-result",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "assert-iteration-result",
+                      "portId": "value"
+                    }
+                  },
+                  {
+                    "id": "data-assert-can-revise",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "assert-revision-available",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "can-revise",
+                      "portId": "condition.yes"
+                    }
+                  },
+                  {
+                    "id": "data-assert-result-return",
+                    "kind": "DATA",
+                    "source": {
+                      "nodeId": "assert-iteration-result",
+                      "portId": "value"
+                    },
+                    "target": {
+                      "nodeId": "iteration-return",
+                      "portId": "accumulator"
+                    }
+                  }
+                ]
+              }
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "final-outcome",
+            "type": "data.javascript",
+            "position": {
+              "x": 820,
+              "y": 260
+            },
+            "data": {
+              "code": "return { failed: !inputs.accumulator.accepted, replace: inputs.accumulator.accepted && inputs.accumulator.revisionCount > 0, candidate: inputs.accumulator.candidate };",
+              "inputs": [
+                {
+                  "id": "accumulator",
+                  "name": "accumulator",
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "candidate": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "accepted": {
+                        "type": "boolean"
+                      },
+                      "revisionCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 3
+                      }
+                    },
+                    "required": ["candidate", "accepted", "revisionCount"],
+                    "additionalProperties": false
+                  }
+                }
+              ],
+              "outputSchema": {
+                "type": "object",
+                "properties": {
+                  "failed": {
+                    "type": "boolean"
+                  },
+                  "replace": {
+                    "type": "boolean"
+                  },
+                  "candidate": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": ["failed", "replace", "candidate"],
+                "additionalProperties": false
+              }
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "route-outcome",
+            "type": "control.branch",
+            "position": {
+              "x": 1040,
+              "y": 0
+            },
+            "data": {
+              "cases": [
+                {
+                  "id": "failed",
+                  "label": "All candidates rejected"
+                },
+                {
+                  "id": "replace",
+                  "label": "Accepted revision"
+                }
+              ]
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "replace-target",
+            "type": "effect.visible-message",
+            "position": {
+              "x": 1300,
+              "y": 0
+            },
+            "data": {
+              "operation": "REPLACE_TARGET"
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "final-rejection-error",
+            "type": "data.javascript",
+            "position": {
+              "x": 1300,
+              "y": 300
+            },
+            "data": {
+              "code": "throw new Error(\"Roleplay quality gate rejected the original response and all three revisions.\");",
+              "inputs": [],
+              "outputSchema": {
+                "type": "string"
+              }
+            },
+            "inputValues": {}
+          },
+          {
+            "id": "surface-final-rejection",
+            "type": "effect.visible-message",
+            "position": {
+              "x": 1540,
+              "y": 300
+            },
+            "data": {
+              "operation": "REPLACE_TARGET"
+            },
+            "inputValues": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "control-trigger-loop",
+            "kind": "CONTROL",
+            "source": {
+              "nodeId": "after-generation",
+              "portId": "out"
+            },
+            "target": {
+              "nodeId": "quality-attempts",
+              "portId": "in"
+            }
+          },
+          {
+            "id": "data-trigger-content",
+            "kind": "DATA",
+            "source": {
+              "nodeId": "after-generation",
+              "portId": "message"
+            },
+            "target": {
+              "nodeId": "message-content",
+              "portId": "value"
+            }
+          },
+          {
+            "id": "data-content-initial",
+            "kind": "DATA",
+            "source": {
+              "nodeId": "message-content",
+              "portId": "value"
+            },
+            "target": {
+              "nodeId": "initial-candidate",
+              "portId": "input.candidate"
+            }
+          },
+          {
+            "id": "data-attempts-loop",
+            "kind": "DATA",
+            "source": {
+              "nodeId": "attempts",
+              "portId": "value"
+            },
+            "target": {
+              "nodeId": "quality-attempts",
+              "portId": "items"
+            }
+          },
+          {
+            "id": "data-initial-loop",
+            "kind": "DATA",
+            "source": {
+              "nodeId": "initial-candidate",
+              "portId": "value"
+            },
+            "target": {
+              "nodeId": "quality-attempts",
+              "portId": "initialAccumulator"
+            }
+          },
+          {
+            "id": "control-loop-outcome",
+            "kind": "CONTROL",
+            "source": {
+              "nodeId": "quality-attempts",
+              "portId": "out"
+            },
+            "target": {
+              "nodeId": "route-outcome",
+              "portId": "in"
+            }
+          },
+          {
+            "id": "data-loop-outcome",
+            "kind": "DATA",
+            "source": {
+              "nodeId": "quality-attempts",
+              "portId": "accumulator"
+            },
+            "target": {
+              "nodeId": "final-outcome",
+              "portId": "input.accumulator"
+            }
+          },
+          {
+            "id": "data-failed-outcome",
+            "kind": "DATA",
+            "source": {
+              "nodeId": "final-outcome",
+              "portId": "property/failed"
+            },
+            "target": {
+              "nodeId": "route-outcome",
+              "portId": "condition.failed"
+            }
+          },
+          {
+            "id": "data-replace-outcome",
+            "kind": "DATA",
+            "source": {
+              "nodeId": "final-outcome",
+              "portId": "property/replace"
+            },
+            "target": {
+              "nodeId": "route-outcome",
+              "portId": "condition.replace"
+            }
+          },
+          {
+            "id": "control-replace",
+            "kind": "CONTROL",
+            "source": {
+              "nodeId": "route-outcome",
+              "portId": "case.replace"
+            },
+            "target": {
+              "nodeId": "replace-target",
+              "portId": "in"
+            }
+          },
+          {
+            "id": "data-replace-content",
+            "kind": "DATA",
+            "source": {
+              "nodeId": "final-outcome",
+              "portId": "property/candidate"
+            },
+            "target": {
+              "nodeId": "replace-target",
+              "portId": "content"
+            }
+          },
+          {
+            "id": "control-failed",
+            "kind": "CONTROL",
+            "source": {
+              "nodeId": "route-outcome",
+              "portId": "case.failed"
+            },
+            "target": {
+              "nodeId": "surface-final-rejection",
+              "portId": "in"
+            }
+          },
+          {
+            "id": "data-failed-error",
+            "kind": "DATA",
+            "source": {
+              "nodeId": "final-rejection-error",
+              "portId": "value"
+            },
+            "target": {
+              "nodeId": "surface-final-rejection",
+              "portId": "content"
+            }
+          }
+        ]
+      }
+    ],
+    "views": []
+  }
+}

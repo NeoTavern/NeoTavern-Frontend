@@ -305,6 +305,7 @@ describe('Sequential Roleplay Response Editor preset', () => {
       'builtin-mythic',
       'builtin-narrative-momentum-director',
       'builtin-sequential-roleplay-response-editor',
+      'builtin-scored-roleplay-quality-gate',
     ]);
     first[2]!.agent.name = 'changed';
     first[2]!.agent.configurationDefaults.simulationPrompt = 'changed';

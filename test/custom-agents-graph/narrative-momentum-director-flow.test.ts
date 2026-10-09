@@ -270,6 +270,7 @@ describe('Narrative Momentum Director preset', () => {
       'builtin-mythic',
       'builtin-narrative-momentum-director',
       'builtin-sequential-roleplay-response-editor',
+      'builtin-scored-roleplay-quality-gate',
     ]);
     first[1]!.agent.name = 'changed';
     (first[1]!.agent.configurationDefaults.influences as JsonValue[])[0] = 'changed';
