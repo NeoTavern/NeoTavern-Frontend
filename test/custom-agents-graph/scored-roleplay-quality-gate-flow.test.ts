@@ -105,7 +105,7 @@ describe('Scored Roleplay Quality Gate preset', () => {
     expect(preset.agent.flows[0]!.nodes.filter((node) => node.type === 'control.for-each')).toHaveLength(1);
     expect(bodyNodes.filter((node) => node.type === 'llm.request')).toHaveLength(2);
     expect(bodyNodes.filter((node) => node.type === 'data.template')).toHaveLength(1);
-    expect(bodyNodes.filter((node) => node.type === 'data.javascript')).toHaveLength(5);
+    expect(bodyNodes.filter((node) => node.type === 'data.javascript')).toHaveLength(6);
   });
 
   it('renders chat history into a deterministic JavaScript input transcript', () => {
@@ -120,6 +120,24 @@ describe('Scored Roleplay Quality Gate preset', () => {
       ],
     });
     expect(rendered).toBe('\u001euser\u001fUser text.\u001eassistant\u001fAssistant text.');
+  });
+
+  it('structurally excludes the visible target from evaluator history', async () => {
+    let evaluatorRequest: GraphLlmRequest | undefined;
+    const result = await run(
+      async (request) => {
+        evaluatorRequest = request;
+        return evaluation();
+      },
+      'Unique target draft.',
+      '\u001euser\u001fAccepted user turn.\u001eassistant\u001fAccepted assistant turn.\u001eassistant\u001fUnique target draft.',
+    );
+    expect(result.status).toBe('COMPLETED');
+    expect(evaluatorRequest!.assembly).toMatchObject({ type: 'NORMAL_CHAT', history: 'NONE' });
+    expect(evaluatorRequest!.variables.acceptedHistory).toBe(
+      'USER: Accepted user turn.\n\nASSISTANT: Accepted assistant turn.',
+    );
+    expect(evaluatorRequest!.variables.acceptedHistory).not.toContain('Unique target draft.');
   });
 
   it('keeps only the longest overlapping repeated n-gram for one candidate occurrence', async () => {
@@ -241,6 +259,18 @@ describe('Scored Roleplay Quality Gate preset', () => {
     expect(defaults.recentHistoryCount).toBe(30);
     expect(defaults.evaluatorPrompt).toContain('Do not decide whether the benchmark retries');
     expect(defaults.evaluatorPrompt).toContain('Merely avoiding a defect earns at most 3');
+    expect(defaults.evaluatorPrompt).toContain(
+      'The original generated target and every rejected revision are excluded',
+    );
+    expect(defaults.evaluatorPrompt).toContain(
+      'Do not penalize a candidate for preserving compliant material from a rejected draft',
+    );
+    expect(defaults.revisionPrompt).toContain(
+      'The original generated target and every rejected revision are excluded and are not canon',
+    );
+    expect(defaults.revisionPrompt).toContain(
+      'The separately labeled Rejected response is the current candidate to repair',
+    );
     expect(defaults.revisionPrompt).toContain('Make only the minimum changes needed');
     expect(getGraphAgentTemplates().map((item) => item.agent.id)).toEqual([
       'builtin-mythic',
