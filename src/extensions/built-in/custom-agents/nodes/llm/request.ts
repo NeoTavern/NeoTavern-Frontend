@@ -14,7 +14,7 @@ const placement = z.discriminatedUnion('type', [
 const assembly = z.discriminatedUnion('type', [
   z.strictObject({
     type: z.literal('NORMAL_CHAT'),
-    history: z.enum(['NONE', 'FULL_CURRENT', 'FULL_TARGET', 'RECENT_CURRENT', 'RECENT_TARGET']),
+    history: z.enum(['NONE', 'FULL_CURRENT', 'FULL_TARGET', 'FULL_BEFORE_TARGET', 'RECENT_CURRENT', 'RECENT_TARGET']),
     placement,
   }),
   z.strictObject({ type: z.literal('STANDALONE'), role: z.enum(['SYSTEM', 'USER']) }),
@@ -79,7 +79,14 @@ export const llmRequestNodeDefinition = defineNode<RequestData>({
             path: 'assembly.history',
             labelKey: 'history',
             control: 'SELECT' as const,
-            options: ['NONE', 'FULL_CURRENT', 'FULL_TARGET', 'RECENT_CURRENT', 'RECENT_TARGET'].map((value) => ({
+            options: [
+              'NONE',
+              'FULL_CURRENT',
+              'FULL_TARGET',
+              'FULL_BEFORE_TARGET',
+              'RECENT_CURRENT',
+              'RECENT_TARGET',
+            ].map((value) => ({
               labelKey: value,
               value,
             })),

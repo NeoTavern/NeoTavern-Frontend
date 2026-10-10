@@ -2546,6 +2546,7 @@ export interface MessageSchema {
         CREATE: string;
         EVERY_N_EVENTS: string;
         FOR_N_GENERATIONS: string;
+        FULL_BEFORE_TARGET: string;
         FULL_CURRENT: string;
         FULL_TARGET: string;
         IN_CHAT: string;

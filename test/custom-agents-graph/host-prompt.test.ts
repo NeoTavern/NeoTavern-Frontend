@@ -100,6 +100,29 @@ describe('graph prompt host capabilities', () => {
     expect(mock.generate.mock.calls[0]![1]).toMatchObject({ generationId: 'request-1', captureMessageIndex: 1 });
   });
 
+  it('uses the normal generation history prefix without the generated target', async () => {
+    const mock = api();
+    const dispatcher = new GraphHostLlmDispatcher(mock.host);
+    await expect(
+      dispatcher.dispatch(
+        request({
+          assembly: {
+            type: 'NORMAL_CHAT',
+            history: 'FULL_BEFORE_TARGET',
+            placement: { type: 'AFTER_CONTEXT', role: 'SYSTEM' },
+          },
+        }),
+      ),
+    ).resolves.toEqual({});
+
+    const built = mock.buildPrompt.mock.calls[0]![0];
+    expect(built.chatHistory.map((item: ChatMessage) => item.mes)).toEqual(['first']);
+    expect(mock.generate.mock.calls[0]![0]).toEqual([
+      { role: 'system', name: 'World', content: 'world' },
+      { role: 'system', name: 'Custom Agent', content: 'scene/4/first' },
+    ]);
+  });
+
   it('bounds RECENT_TARGET after adding the selected target and retains its original event index', async () => {
     const runtime = builtinNodeRegistry.get('llm.request')?.runtime;
     if (!runtime || runtime.kind !== 'EXECUTOR') throw new Error('llm.request executor is unavailable');

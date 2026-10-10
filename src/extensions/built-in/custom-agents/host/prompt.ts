@@ -44,11 +44,13 @@ function targetMessage(target: MessageValue, source?: ChatMessage): ChatMessage 
 
 function selectHistory(request: GraphLlmRequest): ChatMessage[] {
   if (request.assembly.type === 'STANDALONE' || request.assembly.history === 'NONE') return [];
-  const targetHistory = request.assembly.history.endsWith('_TARGET');
+  const beforeTargetHistory = request.assembly.history === 'FULL_BEFORE_TARGET';
+  const targetHistory = beforeTargetHistory || request.assembly.history.endsWith('_TARGET');
   const target = targetHistory ? request.promptContext.targetMessage : undefined;
   if (targetHistory && !target) throw new Error('TARGET history requires a target message');
   let selected = [...request.promptContext.chatHistory];
   if (target) {
+    if (beforeTargetHistory) return selected.slice(0, target.index);
     selected = selected.slice(0, target.index + 1);
     if (target.index < selected.length)
       selected = selected.map((message, index) => (index === target.index ? targetMessage(target, message) : message));

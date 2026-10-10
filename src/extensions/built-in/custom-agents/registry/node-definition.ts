@@ -100,7 +100,7 @@ export type GraphLlmPlacement =
 export type GraphLlmAssembly =
   | {
       type: 'NORMAL_CHAT';
-      history: 'NONE' | 'FULL_CURRENT' | 'FULL_TARGET' | 'RECENT_CURRENT' | 'RECENT_TARGET';
+      history: 'NONE' | 'FULL_CURRENT' | 'FULL_TARGET' | 'FULL_BEFORE_TARGET' | 'RECENT_CURRENT' | 'RECENT_TARGET';
       placement: GraphLlmPlacement;
     }
   | { type: 'STANDALONE'; role: 'SYSTEM' | 'USER' };

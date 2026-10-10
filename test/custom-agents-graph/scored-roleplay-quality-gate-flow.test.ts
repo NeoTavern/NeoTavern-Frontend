@@ -105,7 +105,7 @@ describe('Scored Roleplay Quality Gate preset', () => {
     expect(preset.agent.flows[0]!.nodes.filter((node) => node.type === 'control.for-each')).toHaveLength(1);
     expect(bodyNodes.filter((node) => node.type === 'llm.request')).toHaveLength(2);
     expect(bodyNodes.filter((node) => node.type === 'data.template')).toHaveLength(1);
-    expect(bodyNodes.filter((node) => node.type === 'data.javascript')).toHaveLength(6);
+    expect(bodyNodes.filter((node) => node.type === 'data.javascript')).toHaveLength(5);
   });
 
   it('renders chat history into a deterministic JavaScript input transcript', () => {
@@ -122,7 +122,7 @@ describe('Scored Roleplay Quality Gate preset', () => {
     expect(rendered).toBe('\u001euser\u001fUser text.\u001eassistant\u001fAssistant text.');
   });
 
-  it('structurally excludes the visible target from evaluator history', async () => {
+  it('requests full pre-target history without embedding or canonizing the visible target', async () => {
     let evaluatorRequest: GraphLlmRequest | undefined;
     const result = await run(
       async (request) => {
@@ -133,11 +133,9 @@ describe('Scored Roleplay Quality Gate preset', () => {
       '\u001euser\u001fAccepted user turn.\u001eassistant\u001fAccepted assistant turn.\u001eassistant\u001fUnique target draft.',
     );
     expect(result.status).toBe('COMPLETED');
-    expect(evaluatorRequest!.assembly).toMatchObject({ type: 'NORMAL_CHAT', history: 'NONE' });
-    expect(evaluatorRequest!.variables.acceptedHistory).toBe(
-      'USER: Accepted user turn.\n\nASSISTANT: Accepted assistant turn.',
-    );
-    expect(evaluatorRequest!.variables.acceptedHistory).not.toContain('Unique target draft.');
+    expect(evaluatorRequest!.assembly).toMatchObject({ type: 'NORMAL_CHAT', history: 'FULL_BEFORE_TARGET' });
+    expect(evaluatorRequest!.variables).not.toHaveProperty('acceptedHistory');
+    expect(evaluatorRequest!.variables.currentResponse).toBe('Unique target draft.');
   });
 
   it('keeps only the longest overlapping repeated n-gram for one candidate occurrence', async () => {
@@ -198,6 +196,7 @@ describe('Scored Roleplay Quality Gate preset', () => {
     });
     expect(repetitionReport.note).toBeUndefined();
     expect(repetitionReport.items.every((item) => item.history_assistant_turns === undefined)).toBe(true);
+    expect(requests[1]!.assembly).toMatchObject({ type: 'NORMAL_CHAT', history: 'FULL_BEFORE_TARGET' });
     expect(requests[1]!.variables).toMatchObject({
       currentResponse: 'Draft response.',
       revisionGuidance: 'Remove the repeated beat and advance once.',
@@ -254,9 +253,35 @@ describe('Scored Roleplay Quality Gate preset', () => {
     expect(result.error).toContain('rejected the original response and all three revisions');
   });
 
+  it('keeps stable instructions before candidate-specific prompt data', () => {
+    const defaults = preset.agent.configurationDefaults;
+    const evaluatorPrompt = defaults.evaluatorPrompt as string;
+    const revisionPrompt = defaults.revisionPrompt as string;
+
+    expect(evaluatorPrompt).not.toContain('{{{input.acceptedHistory}}}');
+    expect(evaluatorPrompt).toContain('conversation messages before this instruction');
+    expect(evaluatorPrompt.indexOf('Return exactly this shape')).toBeLessThan(
+      evaluatorPrompt.indexOf('{{{input.repetitionReport}}}'),
+    );
+    expect(evaluatorPrompt.indexOf('{{{input.repetitionReport}}}')).toBeLessThan(
+      evaluatorPrompt.indexOf('{{{input.currentResponse}}}'),
+    );
+
+    expect(revisionPrompt).not.toContain('{{{input.acceptedHistory}}}');
+    expect(revisionPrompt).toContain('conversation messages before this instruction');
+    expect(revisionPrompt.indexOf('Make only the minimum changes needed')).toBeLessThan(
+      revisionPrompt.indexOf('{{{input.revisionGuidance}}}'),
+    );
+    expect(revisionPrompt.indexOf('{{{input.revisionGuidance}}}')).toBeLessThan(
+      revisionPrompt.indexOf('{{{input.preserveJson}}}'),
+    );
+    expect(revisionPrompt.indexOf('{{{input.preserveJson}}}')).toBeLessThan(
+      revisionPrompt.indexOf('{{{input.currentResponse}}}'),
+    );
+  });
+
   it('keeps the evaluator responsible only for evidence and registers the template fourth', () => {
     const defaults = preset.agent.configurationDefaults;
-    expect(defaults.recentHistoryCount).toBe(30);
     expect(defaults.evaluatorPrompt).toContain('Do not decide whether the benchmark retries');
     expect(defaults.evaluatorPrompt).toContain('Merely avoiding a defect earns at most 3');
     expect(defaults.evaluatorPrompt).toContain(

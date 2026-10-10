@@ -15,10 +15,6 @@
           "type": "string",
           "enum": ["NATIVE", "JSON", "XML"]
         },
-        "recentHistoryCount": {
-          "type": "integer",
-          "minimum": 1
-        },
         "evaluatorPrompt": {
           "type": "string",
           "minLength": 1
@@ -35,22 +31,14 @@
           }
         }
       },
-      "required": [
-        "connectionProfileId",
-        "structuredFormat",
-        "recentHistoryCount",
-        "trackedPhrases",
-        "evaluatorPrompt",
-        "revisionPrompt"
-      ],
+      "required": ["connectionProfileId", "structuredFormat", "trackedPhrases", "evaluatorPrompt", "revisionPrompt"],
       "additionalProperties": false
     },
     "configurationDefaults": {
       "connectionProfileId": "",
       "structuredFormat": "NATIVE",
-      "recentHistoryCount": 30,
-      "evaluatorPrompt": "You are a strict quality evaluator for third-person roleplay responses. Evaluate concrete hard violations and score narrative quality using the supplied recent conversation, candidate response, and mechanical repetition report. Return exactly one JSON object and no surrounding text. Do not rewrite the response. Do not decide whether the benchmark retries; report your assessment without considering downstream consequences.\n\nACCEPTED HISTORY\nThe Accepted conversation history below contains only established messages before the visible target. The original generated target and every rejected revision are excluded. Use only this section as conversation history and canon. Do not penalize a candidate for preserving compliant material from a rejected draft.\n\nAccepted conversation history:\n{{{input.acceptedHistory}}}\n\nHARD CHECKS\nCharacters represented by USER-role messages are controlled exclusively by the human. A user_agency_violation occurs when the candidate invents or continues that character's dialogue, decision, intention, opinion, private thought, emotion, or voluntary action that the latest user message did not establish. Direct physical consequences and information plainly available to that character's senses are allowed. Quoting or briefly referring to an action already present in the latest user message is allowed. Approaching with an object does not authorize completing a handoff: if Luke picks up a wrench and approaches Hazel, \"He puts it in her hand\" is a violation; Hazel may reach out or ask for it instead. A non-user character may guess, question, accuse, or misinterpret the user character's feelings, motives, history, or actions when the prose clearly presents it as that character's uncertain belief rather than confirming it as narrative fact.\n\nA role_or_format_leak occurs when the candidate exposes transcript labels such as a user-character label or Narrator:, discusses prompts or roleplay mechanics, leaks a planning checklist, or outputs commentary instead of remaining inside the fiction. Ordinary dialogue attribution in prose is allowed. In-fiction dialogue may naturally use words such as narrator, story, role, or prompt without becoming a format leak when the character refers to something inside the fictional world. An optional block in exactly this form is permitted after story prose and is not a format or response-contract violation: <details><summary>🧠 INTERNAL THOUGHTS</summary><br>- <b>[Non-user Character]</b> | Thoughts: [brief immediate private thought]<br></details>. It remains a violation if it contains the user character's private thoughts, unavailable knowledge, meta-commentary, or a planning checklist.\n\nA continuity_contradiction requires a direct, material contradiction of an explicit established fact that changes identity, location, injury, a scene-relevant possession, chronology, relationship state, stakes, or available actions. Do not flag incidental interchangeable descriptor drift that has no effect on the scene, such as calling established sneakers boots. Do not flag a detail merely because it is new, uncertain, or creatively inferred. A non-user character's dialogue may express a lie, mistake, uncertainty, accusation, incomplete recollection, or disputed interpretation that conflicts with canon; this is not itself a contradiction unless the narration or resulting action endorses the claim as objective fact.\n\nA knowledge_boundary_violation occurs when a non-user character demonstrably acts on private or unavailable information as established fact. Reasonable observation and inference are allowed.\n\nA response_contract_violation occurs when the response is empty, materially incomplete, not primarily in-fiction prose, or contains prohibited structural material. Do not use it as a catch-all quality judgment.\n\nSCORED DIMENSIONS\nScore each dimension independently from 0 to 4. A 4 is exceptional and requires concrete positive evidence. Merely avoiding a defect earns at most 3. Do not inflate a score because the response is generally competent, and do not lower a score merely because the response is imperfect.\n\ncharacter_relationship_continuity:\n4 = creates meaningful new trust, intimacy, conflict development, or character revelation while remaining consistent;\n3 = naturally preserves accumulated characterization and relationship state;\n2 = noticeably reuses a familiar defense or interaction pattern without fully resetting development;\n1 = materially resets trust, boundaries, resolved conflict, or emotional development without a new cause;\n0 = fundamentally replaces the established character or relationship.\n\nprogression_causality:\n4 = materially changes goals, stakes, information, location, relationship, or available choices through clear causality;\n3 = completes a useful supporting action or modest forward beat;\n2 = extends or repeats the current beat with little state change;\n1 = reopens a resolved beat, materially stalls on the same obstacle, or manufactures another version of the same dispute;\n0 = reverses or invalidates scene progress.\n\nprose_freshness_subtext:\n4 = uses distinctive, precise prose that is demonstrably fresh relative to recent assistant turns and trusts action and dialogue;\n3 = competent prose with only minor harmless recurrence;\n2 = contains a clearly noticeable repeated sentence frame, gesture, image, static detail, or explanation of already-clear subtext;\n1 = is dominated by recent prose machinery, near-duplicate sentences, or redundant explanation;\n0 = is substantially duplicated or templated.\n\npacing_interactivity:\n4 = is efficient, contains no materially removable section, and stops at an especially productive opening for the user;\n3 = is appropriately paced with only minor excess or compression;\n2 = contains a materially redundant, overextended, rushed, or over-completed section;\n1 = seriously stalls, repeats micro-decisions, or takes substantial control away from the interaction;\n0 = takes over the scene or fails to provide a playable response.\n\nCompare the candidate explicitly with the recent accepted assistant turns. For character/relationship and progression, distinguish preserving state from actually developing or changing it. For prose, look for semantic recurrence even when wording differs. For example, repeating a valve-wait scene, the same ambient drip, and the same \"you may leave / or stay\" offer in consecutive turns should normally score 2 for both progression and prose. A tracked word used in a different ordinary sense, such as pressing a towel flat rather than repeatedly describing a voice as flat, is not a prose defect.\n\nREPETITION REPORT\nThe repetition_report contains mechanical observations, not violations. Do not lower prose_freshness_subtext merely because a listed word or phrase appears frequently. Names, pronouns, dialogue attribution, necessary scene objects, technical terms, continuity anchors, deliberate rhetorical repetition, and details whose state materially changed often repeat legitimately. Treat repetition as a defect only when it is distinctive, unnecessary, replaceable, and repeated enough to make the prose templated, redundant, or stalled. Give more weight to repeated multiword phrases, sentence structures, gestures, images, explanations, and near-duplicate sentences than isolated words.\n\nCreative interpolation is allowed. Do not penalize coherent ordinary details merely because they were not previously stated. Do not reward generic polished prose over character-specific useful prose.\n\nOUTPUT RULES\nFor every hard check, violated true requires exact quoted evidence and a concise reason. When violated is false, evidence and reason may be null or may contain a concise explanation of why the check passes. Every score requires a concise reason. Scores 0, 1, and 4 require candidate_evidence: low scores must quote the defect, while 4 must cite the exceptional positive achievement. history_evidence should be supplied whenever the judgment depends on prior context. Scores 0, 1, or 2 require specific repair guidance. preserve must list compliant events, non-user actions, dialogue, details, and progression that should survive any revision; it may be empty when no defect exists. revision_guidance must be a concise complete-response revision instruction when any hard check is violated or any score is 0, 1, or 2, and null otherwise. Do not output a retry verdict.\n\nReturn exactly this shape: {\"checks\":{\"user_agency_violation\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null},\"role_or_format_leak\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null},\"continuity_contradiction\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null},\"knowledge_boundary_violation\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null},\"response_contract_violation\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null}},\"scores\":{\"character_relationship_continuity\":{\"score\":integer,\"candidate_evidence\":string|null,\"history_evidence\":string|null,\"reason\":string,\"repair\":string|null},\"progression_causality\":{\"score\":integer,\"candidate_evidence\":string|null,\"history_evidence\":string|null,\"reason\":string,\"repair\":string|null},\"prose_freshness_subtext\":{\"score\":integer,\"candidate_evidence\":string|null,\"history_evidence\":string|null,\"reason\":string,\"repair\":string|null},\"pacing_interactivity\":{\"score\":integer,\"candidate_evidence\":string|null,\"history_evidence\":string|null,\"reason\":string,\"repair\":string|null}},\"preserve\":[string],\"revision_guidance\":string|null}.\n\nMechanical repetition report:\n{{{input.repetitionReport}}}\n\nCandidate response:\n{{{input.currentResponse}}}",
-      "revisionPrompt": "You are performing one conservative quality repair on the assistant's latest roleplay response. Return one complete replacement response and nothing else.\n\nThe Accepted conversation history below contains only established messages before the visible target. The original generated target and every rejected revision are excluded and are not canon. The separately labeled Rejected response is the current candidate to repair. Treat it as a draft, not canon. Follow the revision guidance.\n\nAccepted conversation history:\n{{{input.acceptedHistory}}} Preserve every compliant event, non-user character action, dialogue exchange, useful detail, and scene advancement listed in the preservation data unless it depends on the defect. Make only the minimum changes needed. If a defective passage supports later valid material, repair the connection rather than deleting the later material. Never mention this evaluation or revision. Never add dialogue, decisions, thoughts, emotions, intentions, or voluntary actions for the user-controlled character.\n\nRevision guidance:\n{{{input.revisionGuidance}}}\n\nMaterial to preserve (JSON array):\n{{{input.preserveJson}}}\n\nRejected response:\n{{{input.currentResponse}}}",
+      "evaluatorPrompt": "You are a strict quality evaluator for third-person roleplay responses. Evaluate concrete hard violations and score narrative quality using the supplied recent conversation, candidate response, and mechanical repetition report. Return exactly one JSON object and no surrounding text. Do not rewrite the response. Do not decide whether the benchmark retries; report your assessment without considering downstream consequences.\n\nHARD CHECKS\nCharacters represented by USER-role messages are controlled exclusively by the human. A user_agency_violation occurs when the candidate invents or continues that character's dialogue, decision, intention, opinion, private thought, emotion, or voluntary action that the latest user message did not establish. Direct physical consequences and information plainly available to that character's senses are allowed. Quoting or briefly referring to an action already present in the latest user message is allowed. Approaching with an object does not authorize completing a handoff: if Luke picks up a wrench and approaches Hazel, \"He puts it in her hand\" is a violation; Hazel may reach out or ask for it instead. A non-user character may guess, question, accuse, or misinterpret the user character's feelings, motives, history, or actions when the prose clearly presents it as that character's uncertain belief rather than confirming it as narrative fact.\n\nA role_or_format_leak occurs when the candidate exposes transcript labels such as a user-character label or Narrator:, discusses prompts or roleplay mechanics, leaks a planning checklist, or outputs commentary instead of remaining inside the fiction. Ordinary dialogue attribution in prose is allowed. In-fiction dialogue may naturally use words such as narrator, story, role, or prompt without becoming a format leak when the character refers to something inside the fictional world. An optional block in exactly this form is permitted after story prose and is not a format or response-contract violation: <details><summary>🧠 INTERNAL THOUGHTS</summary><br>- <b>[Non-user Character]</b> | Thoughts: [brief immediate private thought]<br></details>. It remains a violation if it contains the user character's private thoughts, unavailable knowledge, meta-commentary, or a planning checklist.\n\nA continuity_contradiction requires a direct, material contradiction of an explicit established fact that changes identity, location, injury, a scene-relevant possession, chronology, relationship state, stakes, or available actions. Do not flag incidental interchangeable descriptor drift that has no effect on the scene, such as calling established sneakers boots. Do not flag a detail merely because it is new, uncertain, or creatively inferred. A non-user character's dialogue may express a lie, mistake, uncertainty, accusation, incomplete recollection, or disputed interpretation that conflicts with canon; this is not itself a contradiction unless the narration or resulting action endorses the claim as objective fact.\n\nA knowledge_boundary_violation occurs when a non-user character demonstrably acts on private or unavailable information as established fact. Reasonable observation and inference are allowed.\n\nA response_contract_violation occurs when the response is empty, materially incomplete, not primarily in-fiction prose, or contains prohibited structural material. Do not use it as a catch-all quality judgment.\n\nSCORED DIMENSIONS\nScore each dimension independently from 0 to 4. A 4 is exceptional and requires concrete positive evidence. Merely avoiding a defect earns at most 3. Do not inflate a score because the response is generally competent, and do not lower a score merely because the response is imperfect.\n\ncharacter_relationship_continuity:\n4 = creates meaningful new trust, intimacy, conflict development, or character revelation while remaining consistent;\n3 = naturally preserves accumulated characterization and relationship state;\n2 = noticeably reuses a familiar defense or interaction pattern without fully resetting development;\n1 = materially resets trust, boundaries, resolved conflict, or emotional development without a new cause;\n0 = fundamentally replaces the established character or relationship.\n\nprogression_causality:\n4 = materially changes goals, stakes, information, location, relationship, or available choices through clear causality;\n3 = completes a useful supporting action or modest forward beat;\n2 = extends or repeats the current beat with little state change;\n1 = reopens a resolved beat, materially stalls on the same obstacle, or manufactures another version of the same dispute;\n0 = reverses or invalidates scene progress.\n\nprose_freshness_subtext:\n4 = uses distinctive, precise prose that is demonstrably fresh relative to recent assistant turns and trusts action and dialogue;\n3 = competent prose with only minor harmless recurrence;\n2 = contains a clearly noticeable repeated sentence frame, gesture, image, static detail, or explanation of already-clear subtext;\n1 = is dominated by recent prose machinery, near-duplicate sentences, or redundant explanation;\n0 = is substantially duplicated or templated.\n\npacing_interactivity:\n4 = is efficient, contains no materially removable section, and stops at an especially productive opening for the user;\n3 = is appropriately paced with only minor excess or compression;\n2 = contains a materially redundant, overextended, rushed, or over-completed section;\n1 = seriously stalls, repeats micro-decisions, or takes substantial control away from the interaction;\n0 = takes over the scene or fails to provide a playable response.\n\nCompare the candidate explicitly with the recent accepted assistant turns. For character/relationship and progression, distinguish preserving state from actually developing or changing it. For prose, look for semantic recurrence even when wording differs. For example, repeating a valve-wait scene, the same ambient drip, and the same \"you may leave / or stay\" offer in consecutive turns should normally score 2 for both progression and prose. A tracked word used in a different ordinary sense, such as pressing a towel flat rather than repeatedly describing a voice as flat, is not a prose defect.\n\nREPETITION REPORT\nThe repetition_report contains mechanical observations, not violations. Do not lower prose_freshness_subtext merely because a listed word or phrase appears frequently. Names, pronouns, dialogue attribution, necessary scene objects, technical terms, continuity anchors, deliberate rhetorical repetition, and details whose state materially changed often repeat legitimately. Treat repetition as a defect only when it is distinctive, unnecessary, replaceable, and repeated enough to make the prose templated, redundant, or stalled. Give more weight to repeated multiword phrases, sentence structures, gestures, images, explanations, and near-duplicate sentences than isolated words.\n\nCreative interpolation is allowed. Do not penalize coherent ordinary details merely because they were not previously stated. Do not reward generic polished prose over character-specific useful prose.\n\nOUTPUT RULES\nFor every hard check, violated true requires exact quoted evidence and a concise reason. When violated is false, evidence and reason may be null or may contain a concise explanation of why the check passes. Every score requires a concise reason. Scores 0, 1, and 4 require candidate_evidence: low scores must quote the defect, while 4 must cite the exceptional positive achievement. history_evidence should be supplied whenever the judgment depends on prior context. Scores 0, 1, or 2 require specific repair guidance. preserve must list compliant events, non-user actions, dialogue, details, and progression that should survive any revision; it may be empty when no defect exists. revision_guidance must be a concise complete-response revision instruction when any hard check is violated or any score is 0, 1, or 2, and null otherwise. Do not output a retry verdict.\n\nReturn exactly this shape: {\"checks\":{\"user_agency_violation\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null},\"role_or_format_leak\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null},\"continuity_contradiction\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null},\"knowledge_boundary_violation\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null},\"response_contract_violation\":{\"violated\":boolean,\"evidence\":string|null,\"reason\":string|null}},\"scores\":{\"character_relationship_continuity\":{\"score\":integer,\"candidate_evidence\":string|null,\"history_evidence\":string|null,\"reason\":string,\"repair\":string|null},\"progression_causality\":{\"score\":integer,\"candidate_evidence\":string|null,\"history_evidence\":string|null,\"reason\":string,\"repair\":string|null},\"prose_freshness_subtext\":{\"score\":integer,\"candidate_evidence\":string|null,\"history_evidence\":string|null,\"reason\":string,\"repair\":string|null},\"pacing_interactivity\":{\"score\":integer,\"candidate_evidence\":string|null,\"history_evidence\":string|null,\"reason\":string,\"repair\":string|null}},\"preserve\":[string],\"revision_guidance\":string|null}.\n\nCONVERSATION HISTORY\nThe conversation messages before this instruction contain only established history before the visible target. The original generated target and every rejected revision are excluded. Treat only those preceding conversation messages as canon. Do not penalize a candidate for preserving compliant material from a rejected draft.\n\nMechanical repetition report:\n{{{input.repetitionReport}}}\n\nCandidate response:\n{{{input.currentResponse}}}",
+      "revisionPrompt": "You are performing one conservative quality repair on the assistant's latest roleplay response. Return one complete replacement response and nothing else.\n\nThe conversation messages before this instruction contain only established history before the visible target. The original generated target and every rejected revision are excluded and are not canon. The separately labeled Rejected response is the current candidate to repair. Treat it as a draft, not canon. Follow the revision guidance.\n\nPreserve every compliant event, non-user character action, dialogue exchange, useful detail, and scene advancement listed in the preservation data unless it depends on the defect. Make only the minimum changes needed. If a defective passage supports later valid material, repair the connection rather than deleting the later material. Never mention this evaluation or revision. Never add dialogue, decisions, thoughts, emotions, intentions, or voluntary actions for the user-controlled character.\n\nRevision guidance:\n{{{input.revisionGuidance}}}\n\nMaterial to preserve (JSON array):\n{{{input.preserveJson}}}\n\nRejected response:\n{{{input.currentResponse}}}",
       "trackedPhrases": []
     },
     "stateSchema": {
@@ -258,18 +246,6 @@
                     "inputValues": {}
                   },
                   {
-                    "id": "history-count",
-                    "type": "data.configuration",
-                    "position": {
-                      "x": 0,
-                      "y": 1140
-                    },
-                    "data": {
-                      "path": "recentHistoryCount"
-                    },
-                    "inputValues": {}
-                  },
-                  {
                     "id": "repetition-report",
                     "type": "data.javascript",
                     "position": {
@@ -328,15 +304,11 @@
                         {
                           "id": "repetition-report",
                           "name": "repetitionReport"
-                        },
-                        {
-                          "id": "accepted-history",
-                          "name": "acceptedHistory"
                         }
                       ],
                       "assembly": {
                         "type": "NORMAL_CHAT",
-                        "history": "NONE",
+                        "history": "FULL_BEFORE_TARGET",
                         "placement": {
                           "type": "AFTER_CONTEXT",
                           "role": "SYSTEM"
@@ -1202,15 +1174,11 @@
                         {
                           "id": "preserve-json",
                           "name": "preserveJson"
-                        },
-                        {
-                          "id": "accepted-history",
-                          "name": "acceptedHistory"
                         }
                       ],
                       "assembly": {
                         "type": "NORMAL_CHAT",
-                        "history": "NONE",
+                        "history": "FULL_BEFORE_TARGET",
                         "placement": {
                           "type": "AFTER_CONTEXT",
                           "role": "SYSTEM"
@@ -1433,38 +1401,6 @@
                         },
                         "required": ["candidate", "accepted", "revisionCount"],
                         "additionalProperties": false
-                      }
-                    },
-                    "inputValues": {}
-                  },
-                  {
-                    "id": "accepted-history",
-                    "type": "data.javascript",
-                    "position": {
-                      "x": 240,
-                      "y": 660
-                    },
-                    "data": {
-                      "code": "const records = inputs.transcript.split(\"\\u001e\").slice(1).map((record) => { const split = record.indexOf(\"\\u001f\"); return { role: record.slice(0, split), content: record.slice(split + 1) }; });\nif (records.length) records.pop();\nreturn records.slice(-inputs.historyCount).map((record) => `${record.role.toUpperCase()}: ${record.content}`).join(\"\\n\\n\");",
-                      "inputs": [
-                        {
-                          "id": "transcript",
-                          "name": "transcript",
-                          "schema": {
-                            "type": "string"
-                          }
-                        },
-                        {
-                          "id": "history-count",
-                          "name": "historyCount",
-                          "schema": {
-                            "type": "integer",
-                            "minimum": 1
-                          }
-                        }
-                      ],
-                      "outputSchema": {
-                        "type": "string"
                       }
                     },
                     "inputValues": {}
@@ -1949,54 +1885,6 @@
                     "target": {
                       "nodeId": "iteration-return",
                       "portId": "accumulator"
-                    }
-                  },
-                  {
-                    "id": "data-transcript-accepted-history",
-                    "kind": "DATA",
-                    "source": {
-                      "nodeId": "history-transcript",
-                      "portId": "value"
-                    },
-                    "target": {
-                      "nodeId": "accepted-history",
-                      "portId": "input.transcript"
-                    }
-                  },
-                  {
-                    "id": "data-count-accepted-history",
-                    "kind": "DATA",
-                    "source": {
-                      "nodeId": "history-count",
-                      "portId": "value"
-                    },
-                    "target": {
-                      "nodeId": "accepted-history",
-                      "portId": "input.history-count"
-                    }
-                  },
-                  {
-                    "id": "data-accepted-history-evaluate",
-                    "kind": "DATA",
-                    "source": {
-                      "nodeId": "accepted-history",
-                      "portId": "value"
-                    },
-                    "target": {
-                      "nodeId": "evaluate-candidate",
-                      "portId": "variable.accepted-history"
-                    }
-                  },
-                  {
-                    "id": "data-accepted-history-revise",
-                    "kind": "DATA",
-                    "source": {
-                      "nodeId": "accepted-history",
-                      "portId": "value"
-                    },
-                    "target": {
-                      "nodeId": "revise-candidate",
-                      "portId": "variable.accepted-history"
                     }
                   }
                 ]
