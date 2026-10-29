@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import type { GraphPreset, JsonObject, JsonValue } from '../../src/extensions/built-in/custom-agents/graph/contracts';
 import { GraphEditorStore } from '../../src/extensions/built-in/custom-agents/editor/editor-store';
@@ -20,9 +19,7 @@ import {
   validateInstalledPreset,
 } from '../../src/extensions/built-in/custom-agents/settings/store';
 import { getGraphAgentTemplates } from '../../src/extensions/built-in/custom-agents/settings/catalog';
-
-const fixture = (): GraphPreset =>
-  JSON.parse(fs.readFileSync('test/fixtures/custom-agents/minimal-observer.flow.json', 'utf8')) as GraphPreset;
+import { loadFlowFixture as fixture } from '../fixtures/custom-agents/load-fixture';
 
 function asObject(value: JsonValue | undefined): JsonObject {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected object');

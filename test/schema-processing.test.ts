@@ -68,24 +68,14 @@ describe('ensureAdditionalPropertiesFalse', () => {
     expect(result.properties.items.items.additionalProperties).toBe(false);
   });
 
-  it('should handle anyOf schemas', () => {
+  it.each(['anyOf', 'oneOf', 'allOf'] as const)('should handle %s schemas', (keyword) => {
     const schema = {
       type: 'object',
       properties: {
         data: {
-          anyOf: [
-            {
-              type: 'object',
-              properties: {
-                text: { type: 'string' },
-              },
-            },
-            {
-              type: 'object',
-              properties: {
-                number: { type: 'number' },
-              },
-            },
+          [keyword]: [
+            { type: 'object', properties: { text: { type: 'string' } } },
+            { type: 'object', properties: { number: { type: 'number' } } },
           ],
         },
       },
@@ -94,68 +84,8 @@ describe('ensureAdditionalPropertiesFalse', () => {
     const result = ensureAdditionalPropertiesFalse(schema);
 
     expect(result.additionalProperties).toBe(false);
-    expect(result.properties.data.anyOf[0].additionalProperties).toBe(false);
-    expect(result.properties.data.anyOf[1].additionalProperties).toBe(false);
-  });
-
-  it('should handle oneOf schemas', () => {
-    const schema = {
-      type: 'object',
-      properties: {
-        data: {
-          oneOf: [
-            {
-              type: 'object',
-              properties: {
-                text: { type: 'string' },
-              },
-            },
-            {
-              type: 'object',
-              properties: {
-                number: { type: 'number' },
-              },
-            },
-          ],
-        },
-      },
-    };
-
-    const result = ensureAdditionalPropertiesFalse(schema);
-
-    expect(result.additionalProperties).toBe(false);
-    expect(result.properties.data.oneOf[0].additionalProperties).toBe(false);
-    expect(result.properties.data.oneOf[1].additionalProperties).toBe(false);
-  });
-
-  it('should handle allOf schemas', () => {
-    const schema = {
-      type: 'object',
-      properties: {
-        data: {
-          allOf: [
-            {
-              type: 'object',
-              properties: {
-                text: { type: 'string' },
-              },
-            },
-            {
-              type: 'object',
-              properties: {
-                number: { type: 'number' },
-              },
-            },
-          ],
-        },
-      },
-    };
-
-    const result = ensureAdditionalPropertiesFalse(schema);
-
-    expect(result.additionalProperties).toBe(false);
-    expect(result.properties.data.allOf[0].additionalProperties).toBe(false);
-    expect(result.properties.data.allOf[1].additionalProperties).toBe(false);
+    expect(result.properties.data[keyword][0].additionalProperties).toBe(false);
+    expect(result.properties.data[keyword][1].additionalProperties).toBe(false);
   });
 
   it('should not mutate the original schema', () => {

@@ -497,10 +497,7 @@ describe('custom-agent deterministic graph runtime', () => {
     });
   });
 
-  it('uses fixed diagnostic record and serialized-output bounds with no caller limit API', async () => {
-    // @ts-expect-error Diagnostic retention is fixed and cannot be configured by a request.
-    const removedCallerLimit: GraphExecutionRequest['diagnosticLimit'] = Number.POSITIVE_INFINITY;
-    expect(removedCallerLimit).toBe(Number.POSITIVE_INFINITY);
+  it('keeps the latest 200 diagnostics and omits oversized serialized outputs', async () => {
     const bounded = basePreset();
     const boundedFlow = resetMain(bounded);
     let previous = 'trigger';

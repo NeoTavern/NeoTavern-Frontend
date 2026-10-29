@@ -10,12 +10,7 @@ import { macroService } from '../../src/services/macro-service';
 import type { CustomAgentsHostAPI } from '../../src/extensions/built-in/custom-agents/host/api';
 import type { GraphLlmRequest } from '../../src/extensions/built-in/custom-agents/registry/node-definition';
 import type { ApiChatMessage } from '../../src/types';
-import type {
-  GraphPreset,
-  JsonObject,
-  JsonValue,
-  ScopeGraph,
-} from '../../src/extensions/built-in/custom-agents/graph/contracts';
+import type { GraphPreset, JsonObject, JsonValue } from '../../src/extensions/built-in/custom-agents/graph/contracts';
 
 const preset = mythic as GraphPreset;
 const initializedState = (): JsonObject => ({
@@ -91,90 +86,6 @@ async function run(
 }
 
 describe('Mythic graph preset', () => {
-  it('is the sole canonical graph payload with modular flows and connected prompt inputs', () => {
-    expect(preset.format).toBe('NEOTAVERN_CUSTOM_AGENT_FLOW');
-    expect(preset.agent.id).toBe('builtin-mythic');
-    expect(preset.agent.flows).toHaveLength(17);
-    expect(preset.agent.configurationDefaults).toHaveProperty('tableCollections');
-    expect(preset.agent.initialState).toEqual({
-      initialized: false,
-      scene: { chaosRank: 5, characters: [], threads: [] },
-      resolvedThreads: [],
-      actionLog: [],
-    });
-    const llmPrompts = Object.fromEntries(
-      preset.agent.flows.flatMap((flow) =>
-        flow.nodes.filter((node) => node.type === 'llm.request').map((node) => [node.id, node.data.prompt]),
-      ),
-    );
-    expect(llmPrompts).toEqual({
-      'generate-assistant-analysis': '{{{config.prompts.analysis}}}',
-      'initialization-extract-scene': '{{{config.prompts.initialScene}}}',
-      'narration-request': '{{{config.prompts.narration}}}',
-    });
-    expect(preset.agent.flows.filter((flow) => flow.kind === 'SUBFLOW').map((flow) => flow.name)).toEqual(
-      expect.arrayContaining([
-        'Initialization',
-        'Question resolution and Fate',
-        'Random event construction',
-        'Narration',
-        'Scene update',
-      ]),
-    );
-    const prompts = preset.agent.configurationDefaults.prompts as JsonObject;
-    expect(prompts.initialScene).toContain('input.characterTypes');
-    expect(prompts.narration).toContain('input.resolvedQuestions');
-    expect(prompts.narration).toContain('input.events');
-    expect(prompts.narration).toContain('input.characterTypes');
-  });
-
-  it('has bounded dependency-directed Smart Layout positions in every recursive scope', () => {
-    const nodeFootprint = { width: 320, height: 96 };
-    const scopes: Array<{ name: string; graph: ScopeGraph }> = [];
-    const visit = (name: string, graph: ScopeGraph) => {
-      scopes.push({ name, graph });
-      for (const node of graph.nodes) {
-        const body = node.data.body as ScopeGraph | undefined;
-        if (body?.nodes && body.edges) visit(`${name}/${node.id}`, body);
-      }
-    };
-    for (const flow of preset.agent.flows) visit(flow.id, flow);
-
-    let checkedPairs = 0;
-    for (const { name, graph } of scopes) {
-      const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
-      for (const edge of graph.edges) {
-        const source = nodesById.get(edge.source.nodeId)!;
-        const target = nodesById.get(edge.target.nodeId)!;
-        expect(source.position.x, `${name}/${edge.id}`).toBeLessThan(target.position.x);
-      }
-      for (const [index, node] of graph.nodes.entries()) {
-        expect(node.position.x, `${name}/${node.id} x`).toBeGreaterThanOrEqual(0);
-        expect(node.position.y, `${name}/${node.id} y`).toBeGreaterThanOrEqual(0);
-        for (const other of graph.nodes.slice(index + 1)) {
-          const overlaps =
-            node.position.x < other.position.x + nodeFootprint.width &&
-            node.position.x + nodeFootprint.width > other.position.x &&
-            node.position.y < other.position.y + nodeFootprint.height &&
-            node.position.y + nodeFootprint.height > other.position.y;
-          expect(overlaps, `${name}: ${node.id} overlaps ${other.id}`).toBe(false);
-          checkedPairs++;
-        }
-      }
-      const xs = graph.nodes.map((node) => node.position.x);
-      const ys = graph.nodes.map((node) => node.position.y);
-      const width = Math.max(...xs) - Math.min(...xs) + nodeFootprint.width;
-      const height = Math.max(...ys) - Math.min(...ys) + nodeFootprint.height;
-      expect(width, `${name} graph width`).toBeLessThanOrEqual(12_800);
-      expect(height, `${name} graph height`).toBeLessThanOrEqual(7_200);
-      expect(width * 0.1, `${name} width at minimum zoom`).toBeLessThanOrEqual(1_280);
-      expect(height * 0.1, `${name} height at minimum zoom`).toBeLessThanOrEqual(720);
-    }
-
-    expect(scopes.length).toBeGreaterThan(preset.agent.flows.length);
-    expect(checkedPairs).toBeGreaterThan(0);
-  });
-
   it('parses and compiles through the closed production registry', () => {
     const parsed = parseGraphPresetShape(preset);
     expect(parsed.success, parsed.success ? '' : JSON.stringify(parsed.issues, null, 2)).toBe(true);

@@ -8,8 +8,8 @@ import {
   schemaValueType,
 } from '../../src/extensions/built-in/custom-agents/graph/schema-ports';
 
-describe('custom-agent graph schema port authority', () => {
-  it('derives coarse types without serialized value types or general schema algebra', () => {
+describe('custom-agent graph schema ports', () => {
+  it('derives coarse port types from schemas and constants', () => {
     expect(schemaValueType({ type: 'integer' })).toBe('NUMBER');
     expect(schemaValueType({ type: ['string', 'null'], enum: ['value'] })).toBe('JSON');
     expect(schemaValueType({ type: 'unsupported', const: 'value' })).toBe('JSON');
@@ -22,7 +22,7 @@ describe('custom-agent graph schema port authority', () => {
     expect(schemaFromConstant([1, 2])).toEqual({ type: 'array' });
   });
 
-  it('projects only required top-level properties in lexical RFC6901 port order', () => {
+  it('projects required top-level properties as escaped, sorted ports', () => {
     const schema = {
       type: 'object',
       properties: {
@@ -43,7 +43,7 @@ describe('custom-agent graph schema port authority', () => {
     expect(propertyPortId('~/')).toBe('property/~0~1');
   });
 
-  it('traverses only explicit properties and homogeneous array items', () => {
+  it('resolves schema paths through properties and array items', () => {
     const schema = {
       type: 'object',
       properties: {
@@ -58,7 +58,7 @@ describe('custom-agent graph schema port authority', () => {
     expect(schemaAtPath({ type: 'array', items: [{ type: 'string' }] }, '0')).toEqual({});
   });
 
-  it('uses only the exact coarse assignability relation', () => {
+  it('checks coarse port schema assignability', () => {
     expect(arePortSchemasAssignable({ type: 'string' }, {})).toBe(true);
     expect(arePortSchemasAssignable({}, { type: 'string' })).toBe(false);
     expect(arePortSchemasAssignable({ type: 'integer' }, { type: 'number' })).toBe(true);

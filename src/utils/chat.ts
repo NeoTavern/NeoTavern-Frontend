@@ -239,6 +239,20 @@ marked.use({
       }
       return false;
     },
+    tag(src: string) {
+      // Marked 18 only recognizes inline tag names made of letters, digits, and hyphens, so custom
+      // wrappers such as <Info_Board> would otherwise be escaped as text before sanitization.
+      const match = /^<\/?([a-z][a-z0-9_-]*)(?:\s[^<>]*)?\/?>/i.exec(src);
+      if (!match || STANDARD_HTML_TAGS.has(match[1].toLowerCase())) return false;
+      return {
+        type: 'html',
+        raw: match[0],
+        text: match[0],
+        inLink: this.lexer.state.inLink,
+        inRawBlock: this.lexer.state.inRawBlock,
+        block: false,
+      };
+    },
   },
   extensions: [dialogue1Extension, dialogue2Extension, dialogue3Extension],
 });

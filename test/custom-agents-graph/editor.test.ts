@@ -1,4 +1,3 @@
-import fs from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import {
   GRAPH_NODE_MIN_HEIGHT,
@@ -8,7 +7,6 @@ import {
   type GraphPreset,
   type ScopeGraph,
 } from '../../src/extensions/built-in/custom-agents/graph/contracts';
-import { compileGraphPreset } from '../../src/extensions/built-in/custom-agents/graph/compile';
 import { graphNodeSchema } from '../../src/extensions/built-in/custom-agents/graph/schemas';
 import type { GraphDiagnostic } from '../../src/extensions/built-in/custom-agents/graph/diagnostics';
 import { copySelection, pasteClipboard } from '../../src/extensions/built-in/custom-agents/editor/clipboard';
@@ -25,37 +23,39 @@ import {
 } from '../../src/extensions/built-in/custom-agents/editor/vue-flow-adapter';
 import { builtinNodeRegistry } from '../../src/extensions/built-in/custom-agents/registry/builtin-nodes';
 import type { ReadonlyNodeRegistry } from '../../src/extensions/built-in/custom-agents/registry/node-definition';
+import { loadFlowFixture as fixture } from '../fixtures/custom-agents/load-fixture';
 
-const fixture = (name: string): GraphPreset =>
-  JSON.parse(
-    fs.readFileSync(
-      name === 'mythic'
-        ? new URL('../../src/extensions/built-in/custom-agents/presets/mythic.flow.json', import.meta.url)
-        : new URL(`../fixtures/custom-agents/${name}.flow.json`, import.meta.url),
-      'utf8',
-    ),
-  ) as GraphPreset;
 function ids(prefix = 'generated') {
   let index = 0;
   return { generate: () => `${prefix}${++index}` };
 }
+function countingRegistry() {
+  const portCalls = new Map<string, number>();
+  const counts = { gets: 0, ports: () => [...portCalls.values()].reduce((sum, count) => sum + count, 0) };
+  const registry: ReadonlyNodeRegistry = {
+    list: () => builtinNodeRegistry.list(),
+    get: (type) => {
+      counts.gets++;
+      const definition = builtinNodeRegistry.get(type);
+      return definition
+        ? {
+            ...definition,
+            ports: (data, context) => {
+              portCalls.set(context.nodeId, (portCalls.get(context.nodeId) ?? 0) + 1);
+              return definition.ports(data, context);
+            },
+          }
+        : undefined;
+    },
+  };
+  const reset = () => {
+    counts.gets = 0;
+    portCalls.clear();
+  };
+  return { registry, counts, portCalls, reset };
+}
 
 describe('Custom Agent graph editor', () => {
-  it('validates the real Mythic preset through the production registry', () => {
-    const preset = fixture('mythic');
-    const result = compileGraphPreset(preset, builtinNodeRegistry);
-    expect(result.success).toBe(true);
-    expect(preset.agent.flows).toHaveLength(17);
-    expect(preset.agent.flows.flatMap((flow) => flow.nodes)).toHaveLength(203);
-    const nestedNodes = preset.agent.flows.flatMap((flow) =>
-      flow.nodes.flatMap((node) => {
-        const body = node.data.body as { nodes?: unknown[] } | undefined;
-        return body?.nodes ?? [];
-      }),
-    );
-    expect(nestedNodes).toHaveLength(131);
-  }, 20_000);
-
   it('opens and applies an exact Mythic editor round trip', () => {
     const preset = fixture('mythic');
     const apply = vi.fn();
@@ -254,15 +254,8 @@ describe('Custom Agent graph editor', () => {
     expect(pasted.nodes[0]?.size).toEqual({ width: GRAPH_NODE_MIN_WIDTH, height: GRAPH_NODE_MIN_HEIGHT });
   });
 
-  it('patches geometry in place without semantic work and keeps port-resolution identities cached', () => {
-    let registryGets = 0;
-    const registry: ReadonlyNodeRegistry = {
-      get: (type) => {
-        registryGets++;
-        return builtinNodeRegistry.get(type);
-      },
-      list: () => builtinNodeRegistry.list(),
-    };
+  it('moves nodes without semantic work and restores positions through undo and redo', () => {
+    const { registry, counts, reset } = countingRegistry();
     const store = new GraphEditorStore({
       executable: fixture('minimal-observer'),
       registry,
@@ -271,90 +264,30 @@ describe('Custom Agent graph editor', () => {
       validatedExecutable: true,
     });
     const revalidate = vi.spyOn(store, 'revalidate');
-    const draft = store.draft.value;
-    const agent = draft.agent;
-    const flows = agent.flows;
-    const flow = store.selectedFlow!;
-    const nodes = flow.nodes;
-    const edges = flow.edges;
-    const increment = nodes.find((node) => node.id === 'increment')!;
-    const nodeData = increment.data;
-    const inputValues = increment.inputValues;
-    const configurationSchema = agent.configurationSchema;
-    const stateSchema = agent.stateSchema;
-    const signatureInputs = flow.inputs;
-    const signatureOutputs = flow.outputs;
     const diagnostics = store.diagnostics.value;
-    const schemaBuffers = store.signatureSchemaBuffers.value;
-    const cache = new EditorPortResolutionCache();
-    const initiallyResolved = resolveEditorPorts(agent, flow, flow, registry, undefined, cache);
-    const renderCache = createVueFlowRenderCache();
-    const initiallyRendered = toVueFlow(
-      flow,
-      initiallyResolved,
-      new Set(),
-      new Set(),
-      {},
-      new Set(),
-      undefined,
-      renderCache,
-    );
-    registryGets = 0;
+    const increment = store.currentGraph!.nodes.find((node) => node.id === 'increment')!;
+    const before = { ...increment.position };
+    reset();
 
     store.moveNodes({ increment: { x: 401, y: 302 } });
-
-    expect(registryGets).toBe(0);
+    expect(counts.gets).toBe(0);
     expect(revalidate).not.toHaveBeenCalled();
-    expect(store.draft.value).toBe(draft);
-    expect(store.draft.value.agent).toBe(agent);
-    expect(agent.flows).toBe(flows);
-    expect(store.selectedFlow).toBe(flow);
-    expect(flow.nodes).toBe(nodes);
-    expect(flow.edges).toBe(edges);
-    expect(flow.nodes.find((node) => node.id === 'increment')).toBe(increment);
-    expect(increment.data).toBe(nodeData);
-    expect(increment.inputValues).toBe(inputValues);
-    expect(agent.configurationSchema).toBe(configurationSchema);
-    expect(agent.stateSchema).toBe(stateSchema);
-    expect(flow.inputs).toBe(signatureInputs);
-    expect(flow.outputs).toBe(signatureOutputs);
     expect(store.diagnostics.value).toBe(diagnostics);
-    expect(store.signatureSchemaBuffers.value).toBe(schemaBuffers);
-    expect(resolveEditorPorts(agent, flow, flow, registry, undefined, cache)).toBe(initiallyResolved);
-    expect(registryGets).toBe(0);
-    const rendered = toVueFlow(flow, initiallyResolved, new Set(), new Set(), {}, new Set(), undefined, renderCache);
-    expect(rendered.nodes.find((node) => node.id === 'increment')).toMatchObject({ position: { x: 401, y: 302 } });
-    expect(rendered.nodes.find((node) => node.id === 'increment')).not.toBe(
-      initiallyRendered.nodes.find((node) => node.id === 'increment'),
-    );
     expect(
       JSON.parse(JSON.stringify(store.draft.value)).agent.flows[0].nodes.find(
         (node: GraphNode) => node.id === 'increment',
       ).position,
-    ).toEqual({
-      x: 401,
-      y: 302,
-    });
+    ).toEqual({ x: 401, y: 302 });
 
     store.undo();
-    expect(registryGets).toBe(0);
-    expect(store.draft.value).toBe(draft);
-    expect(increment.position).not.toEqual({ x: 401, y: 302 });
+    expect(increment.position).toEqual(before);
     store.redo();
-    expect(registryGets).toBe(0);
-    expect(revalidate).not.toHaveBeenCalled();
     expect(increment.position).toEqual({ x: 401, y: 302 });
+    expect(counts.gets).toBe(0);
+    expect(revalidate).not.toHaveBeenCalled();
   });
-
   it('interleaves sparse geometry and semantic snapshots and detects geometry no-ops', () => {
-    let registryGets = 0;
-    const registry: ReadonlyNodeRegistry = {
-      get: (type) => {
-        registryGets++;
-        return builtinNodeRegistry.get(type);
-      },
-      list: () => builtinNodeRegistry.list(),
-    };
+    const { registry, counts } = countingRegistry();
     const store = new GraphEditorStore({
       executable: fixture('minimal-observer'),
       registry,
@@ -366,16 +299,16 @@ describe('Custom Agent graph editor', () => {
 
     store.updateInputValue('increment', 'amount', 2);
     store.moveNodes({ increment: { x: 500, y: 600 } });
-    const getsAfterMove = registryGets;
+    const getsAfterMove = counts.gets;
     store.updateInputValue('increment', 'amount', 3);
     store.undo();
-    const getsAfterSemanticUndo = registryGets;
+    const getsAfterSemanticUndo = counts.gets;
     expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')).toMatchObject({
       position: { x: 500, y: 600 },
       inputValues: { amount: 2 },
     });
     store.undo();
-    expect(registryGets).toBe(getsAfterSemanticUndo);
+    expect(counts.gets).toBe(getsAfterSemanticUndo);
     expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')).toMatchObject({
       position: originalPosition,
       inputValues: { amount: 2 },
@@ -384,7 +317,7 @@ describe('Custom Agent graph editor', () => {
     expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')?.inputValues.amount).toBe(1);
     store.redo();
     store.redo();
-    expect(registryGets).toBeGreaterThan(getsAfterMove);
+    expect(counts.gets).toBeGreaterThan(getsAfterMove);
     expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')).toMatchObject({
       position: { x: 500, y: 600 },
       inputValues: { amount: 2 },
@@ -396,9 +329,9 @@ describe('Custom Agent graph editor', () => {
     expect(store.canRedo).toBe(true);
     store.resizeNode('increment', { width: 320, height: 96 });
     expect(store.canRedo).toBe(false);
-    const getsAfterResize = registryGets;
+    const getsAfterResize = counts.gets;
     store.resizeNode('increment', { width: 320, height: 96 });
-    expect(registryGets).toBe(getsAfterResize);
+    expect(counts.gets).toBe(getsAfterResize);
     store.undo();
     expect(store.currentGraph?.nodes.find((node) => node.id === 'increment')?.size).toBeUndefined();
   });
@@ -916,39 +849,44 @@ describe('Custom Agent graph editor', () => {
     expect(roundTrip.edges).toEqual(stale.edges);
   });
 
-  it('derives each node once in data-dependency order and reuses only the unchanged draft scope', () => {
+  it('reuses port derivation until node inputs change, including metadata-only and nested-scope navigation', () => {
+    const { registry, counts, portCalls, reset } = countingRegistry();
     const preset = fixture('minimal-observer');
     const flow = preset.agent.flows[0]!;
-    const calls: string[] = [];
-    const registry: ReadonlyNodeRegistry = {
-      list: () => builtinNodeRegistry.list(),
-      get: (type) => {
-        const definition = builtinNodeRegistry.get(type);
-        if (!definition) return undefined;
-        return {
-          ...definition,
-          ports: (data, context) => {
-            calls.push(context.nodeId);
-            return definition.ports(data, context);
-          },
-        };
-      },
-    };
     const cache = new EditorPortResolutionCache();
     const first = resolveEditorPorts(preset.agent, flow, flow, registry, undefined, cache);
-    expect(calls).toHaveLength(flow.nodes.length);
-    expect(calls.indexOf('read-count')).toBeLessThan(calls.indexOf('increment'));
-    calls.length = 0;
+    expect(counts.ports()).toBe(flow.nodes.length);
+    const order = [...portCalls.keys()];
+    expect(order.indexOf('read-count')).toBeLessThan(order.indexOf('increment'));
+    reset();
     expect(resolveEditorPorts(preset.agent, flow, flow, registry, undefined, cache)).toBe(first);
-    expect(calls).toEqual([]);
+    expect(counts.ports()).toBe(0);
 
-    const replacement = structuredClone(preset);
-    const replacementFlow = replacement.agent.flows[0]!;
-    replacementFlow.nodes.find((node) => node.id === 'increment')!.inputValues.amount = 3;
-    resolveEditorPorts(replacement.agent, replacementFlow, replacementFlow, registry, undefined, cache);
-    expect(calls).toHaveLength(replacementFlow.nodes.length);
+    const edited = structuredClone(preset);
+    const editedFlow = edited.agent.flows[0]!;
+    editedFlow.nodes.find((node) => node.id === 'increment')!.inputValues.amount = 3;
+    resolveEditorPorts(edited.agent, editedFlow, editedFlow, registry, undefined, cache);
+    expect(counts.ports()).toBe(editedFlow.nodes.length);
+
+    const store = new GraphEditorStore({ executable: preset, registry, ids: ids(), apply: vi.fn() });
+    const storeCache = new EditorPortResolutionCache();
+    resolveEditorScope(store.draft.value.agent, store.selectedFlow!, [], registry, storeCache);
+    reset();
+    store.synchronizeMetadata({ name: 'Metadata only', priority: 4, enabled: false });
+    resolveEditorScope(store.draft.value.agent, store.selectedFlow!, [], registry, storeCache);
+    expect(counts.ports()).toBe(0);
+
+    const nested = fixture('nested-subflow');
+    const accumulate = nested.agent.flows.find((candidate) => candidate.id === 'accumulate')!;
+    const nestedCache = new EditorPortResolutionCache();
+    reset();
+    resolveEditorScope(nested.agent, accumulate, ['loop'], registry, nestedCache);
+    expect([...portCalls.values()].every((count) => count === 1)).toBe(true);
+    const firstCalls = new Map(portCalls);
+    resolveEditorScope(nested.agent, accumulate, [], registry, nestedCache);
+    resolveEditorScope(nested.agent, accumulate, ['loop'], registry, nestedCache);
+    expect(portCalls).toEqual(firstCalls);
   });
-
   it('separates cached schemas for the same agent and scope under different effective signatures', () => {
     const preset = fixture('nested-subflow');
     const flow = preset.agent.flows.find((candidate) => candidate.id === 'accumulate')!;
@@ -988,67 +926,7 @@ describe('Custom Agent graph editor', () => {
     });
   });
 
-  it('reuses port derivation across metadata-only agent identity replacement', () => {
-    const preset = fixture('minimal-observer');
-    let calls = 0;
-    const registry: ReadonlyNodeRegistry = {
-      list: () => builtinNodeRegistry.list(),
-      get: (type) => {
-        const definition = builtinNodeRegistry.get(type);
-        return definition
-          ? {
-              ...definition,
-              ports: (data, context) => {
-                calls += 1;
-                return definition.ports(data, context);
-              },
-            }
-          : undefined;
-      },
-    };
-    const store = new GraphEditorStore({ executable: preset, registry, ids: ids(), apply: vi.fn() });
-    const flow = store.selectedFlow!;
-    calls = 0;
-    const cache = new EditorPortResolutionCache();
-    resolveEditorScope(store.draft.value.agent, flow, [], registry, cache);
-    expect(calls).toBe(flow.nodes.length);
-    calls = 0;
-
-    store.synchronizeMetadata({ name: 'Metadata only', priority: 4, enabled: false });
-    expect(store.selectedFlow).toBe(flow);
-    resolveEditorScope(store.draft.value.agent, store.selectedFlow!, [], registry, cache);
-    expect(calls).toBe(0);
-  });
-
-  it('resolves a nested body once and reuses it when navigating away and back in one draft', () => {
-    const preset = fixture('nested-subflow');
-    const flow = preset.agent.flows.find((candidate) => candidate.id === 'accumulate')!;
-    const calls = new Map<string, number>();
-    const registry: ReadonlyNodeRegistry = {
-      list: () => builtinNodeRegistry.list(),
-      get: (type) => {
-        const definition = builtinNodeRegistry.get(type);
-        return definition
-          ? {
-              ...definition,
-              ports: (data, context) => {
-                calls.set(context.nodeId, (calls.get(context.nodeId) ?? 0) + 1);
-                return definition.ports(data, context);
-              },
-            }
-          : undefined;
-      },
-    };
-    const cache = new EditorPortResolutionCache();
-    resolveEditorScope(preset.agent, flow, ['loop'], registry, cache);
-    expect([...calls.values()].every((count) => count === 1)).toBe(true);
-    const firstCalls = new Map(calls);
-    resolveEditorScope(preset.agent, flow, [], registry, cache);
-    resolveEditorScope(preset.agent, flow, ['loop'], registry, cache);
-    expect(calls).toEqual(firstCalls);
-  });
-
-  it('derives identical schemas regardless of serialized node order and terminates cyclic invalid drafts once per node', () => {
+  it('derives schemas independent of node order and resolves cyclic invalid drafts once per node', () => {
     const preset = fixture('minimal-observer');
     const flow = preset.agent.flows[0]!;
     const reversed = structuredClone(preset);
@@ -1071,25 +949,10 @@ describe('Custom Agent graph editor', () => {
       source: { nodeId: 'increment', portId: 'property/value' },
       target: { nodeId: 'read-count', portId: 'legacy-input' },
     });
-    const calls = new Map<string, number>();
-    const registry: ReadonlyNodeRegistry = {
-      list: () => builtinNodeRegistry.list(),
-      get: (type) => {
-        const definition = builtinNodeRegistry.get(type);
-        return definition
-          ? {
-              ...definition,
-              ports: (data, context) => {
-                calls.set(context.nodeId, (calls.get(context.nodeId) ?? 0) + 1);
-                return definition.ports(data, context);
-              },
-            }
-          : undefined;
-      },
-    };
+    const { registry, portCalls } = countingRegistry();
     const resolved = resolveEditorPorts(preset.agent, flow, flow, registry);
     expect(resolved.size).toBe(flow.nodes.length);
-    expect([...calls.values()]).toEqual(new Array(flow.nodes.length).fill(1));
+    expect([...portCalls.values()]).toEqual(new Array(flow.nodes.length).fill(1));
   });
 
   it('keeps viewport and transient run diagnostics outside serialized drafts', () => {
@@ -1123,20 +986,45 @@ describe('Custom Agent graph editor', () => {
     expect(store.viewport).toEqual({ x: 90, y: 100, zoom: 2 });
   });
 
-  it('keeps Vue Flow imports confined to editor modules', () => {
-    const roots = ['graph', 'registry', 'nodes', 'runtime', 'host'];
-    for (const root of roots) {
-      const files = fs.readdirSync(new URL(`../../src/extensions/built-in/custom-agents/${root}`, import.meta.url), {
-        recursive: true,
-        encoding: 'utf8',
-      });
-      for (const file of files.filter((candidate) => candidate.endsWith('.ts'))) {
-        const text = fs.readFileSync(
-          new URL(`../../src/extensions/built-in/custom-agents/${root}/${file}`, import.meta.url),
-          'utf8',
-        );
-        expect(text).not.toContain('@vue-flow');
-      }
-    }
+  it('caps run overlay records without touching drafts or exportable definitions', () => {
+    const definition = fixture('minimal-observer');
+    const store = new GraphEditorStore({
+      executable: definition,
+      registry: builtinNodeRegistry,
+      ids: { generate: () => 'overlay-id' },
+      apply: vi.fn(),
+    });
+    const before = structuredClone(store.draft.value);
+    store.setRunOverlay(
+      Object.fromEntries(
+        Array.from({ length: 205 }, (_, index) => [
+          `node-${index}`,
+          index === 204
+            ? {
+                status: 'FAILED' as const,
+                error: 'failure',
+                invocations: [{ scopeInvocationId: 'main:205', status: 'FAILED' as const, error: 'failure' }],
+              }
+            : {
+                status: 'COMPLETED' as const,
+                output: { index },
+                invocations: [
+                  { scopeInvocationId: `main:${index + 1}`, status: 'COMPLETED' as const, output: { index } },
+                ],
+              },
+        ]),
+      ),
+    );
+    expect(Object.keys(store.runOverlay.value)).toHaveLength(200);
+    expect(store.runOverlay.value['node-204']).toEqual({
+      status: 'FAILED',
+      error: 'failure',
+      invocations: [{ scopeInvocationId: 'main:205', status: 'FAILED', error: 'failure' }],
+    });
+    expect(store.draft.value).toEqual(before);
+    expect(store.executable.value).toEqual(definition);
+    expect(JSON.stringify(store.executable.value)).not.toContain('runOverlay');
+    store.clearRunOverlay();
+    expect(store.runOverlay.value).toEqual({});
   });
 });

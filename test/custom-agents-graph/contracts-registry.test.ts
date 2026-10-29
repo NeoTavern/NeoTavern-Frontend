@@ -11,7 +11,7 @@ import { NodeRegistry } from '../../src/extensions/built-in/custom-agents/regist
 import { basePreset, createTestRegistry } from '../fixtures/custom-agents/test-registry';
 
 describe('custom-agent canonical graph contracts and registry', () => {
-  it('accepts only the exact new unversioned envelope and serialized port shape', () => {
+  it('accepts the current preset envelope and port shape', () => {
     const registry = createTestRegistry();
     expect(validateGraphPreset(basePreset(), registry).valid).toBe(true);
     expect(validateGraphPreset({ format: 'UNSUPPORTED_FORMAT', agent: basePreset().agent }, registry).valid).toBe(
@@ -57,7 +57,7 @@ describe('custom-agent canonical graph contracts and registry', () => {
     expect(validateGraphPreset(extraNode, registry).valid).toBe(false);
   });
 
-  it('rejects duplicate registry IDs and parses typed callbacks at the sole erasure boundary', async () => {
+  it('rejects duplicate registry IDs and parses typed node callbacks', async () => {
     const schema = z.strictObject({ count: z.number() });
     let received = 0;
     const definition = defineNode({
@@ -149,42 +149,43 @@ describe('custom-agent canonical graph contracts and registry', () => {
     if (!result.valid) expect(result.diagnostics.map((item) => item.code)).toContain('TRIGGER_DECLARATION');
   });
 
-  it('owns one strict recursive trigger declaration schema', () => {
-    const valid = {
-      event: 'BEFORE_GENERATION',
-      generationModes: ['NEW', 'ADD_SWIPE'],
-      schedule: { type: 'EVERY_N_EVENTS', interval: 2 },
-      condition: {
-        op: 'all',
-        conditions: [
-          { op: 'exists', reference: { $ref: 'event.message' } },
-          {
-            op: 'equals',
-            left: { nested: [{ $ref: 'config.enabled' }] },
-            right: { $ref: 'state.enabled' },
-          },
-        ],
-      },
-    };
-    expect(triggerDeclarationSchema.safeParse(valid).success).toBe(true);
-    for (const invalid of [
-      { ...valid, extra: true },
-      { ...valid, condition: { op: 'all', conditions: [] } },
-      { ...valid, condition: { op: 'any', conditions: [] } },
-      { ...valid, condition: { op: 'exists', reference: { $ref: 'input.value' } } },
-      { ...valid, condition: { op: 'exists', reference: { $ref: 'state.__proto__.value' } } },
-      { ...valid, schedule: { type: 'EVERY_N_EVENTS', interval: 0 } },
-      { ...valid, generationModes: ['ADD_SWIPE', 'NEW'] },
-      { ...valid, generationModes: ['NEW', 'NEW'] },
-      { ...valid, role: 'LEGACY' },
-      {
-        ...valid,
-        event: 'MANUAL',
-        generationModes: [],
-        schedule: { type: 'EVERY_N_EVENTS', interval: 1 },
-      },
-    ])
-      expect(triggerDeclarationSchema.safeParse(invalid).success).toBe(false);
+  const validTriggerDeclaration = {
+    event: 'BEFORE_GENERATION',
+    generationModes: ['NEW', 'ADD_SWIPE'],
+    schedule: { type: 'EVERY_N_EVENTS', interval: 2 },
+    condition: {
+      op: 'all',
+      conditions: [
+        { op: 'exists', reference: { $ref: 'event.message' } },
+        {
+          op: 'equals',
+          left: { nested: [{ $ref: 'config.enabled' }] },
+          right: { $ref: 'state.enabled' },
+        },
+      ],
+    },
+  };
+
+  it('accepts a nested trigger declaration', () => {
+    expect(triggerDeclarationSchema.safeParse(validTriggerDeclaration).success).toBe(true);
+  });
+
+  it.each([
+    ['an extra field', { extra: true }],
+    ['an empty all condition', { condition: { op: 'all', conditions: [] } }],
+    ['an empty any condition', { condition: { op: 'any', conditions: [] } }],
+    ['an unknown reference root', { condition: { op: 'exists', reference: { $ref: 'input.value' } } }],
+    ['a prototype reference', { condition: { op: 'exists', reference: { $ref: 'state.__proto__.value' } } }],
+    ['a zero schedule interval', { schedule: { type: 'EVERY_N_EVENTS', interval: 0 } }],
+    ['unordered generation modes', { generationModes: ['ADD_SWIPE', 'NEW'] }],
+    ['duplicate generation modes', { generationModes: ['NEW', 'NEW'] }],
+    ['a legacy role field', { role: 'LEGACY' }],
+    [
+      'a scheduled manual trigger',
+      { event: 'MANUAL', generationModes: [], schedule: { type: 'EVERY_N_EVENTS', interval: 1 } },
+    ],
+  ])('rejects a trigger declaration with %s', (_, patch) => {
+    expect(triggerDeclarationSchema.safeParse({ ...validTriggerDeclaration, ...patch }).success).toBe(false);
   });
 
   it('rejects missing, wrong, and extra trigger structural ports', () => {

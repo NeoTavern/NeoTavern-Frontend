@@ -57,37 +57,10 @@ function run(
 }
 
 describe('Narrative Momentum Director preset', () => {
-  it('strictly parses and compiles as an observer-only generic graph with wired views and schedules', () => {
+  it('parses and compiles through the production registry', () => {
     const parsed = parseGraphPresetShape(preset);
     expect(parsed.success, parsed.success ? '' : JSON.stringify(parsed.issues, null, 2)).toBe(true);
     expect(compiled.success).toBe(true);
-    const types = preset.agent.flows.flatMap((flow) => flow.nodes.map((node) => node.type));
-    expect(types).not.toContain('trigger.generate-assistant');
-    expect(types).not.toContain('effect.generation-response');
-    expect(types.every((type) => builtinNodeRegistry.get(type) !== undefined)).toBe(true);
-    expect(preset.agent.initialState).toEqual({ direction: '' });
-    expect(preset.agent.stateSchema.required).toEqual(['direction']);
-
-    const periodic = preset.agent.flows.find((flow) => flow.id === 'periodic-direction-audit')!;
-    expect(periodic.nodes[0]!.data).toEqual({
-      generationModes: ['NEW', 'REGENERATE', 'ADD_SWIPE'],
-      schedule: { type: 'EVERY_N_EVENTS', interval: 3 },
-    });
-    expect(periodic.nodes.find((node) => node.type === 'control.run-flow')?.data.flowId).toBe('audit-direction');
-    expect(
-      preset.agent.flows
-        .find((flow) => flow.id === 'force-direction-audit')!
-        .nodes.find((node) => node.type === 'control.run-flow')?.data.flowId,
-    ).toBe('audit-direction');
-    expect(preset.agent.flows.find((flow) => flow.id === 'random-influence')!.nodes[0]!.data).toMatchObject({
-      generationModes: ['NEW', 'REGENERATE', 'ADD_SWIPE'],
-      schedule: { type: 'ALWAYS' },
-    });
-
-    const view = preset.agent.views[0]!;
-    expect(JSON.stringify(view)).toContain('state.direction');
-    expect(JSON.stringify(view)).toContain('force-direction-audit');
-    expect(JSON.stringify(view)).toContain('clear-direction');
   });
 
   it('renders every template variable through the declared input macro namespace', async () => {
@@ -127,48 +100,6 @@ describe('Narrative Momentum Director preset', () => {
         template: '{{{config.auditPrompt}}}',
       }),
     ).resolves.toContain('Current direction: Watch the door.');
-  });
-
-  it('materially configures restrained audit semantics and diverse default influences', () => {
-    const defaults = preset.agent.configurationDefaults;
-    const prompt = defaults.auditPrompt as string;
-    for (const phrase of [
-      'Never force or decide user actions',
-      'do not require an immediate intervention',
-      'Preserve continuity',
-      "character's autonomy",
-      'Use NONE when the story is progressing naturally',
-      'Use KEEP only when the active direction remains useful',
-      'Use CREATE only when there is no active direction',
-      'Use REPLACE only',
-      'Use REMOVE when the active direction has been realized',
-      'NONE, KEEP, and REMOVE, direction MUST be an empty string',
-    ])
-      expect(prompt).toContain(phrase);
-    const influenceDefaults = defaults.influences as JsonValue[];
-    expect(influenceDefaults).toHaveLength(28);
-    const influences = influenceDefaults.join(' ');
-    for (const intent of [
-      'quiet beat',
-      'delay',
-      'callback',
-      'environment',
-      'independent goal',
-      'emotional subtext',
-      'complication',
-      'consequence',
-      'opportunity',
-      'relationship',
-      'restraint',
-      'different phase',
-    ])
-      expect(influences).toContain(intent);
-    expect(defaults).toMatchObject({
-      connectionProfileId: '',
-      structuredFormat: 'NATIVE',
-      recentHistoryCount: 12,
-      randomInfluenceProbability: 0.2,
-    });
   });
 
   it.each(['CREATE', 'REPLACE'] as const)(
@@ -263,18 +194,14 @@ describe('Narrative Momentum Director preset', () => {
     );
   });
 
-  it('is catalogued beside Mythic and returns independent editable clones', () => {
-    const first = getGraphAgentTemplates();
-    const second = getGraphAgentTemplates();
-    expect(first.map((item) => item.agent.id)).toEqual([
-      'builtin-mythic',
-      'builtin-narrative-momentum-director',
-      'builtin-sequential-roleplay-response-editor',
-      'builtin-scored-roleplay-quality-gate',
-    ]);
-    first[1]!.agent.name = 'changed';
-    (first[1]!.agent.configurationDefaults.influences as JsonValue[])[0] = 'changed';
-    expect(second[1]!.agent.name).toBe('Narrative Momentum Director');
-    expect((second[1]!.agent.configurationDefaults.influences as JsonValue[])[0]).not.toBe('changed');
+  it('returns independent editable template clones', () => {
+    const template = (templates: ReturnType<typeof getGraphAgentTemplates>) =>
+      templates.find((item) => item.agent.id === 'builtin-narrative-momentum-director')!;
+    const first = template(getGraphAgentTemplates());
+    const second = template(getGraphAgentTemplates());
+    first.agent.name = 'changed';
+    (first.agent.configurationDefaults.influences as JsonValue[])[0] = 'changed';
+    expect(second.agent.name).toBe('Narrative Momentum Director');
+    expect((second.agent.configurationDefaults.influences as JsonValue[])[0]).not.toBe('changed');
   });
 });

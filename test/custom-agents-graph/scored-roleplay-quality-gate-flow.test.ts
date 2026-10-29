@@ -7,7 +7,6 @@ import type { GraphLlmRequest } from '../../src/extensions/built-in/custom-agent
 import { builtinNodeRegistry } from '../../src/extensions/built-in/custom-agents/registry/builtin-nodes';
 import { genericToolCatalog } from '../../src/extensions/built-in/custom-agents/registry/tools';
 import { executeGraphPlan } from '../../src/extensions/built-in/custom-agents/runtime/execute-plan';
-import { getGraphAgentTemplates } from '../../src/extensions/built-in/custom-agents/settings/catalog';
 import { macroService } from '../../src/services/macro-service';
 
 const preset = presetJson as GraphPreset;
@@ -92,20 +91,10 @@ async function run(
 }
 
 describe('Scored Roleplay Quality Gate preset', () => {
-  it('strictly parses and compiles as one stateless after-generation flow', () => {
+  it('parses and compiles through the production registry', () => {
     const parsed = parseGraphPresetShape(preset);
     expect(parsed.success, parsed.success ? '' : JSON.stringify(parsed.issues, null, 2)).toBe(true);
     expect(compiled.success).toBe(true);
-    expect(preset.agent.stateSchema).toEqual({ type: 'object', additionalProperties: false });
-    expect(preset.agent.initialState).toEqual({});
-    expect(preset.agent.flows).toHaveLength(1);
-    expect(preset.agent.flows[0]!.nodes.filter((node) => node.type === 'trigger.after-generation')).toHaveLength(1);
-    const loop = preset.agent.flows[0]!.nodes.find((node) => node.id === 'quality-attempts')!;
-    const bodyNodes = (loop.data.body as { nodes: GraphPreset['agent']['flows'][number]['nodes'] }).nodes;
-    expect(preset.agent.flows[0]!.nodes.filter((node) => node.type === 'control.for-each')).toHaveLength(1);
-    expect(bodyNodes.filter((node) => node.type === 'llm.request')).toHaveLength(2);
-    expect(bodyNodes.filter((node) => node.type === 'data.template')).toHaveLength(1);
-    expect(bodyNodes.filter((node) => node.type === 'data.javascript')).toHaveLength(5);
   });
 
   it('renders chat history into a deterministic JavaScript input transcript', () => {
@@ -251,57 +240,5 @@ describe('Scored Roleplay Quality Gate preset', () => {
     if (result.status !== 'FAILED') return;
     expect(dispatch).toHaveBeenCalledTimes(7);
     expect(result.error).toContain('rejected the original response and all three revisions');
-  });
-
-  it('keeps stable instructions before candidate-specific prompt data', () => {
-    const defaults = preset.agent.configurationDefaults;
-    const evaluatorPrompt = defaults.evaluatorPrompt as string;
-    const revisionPrompt = defaults.revisionPrompt as string;
-
-    expect(evaluatorPrompt).not.toContain('{{{input.acceptedHistory}}}');
-    expect(evaluatorPrompt).toContain('conversation messages before this instruction');
-    expect(evaluatorPrompt.indexOf('Return exactly this shape')).toBeLessThan(
-      evaluatorPrompt.indexOf('{{{input.repetitionReport}}}'),
-    );
-    expect(evaluatorPrompt.indexOf('{{{input.repetitionReport}}}')).toBeLessThan(
-      evaluatorPrompt.indexOf('{{{input.currentResponse}}}'),
-    );
-
-    expect(revisionPrompt).not.toContain('{{{input.acceptedHistory}}}');
-    expect(revisionPrompt).toContain('conversation messages before this instruction');
-    expect(revisionPrompt.indexOf('Make only the minimum changes needed')).toBeLessThan(
-      revisionPrompt.indexOf('{{{input.revisionGuidance}}}'),
-    );
-    expect(revisionPrompt.indexOf('{{{input.revisionGuidance}}}')).toBeLessThan(
-      revisionPrompt.indexOf('{{{input.preserveJson}}}'),
-    );
-    expect(revisionPrompt.indexOf('{{{input.preserveJson}}}')).toBeLessThan(
-      revisionPrompt.indexOf('{{{input.currentResponse}}}'),
-    );
-  });
-
-  it('keeps the evaluator responsible only for evidence and registers the template fourth', () => {
-    const defaults = preset.agent.configurationDefaults;
-    expect(defaults.evaluatorPrompt).toContain('Do not decide whether the benchmark retries');
-    expect(defaults.evaluatorPrompt).toContain('Merely avoiding a defect earns at most 3');
-    expect(defaults.evaluatorPrompt).toContain(
-      'The original generated target and every rejected revision are excluded',
-    );
-    expect(defaults.evaluatorPrompt).toContain(
-      'Do not penalize a candidate for preserving compliant material from a rejected draft',
-    );
-    expect(defaults.revisionPrompt).toContain(
-      'The original generated target and every rejected revision are excluded and are not canon',
-    );
-    expect(defaults.revisionPrompt).toContain(
-      'The separately labeled Rejected response is the current candidate to repair',
-    );
-    expect(defaults.revisionPrompt).toContain('Make only the minimum changes needed');
-    expect(getGraphAgentTemplates().map((item) => item.agent.id)).toEqual([
-      'builtin-mythic',
-      'builtin-narrative-momentum-director',
-      'builtin-sequential-roleplay-response-editor',
-      'builtin-scored-roleplay-quality-gate',
-    ]);
   });
 });

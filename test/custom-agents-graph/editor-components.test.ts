@@ -8,8 +8,8 @@ import { useVueFlow } from '@vue-flow/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import FlowEditor from '../../src/extensions/built-in/custom-agents/editor/FlowEditor.vue';
 import { GraphEditorStore } from '../../src/extensions/built-in/custom-agents/editor/editor-store';
-import type { GraphPreset } from '../../src/extensions/built-in/custom-agents/graph/contracts';
 import { builtinNodeRegistry } from '../../src/extensions/built-in/custom-agents/registry/builtin-nodes';
+import { loadFlowFixture as fixture } from '../fixtures/custom-agents/load-fixture';
 
 class ResizeObserverStub {
   observe() {}
@@ -35,15 +35,6 @@ afterEach(() => {
 });
 
 const english = JSON.parse(fs.readFileSync('locales/en.json', 'utf8')) as Record<string, unknown>;
-const fixture = (name = 'minimal-observer') =>
-  JSON.parse(
-    fs.readFileSync(
-      name === 'mythic'
-        ? 'src/extensions/built-in/custom-agents/presets/mythic.flow.json'
-        : `test/fixtures/custom-agents/${name}.flow.json`,
-      'utf8',
-    ),
-  ) as GraphPreset;
 
 function overlaps(
   left: { x: number; y: number; width: number; height: number },

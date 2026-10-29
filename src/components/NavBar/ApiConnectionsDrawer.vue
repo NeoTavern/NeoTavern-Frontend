@@ -229,6 +229,67 @@ async function testMessage() {
   }
 }
 
+function createCustomProxy() {
+  const newProxyId = uuidv4();
+  settingsStore.settings.proxies.push({
+    id: newProxyId,
+    name: 'New Proxy',
+    url: '',
+    password: '',
+  });
+  settingsStore.settings.api.proxy.id = newProxyId;
+  settingsStore.settings.api.proxy.url = '';
+  settingsStore.settings.api.proxy.password = '';
+}
+
+async function deleteCustomProxy() {
+  const selectedProxyId = settingsStore.settings.api.proxy.id;
+  const index = settingsStore.settings.proxies.findIndex((proxy) => proxy.id === selectedProxyId);
+  if (index === -1) return;
+
+  const { result } = await popupStore.show({
+    title: t('apiConnections.customProxy.deleteProfileTitle'),
+    content: t('apiConnections.customProxy.deleteProfileContent', {
+      name: settingsStore.settings.proxies[index].name,
+    }),
+    type: POPUP_TYPE.CONFIRM,
+  });
+  if (result !== POPUP_RESULT.AFFIRMATIVE) return;
+
+  settingsStore.settings.proxies.splice(index, 1);
+  if (settingsStore.settings.api.proxy.id === selectedProxyId) {
+    settingsStore.settings.api.proxy.id = '';
+  }
+}
+
+function saveCustomProxy() {
+  const proxy = settingsStore.settings.proxies.find((item) => item.id === settingsStore.settings.api.proxy.id);
+  if (!proxy) return;
+
+  proxy.url = settingsStore.settings.api.proxy.url;
+  proxy.password = settingsStore.settings.api.proxy.password;
+}
+
+async function renameCustomProxy() {
+  const proxy = settingsStore.settings.proxies.find((item) => item.id === settingsStore.settings.api.proxy.id);
+  if (!proxy) return;
+
+  const { result, value: newName } = await popupStore.show<string>({
+    title: t('apiConnections.customProxy.renameProfile'),
+    type: POPUP_TYPE.INPUT,
+    inputValue: proxy.name,
+  });
+
+  if (result !== POPUP_RESULT.AFFIRMATIVE || !newName?.trim() || newName === proxy.name) return;
+
+  try {
+    proxy.name = newName.trim();
+  } catch (error) {
+    toast.error('Failed to rename preset.');
+    console.error(error);
+  }
+}
+
 const profileCustomActions: CustomAction[] = [
   {
     key: 'info',
@@ -327,72 +388,10 @@ const profileActionOrder = ['info', 'save', 'create', 'edit', 'delete', 'import'
           :delete-title="'apiConnections.customProxy.deleteProfile'"
           :save-title="'apiConnections.customProxy.saveProfile'"
           :edit-title="'apiConnections.customProxy.renameProfile'"
-          @create="
-            () => {
-              const newProxyId = uuidv4();
-              settingsStore.settings.proxies.push({
-                id: newProxyId,
-                name: 'New Proxy',
-                url: '',
-                password: '',
-              });
-              settingsStore.settings.api.proxy.id = newProxyId;
-              settingsStore.settings.api.proxy.url = '';
-              settingsStore.settings.api.proxy.password = '';
-            }
-          "
-          @delete="
-            async () => {
-              const index = settingsStore.settings.proxies.findIndex(
-                (p) => p.id === settingsStore.settings.api.proxy.id,
-              );
-              if (index !== -1) {
-                const { result } = await popupStore.show({
-                  title: t('apiConnections.customProxy.deleteProfileTitle'),
-                  content: t('apiConnections.customProxy.deleteProfileContent', {
-                    name: settingsStore.settings.proxies[index].name,
-                  }),
-                  type: POPUP_TYPE.CONFIRM,
-                });
-                if (result === POPUP_RESULT.AFFIRMATIVE) {
-                  settingsStore.settings.proxies.splice(index, 1);
-                  if (settingsStore.settings.api.proxy.id === settingsStore.settings.proxies[index]?.id) {
-                    settingsStore.settings.api.proxy.id = '';
-                  }
-                }
-              }
-            }
-          "
-          @save="
-            () => {
-              const proxy = settingsStore.settings.proxies.find((p) => p.id === settingsStore.settings.api.proxy.id);
-              if (proxy) {
-                proxy.url = settingsStore.settings.api.proxy.url;
-                proxy.password = settingsStore.settings.api.proxy.password;
-              }
-            }
-          "
-          @edit="
-            async () => {
-              const proxy = settingsStore.settings.proxies.find((p) => p.id === settingsStore.settings.api.proxy.id);
-              if (proxy) {
-                const { result, value: newName } = await popupStore.show<string>({
-                  title: t('apiConnections.customProxy.renameProfile'),
-                  type: POPUP_TYPE.INPUT,
-                  inputValue: proxy.name,
-                });
-
-                if (result === POPUP_RESULT.AFFIRMATIVE && newName && newName.trim() && newName !== proxy.name) {
-                  try {
-                    proxy.name = newName.trim();
-                  } catch (error) {
-                    toast.error('Failed to rename preset.');
-                    console.error(error);
-                  }
-                }
-              }
-            }
-          "
+          @create="createCustomProxy"
+          @delete="deleteCustomProxy"
+          @save="saveCustomProxy"
+          @edit="renameCustomProxy"
         />
         <FormItem :label="t('apiConnections.customProxy.url')">
           <Input

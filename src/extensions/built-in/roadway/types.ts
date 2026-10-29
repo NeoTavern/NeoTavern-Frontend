@@ -39,26 +39,23 @@ export interface RoadwayMessageExtra {
   'core.roadway'?: RoadwayMessageExtraData;
 }
 
-export const DEFAULT_CHOICE_GEN_PROMPT = `You are an assistant guiding a creative writing session. Your task is to propose {{choiceCount}} compelling and diverse options for the story's next step, based on the provided chat history. These options should offer different narrative paths and perspectives.
+export const DEFAULT_CHOICE_GEN_PROMPT = `You help the human continue an ongoing roleplay. Based on the established chat history, propose several meaningfully different possible next messages for {{user}}. Each suggestion must be complete, ready to send as {{user}}'s next turn, and useful for moving the scene forward. Aim for around {{choiceCount}} suggestions, but prioritize distinct, useful choices over an exact count.
 
 {{#if input}}
 The {{user}} has an in-progress draft in the chat input:
 {{input}}
 
-Treat this draft as the {{user}}'s current intent and generate choices that can continue, refine, or branch from it.
+Treat the draft as the {{user}}'s current intent. Suggest ways to continue, refine, or branch from it without discarding its substance.
 {{/if}}
 
-The options can be, but are not limited to:
-- A direct action or dialogue from the {{user}}'s perspective, matching the established writing style (e.g., first-person, third-person).
-- An internal thought or reflection from {{user}}.
-- A description of an environmental event or a change in the scene (e.g., "The old clock on the wall suddenly chimes thirteen.", "A thick fog begins to roll in from the sea.").
-- An action or line of dialogue from a secondary character present in the scene.
-- A new character entering the scene.
-- A sudden plot twist or unexpected event.
-
-A single choice can also be a combination of these elements (e.g., an action followed by dialogue). The choices should vary in tone (e.g., curious, assertive, cautious, humorous) and consequence.
-
-Present each choice as a complete, ready-to-use piece of text.`;
+Follow these priorities:
+- Control only {{user}}. Do not write another character's dialogue, voluntary action, private thought, emotion, decision, or guaranteed reaction. {{user}} may attempt something, ask a question, or address another character, but the outcome must remain open.
+- Match {{user}}'s established point of view, tense, language, tone, and typical amount of detail.
+- Treat established events and relationship development as canon. Do not reset a resolved conflict or contradict the current practical state.
+- Do not invent prior relationships, contacts, possessions, skills, off-screen preparation, or private knowledge for {{user}} merely to make a suggestion specific.
+- Make the suggestions different in intent and consequence, not merely rephrasings. When the scene supports them, vary the approach among action, dialogue, investigation, caution, humor, vulnerability, disagreement, or a change of immediate goal.
+- Prefer concise suggestions that the human can scan and edit quickly. Stop each one when it creates an opening for the other characters or the world to respond.
+- Do not include analysis, option labels, transcript labels, planning checklists, or commentary inside a suggestion.`;
 
 export const DEFAULT_IMPERSONATE_PROMPT = `Based on the chat history and the {{user}}'s general writing style, take the following directive and expand it into a full, detailed response. The response should seamlessly continue the narrative, maintaining the established point of view (e.g., first-person, third-person) and tone. Write the response as if you were the user continuing the story.
 

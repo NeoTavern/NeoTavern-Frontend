@@ -161,25 +161,25 @@ describe('convertMessagesToInstructString', () => {
       names_behavior: NamesBehavior.INCLUDE,
     };
 
-    it('should add names when names_behavior is INCLUDE', () => {
-      const messages: ApiChatMessage[] = [
-        {
-          role: 'user',
-          content: 'Hello!',
-          name: 'User',
-        },
-        {
-          role: 'assistant',
-          content: 'Hi there!',
-          name: 'Assistant',
-        },
-      ];
+    it.each([NamesBehavior.INCLUDE, NamesBehavior.FORCE, NamesBehavior.ALWAYS])(
+      'should add names when names_behavior is %s',
+      (namesBehavior) => {
+        const messages: ApiChatMessage[] = [
+          { role: 'user', content: 'Hello!', name: 'User' },
+          { role: 'assistant', content: 'Hi there!', name: 'Assistant' },
+        ];
 
-      const result = convertMessagesToInstructString(messages, templateWithNames, 'John', 'Bot');
+        const result = convertMessagesToInstructString(
+          messages,
+          { ...basicTemplate, names_behavior: namesBehavior },
+          'John',
+          'Bot',
+        );
 
-      expect(result).toContain('John: Hello!');
-      expect(result).toContain('Bot: Hi there!');
-    });
+        expect(result).toContain('John: Hello!');
+        expect(result).toContain('Bot: Hi there!');
+      },
+    );
 
     it('should not add names to system messages even with INCLUDE', () => {
       const messages: ApiChatMessage[] = [
@@ -195,44 +195,6 @@ describe('convertMessagesToInstructString', () => {
       expect(result).not.toContain('System:');
       // When last message is not assistant, output sequence is added with names
       expect(result).toBe('<|im_start|>system\nYou are helpful.<|im_end|>\n<|im_start|>assistant\nBot: ');
-    });
-
-    it('should add names when names_behavior is FORCE', () => {
-      const templateForce: InstructTemplate = {
-        ...basicTemplate,
-        names_behavior: NamesBehavior.FORCE,
-      };
-
-      const messages: ApiChatMessage[] = [
-        {
-          role: 'user',
-          content: 'Hello!',
-          name: 'User',
-        },
-      ];
-
-      const result = convertMessagesToInstructString(messages, templateForce, 'Alice', 'Bot');
-
-      expect(result).toContain('Alice: Hello!');
-    });
-
-    it('should add names when names_behavior is ALWAYS', () => {
-      const templateAlways: InstructTemplate = {
-        ...basicTemplate,
-        names_behavior: NamesBehavior.ALWAYS,
-      };
-
-      const messages: ApiChatMessage[] = [
-        {
-          role: 'assistant',
-          content: 'Greetings!',
-          name: 'Bot',
-        },
-      ];
-
-      const result = convertMessagesToInstructString(messages, templateAlways, 'User', 'Charlie');
-
-      expect(result).toContain('Charlie: Greetings!');
     });
 
     it('should add character name to output sequence with names behavior', () => {

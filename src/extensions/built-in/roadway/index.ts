@@ -87,7 +87,7 @@ class RoadwayManager {
             choices: {
               type: 'array',
               items: { type: 'string' },
-              description: `An array of ${settings.choiceCount} user reply options.`,
+              description: `Distinct, ready-to-send user turns. Aim for around ${settings.choiceCount}, but do not pad the array to reach an exact count.`,
             },
           },
           required: ['choices'],

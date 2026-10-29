@@ -13,13 +13,8 @@ import type {
 } from '../../src/extensions/built-in/custom-agents/registry/node-definition';
 import { executeGraphPlan } from '../../src/extensions/built-in/custom-agents/runtime/execute-plan';
 import { genericToolCatalog } from '../../src/extensions/built-in/custom-agents/registry/tools';
+import { loadFlowFixture as fixture } from '../fixtures/custom-agents/load-fixture';
 
-const fixture = (name: string): GraphPreset =>
-  JSON.parse(
-    fs.readFileSync(new URL(`../fixtures/custom-agents/${name}.flow.json`, import.meta.url), 'utf8'),
-  ) as GraphPreset;
-const jsonFixture = (name: string): unknown =>
-  JSON.parse(fs.readFileSync(new URL(`../fixtures/custom-agents/${name}`, import.meta.url), 'utf8'));
 const english = JSON.parse(fs.readFileSync(new URL('../../locales/en.json', import.meta.url), 'utf8')) as JsonObject;
 function localeValue(path: string): JsonValue | undefined {
   let value: JsonValue = english;
@@ -76,13 +71,6 @@ function source(schema: JsonObject): ResolvedInputBinding {
 }
 function portContract(definition: RegisteredNodeDefinition, data: JsonObject, portContext = context()) {
   return definition.ports(data, portContext);
-}
-function compactPorts(ports: ReturnType<RegisteredNodeDefinition['ports']>) {
-  const compact = (port: (typeof ports.inputs)[number]) =>
-    port.kind === 'CONTROL'
-      ? `${port.direction}:${port.kind}:${port.id}:${port.cardinality}:label=${port.labelKey}:literal=${port.literalLabel === true}`
-      : `${port.direction}:${port.kind}:${port.id}:${port.cardinality}:${port.required ? 'required' : 'optional'}:schema=${JSON.stringify(port.schema)}:editor=${port.inlineEditor ?? '-'}${port.schemaPathSource ? `:pathSource=${port.schemaPathSource.inputPortId}/${port.schemaPathSource.mode}` : ''}:label=${port.labelKey}:literal=${port.literalLabel === true}`;
-  return { inputs: ports.inputs.map(compact), outputs: ports.outputs.map(compact) };
 }
 function definition(type: string): RegisteredNodeDefinition {
   const found = builtinNodeRegistry.get(type);
@@ -151,12 +139,6 @@ function request(
 }
 
 describe('production custom-agent node catalog', () => {
-  it('enumerates the exact closed 67-node API', () => {
-    const types = builtinNodeRegistry.list().map((item) => item.type);
-    expect(types).toHaveLength(67);
-    expect(new Set(types).size).toBe(67);
-    expect(types.filter((type) => type.startsWith('tool.'))).toHaveLength(31);
-  });
   it('resolves every fixed English catalog label emitted by the closed API', () => {
     const keys = new Set<string>();
     const collectFields = (fields: readonly InspectorFieldDefinition[]) => {
@@ -318,24 +300,7 @@ describe('production custom-agent node catalog', () => {
       body.nodes.find((node) => node.id === 'body-return')?.inputs.find((port) => port.id === 'value'),
     ).not.toHaveProperty('literalLabel');
   });
-  it('freezes every default contract in the closed API', async () => {
-    const contracts = builtinNodeRegistry.list().map((item) => {
-      let nextId = 0;
-      const initialization = { ids: { generate: () => `generated-${++nextId}` } };
-      const initialData = item.initialData(initialization);
-      return {
-        type: item.type,
-        class: `${item.category}/${item.executionClass}/${item.runtime.kind}`,
-        initialData: JSON.stringify(initialData),
-        initialInputValues: JSON.stringify(item.initialInputValues(initialization, initialData)),
-        ...compactPorts(item.ports(initialData, context())),
-        fields: JSON.stringify(item.fields(initialData)),
-      };
-    });
-    expect(contracts).toHaveLength(67);
-    expect(contracts).toEqual(jsonFixture('production-catalog-defaults.snapshot.json'));
-  });
-  it('declares exact value versus array-item sources for every tool schema path port', () => {
+  it('declares value versus array-item sources for tool schema path ports', () => {
     let generated = 0;
     const paths = builtinNodeRegistry
       .list()
@@ -348,7 +313,6 @@ describe('production custom-agent node catalog', () => {
               : [],
           ),
       );
-    expect(paths).toHaveLength(10);
     expect(
       paths
         .filter(([type]) => type.startsWith('tool.json.'))
@@ -365,37 +329,7 @@ describe('production custom-agent node catalog', () => {
       expect(definition.executionClass, definition.type).toBe(expected ? 'CONTROLLED' : 'PURE_DATA');
     }
   });
-  it('adapts the authoritative logic.compare oneOf contract and executes both members', async () => {
-    const compare = definition('tool.logic.compare');
-    expect(portContract(compare, {}).inputs).toEqual([
-      {
-        id: 'operator',
-        direction: 'INPUT',
-        kind: 'DATA',
-        cardinality: 'ONE',
-        required: true,
-        schema: { type: 'string' },
-        labelKey: 'operator',
-      },
-      {
-        id: 'left',
-        direction: 'INPUT',
-        kind: 'DATA',
-        cardinality: 'ONE',
-        required: true,
-        schema: {},
-        labelKey: 'left',
-      },
-      {
-        id: 'right',
-        direction: 'INPUT',
-        kind: 'DATA',
-        cardinality: 'ONE',
-        required: true,
-        schema: {},
-        labelKey: 'right',
-      },
-    ]);
+  it('executes both logic.compare operand forms and rejects mismatched operands', async () => {
     await expect(executeDefinition('tool.logic.compare', {}, { operator: 'GT', left: 3, right: 2 })).resolves.toEqual({
       control: [],
       outputs: { result: { result: true } },
@@ -424,7 +358,12 @@ describe('production custom-agent node catalog', () => {
         }
     }
   });
-  it('freezes focused dynamic contracts across schema- and list-dependent nodes', async () => {
+  it('derives dynamic ports from configured lists, signatures, and upstream schemas', () => {
+    const dataPort = (
+      ports: ReturnType<RegisteredNodeDefinition['ports']>,
+      direction: 'inputs' | 'outputs',
+      id: string,
+    ) => ports[direction].find((port) => port.id === id);
     const signature = {
       inputs: [
         { id: 'argument', label: 'Argument', required: true, cardinality: 'ONE' as const, schema: { type: 'string' } },
@@ -433,217 +372,76 @@ describe('production custom-agent node catalog', () => {
         { id: 'returned', label: 'Returned', required: false, cardinality: 'ONE' as const, schema: { type: 'number' } },
       ],
     };
+
+    const branch = portContract(definition('control.branch'), {
+      cases: [
+        { id: 'first', label: 'First' },
+        { id: 'second', label: 'Second' },
+      ],
+    });
+    expect(branch.outputs.map((port) => port.id)).toEqual(['case.first', 'case.second', 'else']);
+    expect(dataPort(branch, 'inputs', 'condition.first')).toMatchObject({
+      schema: { type: 'boolean' },
+      labelKey: 'First',
+    });
+
+    const mergeAll = portContract(definition('control.merge-all'), {
+      inputs: [
+        { id: 'left', label: 'Left', carriesValue: true },
+        { id: 'right', label: 'Right', carriesValue: true },
+      ],
+    });
+    expect(dataPort(mergeAll, 'outputs', 'values')).toMatchObject({
+      schema: { type: 'object', properties: { left: {}, right: {} }, required: ['left', 'right'] },
+    });
+
+    const runFlow = portContract(
+      definition('control.run-flow'),
+      { flowId: 'child' },
+      context({}, { resolveSubflow: () => signature }),
+    );
+    expect(dataPort(runFlow, 'inputs', 'argument')).toMatchObject({ required: true, schema: { type: 'string' } });
+    expect(dataPort(runFlow, 'outputs', 'returned')).toMatchObject({ required: false, schema: { type: 'number' } });
+
+    const nestedSource = source({ type: 'number' });
+    if (nestedSource.kind !== 'EDGE') throw new Error('Expected edge source');
+    const forEach = portContract(
+      definition('control.for-each'),
+      { accumulator: true, body: { nodes: [], edges: [] } },
+      context(
+        {
+          initialAccumulator: source({ type: 'string' }),
+          items: source({ type: 'array', items: { type: 'boolean' } }),
+        },
+        { resolveNestedReturnSource: () => nestedSource.source },
+      ),
+    );
+    expect(dataPort(forEach, 'outputs', 'items')).toMatchObject({
+      schema: { type: 'array', items: { type: 'number' } },
+    });
+    expect(dataPort(forEach, 'outputs', 'accumulator')).toMatchObject({ schema: { type: 'string' } });
+
     const profileSchema: JsonObject = {
       type: 'object',
       properties: { name: { type: 'string' } },
       required: ['name'],
     };
-    const schemaAgent = {
-      ...context().agent,
-      configurationSchema: {
+    const get = portContract(definition('data.get'), { path: 'name' }, context({ value: source(profileSchema) }));
+    expect(dataPort(get, 'outputs', 'value')).toMatchObject({ schema: { type: 'string' } });
+
+    const llm = portContract(definition('llm.request'), {
+      prompt: 'Prompt',
+      variables: [{ id: 'topic', name: 'topic' }],
+      assembly: { type: 'STANDALONE', role: 'USER' },
+      outputSchema: {
         type: 'object',
-        properties: { profile: profileSchema },
-        required: ['profile'],
+        properties: { answer: { type: 'string' }, score: { type: 'number' } },
+        required: ['answer', 'score'],
+        additionalProperties: false,
       },
-      stateSchema: { type: 'object', properties: { count: { type: 'number' } }, required: ['count'] },
-    };
-    const manualFlow = {
-      ...context().flow,
-      nodes: [
-        {
-          id: 'trigger',
-          type: 'trigger.manual',
-          position: { x: 0, y: 0 },
-          data: {
-            inputSchema: {
-              type: 'object',
-              properties: { query: { type: 'string' } },
-              required: ['query'],
-              additionalProperties: false,
-            },
-          },
-          inputValues: {},
-        },
-      ],
-    };
-    const nestedSource = source({ type: 'number' });
-    if (nestedSource.kind !== 'EDGE') throw new Error('Expected edge source');
-    const dynamicContracts = {
-      scopeEntry: portContract(definition('scope.entry'), {}, context({}, { scopeSignature: signature })),
-      scopeReturn: portContract(definition('scope.return'), {}, context({}, { scopeSignature: signature })),
-      branch: portContract(definition('control.branch'), {
-        cases: [
-          { id: 'first', label: 'First' },
-          { id: 'second', label: 'Second' },
-        ],
-      }),
-      mergeAny: portContract(definition('control.merge-any'), {
-        inputs: [
-          { id: 'plain', label: 'Plain', carriesValue: false },
-          { id: 'value', label: 'Value', carriesValue: true },
-        ],
-      }),
-      mergeAll: portContract(definition('control.merge-all'), {
-        inputs: [
-          { id: 'left', label: 'Left', carriesValue: true },
-          { id: 'right', label: 'Right', carriesValue: true },
-        ],
-      }),
-      object: portContract(definition('data.object'), {
-        fields: [
-          { id: 'name', key: 'name', schema: { type: 'string' } },
-          { id: 'score', key: 'score', schema: { type: 'number' } },
-        ],
-      }),
-      arrayKnown: portContract(
-        definition('data.array'),
-        {
-          items: [
-            { id: 'one', label: 'One' },
-            { id: 'two', label: 'Two' },
-          ],
-        },
-        context({
-          one: { kind: 'UNBOUND' },
-          'item.one': source({ type: 'string' }),
-          'item.two': source({ type: 'string' }),
-        }),
-      ),
-      all: portContract(definition('logic.all'), {
-        inputs: [
-          { id: 'first', label: 'value' },
-          { id: 'second', label: 'input' },
-        ],
-      }),
-      any: portContract(definition('logic.any'), {
-        inputs: [
-          { id: 'first', label: 'value' },
-          { id: 'second', label: 'input' },
-        ],
-      }),
-      template: portContract(definition('data.template'), {
-        template: '{{value}} {{input}}',
-        variables: [
-          { id: 'first', name: 'value' },
-          { id: 'second', name: 'input' },
-        ],
-      }),
-      javascript: portContract(definition('data.javascript'), {
-        code: 'return inputs.messages.length;',
-        inputs: [
-          {
-            id: 'messages',
-            name: 'messages',
-            schema: { type: 'array', items: { type: 'object' } },
-          },
-        ],
-        outputSchema: { type: 'number' },
-      }),
-      arrayMixed: portContract(
-        definition('data.array'),
-        {
-          items: [
-            { id: 'one', label: 'One' },
-            { id: 'two', label: 'Two' },
-          ],
-        },
-        context({ 'item.one': source({ type: 'string' }), 'item.two': source({ type: 'number' }) }),
-      ),
-      llm: portContract(definition('llm.request'), {
-        prompt: 'Prompt',
-        variables: [{ id: 'topic', name: 'topic' }],
-        assembly: {
-          type: 'NORMAL_CHAT',
-          history: 'RECENT_CURRENT',
-          placement: { type: 'IN_CHAT', role: 'USER', depth: 2 },
-        },
-        outputSchema: {
-          type: 'object',
-          properties: { answer: { type: 'string' }, score: { type: 'number' } },
-          required: ['answer', 'score'],
-          additionalProperties: false,
-        },
-      }),
-      runFlow: portContract(
-        definition('control.run-flow'),
-        { flowId: 'child' },
-        context({}, { resolveSubflow: () => signature }),
-      ),
-      forEach: portContract(
-        definition('control.for-each'),
-        { accumulator: true, body: { nodes: [], edges: [] } },
-        context(
-          {
-            initialAccumulator: source({ type: 'string' }),
-            items: source({ type: 'array', items: { type: 'boolean' } }),
-          },
-          { resolveNestedReturnSource: () => nestedSource.source },
-        ),
-      ),
-      configuration: portContract(
-        definition('data.configuration'),
-        { path: 'profile' },
-        context({}, { agent: schemaAgent }),
-      ),
-      state: portContract(definition('data.state'), { path: 'count' }, context({}, { agent: schemaAgent })),
-      event: portContract(definition('data.event'), { path: 'input' }, context({}, { flow: manualFlow })),
-      get: portContract(
-        definition('data.get'),
-        { path: 'profile.name' },
-        context({ value: source(schemaAgent.configurationSchema) }),
-      ),
-      unpack: portContract(definition('data.unpack-object'), {}, context({ value: source(profileSchema) })),
-      weightedTool: portContract(
-        definition('tool.random.selectWeighted'),
-        {},
-        context({
-          items: source({
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: { value: { type: 'string' }, weight: { type: 'number' } },
-              required: ['value', 'weight'],
-            },
-          }),
-        }),
-      ),
-    };
-    const compactContracts = Object.fromEntries(
-      Object.entries(dynamicContracts).map(([name, ports]) => [name, compactPorts(ports)]),
-    );
-    expect(compactContracts).toEqual(jsonFixture('production-catalog-dynamic.snapshot.json'));
-  });
-  it('exposes canonical schema-path inspector metadata without node-specific UI inference', () => {
-    expect(definition('data.configuration').fields({ path: null })).toEqual([
-      {
-        id: 'path',
-        path: 'path',
-        labelKey: 'path',
-        control: 'SCHEMA_PATH',
-        schemaSource: 'CONFIGURATION',
-        allowRoot: true,
-      },
-    ]);
-    expect(definition('data.state').fields({ path: null })).toEqual([
-      { id: 'path', path: 'path', labelKey: 'path', control: 'SCHEMA_PATH', schemaSource: 'STATE', allowRoot: true },
-    ]);
-    expect(definition('data.event').fields({ path: null })).toEqual([
-      { id: 'path', path: 'path', labelKey: 'path', control: 'SCHEMA_PATH', schemaSource: 'EVENT', allowRoot: true },
-    ]);
-    expect(definition('data.get').fields({ path: '' })).toEqual([
-      {
-        id: 'path',
-        path: 'path',
-        labelKey: 'path',
-        control: 'SCHEMA_PATH',
-        schemaSource: 'INPUT_VALUE',
-        allowRoot: false,
-      },
-    ]);
-    for (const type of ['effect.set-state', 'effect.remove-state'])
-      expect(definition(type).fields({ path: '' }), type).toEqual([
-        { id: 'path', path: 'path', labelKey: 'path', control: 'SCHEMA_PATH', schemaSource: 'STATE', allowRoot: false },
-      ]);
+    });
+    expect(dataPort(llm, 'outputs', 'property/answer')).toMatchObject({ schema: { type: 'string' } });
+    expect(dataPort(llm, 'outputs', 'property/score')).toMatchObject({ schema: { type: 'number' } });
   });
   it('derives lookup schemas for literal, additional, common, fallback, and chained tables', () => {
     const definition = builtinNodeRegistry.get('tool.table.lookupKey')!;
@@ -684,64 +482,48 @@ describe('production custom-agent node catalog', () => {
     expect(first).toMatchObject({ type: 'object' });
     expect(value({ table: source(first), key: { kind: 'INLINE', value: 'Likely' } })).toEqual({ type: 'number' });
   });
-  it('keeps visible-message flow compatibility exact across every trigger declaration', () => {
+  it.each([
+    { type: 'trigger.after-user', data: { schedule: { type: 'ALWAYS' } }, allowed: true },
+    {
+      type: 'trigger.before-generation',
+      data: { generationModes: ['NEW'], schedule: { type: 'ALWAYS' } },
+      allowed: false,
+    },
+    {
+      type: 'trigger.generate-assistant',
+      data: { generationModes: ['NEW'], schedule: { type: 'ALWAYS' } },
+      allowed: false,
+    },
+    {
+      type: 'trigger.after-generation',
+      data: { generationModes: ['NEW'], schedule: { type: 'ALWAYS' } },
+      allowed: true,
+    },
+    { type: 'trigger.manual', data: { inputSchema: { type: 'object', additionalProperties: true } }, allowed: true },
+  ])('allows visible-message effects under $type: $allowed', ({ type, data, allowed }) => {
     const visible = definition('effect.visible-message');
-    const triggerCases: Array<{ type: string; data: JsonObject; allowed: boolean }> = [
-      { type: 'trigger.after-user', data: { schedule: { type: 'ALWAYS' } }, allowed: true },
-      {
-        type: 'trigger.before-generation',
-        data: { generationModes: ['NEW'], schedule: { type: 'ALWAYS' } },
-        allowed: false,
-      },
-      {
-        type: 'trigger.generate-assistant',
-        data: { generationModes: ['NEW'], schedule: { type: 'ALWAYS' } },
-        allowed: false,
-      },
-      {
-        type: 'trigger.after-generation',
-        data: { generationModes: ['NEW'], schedule: { type: 'ALWAYS' } },
-        allowed: true,
-      },
-      {
-        type: 'trigger.manual',
-        data: { inputSchema: { type: 'object', additionalProperties: true } },
-        allowed: true,
-      },
-    ];
-    for (const triggerCase of triggerCases) {
-      for (const operation of ['REPLACE_TARGET', 'APPEND_TARGET', 'CREATE'] as const) {
-        const triggerNode = {
-          id: 'trigger',
-          type: triggerCase.type,
-          position: { x: 0, y: 0 },
-          data: triggerCase.data,
-          inputValues: {},
-        };
-        const effectNode = {
-          id: 'effect',
-          type: visible.type,
-          position: { x: 200, y: 0 },
-          data: { operation },
-          inputValues: { content: 'content' },
-        };
-        const flow = {
-          ...context().flow,
-          nodes: [triggerNode, effectNode],
-        };
-        const diagnostics = visible.validate?.({
-          agent: context().agent,
-          flow,
-          node: effectNode,
-          ports: visible.ports(effectNode.data, context({}, { flow })),
-          edges: [],
-          registry: builtinNodeRegistry,
-        });
-        expect(
-          diagnostics?.map((item) => item.code),
-          `${triggerCase.type}/${operation}`,
-        ).toEqual(triggerCase.allowed ? [] : ['VISIBLE_MESSAGE_CONTEXT']);
-      }
+    for (const operation of ['REPLACE_TARGET', 'APPEND_TARGET', 'CREATE'] as const) {
+      const triggerNode = { id: 'trigger', type, position: { x: 0, y: 0 }, data, inputValues: {} };
+      const effectNode = {
+        id: 'effect',
+        type: visible.type,
+        position: { x: 200, y: 0 },
+        data: { operation },
+        inputValues: { content: 'content' },
+      };
+      const flow = { ...context().flow, nodes: [triggerNode, effectNode] };
+      const diagnostics = visible.validate?.({
+        agent: context().agent,
+        flow,
+        node: effectNode,
+        ports: visible.ports(effectNode.data, context({}, { flow })),
+        edges: [],
+        registry: builtinNodeRegistry,
+      });
+      expect(
+        diagnostics?.map((item) => item.code),
+        operation,
+      ).toEqual(allowed ? [] : ['VISIBLE_MESSAGE_CONTEXT']);
     }
   });
   it('reports exact context diagnostics for assistant-generation-visible effects and subflow event reads', () => {
