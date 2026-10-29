@@ -13,11 +13,10 @@ import type {
   TriggerDeclaration,
 } from '../registry/node-definition';
 import type { GraphExecutionResult } from '../runtime/execute-plan';
+import { deepEqual } from '../generic/json';
 import { validateSchemaValue } from '../generic/schema';
-import { assertValid } from '../generic/validation';
 import type { ActiveInjection, CustomAgentEvent, CustomAgentsCheckpoint, MessageValue } from './contracts';
 import { ensureAgentCheckpoint } from './checkpoints';
-import { validateCheckpoint } from './schemas';
 
 function clone<Value>(value: Value): Value {
   return cloneDeep(toRaw(value));
@@ -110,26 +109,6 @@ function resolveEligibilityValue(
       Object.entries(value).map(([key, item]) => [key, resolveEligibilityValue(item, namespaces)]),
     );
   return value;
-}
-
-function deepEqual(left: JsonValue, right: JsonValue): boolean {
-  if (Object.is(left, right)) return true;
-  if (Array.isArray(left) || Array.isArray(right))
-    return (
-      Array.isArray(left) &&
-      Array.isArray(right) &&
-      left.length === right.length &&
-      left.every((item, index) => deepEqual(item, right[index]!))
-    );
-  if (isRecord(left) || isRecord(right)) {
-    if (!isRecord(left) || !isRecord(right)) return false;
-    const keys = Object.keys(left);
-    return (
-      keys.length === Object.keys(right).length &&
-      keys.every((key) => Object.hasOwn(right, key) && deepEqual(left[key] as JsonValue, right[key] as JsonValue))
-    );
-  }
-  return false;
 }
 
 function evaluateEligibilityUnsafe(
@@ -277,7 +256,8 @@ export class GraphTriggerLifecycle {
     event: CustomAgentEvent,
     onCheckpoint?: (checkpoint: CustomAgentsCheckpoint) => Promise<void> | void,
   ): Promise<PreparedGenerationFlows> {
-    const checkpoint = clone(assertValid(validateCheckpoint(source)));
+    // Sources come from validated checkpoint reads or earlier lifecycle results; writes validate again.
+    const checkpoint = clone(source);
     const eligible: EligibleTriggerFlow[] = [];
     const advancedFlowIds = new Set<string>();
     for (const candidate of orderTriggerFlows(this.agents(), event)) {
@@ -322,7 +302,7 @@ export class GraphTriggerLifecycle {
       onVisibleMessage?: (effect: Extract<GraphNodeEffect, { type: 'VISIBLE_MESSAGE' }>) => Promise<void>;
     } = {},
   ): Promise<GraphLifecycleRunResult> {
-    const checkpoint = clone(assertValid(validateCheckpoint(source)));
+    const checkpoint = clone(source);
     const createdMessages: string[] = [];
     const ran: string[] = [];
     const skipped: string[] = [];
@@ -408,7 +388,6 @@ export class GraphTriggerLifecycle {
       ran.push(identity);
     }
 
-    assertValid(validateCheckpoint(checkpoint));
     return {
       checkpoint,
       ...(response === undefined ? {} : { response }),

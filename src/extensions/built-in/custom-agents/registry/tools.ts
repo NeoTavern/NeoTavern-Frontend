@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue } from '../generic/json';
+import { deepEqual, type JsonObject, type JsonValue } from '../generic/json';
 import { isSafePath } from '../generic/path';
 import { assertValid } from '../generic/validation';
 import type { IdSource, RandomSource, ToolDispatcher } from './node-definition';
@@ -72,22 +72,6 @@ function resolveParent(value: JsonValue, path: string, allowMissingFinal = false
   }
   if (!allowMissingFinal && !own(parent, segment)) fail(`Path ${path} does not exist`);
   return { parent, key: segment, value: parent[segment] as JsonValue };
-}
-
-function deepEqual(left: JsonValue, right: JsonValue): boolean {
-  if (left === right) return true;
-  if (left === null || right === null || typeof left !== 'object' || typeof right !== 'object') return false;
-  if (Array.isArray(left) !== Array.isArray(right)) return false;
-  if (Array.isArray(left) && Array.isArray(right)) {
-    return left.length === right.length && left.every((item, index) => deepEqual(item, right[index]!));
-  }
-  const leftObject = left as JsonObject;
-  const rightObject = right as JsonObject;
-  const keys = Object.keys(leftObject);
-  return (
-    keys.length === Object.keys(rightObject).length &&
-    keys.every((key) => own(rightObject, key) && deepEqual(leftObject[key]!, rightObject[key]!))
-  );
 }
 
 function compare(operator: 'GT' | 'GTE' | 'LT' | 'LTE', left: JsonValue, right: JsonValue): boolean {

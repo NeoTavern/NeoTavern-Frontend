@@ -223,9 +223,10 @@ export class GraphEditorStore {
         this.signatureSchemaErrors.value.size === 0 &&
         Object.keys(this.inspectorJsonErrors.value).length === 0,
     );
+    const executableJson = computed(() => JSON.stringify(this.executable.value));
     this.isDirty = computed(
       () =>
-        JSON.stringify(this.draft.value) !== JSON.stringify(this.executable.value) ||
+        JSON.stringify(this.draft.value) !== executableJson.value ||
         Object.keys(this.inspectorJsonErrors.value).length > 0,
     );
     if (!options.validatedExecutable) this.revalidate();
@@ -276,7 +277,8 @@ export class GraphEditorStore {
   }
 
   private commit(label: string, mutate: (draft: GraphPreset) => void): void {
-    const before = clone(this.draft.value);
+    // The outgoing draft is replaced below and history values are cloned on restore, so it can be recorded as is.
+    const before = this.draft.value;
     const after = clone(before);
     mutate(after);
     this.#history.record({ label, before, after: clone(after) });

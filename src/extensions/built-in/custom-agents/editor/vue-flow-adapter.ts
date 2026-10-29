@@ -10,6 +10,7 @@ import type {
   ScopeGraph,
 } from '../graph/contracts';
 import { arePortSchemasAssignable, schemaFromConstant, schemaValueType } from '../graph/schema-ports';
+import { dataDependencyOrder, forEachBodySignature } from '../graph/scope-structure';
 import type { RunOverlayRecord } from './editor-store';
 import type {
   DataPortDefinition,
@@ -178,46 +179,10 @@ export function deriveForEachBodySignature(
     if (source) return source.schema;
     return Object.hasOwn(node.inputValues, portId) ? schemaFromConstant(node.inputValues[portId]!) : {};
   };
-  const itemsSchema = bindingSchema('items');
-  const accumulatorSchema = bindingSchema('initialAccumulator');
-  const accumulator = node.data.accumulator === true;
-  return {
-    inputs: [
-      {
-        id: 'item',
-        label: 'item',
-        required: true,
-        cardinality: 'ONE',
-        schema: isObject(itemsSchema.items) ? itemsSchema.items : {},
-      },
-      { id: 'index', label: 'index', required: true, cardinality: 'ONE', schema: { type: 'number' } },
-      ...(accumulator
-        ? [
-            {
-              id: 'accumulator',
-              label: 'accumulator',
-              required: true,
-              cardinality: 'ONE' as const,
-              schema: accumulatorSchema,
-            },
-          ]
-        : []),
-    ],
-    outputs: [
-      { id: 'value', label: 'value', required: false, cardinality: 'ONE', schema: {} },
-      ...(accumulator
-        ? [
-            {
-              id: 'accumulator',
-              label: 'accumulator',
-              required: true,
-              cardinality: 'ONE' as const,
-              schema: accumulatorSchema,
-            },
-          ]
-        : []),
-    ],
-  };
+  return forEachBodySignature(
+    bindingSchema('items'),
+    node.data.accumulator === true ? bindingSchema('initialAccumulator') : undefined,
+  );
 }
 
 export function resolveEditorScope(
@@ -256,49 +221,10 @@ export function resolveEditorPorts(
   const cached = cache.get(registry, graph, agent, flow, signature, scopeSignatureKind);
   if (cached) return cached.resolved;
 
-  const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
   const incomingData = indexIncomingDataEdges(graph);
-  const dependents = new Map<string, Set<string>>();
-  const dependencyCount = new Map(graph.nodes.map((node) => [node.id, 0]));
-  for (const edge of graph.edges) {
-    if (edge.kind !== 'DATA' || !nodesById.has(edge.source.nodeId) || !nodesById.has(edge.target.nodeId)) continue;
-    const targets = dependents.get(edge.source.nodeId) ?? new Set<string>();
-    if (!targets.has(edge.target.nodeId)) {
-      targets.add(edge.target.nodeId);
-      dependents.set(edge.source.nodeId, targets);
-      dependencyCount.set(edge.target.nodeId, dependencyCount.get(edge.target.nodeId)! + 1);
-    }
-  }
-
-  const ready = graph.nodes
-    .filter((node) => dependencyCount.get(node.id) === 0)
-    .map((node) => node.id)
-    .sort();
-  const order: string[] = [];
-  while (ready.length) {
-    const nodeId = ready.shift()!;
-    order.push(nodeId);
-    for (const dependentId of [...(dependents.get(nodeId) ?? [])].sort()) {
-      const remaining = dependencyCount.get(dependentId)! - 1;
-      dependencyCount.set(dependentId, remaining);
-      if (remaining === 0) {
-        ready.push(dependentId);
-        ready.sort();
-      }
-    }
-  }
-  const ordered = new Set(order);
-  order.push(
-    ...graph.nodes
-      .map((node) => node.id)
-      .filter((id) => !ordered.has(id))
-      .sort(),
-  );
-
   const resolved = new Map<string, ResolvedEditorNode>();
   const nestedSignatures = new Map<string, FlowSignature>();
-  for (const nodeId of order) {
-    const node = nodesById.get(nodeId)!;
+  for (const node of dataDependencyOrder(graph.nodes, graph.edges).ordered) {
     const definition = registry.get(node.type);
     const parsed = definition?.dataSchema.safeParse(node.data);
     if (!definition || !parsed?.success) {
@@ -345,10 +271,6 @@ export function resolveEditorPorts(
   }
   cache.set(registry, graph, agent, flow, signature, scopeSignatureKind, { resolved, incomingData, nestedSignatures });
   return resolved;
-}
-
-function isObject(value: unknown): value is JsonObject {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 export function isValidConnection(

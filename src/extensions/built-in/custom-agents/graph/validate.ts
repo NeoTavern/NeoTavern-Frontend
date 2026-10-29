@@ -30,6 +30,7 @@ import type {
 } from './plan-types';
 import { arePortSchemasAssignable, schemaFromConstant, schemasCanonicallyEqual, schemaValueType } from './schema-ports';
 import { parseGraphPresetShape, scopeGraphSchema } from './schemas';
+import { dataDependencyOrder, forEachBodySignature } from './scope-structure';
 
 export type GraphValidationResult =
   | { valid: true; value: ValidatedGraphPreset; diagnostics: [] }
@@ -69,10 +70,6 @@ function authoredSchemaErrors(schema: JsonObject, label: string): string[] {
 
 function schemaAccepts(schema: JsonObject, value: JsonValue): boolean {
   return validateSchemaValue(schema, value).valid;
-}
-
-function ownObject(value: unknown): value is JsonObject {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 const compareText = (left: string, right: string): number => (left < right ? -1 : left > right ? 1 : 0);
@@ -244,45 +241,6 @@ function portsMatchContract(actual: readonly PortDefinition[], expected: readonl
   );
 }
 
-function dataTopologicalOrder(
-  nodes: readonly GraphNode[],
-  edges: readonly GraphEdge[],
-  diagnostics: GraphDiagnostic[],
-  flowId: string,
-): GraphNode[] {
-  const nodeById = new Map(nodes.map((node) => [node.id, node]));
-  const indegree = new Map(nodes.map((node) => [node.id, 0]));
-  const outgoing = new Map(nodes.map((node) => [node.id, new Set<string>()]));
-  for (const edge of edges.filter((candidate) => candidate.kind === 'DATA')) {
-    if (!nodeById.has(edge.source.nodeId) || !nodeById.has(edge.target.nodeId)) continue;
-    const targets = outgoing.get(edge.source.nodeId)!;
-    if (!targets.has(edge.target.nodeId)) {
-      targets.add(edge.target.nodeId);
-      indegree.set(edge.target.nodeId, indegree.get(edge.target.nodeId)! + 1);
-    }
-  }
-  const ready = nodes.filter((node) => indegree.get(node.id) === 0).sort((a, b) => compareText(a.id, b.id));
-  const ordered: GraphNode[] = [];
-  while (ready.length) {
-    const node = ready.shift()!;
-    ordered.push(node);
-    for (const target of [...outgoing.get(node.id)!].sort()) {
-      const remaining = indegree.get(target)! - 1;
-      indegree.set(target, remaining);
-      if (remaining === 0) {
-        ready.push(nodeById.get(target)!);
-        ready.sort((a, b) => compareText(a.id, b.id));
-      }
-    }
-  }
-  if (ordered.length !== nodes.length) {
-    diagnostics.push(errorDiagnostic('DATA_CYCLE', 'Data edges must be acyclic', flowLocation(flowId)));
-    for (const node of [...nodes].sort((a, b) => compareText(a.id, b.id)))
-      if (!ordered.includes(node)) ordered.push(node);
-  }
-  return ordered;
-}
-
 function hasDirectedCycle(
   nodes: readonly GraphNode[],
   edges: readonly GraphEdge[],
@@ -447,7 +405,8 @@ export function validateGraphPreset(value: unknown, registry: ReadonlyNodeRegist
       );
 
     const resolved = new Map<string, MutableResolvedNode>();
-    const ordered = dataTopologicalOrder([...graph.nodes], graph.edges, diagnostics, id);
+    const { ordered, cyclic } = dataDependencyOrder(graph.nodes, graph.edges);
+    if (cyclic) diagnostics.push(errorDiagnostic('DATA_CYCLE', 'Data edges must be acyclic', flowLocation(id)));
     for (const node of ordered) {
       const definition = registry.get(node.type);
       if (!definition) {
@@ -510,9 +469,6 @@ export function validateGraphPreset(value: unknown, registry: ReadonlyNodeRegist
               : itemsBinding.kind === 'INLINE'
                 ? schemaFromConstant(itemsBinding.value)
                 : {};
-          const itemSchema =
-            schemaValueType(itemsSchema) === 'ARRAY' && ownObject(itemsSchema.items) ? itemsSchema.items : {};
-          const accumulatorEnabled = parsedData.data.accumulator === true;
           const accumulatorBinding = resolveBinding('initialAccumulator');
           const accumulatorSchema =
             accumulatorBinding.kind === 'EDGE'
@@ -520,37 +476,10 @@ export function validateGraphPreset(value: unknown, registry: ReadonlyNodeRegist
               : accumulatorBinding.kind === 'INLINE'
                 ? schemaFromConstant(accumulatorBinding.value)
                 : {};
-          const bodySignature: FlowSignature = {
-            inputs: [
-              { id: 'item', label: 'item', required: true, cardinality: 'ONE', schema: structuredClone(itemSchema) },
-              { id: 'index', label: 'index', required: true, cardinality: 'ONE', schema: { type: 'number' } },
-              ...(accumulatorEnabled
-                ? [
-                    {
-                      id: 'accumulator',
-                      label: 'accumulator',
-                      required: true,
-                      cardinality: 'ONE' as const,
-                      schema: structuredClone(accumulatorSchema),
-                    },
-                  ]
-                : []),
-            ],
-            outputs: [
-              { id: 'value', label: 'value', required: false, cardinality: 'ONE', schema: {} },
-              ...(accumulatorEnabled
-                ? [
-                    {
-                      id: 'accumulator',
-                      label: 'accumulator',
-                      required: true,
-                      cardinality: 'ONE' as const,
-                      schema: structuredClone(accumulatorSchema),
-                    },
-                  ]
-                : []),
-            ],
-          };
+          const bodySignature = forEachBodySignature(
+            itemsSchema,
+            parsedData.data.accumulator === true ? accumulatorSchema : undefined,
+          );
           bodyPlan = resolveScope({
             id: `${id}/${node.id}`,
             flow,
