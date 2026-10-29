@@ -3,6 +3,7 @@ import { autoUpdate, flip, offset, shift, useFloating, type Placement } from '@f
 import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
 import { isCapabilitySupported } from '../../api/provider-definitions';
 import { useChatMedia } from '../../composables/useChatMedia';
+import { useClickOutside } from '../../composables/useClickOutside';
 import { useMobile } from '../../composables/useMobile';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { CustomPromptPostProcessing, GenerationMode } from '../../constants';
@@ -319,27 +320,18 @@ function handleInputFocus() {
   }
 }
 
-function handleClickOutside(event: MouseEvent) {
-  const target = event.target as HTMLElement;
-
-  // Close Options Menu
-  const isInsideOptionsMenu = optionsMenuRef.value?.contains(target);
-  const isInsideOptionsButton = optionsButtonRef.value?.contains(target);
-  if (!isInsideOptionsMenu && !isInsideOptionsButton) {
-    isOptionsMenuVisible.value = false;
-  }
-
-  // Close Tools Menu
-  if (isToolsMenuVisible.value) {
-    const isInsideToolsMenu = toolsMenuRef.value?.contains(target);
-    const isInsideAnchor = toolsMenuTriggerEl.value?.contains(target);
-
-    if (!isInsideToolsMenu && !isInsideAnchor) {
-      isToolsMenuVisible.value = false;
-      toolsMenuTriggerEl.value = null;
-    }
-  }
-}
+useClickOutside(
+  () => [optionsMenuRef.value, optionsButtonRef.value],
+  () => (isOptionsMenuVisible.value = false),
+);
+useClickOutside(
+  () => [toolsMenuRef.value, toolsMenuTriggerEl.value],
+  () => {
+    if (!isToolsMenuVisible.value) return;
+    isToolsMenuVisible.value = false;
+    toolsMenuTriggerEl.value = null;
+  },
+);
 
 function getMediaIcon(type: string): string {
   switch (type) {
@@ -397,7 +389,6 @@ watchEffect(() => {
 });
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
   nextTick().then(() => {
     if (!isDeviceMobile.value) {
       chatInput.value?.focus();
@@ -414,7 +405,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
   chatUiStore.setChatInputElement(null);
 
   for (const group of quickActionGroups.value) {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { useClickOutside } from '../../composables/useClickOutside';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { hsvToRgb, parseColor, rgbToHex, rgbToHsv, rgbaToString } from '../../utils/color';
 
@@ -130,26 +131,13 @@ function toggleOpen() {
   isOpen.value = !isOpen.value;
 }
 
-function close(e: MouseEvent) {
-  // Click outside logic
-  if (
-    isOpen.value &&
-    dropdownRef.value &&
-    triggerRef.value &&
-    !dropdownRef.value.contains(e.target as Node) &&
-    !triggerRef.value.contains(e.target as Node)
-  ) {
-    isOpen.value = false;
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('mousedown', close);
-});
-
-onUnmounted(() => {
-  document.removeEventListener('mousedown', close);
-});
+useClickOutside(
+  () => [dropdownRef.value, triggerRef.value],
+  () => {
+    if (isOpen.value) isOpen.value = false;
+  },
+  'mousedown',
+);
 
 // Hex Input
 const hexInputValue = computed({

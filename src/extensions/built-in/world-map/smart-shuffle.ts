@@ -1,4 +1,5 @@
 import { cloneJson } from '../_shared/data-utils';
+import { getViewSizeDefaults } from './map-utils';
 import type {
   WorldMapAccessPoint,
   WorldMapArea,
@@ -118,11 +119,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function getViewSize(node: WorldMapNode): { width: number; height: number } {
-  if (node.view) return { width: node.view.width, height: node.view.height };
-  if (node.kind === 'building') return { width: 900, height: 650 };
-  if (node.kind === 'floor') return { width: 800, height: 600 };
-  if (['world', 'region', 'settlement', 'district'].includes(node.kind)) return { width: 1200, height: 800 };
-  return { width: 600, height: 400 };
+  return node.view ? { width: node.view.width, height: node.view.height } : getViewSizeDefaults(node.kind);
 }
 
 function getBounds(node: WorldMapNode): WorldMapBounds {

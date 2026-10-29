@@ -201,7 +201,7 @@ function clampNumber(value: number | undefined, fallback: number, min: number, m
   return Math.min(max, Math.max(min, value));
 }
 
-function getViewSizeDefaults(kind: WorldMapNode['kind']): { width: number; height: number } {
+export function getViewSizeDefaults(kind: WorldMapNode['kind']): { width: number; height: number } {
   if (kind === 'building') return { width: 900, height: 650 };
   if (kind === 'floor') return { width: 800, height: 600 };
   if (kind === 'world' || kind === 'region' || kind === 'settlement' || kind === 'district') {
@@ -304,8 +304,12 @@ function sanitizeAccessPoint(access: WorldMapAccessPoint): WorldMapAccessPoint |
   };
 }
 
-function collectNodeIdsWithDescendants(nodes: Record<string, WorldMapNode>, nodeIds: Set<string>): Set<string> {
+export function collectNodeIdsWithDescendants(
+  nodes: Record<string, WorldMapNode> | undefined,
+  nodeIds: Set<string>,
+): Set<string> {
   const ids = new Set(nodeIds);
+  if (!nodes) return ids;
   let changed = true;
   while (changed) {
     changed = false;

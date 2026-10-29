@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { autoUpdate, flip, offset, shift, useFloating } from '@floating-ui/vue';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, ref } from 'vue';
+import { useClickOutside } from '../../composables/useClickOutside';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { useChatUiStore, type QuickActionsLayout } from '../../stores/chat-ui.store';
 import { useComponentRegistryStore, type ChatQuickActionGroupDefinition } from '../../stores/component-registry.store';
@@ -60,15 +61,10 @@ function handleLayoutChange(layout: QuickActionsLayout) {
   chatUiStore.setQuickActionsLayout(layout);
 }
 
-function handleClickOutside(event: MouseEvent) {
-  const target = event.target as Node;
-  const isInsideConfigMenu = configMenuRef.value?.contains(target);
-  const isInsideConfigButton = configButtonRef.value?.contains(target);
-
-  if (!isInsideConfigMenu && !isInsideConfigButton) {
-    isConfigVisible.value = false;
-  }
-}
+useClickOutside(
+  () => [configMenuRef.value, configButtonRef.value],
+  () => (isConfigVisible.value = false),
+);
 
 function isGroupIndeterminate(group: ChatQuickActionGroupDefinition): boolean {
   if (group.actions.length === 0) {
@@ -85,14 +81,6 @@ function isGroupChecked(group: ChatQuickActionGroupDefinition): boolean {
   const allDisabled = group.actions.every((action) => chatUiStore.isQuickActionDisabled(action.id));
   return !allDisabled;
 }
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
-});
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
-});
 </script>
 
 <template>

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { autoUpdate, flip, offset, shift, useFloating, type Placement } from '@floating-ui/vue';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import { EmptyState } from '../../../../components/common';
 import { Button, Checkbox, Textarea } from '../../../../components/UI';
+import { useClickOutside } from '../../../../composables/useClickOutside';
 import { useStrictI18n } from '../../../../composables/useStrictI18n';
 import { useToolStore } from '../../../../stores/tool.store';
 import { POPUP_RESULT, POPUP_TYPE, type ExtensionAPI } from '../../../../types';
@@ -215,28 +216,14 @@ async function handleDelete(msgId: string) {
   }
 }
 
-function handleClickOutside(event: MouseEvent) {
-  const target = event.target as HTMLElement;
-
-  // Close Tools Menu
-  if (isToolsMenuVisible.value) {
-    const isInsideToolsMenu = toolsMenuRef.value?.contains(target);
-    const isInsideAnchor = toolsMenuTriggerEl.value?.contains(target);
-
-    if (!isInsideToolsMenu && !isInsideAnchor) {
-      isToolsMenuVisible.value = false;
-      toolsMenuTriggerEl.value = null;
-    }
-  }
-}
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside);
-});
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside);
-});
+useClickOutside(
+  () => [toolsMenuRef.value, toolsMenuTriggerEl.value],
+  () => {
+    if (!isToolsMenuVisible.value) return;
+    isToolsMenuVisible.value = false;
+    toolsMenuTriggerEl.value = null;
+  },
+);
 </script>
 
 <template>

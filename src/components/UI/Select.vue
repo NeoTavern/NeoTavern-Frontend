@@ -1,7 +1,8 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts" generic="T extends string | number">
 import { autoUpdate, flip, offset, shift, size, useFloating } from '@floating-ui/vue';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
+import { useClickOutside } from '../../composables/useClickOutside';
 import { useMobile } from '../../composables/useMobile';
 import { useStrictI18n } from '../../composables/useStrictI18n';
 import { uuidv4 } from '../../utils/commons';
@@ -313,16 +314,12 @@ const displayValue = computed(() => {
   return selectedOption ? selectedOption.label : props.placeholder;
 });
 
-function onClickOutside(event: MouseEvent) {
-  const target = event.target as Node;
-
-  const isOutsideContainer = containerRef.value && !containerRef.value.contains(target);
-  const isOutsideDropdown = dropdownRef.value && !dropdownRef.value.contains(target);
-
-  if (isOutsideContainer && isOutsideDropdown) {
-    close();
-  }
-}
+useClickOutside(
+  () => [containerRef.value, dropdownRef.value],
+  () => {
+    if (isOpen.value) close();
+  },
+);
 
 function onKeydown(event: KeyboardEvent) {
   if (props.disabled) return;
@@ -368,14 +365,6 @@ function onKeydown(event: KeyboardEvent) {
       break;
   }
 }
-
-onMounted(() => {
-  document.addEventListener('click', onClickOutside);
-});
-
-onUnmounted(() => {
-  document.removeEventListener('click', onClickOutside);
-});
 
 // Close if disabled changes to true
 watch(

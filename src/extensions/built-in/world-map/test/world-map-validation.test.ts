@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { applyRollbackSnapshot, createRollbackSnapshot, validateWorldMapDeltaQuality } from '../index';
+import { validateWorldMapDeltaQuality } from '../index';
+import { applyRollbackSnapshot, createRollbackSnapshot } from '../rollback';
 import { mergeWorldMapDelta } from '../map-utils';
 import { DEFAULT_SETTINGS, type WorldMapDelta, type WorldMapDocument, type WorldMapNode } from '../types';
 
