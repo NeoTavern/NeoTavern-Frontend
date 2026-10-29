@@ -9,6 +9,7 @@ import { GenerationMode } from '../../constants';
 import { useCharacterStore } from '../../stores/character.store';
 import { useChatSelectionStore } from '../../stores/chat-selection.store';
 import { useChatStore } from '../../stores/chat.store';
+import { useComponentRegistryStore } from '../../stores/component-registry.store';
 import { usePopupStore } from '../../stores/popup.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -47,6 +48,23 @@ const chatSelectionStore = useChatSelectionStore();
 const settingsStore = useSettingsStore();
 const popupStore = usePopupStore();
 const promptStore = usePromptStore();
+const componentRegistryStore = useComponentRegistryStore();
+
+const extensionButtons = computed(() => {
+  const visible = [...componentRegistryStore.messageButtonRegistry.values()].filter(
+    (button) => button.visible?.(props.message, props.index) ?? true,
+  );
+  return {
+    start: visible.filter((button) => button.placement === 'start'),
+    end: visible.filter((button) => button.placement !== 'start'),
+  };
+});
+
+const extensionDecorations = computed(() =>
+  [...componentRegistryStore.messageDecorationRegistry.values()].filter(
+    (decoration) => decoration.visible?.(props.message, props.index) ?? true,
+  ),
+);
 const { animationsDisabled } = useAnimationControl();
 const chatTransitionsEnabled = computed(() => !animationsDisabled.value && !chatStore.isChatLoading);
 const expandTransitionName = computed(() => (chatTransitionsEnabled.value ? 'expand' : undefined));
@@ -575,6 +593,22 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
 
         <!-- Buttons for Normal Mode -->
         <div v-show="!isEditing && !isSelectionMode" class="message-buttons">
+          <template v-for="button in extensionButtons.start" :key="button.id">
+            <component
+              :is="button.component"
+              v-if="button.component"
+              v-bind="button.props"
+              :message="message"
+              :index="index"
+            />
+            <Button
+              v-else
+              variant="ghost"
+              :icon="button.icon"
+              :title="button.title"
+              @click.stop="button.onClick?.(index, message)"
+            />
+          </template>
           <Button
             v-if="hasItemizedPrompt && !isSmallSys"
             variant="ghost"
@@ -597,8 +631,33 @@ const editTools = computed<TextareaToolDefinition[]>(() => {
             :title="t('chat.buttons.deleteMessage')"
             @click="handleDeleteClick"
           />
+          <template v-for="button in extensionButtons.end" :key="button.id">
+            <component
+              :is="button.component"
+              v-if="button.component"
+              v-bind="button.props"
+              :message="message"
+              :index="index"
+            />
+            <Button
+              v-else
+              variant="ghost"
+              :icon="button.icon"
+              :title="button.title"
+              @click.stop="button.onClick?.(index, message)"
+            />
+          </template>
         </div>
       </div>
+
+      <component
+        :is="decoration.component"
+        v-for="decoration in extensionDecorations"
+        :key="decoration.id"
+        v-bind="decoration.props"
+        :message="message"
+        :index="index"
+      />
 
       <!-- Merged Tool Steps Visualization -->
       <div v-if="!isEditing && props.toolSteps && props.toolSteps.length > 0" class="message-tool-steps">

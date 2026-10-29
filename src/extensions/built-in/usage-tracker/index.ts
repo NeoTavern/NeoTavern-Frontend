@@ -1,4 +1,4 @@
-import { markRaw } from 'vue';
+import { markRaw, ref } from 'vue';
 import { EventPriority, GenerationMode } from '../../../constants';
 import { useExtensionStore } from '../../../stores/extension.store';
 import {
@@ -9,7 +9,6 @@ import {
   type StreamedChunk,
 } from '../../../types';
 import type { LlmUsageData } from '../../../types/events';
-import { MountableComponent } from '../../../types/ExtensionAPI';
 import type { ChatCompletionPayload } from '../../../types/generation';
 import { cloneJson } from '../_shared/data-utils';
 import CaptureViewer from './CaptureViewer.vue';
@@ -18,11 +17,11 @@ import SettingsPanel from './SettingsPanel.vue';
 import { UsageStorage } from './storage';
 import { DEFAULT_SETTINGS, type UsageTrackerSettings } from './types';
 import UsageDashboard from './UsageDashboard.vue';
+import UsageMessageButton from './UsageMessageButton.vue';
 
 export { manifest };
 
 const SIDEBAR_ID = 'usage-dashboard';
-const MESSAGE_BUTTON_CLASS = 'usage-tracker-message-button';
 
 type PendingCapture = {
   generationId: string;
@@ -93,64 +92,30 @@ async function showCapturesPopup(
 export function activate(api: ExtensionAPI<UsageTrackerSettings>) {
   const storage = new UsageStorage();
   const pending = new Map<string, PendingCapture>();
-  const mountedButtons = new Map<HTMLElement, { unmount: () => void }>();
-  let settingsApp: { unmount: () => void } | null = null;
   let activeChatFile = getActiveChatFile(api);
 
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  if (settingsContainer) {
-    settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
-  }
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
 
-  const processMessages = () => {
-    document.querySelectorAll<HTMLElement>('.message').forEach((messageElement) => {
-      if (mountedButtons.has(messageElement)) return;
-
-      const indexAttr = messageElement.getAttribute('data-message-index');
-      if (!indexAttr) return;
-      const messageIndex = Number.parseInt(indexAttr, 10);
-      if (!Number.isFinite(messageIndex)) return;
-
-      const buttonsContainer = messageElement.querySelector<HTMLElement>('.message-buttons');
-      if (!buttonsContainer) return;
-
-      storage.getCapturesForMessage(getActiveChatFile(api), messageIndex).then((captures) => {
-        if (captures.length === 0 || mountedButtons.has(messageElement)) return;
-
-        const wrapper = document.createElement('div');
-        wrapper.className = MESSAGE_BUTTON_CLASS;
-        buttonsContainer.prepend(wrapper);
-        void api.ui.mountComponent(wrapper, MountableComponent.Button, {
-          icon: 'fa-file-lines',
-          title: api.i18n.t('extensionsBuiltin.usageTracker.viewFullRequestResponse'),
-          variant: 'ghost',
-          onClick: async (event: MouseEvent) => {
-            event.stopPropagation();
-            const latestCaptures = await storage.getCapturesForMessage(getActiveChatFile(api), messageIndex);
-            await showCapturesPopup(api, latestCaptures);
-          },
-        });
-        mountedButtons.set(messageElement, {
-          unmount: () => wrapper.remove(),
-        });
-      });
-    });
-  };
-
+  const capturesVersion = ref(0);
   const refreshMessageButtons = () => {
-    for (const [element, mounted] of mountedButtons) {
-      if (!document.body.contains(element)) {
-        mounted.unmount();
-        mountedButtons.delete(element);
-      }
-    }
-    processMessages();
+    capturesVersion.value++;
   };
 
-  const unmountMessageButtons = () => {
-    mountedButtons.forEach((mounted) => mounted.unmount());
-    mountedButtons.clear();
-  };
+  api.ui.registerMessageButton({
+    id: 'usage-tracker.captures',
+    placement: 'start',
+    component: UsageMessageButton,
+    props: {
+      title: api.i18n.t('extensionsBuiltin.usageTracker.viewFullRequestResponse'),
+      capturesVersion,
+      hasCaptures: async (messageIndex: number) =>
+        (await storage.getCapturesForMessage(getActiveChatFile(api), messageIndex)).length > 0,
+      onOpen: async (messageIndex: number) => {
+        const captures = await storage.getCapturesForMessage(getActiveChatFile(api), messageIndex);
+        await showCapturesPopup(api, captures);
+      },
+    },
+  });
 
   const clearPendingForChat = (chatFile: string | undefined) => {
     for (const [generationId, capture] of pending) {
@@ -158,190 +123,153 @@ export function activate(api: ExtensionAPI<UsageTrackerSettings>) {
     }
   };
 
-  const unbinds: Array<() => void> = [];
+  api.events.on('chat:entered', (chatFile) => {
+    activeChatFile = chatFile;
+    refreshMessageButtons();
+  });
 
-  unbinds.push(
-    api.events.on('chat:entered', (chatFile) => {
-      activeChatFile = chatFile;
-      unmountMessageButtons();
-      refreshMessageButtons();
-    }),
-  );
+  api.events.on('message:deleted', async (indices) => {
+    const chatFile = getActiveChatFile(api) ?? activeChatFile;
+    await storage.handleDeletedMessages(chatFile, indices);
+    refreshMessageButtons();
+  });
 
-  unbinds.push(
-    api.events.on('message:deleted', async (indices) => {
-      const chatFile = getActiveChatFile(api) ?? activeChatFile;
-      await storage.handleDeletedMessages(chatFile, indices);
-      unmountMessageButtons();
-      refreshMessageButtons();
-    }),
-  );
+  api.events.on('chat:cleared', async () => {
+    const chatFile = activeChatFile;
+    await storage.deleteCapturesForChat(chatFile);
+    clearPendingForChat(chatFile);
+    activeChatFile = undefined;
+    refreshMessageButtons();
+  });
 
-  unbinds.push(
-    api.events.on('chat:cleared', async () => {
-      const chatFile = activeChatFile;
-      await storage.deleteCapturesForChat(chatFile);
-      clearPendingForChat(chatFile);
-      activeChatFile = undefined;
-      unmountMessageButtons();
-    }),
-  );
+  api.events.on('chat:deleted', async (chatFile) => {
+    await storage.deleteCapturesForChat(chatFile);
+    clearPendingForChat(chatFile);
+    if (activeChatFile === chatFile) activeChatFile = undefined;
+    refreshMessageButtons();
+  });
 
-  unbinds.push(
-    api.events.on('chat:deleted', async (chatFile) => {
-      await storage.deleteCapturesForChat(chatFile);
-      clearPendingForChat(chatFile);
-      if (activeChatFile === chatFile) activeChatFile = undefined;
-      unmountMessageButtons();
-    }),
-  );
+  api.events.on('process:generation-context', (context) => {
+    if (!isCaptureEnabled(api)) return;
+    const target = getMessageTarget(api, context.mode);
+    pending.set(context.generationId, {
+      generationId: context.generationId,
+      messageIndex: target.messageIndex,
+      chatFile: getActiveChatFile(api),
+      model: context.settings.model,
+      source: 'core',
+      streamContent: '',
+      streamImages: [],
+    });
+  });
 
-  unbinds.push(
-    api.events.on('process:generation-context', (context) => {
-      if (!isCaptureEnabled(api)) return;
-      const target = getMessageTarget(api, context.mode);
-      pending.set(context.generationId, {
-        generationId: context.generationId,
-        messageIndex: target.messageIndex,
-        chatFile: getActiveChatFile(api),
-        model: context.settings.model,
-        source: 'core',
-        streamContent: '',
-        streamImages: [],
-      });
-    }),
-  );
-
-  unbinds.push(
-    api.events.on(
-      'prompt:built',
-      (messages, context) => {
-        const capture = pending.get(context.generationId);
-        if (capture) capture.traceMessages = cloneJson(messages);
-      },
-      EventPriority.LOWEST,
-    ),
-  );
-
-  unbinds.push(
-    api.events.on('process:request-payload', async (payload: ChatCompletionPayload, context) => {
-      if (!isCaptureEnabled(api)) return;
+  api.events.on(
+    'prompt:built',
+    (messages, context) => {
       const capture = pending.get(context.generationId);
-
-      try {
-        await storage.addCapture(
-          {
-            generationId: context.generationId,
-            messageIndex: capture?.messageIndex ?? context.messageIndex,
-            chatFile: capture?.chatFile ?? getActiveChatFile(api),
-            source: capture?.source ?? context.source ?? 'unknown',
-            model: capture?.model ?? context.model ?? String(payload.model ?? 'unknown'),
-            request: cloneJson(payload),
-            traceMessages: capture?.traceMessages,
-          },
-          getSettings(api).captureStorageLimitBytes,
-        );
-        refreshMessageButtons();
-      } catch (err) {
-        console.error('[UsageTracker] Failed to save request capture:', err);
-      }
-    }),
+      if (capture) capture.traceMessages = cloneJson(messages);
+    },
+    EventPriority.LOWEST,
   );
 
-  unbinds.push(
-    api.events.on('process:response', async (response: GenerationResponse, context) => {
-      if (!isCaptureEnabled(api)) return;
-      try {
-        pending.delete(context.generationId);
-        await storage.updateCapture(
-          context.generationId,
-          {
-            response: cloneJson(response),
-            responseText: response.content,
-            status: 'complete',
-          },
-          getSettings(api).captureStorageLimitBytes,
-        );
-        refreshMessageButtons();
-      } catch (err) {
-        console.error('[UsageTracker] Failed to save response capture:', err);
-      }
-    }),
-  );
+  api.events.on('process:request-payload', async (payload: ChatCompletionPayload, context) => {
+    if (!isCaptureEnabled(api)) return;
+    const capture = pending.get(context.generationId);
 
-  unbinds.push(
-    api.events.on('process:stream-chunk', (chunk: StreamedChunk, context) => {
-      if (!isCaptureEnabled(api)) return;
-      const capture = pending.get(context.generationId);
-      if (!capture) return;
-      capture.streamContent += chunk.delta ?? '';
-      if (chunk.reasoning) capture.streamReasoning = chunk.reasoning;
-      if (chunk.images) capture.streamImages.push(...chunk.images);
-      if (chunk.tool_calls) capture.streamToolCalls = cloneJson(chunk.tool_calls);
-    }),
-  );
-
-  unbinds.push(
-    api.events.on('generation:finished', async (result, context) => {
-      const capture = pending.get(context.generationId);
-      if (!capture) return;
-      pending.delete(context.generationId);
-      if (!isCaptureEnabled(api)) return;
-
-      const response: { content: string; reasoning?: string; images?: string[]; tool_calls?: unknown; error?: string } =
-        result.error
-          ? { content: '', error: result.error.message }
-          : {
-              content: capture.streamContent || result.message?.mes || '',
-              reasoning: capture.streamReasoning,
-              images: capture.streamImages.length > 0 ? capture.streamImages : undefined,
-              tool_calls: capture.streamToolCalls,
-            };
-
-      try {
-        await storage.updateCapture(
-          context.generationId,
-          {
-            response,
-            responseText: response.content,
-            status: result.error ? 'error' : 'complete',
-          },
-          getSettings(api).captureStorageLimitBytes,
-        );
-        refreshMessageButtons();
-      } catch (err) {
-        console.error('[UsageTracker] Failed to finalize response capture:', err);
-      }
-    }),
-  );
-
-  unbinds.push(
-    api.events.on('generation:aborted', async (context) => {
-      pending.delete(context.generationId);
-      if (!isCaptureEnabled(api)) return;
-      await storage.updateCapture(
-        context.generationId,
-        { status: 'aborted' },
+    try {
+      await storage.addCapture(
+        {
+          generationId: context.generationId,
+          messageIndex: capture?.messageIndex ?? context.messageIndex,
+          chatFile: capture?.chatFile ?? getActiveChatFile(api),
+          source: capture?.source ?? context.source ?? 'unknown',
+          model: capture?.model ?? context.model ?? String(payload.model ?? 'unknown'),
+          request: cloneJson(payload),
+          traceMessages: capture?.traceMessages,
+        },
         getSettings(api).captureStorageLimitBytes,
       );
       refreshMessageButtons();
-    }),
-  );
+    } catch (err) {
+      console.error('[UsageTracker] Failed to save request capture:', err);
+    }
+  });
 
-  unbinds.push(
-    api.events.on('llm:usage', async (data: LlmUsageData) => {
-      try {
-        await storage.addLog(data);
-      } catch (err) {
-        console.error('[UsageTracker] Failed to save log:', err);
-      }
-    }),
-  );
+  api.events.on('process:response', async (response: GenerationResponse, context) => {
+    if (!isCaptureEnabled(api)) return;
+    try {
+      pending.delete(context.generationId);
+      await storage.updateCapture(
+        context.generationId,
+        {
+          response: cloneJson(response),
+          responseText: response.content,
+          status: 'complete',
+        },
+        getSettings(api).captureStorageLimitBytes,
+      );
+      refreshMessageButtons();
+    } catch (err) {
+      console.error('[UsageTracker] Failed to save response capture:', err);
+    }
+  });
 
-  unbinds.push(api.events.on('message:created', refreshMessageButtons));
-  unbinds.push(api.events.on('message:updated', refreshMessageButtons));
-  unbinds.push(api.events.on('chat:entered', refreshMessageButtons));
-  unbinds.push(api.events.on('chat:messages-loaded-more', refreshMessageButtons));
+  api.events.on('process:stream-chunk', (chunk: StreamedChunk, context) => {
+    if (!isCaptureEnabled(api)) return;
+    const capture = pending.get(context.generationId);
+    if (!capture) return;
+    capture.streamContent += chunk.delta ?? '';
+    if (chunk.reasoning) capture.streamReasoning = chunk.reasoning;
+    if (chunk.images) capture.streamImages.push(...chunk.images);
+    if (chunk.tool_calls) capture.streamToolCalls = cloneJson(chunk.tool_calls);
+  });
+
+  api.events.on('generation:finished', async (result, context) => {
+    const capture = pending.get(context.generationId);
+    if (!capture) return;
+    pending.delete(context.generationId);
+    if (!isCaptureEnabled(api)) return;
+
+    const response: { content: string; reasoning?: string; images?: string[]; tool_calls?: unknown; error?: string } =
+      result.error
+        ? { content: '', error: result.error.message }
+        : {
+            content: capture.streamContent || result.message?.mes || '',
+            reasoning: capture.streamReasoning,
+            images: capture.streamImages.length > 0 ? capture.streamImages : undefined,
+            tool_calls: capture.streamToolCalls,
+          };
+
+    try {
+      await storage.updateCapture(
+        context.generationId,
+        {
+          response,
+          responseText: response.content,
+          status: result.error ? 'error' : 'complete',
+        },
+        getSettings(api).captureStorageLimitBytes,
+      );
+      refreshMessageButtons();
+    } catch (err) {
+      console.error('[UsageTracker] Failed to finalize response capture:', err);
+    }
+  });
+
+  api.events.on('generation:aborted', async (context) => {
+    pending.delete(context.generationId);
+    if (!isCaptureEnabled(api)) return;
+    await storage.updateCapture(context.generationId, { status: 'aborted' }, getSettings(api).captureStorageLimitBytes);
+    refreshMessageButtons();
+  });
+
+  api.events.on('llm:usage', async (data: LlmUsageData) => {
+    try {
+      await storage.addLog(data);
+    } catch (err) {
+      console.error('[UsageTracker] Failed to save log:', err);
+    }
+  });
 
   api.ui.registerSidebar(SIDEBAR_ID, markRaw(UsageDashboard), 'right', {
     title: api.i18n.t('extensionsBuiltin.usageTracker.usageStats'),
@@ -352,13 +280,7 @@ export function activate(api: ExtensionAPI<UsageTrackerSettings>) {
     },
   });
 
-  refreshMessageButtons();
-
   return () => {
-    settingsApp?.unmount();
-    unbinds.forEach((unbind) => unbind());
     pending.clear();
-    unmountMessageButtons();
-    api.ui.unregisterSidebar(SIDEBAR_ID, 'right');
   };
 }

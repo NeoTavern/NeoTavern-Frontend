@@ -964,11 +964,6 @@ export interface MessageSchema {
     };
   };
   extensions: {
-    notifyUpdates: string;
-    manage: string;
-    install: string;
-    managePopupNotImplemented: string;
-    installPopupNotImplemented: string;
     placeholder: {
       title: string;
       text: string;
@@ -1515,7 +1510,6 @@ export interface MessageSchema {
       promptHint: string;
       translateMessage: string;
       translateInput: string;
-      buttonInjectionFailed: string;
       translationRemoved: string;
       noConnectionProfile: string;
       translating: string;

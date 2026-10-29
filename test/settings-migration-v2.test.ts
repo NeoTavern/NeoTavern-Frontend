@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { LATEST_SETTINGS_VERSION, migrateSettings } from '../src/services/settings-migration.service';
 import { useSettingsStore } from '../src/stores/settings.store';
 import type { Settings } from '../src/types';
-import { createScopedApiProxy } from '../src/utils/extensions';
+import { createExtensionApi } from '../src/utils/extensions';
 
 const nestedExtensionSettings = {
   core: {
@@ -45,7 +45,7 @@ describe('scoped extension settings', () => {
 
   it('stores settings under the full extension id', () => {
     const settingsStore = useSettingsStore();
-    const api = createScopedApiProxy('core.tracker');
+    const api = createExtensionApi('core.tracker');
 
     api.settings.set(undefined, { autoMode: 'none', nested: { value: 1 } });
     api.settings.set('nested.value' as never, 2 as never);

@@ -28,8 +28,4 @@ export function activate(api: ExtensionAPI<NotebookSettings>) {
       showPopup();
     },
   });
-
-  return () => {
-    api.ui.unregisterNavBarItem('core.notebook');
-  };
 }

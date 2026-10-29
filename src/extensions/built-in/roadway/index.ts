@@ -35,9 +35,7 @@ class RoadwayManager {
   constructor(private api: RoadwayExtensionAPI) {}
 
   private getSettings(): RoadwaySettings {
-    const settings = this.api.settings.get();
-    this.api.settings.set(undefined, settings);
-    return settings;
+    return this.api.settings.get();
   }
 
   public manualGenerateChoicesForLastMessage(): void {
@@ -182,7 +180,7 @@ class RoadwayManager {
   }
 
   public async dismissChoicesForMessage(index: number): Promise<void> {
-    const message = this.api.chat.getHistory()[index];
+    const message = this.api.chat.getMessage(index);
     const roadwayExtra = message?.extra['core.roadway'];
     const isGeneratingChoices = roadwayExtra?.isGeneratingChoices || this.choiceGenAbortControllers.has(index);
     if (
@@ -202,7 +200,7 @@ class RoadwayManager {
   }
 
   private async updateMessageExtra(index: number, data: Partial<RoadwayMessageExtraData>) {
-    const message = this.api.chat.getHistory()[index];
+    const message = this.api.chat.getMessage(index);
     if (!message) return;
 
     await mergeMessageExtra<RoadwayMessageExtra>(this.api, index, 'core.roadway', data);
@@ -237,7 +235,7 @@ class RoadwayManager {
     this.injectChatFormUi();
   }
 
-  public injectUiForMessage(index: number, message = this.api.chat.getHistory()[index]): void {
+  public injectUiForMessage(index: number, message = this.api.chat.getMessage(index)): void {
     if (!message || message.is_user) return;
 
     const roadwayExtra = message.extra['core.roadway'];
@@ -325,13 +323,9 @@ class RoadwayManager {
 }
 
 export function activate(api: RoadwayExtensionAPI) {
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  if (settingsContainer) {
-    api.ui.mount(settingsContainer, SettingsPanel, { api });
-  }
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
 
   const manager = new RoadwayManager(api);
-  const unbinds: Array<() => void> = [];
 
   const onGenerationFinished = (
     result: { message: ChatMessage | null; error?: Error },
@@ -368,19 +362,19 @@ export function activate(api: RoadwayExtensionAPI) {
   };
   const onSettingsChanged = () => manager.handleChatContextChange();
 
-  unbinds.push(api.events.on('chat:entered', onChatContextChanged));
-  unbinds.push(api.events.on('chat:generation-requested', onGenerationRequested));
-  unbinds.push(api.events.on('generation:finished', onGenerationFinished));
-  unbinds.push(api.events.on('message:created', onMessageCreated));
-  unbinds.push(api.events.on('message:updated', onMessageUpdated));
-  unbinds.push(api.events.on('message:swipe-changed', onSwipeChanged));
-  unbinds.push(api.events.on('message:deleted', onMessageDeleted));
-  unbinds.push(api.events.on('chat:cleared', onChatCleared));
-  unbinds.push(api.events.on('chat:deleted', onChatDeleted));
+  api.events.on('chat:entered', onChatContextChanged);
+  api.events.on('chat:generation-requested', onGenerationRequested);
+  api.events.on('generation:finished', onGenerationFinished);
+  api.events.on('message:created', onMessageCreated);
+  api.events.on('message:updated', onMessageUpdated);
+  api.events.on('message:swipe-changed', onSwipeChanged);
+  api.events.on('message:deleted', onMessageDeleted);
+  api.events.on('chat:cleared', onChatCleared);
+  api.events.on('chat:deleted', onChatDeleted);
   // @ts-expect-error custom event
-  unbinds.push(api.events.on('roadway:abort-choice-generation', onAbortChoiceGeneration));
+  api.events.on('roadway:abort-choice-generation', onAbortChoiceGeneration);
   // @ts-expect-error custom event
-  unbinds.push(api.events.on('roadway:settings-changed', onSettingsChanged));
+  api.events.on('roadway:settings-changed', onSettingsChanged);
 
   // Initial load if a chat is already open
   if (api.chat.getChatInfo()) {
@@ -388,7 +382,6 @@ export function activate(api: RoadwayExtensionAPI) {
   }
 
   return () => {
-    unbinds.forEach((u) => u());
     manager.unmountAllUi();
   };
 }

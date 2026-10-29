@@ -3,7 +3,6 @@ import { ReasoningEffort } from '../src/constants';
 import { PromptBuilder } from '../src/services/prompt-engine';
 import { WorldInfoProcessor } from '../src/services/world-info';
 import type {
-  ApiChatContentPart,
   ApiChatMessage,
   Character,
   ChatMessage,
@@ -15,27 +14,14 @@ import type {
   Tokenizer,
   WorldInfoSettings,
 } from '../src/types';
-import { eventEmitter } from '../src/utils/extensions';
+import { eventEmitter } from '../src/utils/event-emitter';
 
 // Mock dependencies
 vi.mock('../src/services/world-info');
-vi.mock('../src/utils/extensions', () => ({
+vi.mock('../src/utils/event-emitter', () => ({
   eventEmitter: {
     emit: vi.fn(),
   },
-  countTokens: vi.fn(async (content: string | unknown[], tokenizer: Tokenizer) => {
-    if (typeof content === 'string') {
-      return await tokenizer.getTokenCount(content);
-    }
-    if (Array.isArray(content)) {
-      const textContent = (content as ApiChatContentPart[])
-        .filter((part) => part.type === 'text')
-        .map((part) => part.text || '')
-        .join('');
-      return await tokenizer.getTokenCount(textContent);
-    }
-    return 0;
-  }),
 }));
 
 // Mock Tokenizer

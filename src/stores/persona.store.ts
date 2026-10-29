@@ -12,7 +12,7 @@ import { migrateSillyTavernPersonas, type SillyTavernPersonaExport } from '../se
 import { type Character, type CropData, type Persona, type PersonaDescription } from '../types';
 import { getThumbnailUrl } from '../utils/character';
 import { uuidv4 } from '../utils/commons';
-import { eventEmitter } from '../utils/extensions';
+import { eventEmitter } from '../utils/event-emitter';
 import { useSettingsStore } from './settings.store';
 import { useUiStore } from './ui.store';
 

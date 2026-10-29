@@ -1,4 +1,3 @@
-import type { Component } from 'vue';
 import type { ChatMessage, ExtensionAPI } from '../../../types';
 import type { ApiChatMessage, StructuredResponseOptions } from '../../../types/generation';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
@@ -33,11 +32,6 @@ type TrackerExtensionAPI = ExtensionAPI<TrackerSettings, TrackerChatExtra, Track
 
 const MAX_SCHEMA_REPAIRS = 3;
 
-interface MountedComponent {
-  unmount: () => void;
-  component: Component;
-}
-
 interface TrackerGenerationResult {
   rawContent: string;
   structuredContent?: object;
@@ -51,8 +45,6 @@ interface ProcessedTrackerResult {
 }
 
 class TrackerManager {
-  private mountedIcons = new Map<number, MountedComponent>();
-  private mountedDisplays = new Map<number, MountedComponent>();
   private pendingRequests = new Set<number>();
 
   constructor(private api: TrackerExtensionAPI) {}
@@ -151,7 +143,6 @@ class TrackerManager {
         connectionProfile,
         samplerOverrides: { max_tokens: maxResponseTokens, stream: false },
         structuredResponse,
-        source: 'core.tracker',
         captureMessageIndex,
       },
       streamErrorMessage: 'Tracker generation unexpectedly returned a stream.',
@@ -443,7 +434,7 @@ class TrackerManager {
   }
 
   private async updateTrackerData(index: number, schemaName: string, partialData: Partial<TrackerData>) {
-    const message = this.api.chat.getHistory()[index];
+    const message = this.api.chat.getMessage(index);
     if (!message) return;
 
     const existingExtra = message.extra['core.tracker'] || {};
@@ -529,60 +520,9 @@ class TrackerManager {
     }
   }
 
-  public injectAllUi(): void {
+  public resetForChat(): void {
     this.unmountAllUi();
-    const messages = this.api.chat.getHistory();
-    messages.forEach((message, index) => this.injectUiForMessage(index, message));
     this.injectChatFormUi();
-  }
-
-  public injectUiForMessage(index: number, message = this.api.chat.getHistory()[index]): void {
-    if (!message) return;
-
-    const messageEl = document.querySelector(`[data-message-index="${index}"]`);
-    if (!messageEl) return;
-
-    // Inject Icon
-    if (!this.mountedIcons.has(index)) {
-      const target = messageEl.querySelector('.message-buttons');
-      if (target) {
-        const mountPoint = document.createElement('div');
-        target.insertAdjacentElement('afterbegin', mountPoint);
-        const iconInstance = this.api.ui.mount(mountPoint, TrackerIcon, {
-          api: this.api,
-          message,
-          index,
-          onTrack: () => this.runTracker(index),
-        });
-        this.mountedIcons.set(index, {
-          unmount: () => {
-            iconInstance.unmount();
-            mountPoint.remove();
-          },
-          component: TrackerIcon,
-        });
-      }
-    }
-
-    // Inject Display
-    if (!this.mountedDisplays.has(index)) {
-      const target = messageEl.querySelector('.message-header');
-      if (target) {
-        const mountPoint = document.createElement('div');
-        target.after(mountPoint);
-        const displayInstance = this.api.ui.mount(mountPoint, TrackerDisplay, {
-          api: this.api,
-          message,
-        });
-        this.mountedDisplays.set(index, {
-          unmount: () => {
-            displayInstance.unmount();
-            mountPoint.remove();
-          },
-          component: TrackerDisplay,
-        });
-      }
-    }
   }
 
   public injectChatFormUi(): void {
@@ -602,20 +542,7 @@ class TrackerManager {
     });
   }
 
-  public unmountMessageUi(indices: number[]): void {
-    indices.forEach((index) => {
-      this.mountedIcons.get(index)?.unmount();
-      this.mountedIcons.delete(index);
-      this.mountedDisplays.get(index)?.unmount();
-      this.mountedDisplays.delete(index);
-    });
-  }
-
   public unmountAllUi(): void {
-    this.mountedIcons.forEach((c) => c.unmount());
-    this.mountedIcons.clear();
-    this.mountedDisplays.forEach((c) => c.unmount());
-    this.mountedDisplays.clear();
     this.pendingRequests.clear();
     this.api.ui.unregisterChatFormOptionsMenuItem('tracker-manage-schemas');
     this.api.ui.unregisterChatQuickAction('core.context-ai', 'tracker-manage-schemas');
@@ -623,10 +550,7 @@ class TrackerManager {
 }
 
 export function activate(api: TrackerExtensionAPI) {
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  if (settingsContainer) {
-    api.ui.mount(settingsContainer, SettingsPanel, { api });
-  }
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
 
   const manager = new TrackerManager(api);
   const trackerService: TrackerService = {
@@ -634,25 +558,27 @@ export function activate(api: TrackerExtensionAPI) {
     getLatestTrackerValue: (schemaName, path) => manager.getLatestTrackerValue(schemaName, path),
   };
   api.extensions.registerService('core.tracker', trackerService);
-  const unbinds: Array<() => void> = [];
 
-  const onChatEntered = () => manager.injectAllUi();
-  const onMessageCreated = (msg: ChatMessage) => {
-    manager.injectUiForMessage(api.chat.getHistory().length - 1);
-    manager.handleAutoTrack(msg);
-  };
+  api.ui.registerMessageButton({
+    id: 'tracker.status',
+    placement: 'start',
+    component: TrackerIcon,
+    props: { api, onTrack: (index: number) => manager.runTracker(index) },
+  });
+  api.ui.registerMessageDecoration({
+    id: 'tracker.display',
+    component: TrackerDisplay,
+    props: { api },
+  });
+
+  const onChatEntered = () => manager.resetForChat();
+  const onMessageCreated = (msg: ChatMessage) => manager.handleAutoTrack(msg);
   const onGenerationFinished = (
     result: { message: ChatMessage | null; error?: Error },
     context: { generationId: string },
   ) => {
     manager.handleAutoTrackGenerationFinished(result, context.generationId);
   };
-  const onMessageUpdated = (index: number) => {
-    // Unmount and re-mount to handle data/position changes
-    manager.unmountMessageUi([index]);
-    manager.injectUiForMessage(index);
-  };
-  const onMessageDeleted = (indices: number[]) => manager.unmountMessageUi(indices);
   const onChatCleared = () => manager.unmountAllUi();
   const onHistoryMessageProcessing = (
     payload: { apiMessages: ApiChatMessage[] },
@@ -667,13 +593,11 @@ export function activate(api: TrackerExtensionAPI) {
     );
   };
 
-  unbinds.push(api.events.on('chat:entered', onChatEntered));
-  unbinds.push(api.events.on('message:created', onMessageCreated));
-  unbinds.push(api.events.on('generation:finished', onGenerationFinished));
-  unbinds.push(api.events.on('message:updated', onMessageUpdated));
-  unbinds.push(api.events.on('message:deleted', onMessageDeleted));
-  unbinds.push(api.events.on('chat:cleared', onChatCleared));
-  unbinds.push(api.events.on('prompt:history-message-processing', onHistoryMessageProcessing));
+  api.events.on('chat:entered', onChatEntered);
+  api.events.on('message:created', onMessageCreated);
+  api.events.on('generation:finished', onGenerationFinished);
+  api.events.on('chat:cleared', onChatCleared);
+  api.events.on('prompt:history-message-processing', onHistoryMessageProcessing);
 
   // Initial load if a chat is already open
   if (api.chat.getChatInfo()) {
@@ -681,8 +605,6 @@ export function activate(api: TrackerExtensionAPI) {
   }
 
   return () => {
-    unbinds.forEach((u) => u());
     manager.unmountAllUi();
-    api.extensions.unregisterService('core.tracker');
   };
 }

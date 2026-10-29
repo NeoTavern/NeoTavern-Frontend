@@ -15,7 +15,7 @@ import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { useToolStore } from '../../stores/tool.store';
 import type { ChatFormOptionsMenuItemDefinition } from '../../types/ExtensionAPI';
-import { eventEmitter } from '../../utils/extensions';
+import { eventEmitter } from '../../utils/event-emitter';
 import { Button, Checkbox, Textarea } from '../UI';
 
 const props = defineProps<{

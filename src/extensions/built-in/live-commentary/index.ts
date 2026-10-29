@@ -17,7 +17,6 @@ interface BubbleInstance {
 
 export function activate(api: ExtensionAPI<LiveCommentarySettings>) {
   const commentator = new Commentator(api);
-  let settingsApp: { unmount: () => void } | null = null;
   const activeBubbles = new Map<string, BubbleInstance>(); // characterAvatar -> BubbleInstance
   let askController: AbortController | null = null;
 
@@ -26,10 +25,7 @@ export function activate(api: ExtensionAPI<LiveCommentarySettings>) {
   let isLeftSidebarOpen = false;
   let isRightSidebarOpen = false;
 
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  if (settingsContainer) {
-    settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
-  }
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
 
   const showAllBubbles = () => {
     activeBubbles.forEach((bubble) => {
@@ -66,7 +62,7 @@ export function activate(api: ExtensionAPI<LiveCommentarySettings>) {
   };
 
   // Subscribe to chat input change events
-  const unsubscribeInputChange = api.events.on('chat:input-changed', handleInputChange);
+  api.events.on('chat:input-changed', handleInputChange);
 
   const showCommentaryBubble = (characterAvatar: string, thought: string, displayDurationMs?: number) => {
     const settings = api.settings.get();
@@ -82,7 +78,7 @@ export function activate(api: ExtensionAPI<LiveCommentarySettings>) {
 
     for (let i = messageElements.length - 1; i >= 0; i--) {
       const el = messageElements[i] as HTMLElement;
-      const char = api.chat.getHistory()[parseInt(el.dataset.messageIndex ?? '-1', 10)];
+      const char = api.chat.getMessage(parseInt(el.dataset.messageIndex ?? '-1', 10));
       if (char && !char.is_user && char.original_avatar === characterAvatar) {
         targetAvatarElement = el.querySelector('.message-avatar');
         break;
@@ -220,101 +216,73 @@ export function activate(api: ExtensionAPI<LiveCommentarySettings>) {
     });
   };
 
-  const unbinds: Array<() => void> = [];
-
-  unbinds.push(unsubscribeInputChange);
   registerAskQuickAction();
 
-  unbinds.push(
-    api.events.on('chat:entered', () => {
-      registerAskQuickAction();
-      resetStateAndBubbles();
-    }),
-  );
+  api.events.on('chat:entered', () => {
+    registerAskQuickAction();
+    resetStateAndBubbles();
+  });
 
-  unbinds.push(
-    api.events.on('chat:cleared', () => {
-      registerAskQuickAction();
-      resetStateAndBubbles();
-    }),
-  );
+  api.events.on('chat:cleared', () => {
+    registerAskQuickAction();
+    resetStateAndBubbles();
+  });
 
-  unbinds.push(
-    api.events.on('layout:main-layout-changed', (layoutId: string) => {
-      isChatLayoutActive = layoutId === 'chat';
-      updateBubbleVisibility();
-    }),
-  );
+  api.events.on('layout:main-layout-changed', (layoutId: string) => {
+    isChatLayoutActive = layoutId === 'chat';
+    updateBubbleVisibility();
+  });
 
-  unbinds.push(
-    api.events.on('layout:left-sidebar-changed', (isOpen: boolean) => {
-      isLeftSidebarOpen = isOpen;
-      updateBubbleVisibility();
-    }),
-  );
+  api.events.on('layout:left-sidebar-changed', (isOpen: boolean) => {
+    isLeftSidebarOpen = isOpen;
+    updateBubbleVisibility();
+  });
 
-  unbinds.push(
-    api.events.on('layout:right-sidebar-changed', (isOpen: boolean) => {
-      isRightSidebarOpen = isOpen;
-      updateBubbleVisibility();
-    }),
-  );
+  api.events.on('layout:right-sidebar-changed', (isOpen: boolean) => {
+    isRightSidebarOpen = isOpen;
+    updateBubbleVisibility();
+  });
 
-  unbinds.push(
-    // @ts-expect-error custom event
-    api.events.on('commentary:generated', (characterAvatar: string, thought: string) => {
-      showCommentaryBubble(characterAvatar, thought);
-    }),
-  );
+  // @ts-expect-error custom event
+  api.events.on('commentary:generated', (characterAvatar: string, thought: string) => {
+    showCommentaryBubble(characterAvatar, thought);
+  });
 
-  unbinds.push(api.events.on('message:created', handleMessageCreated));
+  api.events.on('message:created', handleMessageCreated);
 
-  unbinds.push(
-    api.events.on('message:deleted', (indices: number[]) => {
-      commentator.incrementDeletedMessageCount(indices.length);
-    }),
-  );
+  api.events.on('message:deleted', (indices: number[]) => {
+    commentator.incrementDeletedMessageCount(indices.length);
+  });
 
-  unbinds.push(
-    api.events.on('message:updated', (index: number, message: ChatMessage) => {
-      if (!message.is_user) {
-        commentator.markMessageAsEdited(index);
-      }
-    }),
-  );
+  api.events.on('message:updated', (index: number, message: ChatMessage) => {
+    if (!message.is_user) {
+      commentator.markMessageAsEdited(index);
+    }
+  });
 
   // Injection Logic
-  unbinds.push(
-    api.events.on('generation:started', (context) => {
-      if (context.activeCharacter) {
-        commentator.setActiveGenerationCharacter(context.activeCharacter.avatar);
-      } else {
-        commentator.setActiveGenerationCharacter(undefined);
-      }
-    }),
-  );
+  api.events.on('generation:started', (context) => {
+    if (context.activeCharacter) {
+      commentator.setActiveGenerationCharacter(context.activeCharacter.avatar);
+    } else {
+      commentator.setActiveGenerationCharacter(undefined);
+    }
+  });
 
-  unbinds.push(
-    api.events.on('prompt:built', (messages: ApiChatMessage[]) => {
-      const newMessages = commentator.injectThoughts(messages);
+  api.events.on('prompt:built', (messages: ApiChatMessage[]) => {
+    const newMessages = commentator.injectThoughts(messages);
 
-      if (newMessages !== messages) {
-        messages.length = 0;
-        messages.push(...newMessages);
-      }
-    }),
-  );
+    if (newMessages !== messages) {
+      messages.length = 0;
+      messages.push(...newMessages);
+    }
+  });
 
-  unbinds.push(
-    api.events.on('generation:finished', () => {
-      commentator.onGenerationFinished();
-    }),
-  );
+  api.events.on('generation:finished', () => {
+    commentator.onGenerationFinished();
+  });
 
   return () => {
-    settingsApp?.unmount();
-    unbinds.forEach((u) => u());
     resetStateAndBubbles();
-    api.ui.unregisterChatQuickAction('core.context-ai', 'live-commentary-ask');
   };
 }

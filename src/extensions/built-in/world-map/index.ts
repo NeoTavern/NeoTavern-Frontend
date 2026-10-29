@@ -1,4 +1,4 @@
-import type { Component } from 'vue';
+import { ref } from 'vue';
 import type { ChatMessage } from '../../../types';
 import type { ApiChatMessage, StructuredResponseOptions } from '../../../types/generation';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../types/popup';
@@ -40,11 +40,6 @@ import WorldMapPanel from './WorldMapPanel.vue';
 
 export { manifest };
 export { migrateWorldMapSettings as migrateSettings } from './types';
-
-interface MountedComponent {
-  unmount: () => void;
-  component: Component;
-}
 
 const EXTENSION_ID = 'core.world-map';
 const MAP_NAV_ID = 'core.world-map-nav';
@@ -1191,7 +1186,8 @@ function getWorldMapStructuredResponse(format: WorldMapSettings['structuredReque
 }
 
 class WorldMapManager {
-  private mountedButtons = new Map<number, MountedComponent>();
+  /** Whether the active chat has a map; drives the message button titles. */
+  public readonly hasMap = ref(false);
   private pendingRequests = new Set<number>();
   private injectedContextGenerationIds = new Set<string>();
   private unregisterChatUiFns: Array<() => void> = [];
@@ -1199,9 +1195,7 @@ class WorldMapManager {
   constructor(private api: WorldMapExtensionAPI) {}
 
   private getSettings(): WorldMapSettings {
-    const settings = this.api.settings.get();
-    this.api.settings.set(undefined, settings);
-    return settings;
+    return this.api.settings.get();
   }
 
   private getMap(): WorldMapDocument | null {
@@ -1210,6 +1204,7 @@ class WorldMapManager {
 
   private async setMap(map: WorldMapDocument): Promise<void> {
     mergeChatExtra<WorldMapChatExtra>(this.api, EXTENSION_ID, { map });
+    this.hasMap.value = true;
     await this.api.events.emit(WORLD_MAP_UPDATED_EVENT);
   }
 
@@ -1228,13 +1223,13 @@ class WorldMapManager {
   }
 
   private getMessageDeltas(messageIndex: number): WorldMapDelta[] {
-    const message = this.api.chat.getHistory()[messageIndex];
+    const message = this.api.chat.getMessage(messageIndex);
     const deltas = (message?.extra[EXTENSION_ID] as WorldMapMessageExtraData | undefined)?.deltas;
     return Array.isArray(deltas) ? deltas : [];
   }
 
   private getMessageRollback(messageIndex: number): WorldMapRollbackSnapshot | undefined {
-    const message = this.api.chat.getHistory()[messageIndex];
+    const message = this.api.chat.getMessage(messageIndex);
     return (message?.extra[EXTENSION_ID] as WorldMapMessageExtraData | undefined)?.rollback;
   }
 
@@ -1294,13 +1289,13 @@ class WorldMapManager {
   }
 
   private async updateMessageExtra(index: number, data: Partial<WorldMapMessageExtraData>): Promise<void> {
-    const message = this.api.chat.getHistory()[index];
+    const message = this.api.chat.getMessage(index);
     if (!message) return;
     await mergeMessageExtra<WorldMapMessageExtra>(this.api, index, EXTENSION_ID, data);
   }
 
-  private async clearMessageExtra(index: number): Promise<void> {
-    const message = this.api.chat.getHistory()[index];
+  public async clearMessageExtra(index: number): Promise<void> {
+    const message = this.api.chat.getMessage(index);
     if (!message || message.extra[EXTENSION_ID] === undefined) return;
     const removedDeltaCount = this.getMessageDeltas(index).length;
     const remainingDeltas = this.getReplayableMessageDeltas(index);
@@ -1744,42 +1739,11 @@ class WorldMapManager {
 
   public injectAllUi(): void {
     this.unmountAllUi();
-    const hasMap = Boolean(this.getMap());
-    this.api.chat.getHistory().forEach((message, index) => this.injectUiForMessage(index, message, hasMap));
-    this.injectChatUi(hasMap);
-  }
-
-  public injectUiForMessage(
-    index: number,
-    message = this.api.chat.getHistory()[index],
-    hasMap = Boolean(this.getMap()),
-  ): void {
-    if (!message || this.mountedButtons.has(index)) return;
-    const messageEl = document.querySelector(`[data-message-index="${index}"]`);
-    const target = messageEl?.querySelector('.message-buttons');
-    if (!target) return;
-
-    const mountPoint = document.createElement('div');
-    target.insertAdjacentElement('afterbegin', mountPoint);
-    const button = this.api.ui.mount(mountPoint, MapMessageButton, {
-      message,
-      title: hasMap
-        ? this.api.i18n.t('extensionsBuiltin.worldMap.updateFromMessage')
-        : this.api.i18n.t('extensionsBuiltin.worldMap.createFromMessage'),
-      clearTitle: this.api.i18n.t('extensionsBuiltin.worldMap.removeDeltaFromMessage'),
-      onRun: () => this.runMapUpdate(index),
-      onClear: () => this.clearMessageExtra(index),
-    });
-    this.mountedButtons.set(index, {
-      unmount: () => {
-        button.unmount();
-        mountPoint.remove();
-      },
-      component: MapMessageButton,
-    });
+    this.injectChatUi();
   }
 
   public injectChatUi(hasMap = Boolean(this.getMap())): void {
+    this.hasMap.value = hasMap;
     this.unregisterChatUiFns.forEach((fn) => fn());
     this.unregisterChatUiFns = [];
     if (!this.api.chat.getChatInfo()) return;
@@ -1808,13 +1772,6 @@ class WorldMapManager {
     );
   }
 
-  public unmountMessageUi(indices: number[]): void {
-    for (const index of indices) {
-      this.mountedButtons.get(index)?.unmount();
-      this.mountedButtons.delete(index);
-    }
-  }
-
   public async handleMessageDeleted(deletedMessages: ChatMessage[]): Promise<void> {
     const deletedMapProducer = deletedMessages.some((message) => {
       const extra = message.extra[EXTENSION_ID] as WorldMapMessageExtraData | undefined;
@@ -1825,16 +1782,10 @@ class WorldMapManager {
       await this.saveRebuiltMapFromDeltas(this.getReplayableMessageDeltas());
     }
 
-    this.mountedButtons.forEach((component) => component.unmount());
-    this.mountedButtons.clear();
-    const hasMap = Boolean(this.getMap());
-    this.api.chat.getHistory().forEach((message, index) => this.injectUiForMessage(index, message, hasMap));
-    this.injectChatUi(hasMap);
+    this.injectChatUi();
   }
 
   public unmountAllUi(): void {
-    this.mountedButtons.forEach((component) => component.unmount());
-    this.mountedButtons.clear();
     this.unregisterChatUiFns.forEach((fn) => fn());
     this.unregisterChatUiFns = [];
     this.pendingRequests.clear();
@@ -1843,14 +1794,9 @@ class WorldMapManager {
 }
 
 export function activate(api: WorldMapExtensionAPI) {
-  let settingsApp: { unmount: () => void } | null = null;
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  if (settingsContainer) {
-    settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
-  }
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
 
   const manager = new WorldMapManager(api);
-  const unbinds: Array<() => void> = [];
 
   api.ui.registerNavBarItem(MAP_NAV_ID, {
     title: api.i18n.t('extensionsBuiltin.worldMap.title'),
@@ -1858,50 +1804,44 @@ export function activate(api: WorldMapExtensionAPI) {
     onClick: () => manager.showMap(),
   });
 
-  unbinds.push(api.events.on('chat:entered', () => manager.injectAllUi()));
-  unbinds.push(
-    api.events.on('message:created', (message: ChatMessage) => {
-      manager.injectUiForMessage(api.chat.getHistory().length - 1);
-      manager.handleAutoUpdate(message);
-    }),
+  api.ui.registerMessageButton({
+    id: 'world-map.update',
+    placement: 'start',
+    component: MapMessageButton,
+    props: {
+      hasMap: manager.hasMap,
+      createTitle: api.i18n.t('extensionsBuiltin.worldMap.createFromMessage'),
+      updateTitle: api.i18n.t('extensionsBuiltin.worldMap.updateFromMessage'),
+      clearTitle: api.i18n.t('extensionsBuiltin.worldMap.removeDeltaFromMessage'),
+      onRun: (index: number) => manager.runMapUpdate(index),
+      onClear: (index: number) => manager.clearMessageExtra(index),
+    },
+  });
+
+  api.events.on('chat:entered', () => manager.injectAllUi());
+  api.events.on('message:created', (message: ChatMessage) => manager.handleAutoUpdate(message));
+  api.events.on('generation:finished', (result: { message: ChatMessage | null; error?: Error }, context) => {
+    manager.handleAutoUpdateGenerationFinished(result, context.generationId);
+  });
+  api.events.on('message:updated', () => manager.injectChatUi());
+  api.events.on('message:deleted', (_indices: number[], deletedMessages: ChatMessage[]) =>
+    manager.handleMessageDeleted(deletedMessages),
   );
-  unbinds.push(
-    api.events.on('generation:finished', (result: { message: ChatMessage | null; error?: Error }, context) => {
-      manager.handleAutoUpdateGenerationFinished(result, context.generationId);
-    }),
-  );
-  unbinds.push(
-    api.events.on('message:updated', (index: number) => {
-      manager.unmountMessageUi([index]);
-      manager.injectUiForMessage(index);
-      manager.injectChatUi();
-    }),
-  );
-  unbinds.push(
-    api.events.on('message:deleted', (_indices: number[], deletedMessages: ChatMessage[]) =>
-      manager.handleMessageDeleted(deletedMessages),
-    ),
-  );
-  unbinds.push(api.events.on('chat:cleared', () => manager.unmountAllUi()));
-  unbinds.push(api.events.on('chat:deleted', () => manager.unmountAllUi()));
-  unbinds.push(
-    api.events.on(
-      'prompt:history-message-processing',
-      (
-        payload: { apiMessages: ApiChatMessage[] },
-        context: { originalMessage: ChatMessage; index: number; generationId: string; chatLength: number },
-      ) => {
-        manager.injectContext(payload.apiMessages, context.index, context.chatLength, context.generationId);
-      },
-    ),
+  api.events.on('chat:cleared', () => manager.unmountAllUi());
+  api.events.on('chat:deleted', () => manager.unmountAllUi());
+  api.events.on(
+    'prompt:history-message-processing',
+    (
+      payload: { apiMessages: ApiChatMessage[] },
+      context: { originalMessage: ChatMessage; index: number; generationId: string; chatLength: number },
+    ) => {
+      manager.injectContext(payload.apiMessages, context.index, context.chatLength, context.generationId);
+    },
   );
 
   if (api.chat.getChatInfo()) manager.injectAllUi();
 
   return () => {
-    unbinds.forEach((unbind) => unbind());
     manager.unmountAllUi();
-    settingsApp?.unmount();
-    api.ui.unregisterNavBarItem(MAP_NAV_ID);
   };
 }

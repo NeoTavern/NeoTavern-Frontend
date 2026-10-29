@@ -1,5 +1,4 @@
 import type { ChatMessage, ExtensionAPI } from '../../../types';
-import { MountableComponent } from '../../../types/ExtensionAPI';
 import { findChatMessageIndex, isFinishedAssistantMessage } from '../_shared/runtime/chat-message';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
@@ -14,49 +13,8 @@ export function activate(
 ) {
   const t = api.i18n.t;
   const translator = new Translator(api);
-  let settingsApp: {
-    unmount: () => void;
-  } | null = null;
 
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  if (settingsContainer) {
-    settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
-  }
-
-  const injectSingleButton = async (messageElement: HTMLElement, messageIndex: number) => {
-    const buttonsContainer = messageElement.querySelector('.message-buttons');
-    if (!buttonsContainer) return;
-
-    if (buttonsContainer.querySelector('.translation-button-wrapper')) return;
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'translation-button-wrapper';
-    wrapper.style.display = 'inline-flex';
-
-    buttonsContainer.appendChild(wrapper);
-
-    await api.ui.mountComponent(wrapper, MountableComponent.Button, {
-      icon: 'fa-globe',
-      title: t('extensionsBuiltin.chatTranslation.translateMessage'),
-      variant: 'ghost',
-      onClick: (e: MouseEvent) => {
-        e.stopPropagation();
-        translator.translateMessage(messageIndex);
-      },
-    });
-  };
-
-  const injectButtons = () => {
-    const messageElements = document.querySelectorAll('.message');
-
-    messageElements.forEach((el) => {
-      const indexAttr = el.getAttribute('data-message-index');
-      if (indexAttr === null) return;
-      const messageIndex = parseInt(indexAttr, 10);
-      if (isNaN(messageIndex)) return;
-      injectSingleButton(el as HTMLElement, messageIndex);
-    });
-  };
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
 
   const injectInputOption = () => {
     const onClick = () => {
@@ -97,63 +55,45 @@ export function activate(
   const getMessageIndex = (message: ChatMessage, generationId?: string): number =>
     findChatMessageIndex(api.chat.getHistory(), message, generationId);
 
-  const unbinds: Array<() => void> = [];
+  api.ui.registerMessageButton({
+    id: 'chat-translation.translate',
+    icon: 'fa-globe',
+    title: t('extensionsBuiltin.chatTranslation.translateMessage'),
+    onClick: (messageIndex) => translator.translateMessage(messageIndex),
+  });
 
-  unbinds.push(
-    api.events.on('chat:entered', () => {
-      injectButtons();
-      injectInputOption();
-    }),
-  );
+  api.events.on('chat:entered', () => {
+    injectInputOption();
+  });
 
   // Listen for new messages for injection and user-input auto-translation.
-  unbinds.push(
-    api.events.on('message:created', (message: ChatMessage) => {
-      const messageIndex = getMessageIndex(message);
-      if (messageIndex === -1) return;
-      const messageElements = document.querySelector(`.message[data-message-index="${messageIndex}"]`);
-      if (messageElements) {
-        injectSingleButton(messageElements as HTMLElement, messageIndex);
-      } else {
-        api.ui.showToast(t('extensionsBuiltin.chatTranslation.buttonInjectionFailed'), 'error');
-      }
+  api.events.on('message:created', (message: ChatMessage) => {
+    const messageIndex = getMessageIndex(message);
+    if (messageIndex === -1) return;
 
-      const settings = api.settings.get();
+    const settings = api.settings.get();
 
-      if (settings && message.is_user && shouldTranslate(message, settings.autoMode)) {
-        translator.translateMessage(messageIndex); // fire and forget
-      }
-    }),
-  );
-
-  unbinds.push(
-    api.events.on('generation:finished', (result: { message: ChatMessage | null; error?: Error }, context) => {
-      const settings = api.settings.get();
-      const message = result.message;
-      if (
-        !settings ||
-        result.error ||
-        !isFinishedAssistantMessage(message) ||
-        !shouldTranslate(message, settings.autoMode)
-      ) {
-        return;
-      }
-
-      const messageIndex = getMessageIndex(message, context.generationId);
-      if (messageIndex === -1) return;
+    if (settings && message.is_user && shouldTranslate(message, settings.autoMode)) {
       translator.translateMessage(messageIndex); // fire and forget
-    }),
-  );
+    }
+  });
 
-  // Initial Injection
-  injectButtons();
+  api.events.on('generation:finished', (result: { message: ChatMessage | null; error?: Error }, context) => {
+    const settings = api.settings.get();
+    const message = result.message;
+    if (
+      !settings ||
+      result.error ||
+      !isFinishedAssistantMessage(message) ||
+      !shouldTranslate(message, settings.autoMode)
+    ) {
+      return;
+    }
+
+    const messageIndex = getMessageIndex(message, context.generationId);
+    if (messageIndex === -1) return;
+    translator.translateMessage(messageIndex); // fire and forget
+  });
+
   injectInputOption();
-
-  return () => {
-    settingsApp?.unmount();
-    unbinds.forEach((u) => u());
-    document.querySelectorAll('.translation-button-wrapper').forEach((el) => el.remove());
-    api.ui.unregisterChatFormOptionsMenuItem('chat-translation-translate-input');
-    api.ui.unregisterChatQuickAction('core.input-message', 'chat-translation-translate-input');
-  };
 }

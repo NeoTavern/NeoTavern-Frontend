@@ -102,7 +102,7 @@ function visibleEffectHandler(
       return;
     }
     if (targetIndex === undefined) throw new Error(`${effect.operation} requires a target message`);
-    const target = api.chat.getHistory()[targetIndex];
+    const target = api.chat.getMessage(targetIndex);
     if (!target) throw new Error('Lifecycle target message is unavailable');
     await api.chat.updateMessage(
       targetIndex,

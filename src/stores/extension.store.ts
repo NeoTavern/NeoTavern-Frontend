@@ -1,27 +1,16 @@
 import { defineStore } from 'pinia';
 import { computed, nextTick, ref } from 'vue';
-import { discoverExtensions, fetchManifest } from '../api/extensions';
 import { useStrictI18n } from '../composables/useStrictI18n';
 import { builtInExtensions } from '../extensions/built-in';
 import type { BuiltInExtensionModule, ExtensionManifest } from '../types';
-import { sanitizeSelector } from '../utils/client';
-import { createScopedApiProxy, disposeExtension, loadScript, loadStyle } from '../utils/extensions';
+import { createExtensionApi, disposeExtension } from '../utils/extensions';
 import { useSettingsStore } from './settings.store';
 
 export interface Extension {
   id: string;
-  type: string;
   manifest: ExtensionManifest;
   isActive: boolean;
-  containerId: string;
-  moduleRef?: BuiltInExtensionModule;
-}
-
-/**
- * Generates a consistent DOM ID for an extension container.
- */
-export function getExtensionContainerId(extensionId: string): string {
-  return `extension-root-${sanitizeSelector(extensionId)}`;
+  module: BuiltInExtensionModule;
 }
 
 export const useExtensionStore = defineStore('extension', () => {
@@ -67,59 +56,18 @@ export const useExtensionStore = defineStore('extension', () => {
   async function initializeExtensions() {
     if (Object.keys(extensions.value).length > 0) return; // Already initialized
 
-    // 1. Load Built-ins
     for (const module of builtInExtensions) {
       const id = module.manifest.name;
       extensions.value[id] = {
         id,
-        type: 'builtin',
         manifest: module.manifest,
         isActive: false,
-        containerId: getExtensionContainerId(id),
-        moduleRef: module,
+        module,
       };
     }
 
     await nextTick();
-
-    try {
-      // 2. Load External
-      const discovered = await discoverExtensions();
-      const manifestPromises = discovered.map(async (ext) => {
-        try {
-          const manifest = await fetchManifest(ext.name);
-          return { ...ext, manifest };
-        } catch (error) {
-          console.error(`Failed to load manifest for ${ext.name}`, error);
-          return null;
-        }
-      });
-
-      const results = (await Promise.all(manifestPromises)).filter((x): x is NonNullable<typeof x> => x !== null);
-
-      for (const ext of results) {
-        // The name in the manifest (or folder name) is the ID
-        const id = ext.name;
-        // Don't overwrite built-ins if name conflict occurs (built-ins take priority/are loaded first)
-        if (!extensions.value[id]) {
-          extensions.value[id] = {
-            id: id,
-            type: ext.type,
-            manifest: ext.manifest,
-            isActive: false,
-            containerId: getExtensionContainerId(id),
-          };
-        }
-      }
-
-      await nextTick();
-
-      await activateExtensions();
-    } catch (error) {
-      console.error('Failed to initialize extensions:', error);
-      // Even if external fails, we should try to activate built-ins
-      await activateExtensions();
-    }
+    await activateExtensions();
   }
 
   async function activateExtensions() {
@@ -139,29 +87,17 @@ export const useExtensionStore = defineStore('extension', () => {
       // --- ACTIVATION ---
       if (ext.isActive) return;
 
-      const api = createScopedApiProxy(id);
+      const api = createExtensionApi(id);
 
       try {
-        if (ext.type === 'builtin' && ext.moduleRef) {
-          // Built-in activation
-          if (ext.moduleRef.migrateSettings) {
-            api.settings.set(undefined, ext.moduleRef.migrateSettings(api.settings.get()));
-          }
-          const cleanup = await ext.moduleRef.activate(api);
-          if (typeof cleanup === 'function') {
-            cleanupFunctions.set(id, cleanup);
-          }
-          console.debug(`Activated built-in extension: ${id}`);
-        } else {
-          // External activation
-          if (ext.manifest.css) {
-            await loadStyle(id, ext.manifest.css);
-          }
-          if (ext.manifest.js) {
-            await loadScript(id, ext.manifest.js);
-          }
-          console.debug(`Activated external extension: ${id}`);
+        if (ext.module.migrateSettings) {
+          api.settings.set(undefined, ext.module.migrateSettings(api.settings.get()));
         }
+        const cleanup = await ext.module.activate(api);
+        if (typeof cleanup === 'function') {
+          cleanupFunctions.set(id, cleanup);
+        }
+        console.debug(`Activated extension: ${id}`);
         ext.isActive = true;
 
         if (save && settingsStore.settings.disabledExtensions.includes(id)) {
@@ -170,12 +106,13 @@ export const useExtensionStore = defineStore('extension', () => {
         }
       } catch (error) {
         console.error(`Failed to activate extension ${id}:`, error);
+        disposeExtension(id);
       }
     } else {
       // --- DEACTIVATION ---
       if (!ext.isActive) return;
 
-      // 1. Run cleanup (built-ins or manual returns)
+      // 1. Run the extension's own cleanup
       const cleanup = cleanupFunctions.get(id);
       if (cleanup) {
         try {
@@ -186,12 +123,8 @@ export const useExtensionStore = defineStore('extension', () => {
         cleanupFunctions.delete(id);
       }
 
-      // 2. Dispose of resources managed by the proxy (listeners, etc)
-      try {
-        disposeExtension(id);
-      } catch (e) {
-        console.error(`Error during API disposal of ${id}`, e);
-      }
+      // 2. Dispose of everything registered through its API (listeners, UI, tools, services)
+      disposeExtension(id);
 
       // 3. Update state
       ext.isActive = false;
@@ -212,7 +145,6 @@ export const useExtensionStore = defineStore('extension', () => {
     selectedExtension,
     selectExtension,
     initializeExtensions,
-    getExtensionContainerId,
     getExtensionDisplayName,
     getExtensionDescription,
     toggleExtension,

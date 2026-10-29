@@ -9,24 +9,18 @@ export { manifest };
 export { migrateGenerationToolsSettings as migrateSettings } from './types';
 
 function getSettings(api: ExtensionAPI<ExtensionSettings>): ExtensionSettings {
-  const settings = api.settings.get();
-  api.settings.set(undefined, settings);
-  return settings;
+  return api.settings.get();
 }
 
 export function activate(api: ExtensionAPI<ExtensionSettings>) {
   let snapshot: RerollSnapshot | null = null;
-  let settingsApp: { unmount: () => void } | null = null;
 
   // Map to store user input for special "Generate" calls, keyed by generationId
   const generateInputs = new Map<string, string>();
   // Track generation IDs with timeouts to prevent memory leaks
   const generateTimeouts = new Map<string, number>();
 
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  if (settingsContainer) {
-    settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
-  }
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
 
   const REROLL_BUTTON_ID = 'generation-tools-reroll';
   const DELETE_CONTINUE_BUTTON_ID = 'generation-tools-delete-continue';
@@ -445,41 +439,28 @@ export function activate(api: ExtensionAPI<ExtensionSettings>) {
   };
 
   // 8. Event Listeners
-  const unbinds: Array<() => void> = [];
 
-  unbinds.push(api.events.on('process:generation-context', onGenerationContext));
-  unbinds.push(api.events.on('prompt:built', onPromptBuilt));
+  api.events.on('process:generation-context', onGenerationContext);
+  api.events.on('prompt:built', onPromptBuilt);
   // @ts-expect-error - Custom event for settings change
-  unbinds.push(api.events.on('generation-tools:settings-changed', updateButtonState));
+  api.events.on('generation-tools:settings-changed', updateButtonState);
 
   // Listen for various chat events to keep button states accurate
   const updateStateAndSnapshot = () => {
     snapshot = null;
     updateButtonState();
   };
-  unbinds.push(api.events.on('chat:entered', updateStateAndSnapshot));
-  unbinds.push(api.events.on('message:created', updateButtonState));
-  unbinds.push(api.events.on('message:deleted', updateStateAndSnapshot));
-  unbinds.push(api.events.on('chat:cleared', updateStateAndSnapshot));
-  unbinds.push(api.events.on('message:updated', updateButtonState));
+  api.events.on('chat:entered', updateStateAndSnapshot);
+  api.events.on('message:created', updateButtonState);
+  api.events.on('message:deleted', updateStateAndSnapshot);
+  api.events.on('chat:cleared', updateStateAndSnapshot);
+  api.events.on('message:updated', updateButtonState);
 
   updateButtonState();
 
   return () => {
-    settingsApp?.unmount();
-    unbinds.forEach((u) => u());
     generateTimeouts.forEach((timeout) => clearTimeout(timeout));
     generateTimeouts.clear();
     generateInputs.clear();
-    api.ui.unregisterChatFormOptionsMenuItem(REROLL_BUTTON_ID);
-    api.ui.unregisterChatFormOptionsMenuItem(DELETE_CONTINUE_BUTTON_ID);
-    api.ui.unregisterChatFormOptionsMenuItem(SWIPE_BUTTON_ID);
-    api.ui.unregisterChatFormOptionsMenuItem(IMPERSONATE_BUTTON_ID);
-    api.ui.unregisterChatFormOptionsMenuItem(GENERATE_BUTTON_ID);
-    api.ui.unregisterChatQuickAction('core.generation', REROLL_BUTTON_ID);
-    api.ui.unregisterChatQuickAction('core.generation', DELETE_CONTINUE_BUTTON_ID);
-    api.ui.unregisterChatQuickAction('core.generation', SWIPE_BUTTON_ID);
-    api.ui.unregisterChatQuickAction('core.generation', IMPERSONATE_BUTTON_ID);
-    api.ui.unregisterChatQuickAction('core.generation', GENERATE_BUTTON_ID);
   };
 }

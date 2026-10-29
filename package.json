@@ -11,7 +11,6 @@
     "i18n": "node manage-i18n.js",
     "i18n:remove": "node manage-i18n.js --remove",
     "dev": "npm run i18n && vite",
-    "build:types": "vite build --config vite.config.types.ts",
     "build": "npm run i18n && vue-tsc --noEmit && vite build",
     "build:profile": "node scripts/build-profile.js",
     "build:deploy": "vite build",
@@ -68,7 +67,6 @@
     "sass": "^1.101.0",
     "typescript": "^6.0.3",
     "vite": "7.2.2",
-    "vite-plugin-dts": "^5.0.3",
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^4.1.9",
     "vue-tsc": "^3.3.6"

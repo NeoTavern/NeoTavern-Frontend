@@ -12,7 +12,7 @@ import type {
   WorldInfoOptions,
   WorldInfoSettings,
 } from '../types';
-import { eventEmitter } from '../utils/extensions';
+import { eventEmitter } from '../utils/event-emitter';
 import { validateWorldInfoRole } from '../utils/world-info-role';
 import { macroService, type MacroEvaluationSession } from './macro-service';
 

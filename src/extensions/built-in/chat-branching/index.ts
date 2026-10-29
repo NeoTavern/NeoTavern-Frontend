@@ -1,5 +1,4 @@
 import { type ChatInfo, type ChatMetadata, type FullChat } from '../../../types';
-import { MountableComponent } from '../../../types/ExtensionAPI';
 import BranchTree from './BranchTree.vue';
 import { manifest } from './manifest';
 import type { ChatBranchingAPI } from './types';
@@ -94,40 +93,6 @@ export function activate(api: ChatBranchingAPI) {
     }
   };
 
-  const injectButton = async (messageElement: HTMLElement, messageIndex: number) => {
-    const buttonsContainer = messageElement.querySelector('.message-buttons');
-    if (!buttonsContainer || buttonsContainer.querySelector('.branch-button-wrapper')) return;
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'branch-button-wrapper';
-    wrapper.style.display = 'inline-flex';
-
-    // Append to the buttons container
-    buttonsContainer.appendChild(wrapper);
-
-    await ui.mountComponent(wrapper, MountableComponent.Button, {
-      icon: 'fa-code-branch',
-      title: t('extensionsBuiltin.chatBranching.branchButtonTitle', 'Branch from this message'),
-      variant: 'ghost',
-      onClick: (e: MouseEvent) => {
-        e.stopPropagation();
-        branchChat(messageIndex);
-      },
-    });
-  };
-
-  const processMessages = () => {
-    const messages = document.querySelectorAll('.message');
-    messages.forEach((el) => {
-      const indexAttr = el.getAttribute('data-message-index');
-      if (indexAttr === null) return;
-      const index = parseInt(indexAttr, 10);
-      if (!isNaN(index)) {
-        injectButton(el as HTMLElement, index);
-      }
-    });
-  };
-
   const showTree = async () => {
     const currentChatInfo = chat.getChatInfo();
     if (!currentChatInfo) {
@@ -195,8 +160,6 @@ export function activate(api: ChatBranchingAPI) {
     settings.set('graph', s.graph);
   };
 
-  const unbinds: (() => void)[] = [];
-
   const updateNavBarItem = () => {
     const currentChatInfo = chat.getChatInfo();
     if (!currentChatInfo) {
@@ -232,41 +195,22 @@ export function activate(api: ChatBranchingAPI) {
     }
   };
 
-  unbinds.push(
-    events.on('chat:entered', () => {
-      updateNavBarItem();
-      processMessages();
-    }),
-  );
+  ui.registerMessageButton({
+    id: 'chat-branching.branch',
+    icon: 'fa-code-branch',
+    title: t('extensionsBuiltin.chatBranching.branchButtonTitle', 'Branch from this message'),
+    onClick: (messageIndex) => branchChat(messageIndex),
+  });
 
-  unbinds.push(
-    events.on('message:created', () => {
-      processMessages();
-    }),
-  );
+  events.on('chat:entered', () => {
+    updateNavBarItem();
+  });
 
-  unbinds.push(
-    events.on('chat:deleted', (filename: string) => {
-      updateNavBarItem();
-      removeChatFromGraph(filename);
-    }),
-  );
-
-  unbinds.push(
-    events.on('chat:messages-loaded-more', () => {
-      processMessages();
-    }),
-  );
-
-  // Initial injection
-  processMessages();
+  events.on('chat:deleted', (filename: string) => {
+    updateNavBarItem();
+    removeChatFromGraph(filename);
+  });
 
   // Initial navbar item setup
   updateNavBarItem();
-
-  return () => {
-    unbinds.forEach((u) => u());
-    document.querySelectorAll('.branch-button-wrapper').forEach((el) => el.remove());
-    api.ui.unregisterNavBarItem('branch-tree-view');
-  };
 }

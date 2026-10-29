@@ -10,7 +10,7 @@ import { usePersonaStore } from '../src/stores/persona.store';
 import { useSettingsStore } from '../src/stores/settings.store';
 import type { Character, ChatMessage, ChatMetadata, FullChat, Persona } from '../src/types';
 import { macroService } from '../src/services/macro-service';
-import { eventEmitter } from '../src/utils/extensions';
+import { eventEmitter } from '../src/utils/event-emitter';
 import { ref } from 'vue';
 
 vi.mock('../src/composables/useStrictI18n', () => ({

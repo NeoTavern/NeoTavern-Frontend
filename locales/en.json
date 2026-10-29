@@ -961,11 +961,6 @@
     }
   },
   "extensions": {
-    "notifyUpdates": "Notify on extension updates",
-    "manage": "Manage extensions",
-    "install": "Install extension",
-    "managePopupNotImplemented": "Manage extensions popup not implemented yet.",
-    "installPopupNotImplemented": "Install extension popup not implemented yet.",
     "placeholder": {
       "title": "Select an Extension",
       "text": "Select an extension from the list on the left to view its details and settings."
@@ -1512,7 +1507,6 @@
       "promptHint": "Customize how the LLM translates text. Supports Handlebars variables: {'{{prompt}}'}, {'{{sourceLang}}'}, {'{{targetLang}}'}, {'{{name}}'}.",
       "translateMessage": "Translate Message",
       "translateInput": "Translate Input",
-      "buttonInjectionFailed": "Translation button injection failed: message element not found.",
       "translationRemoved": "Translation removed",
       "noConnectionProfile": "No connection profile selected for translation",
       "translating": "Translating...",

@@ -9,11 +9,7 @@ export { manifest };
 
 export function activate(api: ExtensionAPI<StandardToolsSettings>) {
   // Mount settings UI
-  let settingsApp: { unmount: () => void } | null = null;
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  if (settingsContainer) {
-    settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
-  }
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
 
   // Ensure default settings exist
   const currentSettings = api.settings.get();
@@ -32,16 +28,9 @@ export function activate(api: ExtensionAPI<StandardToolsSettings>) {
     await api.tools.register(webSearchTool);
     await api.tools.register(urlInspectorTool);
   };
-  const unregisterTools = async () => {
-    await api.tools.unregister(webSearchTool.name);
-    await api.tools.unregister(urlInspectorTool.name);
-  };
 
   // Initial registration
   registerTools();
 
-  return () => {
-    settingsApp?.unmount();
-    unregisterTools();
-  };
+  return () => {};
 }

@@ -58,11 +58,7 @@ export async function activate(api: CustomAgentsHostAPI): Promise<() => void> {
     api.extensions.registerService(api.meta.id, runtime);
     cleanups.push(() => api.extensions.unregisterService(api.meta.id));
 
-    const settingsContainer = document.getElementById(api.meta.containerId);
-    if (settingsContainer) {
-      const settingsApp = api.ui.mount(settingsContainer, AgentManager, { api, runtime, prepared });
-      cleanups.push(() => settingsApp.unmount());
-    }
+    cleanups.push(api.ui.registerSettingsPanel(AgentManager, { api, runtime, prepared }));
 
     const sidebarRegistration = api.ui.registerSidebar('custom-agents-views', ViewsPanel, 'right', {
       icon: 'fa-solid fa-robot',

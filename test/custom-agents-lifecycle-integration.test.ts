@@ -21,7 +21,8 @@ import { useChatStore } from '../src/stores/chat.store';
 import { usePersonaStore } from '../src/stores/persona.store';
 import { useSettingsStore } from '../src/stores/settings.store';
 import type { Character, ChatMessage, Persona } from '../src/types';
-import { eventEmitter, extensionAPI } from '../src/utils/extensions';
+import { eventEmitter } from '../src/utils/event-emitter';
+import { createExtensionApi } from '../src/utils/extensions';
 
 vi.mock('../src/composables/useStrictI18n', () => ({
   useStrictI18n: () => ({ t: (key: string) => key }),
@@ -189,8 +190,11 @@ function completed(flowId: string, state: JsonObject, response?: string) {
   };
 }
 
+let extensionAPI: ReturnType<typeof createExtensionApi>;
+
 beforeEach(() => {
   setActivePinia(createPinia());
+  extensionAPI = createExtensionApi('core.custom-agents');
   const settings = useSettingsStore();
   settings.settings = createDefaultSettings();
   settings.settings.api.selectedProviderModels.openai = 'gpt-4o-mini';

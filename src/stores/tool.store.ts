@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { ToolDefinition } from '../types/tools';
-import { eventEmitter } from '../utils/extensions';
+import { eventEmitter } from '../utils/event-emitter';
 import { useSettingsStore } from './settings.store';
 
 export const useToolStore = defineStore('tool', () => {

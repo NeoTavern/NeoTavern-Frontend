@@ -8,7 +8,7 @@ type ExtraKey<TExtra> = Extract<keyof TExtra, string>;
 type ExtraPatch<TExtra, TKey extends ExtraKey<TExtra>> = Partial<NonNullable<TExtra[TKey]>>;
 
 type MessageExtraAPI<TMessageExtra = ExtraRecord> = {
-  chat: Pick<ExtensionChat<ExtraRecord, TMessageExtra>, 'getHistory' | 'updateMessageObject'>;
+  chat: Pick<ExtensionChat<ExtraRecord, TMessageExtra>, 'getMessage' | 'updateMessageObject'>;
 };
 
 type ChatExtraAPI<TChatExtra = ExtraRecord> = {
@@ -36,12 +36,12 @@ export async function setMessageExtra<TMessageExtra, TKey extends ExtraKey<TMess
   extensionKey: TKey,
   value: TMessageExtra[TKey],
 ): Promise<void> {
-  const message = api.chat.getHistory()[index];
+  const message = api.chat.getMessage(index);
   await api.chat.updateMessageObject(index, {
     extra: {
       ...message?.extra,
       [extensionKey]: value,
-    } as DeepPartial<(typeof message)['extra']>,
+    } as DeepPartial<NonNullable<typeof message>['extra']>,
   });
 }
 
@@ -51,7 +51,7 @@ export async function mergeMessageExtra<TMessageExtra, TKey extends ExtraKey<TMe
   extensionKey: TKey,
   patch: ExtraPatch<TMessageExtra, TKey>,
 ): Promise<void> {
-  const message = api.chat.getHistory()[index];
+  const message = api.chat.getMessage(index);
   const existing = (message?.extra?.[extensionKey] as ExtraRecord | undefined) ?? {};
   await setMessageExtra(api, index, extensionKey, { ...existing, ...patch } as TMessageExtra[TKey]);
 }

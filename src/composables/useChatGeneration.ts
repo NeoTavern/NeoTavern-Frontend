@@ -38,7 +38,8 @@ import {
 import { getCharactersInMemberOrder, getThumbnailUrl } from '../utils/character';
 import { extractMediaFromMarkdown } from '../utils/chat';
 import { getMessageTimeStamp, uuidv4 } from '../utils/commons';
-import { countTokens, eventEmitter } from '../utils/extensions';
+import { eventEmitter } from '../utils/event-emitter';
+import { countTokens } from '../utils/token-count';
 import { trimInstructResponse } from '../utils/instruct';
 import { useStrictI18n } from './useStrictI18n';
 import { toast } from './useToast';

@@ -15,12 +15,8 @@ vi.mock('../src/services/world-info', () => ({
   WorldInfoProcessor: vi.fn(),
 }));
 
-vi.mock('../src/utils/extensions', () => ({
+vi.mock('../src/utils/event-emitter', () => ({
   eventEmitter: { emit: vi.fn() },
-  countTokens: vi.fn(async (content: string | unknown[], tokenizer: Tokenizer) => {
-    if (typeof content === 'string') return tokenizer.getTokenCount(content);
-    return 0;
-  }),
 }));
 
 const { WorldInfoProcessor } = await import('../src/services/world-info');

@@ -11,8 +11,6 @@ export interface ExtensionManifest {
   requires?: string[]; // extras modules
   dependencies?: string[]; // other extensions
   minimum_client_version?: string;
-  js?: string;
-  css?: string;
   auto_update?: boolean;
   icon?: string;
 }

@@ -7,7 +7,7 @@ import { useToolStore } from '../stores/tool.store';
 import { type ApiProvider } from '../types/api';
 import type { ApiChatToolCall, ApiToolDefinition } from '../types/generation';
 import type { ToolDefinition, ToolInvocation } from '../types/tools';
-import { eventEmitter } from '../utils/extensions';
+import { eventEmitter } from '../utils/event-emitter';
 import { parseResponse } from '../utils/structured-response';
 
 const ajv = new Ajv({

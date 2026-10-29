@@ -16,7 +16,7 @@ import {
 import { settingsDefinition } from '../settings-definition';
 import { type SettingDefinition, type Settings, type SettingsPath } from '../types';
 import type { ValueForPath } from '../types/utils';
-import { eventEmitter } from '../utils/extensions';
+import { eventEmitter } from '../utils/event-emitter';
 import { normalizeSamplerSettings } from '../utils/sampler-settings';
 
 type SettingsValue<P extends SettingsPath> = ValueForPath<Settings, P>;

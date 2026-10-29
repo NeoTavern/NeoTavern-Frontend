@@ -45,12 +45,6 @@ export interface LlmGenerationOptions {
    */
   captureMessageIndex?: number;
   /**
-   * Identity of the requester.
-   * Automatically populated for extensions using the scoped API.
-   * Defaults to 'unknown' if not provided.
-   */
-  source?: string;
-  /**
    * Configuration for structured response generation.
    */
   structuredResponse?: StructuredResponseOptions;
@@ -97,6 +91,30 @@ export interface ChatQuickActionDefinition {
   title?: string;
   visible?: boolean;
   opensPopover?: string; // TODO: I'm not sure how to make this for extensions except a generic popover store, which I don't wanna create it.
+}
+
+export interface MessageButtonDefinition<TMessage = ChatMessage> {
+  id: string;
+  /** Where the button goes relative to the built-in message buttons. Defaults to 'end'. */
+  placement?: 'start' | 'end';
+  visible?: (message: TMessage, index: number) => boolean;
+  /** Plain icon button. Ignored when `component` is set. */
+  icon?: string;
+  title?: string;
+  onClick?: (index: number, message: TMessage) => void;
+  /** Custom component rendered instead of a plain button. It receives `message`, `index` and `props`. */
+  component?: Component;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  props?: Record<string, any>;
+}
+
+export interface MessageDecorationDefinition<TMessage = ChatMessage> {
+  id: string;
+  /** Rendered below the message header. It receives `message`, `index` and `props`. */
+  component: Component;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  props?: Record<string, any>;
+  visible?: (message: TMessage, index: number) => boolean;
 }
 
 export enum MountableComponent {
@@ -370,8 +388,6 @@ export interface MountableComponentPropsMap {
 export interface ExtensionMetadata {
   /** The unique ID of the extension (from manifest.name) */
   id: string;
-  /** The DOM ID of the container element allocated for this extension */
-  containerId: string;
 }
 
 export type TypedChatMessage<T = Record<string, unknown>> = Omit<ChatMessage, 'extra'> & {
@@ -404,6 +420,8 @@ export interface ExtensionAPI<
       options?: { triggerGeneration?: boolean; generationId?: string },
     ) => Promise<void>;
     getHistory: () => TypedChatMessage<TMessageExtra>[];
+    /** Returns a copy of one message without copying the whole history. */
+    getMessage: (index: number) => TypedChatMessage<TMessageExtra> | undefined;
     getChatExtensionData: (key: string) => unknown;
     save: () => Promise<void>;
     /**
@@ -633,12 +651,12 @@ export interface ExtensionAPI<
     /**
      * Registers a custom sidebar component to the right sidebar area.
      * @param id Unique identifier for the sidebar view.
-     * @param component The Vue component to render. If null, a generic <div> container is created for vanilla DOM manipulation.
+     * @param component The Vue component to render.
      * @param options Display options (icon, title, props).
      */
     registerSidebar: (
       id: string,
-      component: Component | null,
+      component: Component,
       side: 'left' | 'right',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       options?: { title?: string; icon?: string; props?: Record<string, any>; layoutId?: string },
@@ -659,7 +677,6 @@ export interface ExtensionAPI<
         component?: Component | null;
         onClick?: () => void;
         layout?: 'default' | 'wide';
-        section?: 'main' | 'floating' | 'drawer';
         layoutComponent?: Component | null;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         layoutProps?: Record<string, any>;
@@ -738,6 +755,25 @@ export interface ExtensionAPI<
      * @returns A cleanup function to unregister the tab.
      */
     registerChatSettingsTab: (id: string, title: string, component: Component) => () => void;
+
+    /**
+     * Sets the component shown for this extension in the extensions drawer.
+     * @returns A cleanup function to remove the panel. It is also removed when the extension is disabled.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    registerSettingsPanel: (component: Component, props?: Record<string, any>) => () => void;
+
+    /**
+     * Adds a button to every chat message's button row.
+     * @returns A cleanup function. The button is also removed when the extension is disabled.
+     */
+    registerMessageButton: (definition: MessageButtonDefinition<TypedChatMessage<TMessageExtra>>) => () => void;
+
+    /**
+     * Renders a component below every chat message's header.
+     * @returns A cleanup function. The decoration is also removed when the extension is disabled.
+     */
+    registerMessageDecoration: (definition: MessageDecorationDefinition<TypedChatMessage<TMessageExtra>>) => () => void;
 
     unregisterChatSettingsTab: (tabId: string) => void;
 

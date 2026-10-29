@@ -4,6 +4,8 @@ import type { NavBarItemDefinition, SidebarDefinition } from '../types';
 import type {
   ChatFormOptionsMenuItemDefinition,
   ChatQuickActionDefinition,
+  MessageButtonDefinition,
+  MessageDecorationDefinition,
   TextareaToolDefinition,
 } from '../types/ExtensionAPI';
 import type { CodeMirrorTarget } from '../types/settings';
@@ -17,6 +19,12 @@ export interface ChatSettingsTabDefinition {
 interface RegexToolRegistration {
   regex: RegExp;
   tools: TextareaToolDefinition[];
+}
+
+export interface ExtensionSettingsPanelDefinition {
+  component: Component;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  props: Record<string, any>;
 }
 
 export interface ChatQuickActionGroupDefinition {
@@ -35,6 +43,9 @@ interface ComponentRegistryStoreSetup {
   chatSettingsTabRegistry: Ref<Map<string, ChatSettingsTabDefinition>>;
   chatFormOptionsMenuRegistry: Ref<Map<string, ChatFormOptionsMenuItemDefinition>>;
   chatQuickActionsRegistry: Ref<Map<string, ChatQuickActionGroupDefinition>>;
+  extensionSettingsPanelRegistry: Ref<Map<string, ExtensionSettingsPanelDefinition>>;
+  messageButtonRegistry: Ref<Map<string, MessageButtonDefinition>>;
+  messageDecorationRegistry: Ref<Map<string, MessageDecorationDefinition>>;
   registerSidebar: (id: string, definition: Omit<SidebarDefinition, 'id'>, side: 'left' | 'right') => void;
   unregisterSidebar: (id: string, side: 'left' | 'right') => void;
   registerNavBarItem: (id: string, definition: Omit<NavBarItemDefinition, 'id'>) => void;
@@ -48,6 +59,12 @@ interface ComponentRegistryStoreSetup {
   unregisterChatQuickAction: (groupId: string, actionId: string) => void;
   registerChatSettingsTab: (id: string, title: string, component: Component) => void;
   unregisterChatSettingsTab: (id: string) => void;
+  registerExtensionSettingsPanel: (extensionId: string, definition: ExtensionSettingsPanelDefinition) => void;
+  unregisterExtensionSettingsPanel: (extensionId: string) => void;
+  registerMessageButton: (definition: MessageButtonDefinition) => void;
+  unregisterMessageButton: (id: string) => void;
+  registerMessageDecoration: (definition: MessageDecorationDefinition) => void;
+  unregisterMessageDecoration: (id: string) => void;
   getNavBarItem: (id: string) => NavBarItemDefinition | undefined;
 }
 
@@ -64,6 +81,10 @@ export const useComponentRegistryStore = defineStore('component-registry', (): C
   const chatSettingsTabRegistry = ref<Map<string, ChatSettingsTabDefinition>>(new Map());
   const chatFormOptionsMenuRegistry = ref<Map<string, ChatFormOptionsMenuItemDefinition>>(new Map());
   const chatQuickActionsRegistry = ref<Map<string, ChatQuickActionGroupDefinition>>(new Map());
+  /** Settings panel per extension id, rendered in the extensions drawer. */
+  const extensionSettingsPanelRegistry = ref<Map<string, ExtensionSettingsPanelDefinition>>(new Map());
+  const messageButtonRegistry = ref<Map<string, MessageButtonDefinition>>(new Map());
+  const messageDecorationRegistry = ref<Map<string, MessageDecorationDefinition>>(new Map());
 
   function registerSidebar(id: string, definition: Omit<SidebarDefinition, 'id'>, side: 'left' | 'right') {
     const rawComponent = markRaw(definition.component);
@@ -220,6 +241,42 @@ export const useComponentRegistryStore = defineStore('component-registry', (): C
     chatSettingsTabRegistry.value.delete(id);
   }
 
+  function registerExtensionSettingsPanel(extensionId: string, definition: ExtensionSettingsPanelDefinition) {
+    extensionSettingsPanelRegistry.value.set(extensionId, {
+      component: markRaw(definition.component),
+      props: markRaw(definition.props),
+    });
+  }
+
+  function unregisterExtensionSettingsPanel(extensionId: string) {
+    extensionSettingsPanelRegistry.value.delete(extensionId);
+  }
+
+  function registerMessageButton(definition: MessageButtonDefinition) {
+    // Props are kept raw so refs and extension objects reach the component unchanged.
+    messageButtonRegistry.value.set(definition.id, {
+      ...definition,
+      component: definition.component ? markRaw(definition.component) : undefined,
+      props: definition.props ? markRaw(definition.props) : undefined,
+    });
+  }
+
+  function unregisterMessageButton(id: string) {
+    messageButtonRegistry.value.delete(id);
+  }
+
+  function registerMessageDecoration(definition: MessageDecorationDefinition) {
+    messageDecorationRegistry.value.set(definition.id, {
+      ...definition,
+      component: markRaw(definition.component),
+      props: definition.props ? markRaw(definition.props) : undefined,
+    });
+  }
+
+  function unregisterMessageDecoration(id: string) {
+    messageDecorationRegistry.value.delete(id);
+  }
+
   return {
     leftSidebarRegistry,
     rightSidebarRegistry,
@@ -229,6 +286,9 @@ export const useComponentRegistryStore = defineStore('component-registry', (): C
     chatSettingsTabRegistry,
     chatFormOptionsMenuRegistry,
     chatQuickActionsRegistry,
+    extensionSettingsPanelRegistry,
+    messageButtonRegistry,
+    messageDecorationRegistry,
     registerSidebar,
     unregisterSidebar,
     registerNavBarItem,
@@ -242,6 +302,12 @@ export const useComponentRegistryStore = defineStore('component-registry', (): C
     unregisterChatQuickAction,
     registerChatSettingsTab,
     unregisterChatSettingsTab,
+    registerExtensionSettingsPanel,
+    unregisterExtensionSettingsPanel,
+    registerMessageButton,
+    unregisterMessageButton,
+    registerMessageDecoration,
+    unregisterMessageDecoration,
     getNavBarItem: (id: string) => navBarRegistry.value.get(id),
   };
 });

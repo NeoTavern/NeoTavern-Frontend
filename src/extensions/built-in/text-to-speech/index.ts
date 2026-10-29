@@ -3,8 +3,9 @@ import type { ChatMessage, ExtensionAPI } from '../../../types';
 import { findChatMessageIndex, isFinishedAssistantMessage } from '../_shared/runtime/chat-message';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
+import TtsMessageButton from './TtsMessageButton.vue';
 import { countTtsWords, prepareTtsText, TextToSpeechService } from './tts-service';
-import { mergeTtsSettings, type TextToSpeechSettings, type TtsPlaybackState } from './types';
+import { mergeTtsSettings, type TextToSpeechSettings } from './types';
 
 export { manifest };
 
@@ -37,88 +38,34 @@ interface EarlyPlaybackState {
 
 export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
   const service = new TextToSpeechService(api);
-  let settingsApp: { unmount: () => void } | null = null;
   let playbackActionCleanup: (() => void) | null = null;
-  const buttonCleanupCallbacks: Array<() => void> = [];
   const earlyPlaybackByGeneration = new Map<string, EarlyPlaybackState>();
 
   api.settings.set(undefined, mergeTtsSettings(api.settings.get()));
   api.settings.save();
   api.extensions.registerService(api.meta.id, service);
 
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  if (settingsContainer) {
-    settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
-  }
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
 
-  const renderButton = (
-    button: HTMLButtonElement,
-    icon: HTMLElement,
-    messageIndex: number,
-    state: TtsPlaybackState,
-  ) => {
-    const isActive = state.messageIndex === messageIndex && state.status !== 'idle';
-    const isRequesting = isActive && state.status === 'requesting';
-
-    button.classList.toggle('active', isActive);
-    button.disabled = false;
-    button.title = isActive
-      ? api.i18n.t('extensionsBuiltin.textToSpeech.stopPlayback')
-      : api.i18n.t('extensionsBuiltin.textToSpeech.speakMessage');
-    button.setAttribute('aria-label', button.title);
-    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-
-    icon.className = `fa-solid ${isRequesting ? 'fa-spinner fa-spin' : isActive ? 'fa-volume-xmark' : 'fa-volume-high'}`;
-  };
-
-  const injectSingleButton = (messageElement: HTMLElement, messageIndex: number) => {
-    const buttonsContainer = messageElement.querySelector('.message-buttons');
-    if (!buttonsContainer) return;
-    if (buttonsContainer.querySelector('.tts-button-wrapper')) return;
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'tts-button-wrapper';
-    wrapper.style.display = 'inline-flex';
-    buttonsContainer.appendChild(wrapper);
-
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'menu-button menu-button--ghost';
-    button.setAttribute('aria-pressed', 'false');
-
-    const icon = document.createElement('i');
-    icon.setAttribute('aria-hidden', 'true');
-    button.appendChild(icon);
-    wrapper.appendChild(button);
-
-    const unsubscribe = service.subscribe((state) => {
-      renderButton(button, icon, messageIndex, state);
-    });
-    buttonCleanupCallbacks.push(unsubscribe);
-
-    button.addEventListener('click', (event) => {
-      event.stopPropagation();
-      const state = service.getPlaybackState();
-      if (state.messageIndex === messageIndex && state.status !== 'idle') {
-        cancelEarlyPlayback();
-      }
-      service.toggleMessage(messageIndex).catch((error: unknown) => {
-        if (isAbortError(error)) return;
-        const message = error instanceof Error ? error.message : String(error);
-        api.ui.showToast(`${api.i18n.t('extensionsBuiltin.textToSpeech.playbackFailed')}: ${message}`, 'error');
-      });
-    });
-  };
-
-  const injectButtons = () => {
-    document.querySelectorAll('.message').forEach((element) => {
-      const indexAttr = element.getAttribute('data-message-index');
-      if (indexAttr === null) return;
-      const messageIndex = parseInt(indexAttr, 10);
-      if (Number.isNaN(messageIndex)) return;
-      injectSingleButton(element as HTMLElement, messageIndex);
-    });
-  };
+  api.ui.registerMessageButton({
+    id: 'text-to-speech.speak',
+    component: TtsMessageButton,
+    props: {
+      api,
+      service,
+      onToggle: (messageIndex: number) => {
+        const state = service.getPlaybackState();
+        if (state.messageIndex === messageIndex && state.status !== 'idle') {
+          cancelEarlyPlayback();
+        }
+        service.toggleMessage(messageIndex).catch((error: unknown) => {
+          if (isAbortError(error)) return;
+          const message = error instanceof Error ? error.message : String(error);
+          api.ui.showToast(`${api.i18n.t('extensionsBuiltin.textToSpeech.playbackFailed')}: ${message}`, 'error');
+        });
+      },
+    },
+  });
 
   const registerStopAction = () => {
     const onClick = () => {
@@ -156,8 +103,6 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
     registerPlaybackAction();
     playbackActionCleanup = service.subscribe(registerPlaybackAction);
   };
-
-  const unbinds: Array<() => void> = [];
 
   const cancelEarlyPlaybackState = (generationId: string, state: EarlyPlaybackState) => {
     state.canceled = true;
@@ -272,147 +217,123 @@ export function activate(api: ExtensionAPI<TextToSpeechSettings>) {
     }
   };
 
-  unbinds.push(
-    api.events.on('chat:entered', () => {
-      injectButtons();
-      registerStopAction();
+  api.events.on('chat:entered', () => {
+    registerStopAction();
+    cancelEarlyPlayback();
+  });
+
+  api.events.on('generation:started', (context) => {
+    const settings = mergeTtsSettings(api.settings.get());
+    if (settings.enabled && settings.autoPlayAssistant) {
       cancelEarlyPlayback();
-    }),
-  );
-
-  unbinds.push(
-    api.events.on('generation:started', (context) => {
-      const settings = mergeTtsSettings(api.settings.get());
-      if (settings.enabled && settings.autoPlayAssistant) {
-        cancelEarlyPlayback();
-        if (settings.interruptPlayback) {
-          service.stop();
-        }
+      if (settings.interruptPlayback) {
+        service.stop();
       }
+    }
 
-      let resolveMessageIndex!: (messageIndex: number) => void;
-      const messageIndexReady = new Promise<number>((resolve) => {
-        resolveMessageIndex = resolve;
-      });
+    let resolveMessageIndex!: (messageIndex: number) => void;
+    const messageIndexReady = new Promise<number>((resolve) => {
+      resolveMessageIndex = resolve;
+    });
 
-      earlyPlaybackByGeneration.set(context.generationId, {
-        buffer: '',
-        segmentQueue: [],
-        preparedQueue: [],
-        speakerName: context.activeCharacter?.name,
-        messageIndex: null,
-        resolveMessageIndex,
-        messageIndexReady,
-        started: false,
-        canceled: false,
-        finished: false,
-        processing: false,
-      });
+    earlyPlaybackByGeneration.set(context.generationId, {
+      buffer: '',
+      segmentQueue: [],
+      preparedQueue: [],
+      speakerName: context.activeCharacter?.name,
+      messageIndex: null,
+      resolveMessageIndex,
+      messageIndexReady,
+      started: false,
+      canceled: false,
+      finished: false,
+      processing: false,
+    });
 
-      if (context.mode === GenerationMode.ADD_SWIPE || context.mode === GenerationMode.CONTINUE) {
-        const history = api.chat.getHistory();
-        const state = earlyPlaybackByGeneration.get(context.generationId);
-        if (state && history.length > 0) {
-          resolveEarlyPlaybackMessageIndex(state, history.length - 1);
-        }
-      }
-    }),
-  );
-
-  unbinds.push(
-    api.events.on('generation:aborted', (context) => {
+    if (context.mode === GenerationMode.ADD_SWIPE || context.mode === GenerationMode.CONTINUE) {
+      const history = api.chat.getHistory();
       const state = earlyPlaybackByGeneration.get(context.generationId);
-      if (state) cancelEarlyPlaybackState(context.generationId, state);
-    }),
-  );
-
-  unbinds.push(
-    api.events.on('process:stream-chunk', (chunk, context) => {
-      const settings = mergeTtsSettings(api.settings.get());
-      const state = earlyPlaybackByGeneration.get(context.generationId);
-      if (!state || !settings.enabled || !settings.autoPlayAssistant || !providerSupportsEarlyStreaming(settings)) {
-        return;
+      if (state && history.length > 0) {
+        resolveEarlyPlaybackMessageIndex(state, history.length - 1);
       }
+    }
+  });
 
-      state.buffer += chunk.delta ?? '';
-      flushQueuedSentences(context.generationId, state, settings);
-    }),
-  );
+  api.events.on('generation:aborted', (context) => {
+    const state = earlyPlaybackByGeneration.get(context.generationId);
+    if (state) cancelEarlyPlaybackState(context.generationId, state);
+  });
 
-  unbinds.push(
-    api.events.on('message:created', (message: ChatMessage) => {
-      const messageIndex = findChatMessageIndex(api.chat.getHistory(), message);
-      if (messageIndex === -1) return;
+  api.events.on('process:stream-chunk', (chunk, context) => {
+    const settings = mergeTtsSettings(api.settings.get());
+    const state = earlyPlaybackByGeneration.get(context.generationId);
+    if (!state || !settings.enabled || !settings.autoPlayAssistant || !providerSupportsEarlyStreaming(settings)) {
+      return;
+    }
 
-      for (const state of earlyPlaybackByGeneration.values()) {
-        if (state.messageIndex === null && !message.is_user && !message.is_system && !message.gen_finished) {
-          resolveEarlyPlaybackMessageIndex(state, messageIndex);
-          break;
-        }
+    state.buffer += chunk.delta ?? '';
+    flushQueuedSentences(context.generationId, state, settings);
+  });
+
+  api.events.on('message:created', (message: ChatMessage) => {
+    const messageIndex = findChatMessageIndex(api.chat.getHistory(), message);
+    if (messageIndex === -1) return;
+
+    for (const state of earlyPlaybackByGeneration.values()) {
+      if (state.messageIndex === null && !message.is_user && !message.is_system && !message.gen_finished) {
+        resolveEarlyPlaybackMessageIndex(state, messageIndex);
+        break;
       }
+    }
+  });
 
-      const messageElement = document.querySelector(`.message[data-message-index="${messageIndex}"]`);
-      if (messageElement) injectSingleButton(messageElement as HTMLElement, messageIndex);
-    }),
-  );
+  api.events.on('generation:finished', (result: { message: ChatMessage | null; error?: Error }, context) => {
+    const settings = mergeTtsSettings(api.settings.get());
+    const message = result.message;
+    const earlyPlayback = earlyPlaybackByGeneration.get(context.generationId);
 
-  unbinds.push(
-    api.events.on('generation:finished', (result: { message: ChatMessage | null; error?: Error }, context) => {
-      const settings = mergeTtsSettings(api.settings.get());
-      const message = result.message;
-      const earlyPlayback = earlyPlaybackByGeneration.get(context.generationId);
-
-      if (!settings.enabled || !settings.autoPlayAssistant || result.error || !isFinishedAssistantMessage(message)) {
-        if (earlyPlayback) {
-          cancelEarlyPlaybackState(context.generationId, earlyPlayback);
-        }
-        return;
+    if (!settings.enabled || !settings.autoPlayAssistant || result.error || !isFinishedAssistantMessage(message)) {
+      if (earlyPlayback) {
+        cancelEarlyPlaybackState(context.generationId, earlyPlayback);
       }
+      return;
+    }
 
-      const messageIndex = findChatMessageIndex(api.chat.getHistory(), message, context.generationId);
-      if (messageIndex === -1) return;
+    const messageIndex = findChatMessageIndex(api.chat.getHistory(), message, context.generationId);
+    if (messageIndex === -1) return;
 
-      if (earlyPlayback?.messageIndex === null) {
-        resolveEarlyPlaybackMessageIndex(earlyPlayback, messageIndex);
+    if (earlyPlayback?.messageIndex === null) {
+      resolveEarlyPlaybackMessageIndex(earlyPlayback, messageIndex);
+    }
+
+    if (
+      earlyPlayback &&
+      providerSupportsEarlyStreaming(settings) &&
+      (earlyPlayback.started || earlyPlayback.buffer.trim())
+    ) {
+      earlyPlayback.finished = true;
+      if (earlyPlayback.buffer.trim()) {
+        enqueueSpeech(context.generationId, earlyPlayback, earlyPlayback.buffer);
+        earlyPlayback.buffer = '';
       }
+      void processSpeechQueue(context.generationId, earlyPlayback);
+      return;
+    }
 
-      if (
-        earlyPlayback &&
-        providerSupportsEarlyStreaming(settings) &&
-        (earlyPlayback.started || earlyPlayback.buffer.trim())
-      ) {
-        earlyPlayback.finished = true;
-        if (earlyPlayback.buffer.trim()) {
-          enqueueSpeech(context.generationId, earlyPlayback, earlyPlayback.buffer);
-          earlyPlayback.buffer = '';
-        }
-        void processSpeechQueue(context.generationId, earlyPlayback);
-        return;
-      }
+    if (earlyPlayback) earlyPlaybackByGeneration.delete(context.generationId);
 
-      if (earlyPlayback) earlyPlaybackByGeneration.delete(context.generationId);
+    service.speakMessage(messageIndex).catch((error: unknown) => {
+      if (isAbortError(error)) return;
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      api.ui.showToast(`${api.i18n.t('extensionsBuiltin.textToSpeech.playbackFailed')}: ${errorMessage}`, 'error');
+    });
+  });
 
-      service.speakMessage(messageIndex).catch((error: unknown) => {
-        if (isAbortError(error)) return;
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        api.ui.showToast(`${api.i18n.t('extensionsBuiltin.textToSpeech.playbackFailed')}: ${errorMessage}`, 'error');
-      });
-    }),
-  );
-
-  injectButtons();
   registerStopAction();
 
   return () => {
     service.stop();
     cancelEarlyPlayback();
-    settingsApp?.unmount();
-    unbinds.forEach((unbind) => unbind());
     playbackActionCleanup?.();
-    buttonCleanupCallbacks.forEach((cleanup) => cleanup());
-    document.querySelectorAll('.tts-button-wrapper').forEach((element) => element.remove());
-    api.ui.unregisterChatFormOptionsMenuItem('text-to-speech-stop');
-    api.ui.unregisterChatQuickAction('core.input-message', 'text-to-speech-stop');
-    api.extensions.unregisterService(api.meta.id);
   };
 }

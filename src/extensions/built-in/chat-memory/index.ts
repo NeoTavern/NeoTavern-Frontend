@@ -2,7 +2,6 @@ import { markRaw } from 'vue';
 import type { StrictT } from '../../../composables/useStrictI18n';
 import i18n from '../../../i18n';
 import type { ChatMessage, ExtensionAPI } from '../../../types';
-import { MountableComponent } from '../../../types/ExtensionAPI';
 import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
 import { mergeMessageExtra } from '../_shared/runtime/extension-extra';
 import { manifest } from './manifest';
@@ -75,7 +74,6 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
     if (!message) return;
 
     const settings = api.settings.get();
-    api.settings.set(undefined, settings);
     const promptTemplate = resolveChatMemoryPrompts(settings).messageSummaryPrompt;
     const connectionProfile = resolveConnectionProfile(api, settings?.connectionProfile);
 
@@ -171,7 +169,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
     if (existing) existing.remove();
   };
 
-  const processMessageElement = (element: HTMLElement, index: number, message?: ChatMessage) => {
+  const processMessageElement = (element: HTMLElement, message?: ChatMessage) => {
     if (!message) return;
 
     const settings = api.settings.get();
@@ -182,35 +180,6 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
     } else {
       removeSummaryDisplay(element);
     }
-
-    // Button Injection
-    injectSummarizeButton(element, index);
-  };
-
-  const injectSummarizeButton = async (messageElement: HTMLElement, messageIndex: number) => {
-    const settings = api.settings.get();
-    if (!settings?.enableMessageSummarization) return;
-
-    const buttonsContainer = messageElement.querySelector('.message-buttons');
-    if (!buttonsContainer) return;
-
-    if (buttonsContainer.querySelector('.summary-button-wrapper')) return;
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'summary-button-wrapper';
-    wrapper.style.display = 'inline-flex';
-
-    buttonsContainer.insertBefore(wrapper, buttonsContainer.firstChild);
-
-    await api.ui.mountComponent(wrapper, MountableComponent.Button, {
-      icon: 'fa-brain',
-      title: t('extensionsBuiltin.chatMemory.summarizeButton'),
-      variant: 'ghost',
-      onClick: (e: MouseEvent) => {
-        e.stopPropagation();
-        summarizeMessage(messageIndex);
-      },
-    });
   };
 
   const updateAllMessages = () => {
@@ -223,14 +192,13 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
       if (indexAttr === null) return;
       const messageIndex = parseInt(indexAttr, 10);
       if (isNaN(messageIndex)) return;
-      processMessageElement(el as HTMLElement, messageIndex, history[messageIndex]);
+      processMessageElement(el as HTMLElement, history[messageIndex]);
     });
 
     // Clean up if message summarization is disabled
     if (!settings?.enableMessageSummarization) {
       document.querySelectorAll('.message').forEach((el) => {
         removeSummaryDisplay(el as HTMLElement);
-        el.querySelector('.summary-button-wrapper')?.remove();
       });
     }
   };
@@ -263,75 +231,72 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
     });
   };
 
+  api.ui.registerMessageButton({
+    id: 'chat-memory.summarize',
+    placement: 'start',
+    icon: 'fa-brain',
+    title: t('extensionsBuiltin.chatMemory.summarizeButton'),
+    visible: () => !!api.settings.get('enableMessageSummarization'),
+    onClick: (messageIndex) => summarizeMessage(messageIndex),
+  });
+
   // --- Event Listeners ---
 
-  const unbinds: Array<() => void> = [];
+  api.events.on('chat:entered', () => {
+    injectMenuOption();
+    updateAllMessages();
+  });
 
-  unbinds.push(
-    api.events.on('chat:entered', () => {
-      injectMenuOption();
-      updateAllMessages();
-    }),
-  );
+  api.events.on('message:created', (message: ChatMessage) => {
+    const history = api.chat.getHistory();
+    const messageIndex = history.length - 1;
 
-  unbinds.push(
-    api.events.on('message:created', (message: ChatMessage) => {
-      const history = api.chat.getHistory();
-      const messageIndex = history.length - 1;
+    const el = document.querySelector(`.message[data-message-index="${messageIndex}"]`);
+    if (el) processMessageElement(el as HTMLElement, message);
 
-      const el = document.querySelector(`.message[data-message-index="${messageIndex}"]`);
-      if (el) processMessageElement(el as HTMLElement, messageIndex, message);
+    // Auto Summarize
+    const settings = api.settings.get();
+    if (settings?.enableMessageSummarization && settings?.autoMessageSummarize) {
+      if (message.is_system || !message.mes.trim()) return;
+      summarizeMessage(messageIndex);
+    }
+  });
 
-      // Auto Summarize
-      const settings = api.settings.get();
-      if (settings?.enableMessageSummarization && settings?.autoMessageSummarize) {
-        if (message.is_system || !message.mes.trim()) return;
-        summarizeMessage(messageIndex);
-      }
-    }),
-  );
+  api.events.on('message:updated', async (index: number) => {
+    const el = document.querySelector(`.message[data-message-index="${index}"]`);
+    if (el) processMessageElement(el as HTMLElement, api.chat.getMessage(index));
 
-  unbinds.push(
-    api.events.on('message:updated', async (index: number) => {
-      const el = document.querySelector(`.message[data-message-index="${index}"]`);
-      if (el) processMessageElement(el as HTMLElement, index, api.chat.getHistory()[index]);
-
-      // Handle Content Changes vs Summary
-      // const extra = message.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
-      // // If content changed (logic handled by core triggering update), we might want to clear summary or re-summarize
-      // // But we need to distinguish between update caused by US (setting summary) and USER (editing text)
-      // // This is hard without comparing old vs new message content.
-      // // For now, we rely on manual re-summarize or bulk if user edits text.
-    }),
-  );
+    // Handle Content Changes vs Summary
+    // const extra = message.extra?.[EXTENSION_KEY] as MemoryMessageExtra | undefined;
+    // // If content changed (logic handled by core triggering update), we might want to clear summary or re-summarize
+    // // But we need to distinguish between update caused by US (setting summary) and USER (editing text)
+    // // This is hard without comparing old vs new message content.
+    // // For now, we rely on manual re-summarize or bulk if user edits text.
+  });
 
   // Prompt Injection: Replace content with summary
-  unbinds.push(
-    api.events.on('prompt:history-message-processing', (payload, context) => {
-      const settings = api.settings.get();
-      if (!settings?.enableMessageSummarization) return;
+  api.events.on('prompt:history-message-processing', (payload, context) => {
+    const settings = api.settings.get();
+    if (!settings?.enableMessageSummarization) return;
 
-      const ignoreCount = settings.ignoreSummaryCount || 100;
+    const ignoreCount = settings.ignoreSummaryCount || 100;
 
-      if (ignoreCount > 0) {
-        if (context.index >= context.chatLength - ignoreCount) {
-          return;
-        }
+    if (ignoreCount > 0) {
+      if (context.index >= context.chatLength - ignoreCount) {
+        return;
       }
+    }
 
-      const extra = context.originalMessage.extra[EXTENSION_KEY] as MemoryMessageExtra['core.chat-memory'] | undefined;
-      if (payload.apiMessages.length >= 1 && extra?.summary && extra.summary.trim().length > 0) {
-        payload.apiMessages[0].content = extra.summary;
-      }
-    }),
-  );
+    const extra = context.originalMessage.extra[EXTENSION_KEY] as MemoryMessageExtra['core.chat-memory'] | undefined;
+    if (payload.apiMessages.length >= 1 && extra?.summary && extra.summary.trim().length > 0) {
+      payload.apiMessages[0].content = extra.summary;
+    }
+  });
 
-  unbinds.push(
-    // @ts-expect-error extension event
-    api.events.on('chat-memory:refresh-ui', () => {
-      updateAllMessages();
-    }),
-  );
+  // @ts-expect-error extension event
+  api.events.on('chat-memory:refresh-ui', () => {
+    updateAllMessages();
+  });
 
   // Initial Boot
   injectStyles();
@@ -341,12 +306,8 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
   }
 
   return () => {
-    unbinds.forEach((u) => u());
-    document.querySelectorAll('.summary-button-wrapper').forEach((el) => el.remove());
     document.querySelectorAll('.memory-summary-injection').forEach((el) => el.remove());
     document.querySelectorAll('.content-dimmed').forEach((el) => el.classList.remove('content-dimmed'));
     document.getElementById('chat-memory-styles')?.remove();
-    api.ui.unregisterChatFormOptionsMenuItem('chat-memory-option');
-    api.ui.unregisterChatQuickAction('core.context-ai', 'chat-memory-quick-action');
   };
 }

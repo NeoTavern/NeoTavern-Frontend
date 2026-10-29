@@ -17,14 +17,9 @@ export function activate(api: ExtensionAPI<RandomizerSettings>) {
       profiles: saved?.profiles ?? [],
     };
   };
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
 
-  let settingsApp: { unmount: () => void } | null = null;
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  if (settingsContainer) {
-    settingsApp = api.ui.mount(settingsContainer, SettingsPanel, { api });
-  }
-
-  const unbindPayload = api.events.on('generation:build-payload', async (config: GenerationPayloadBuilderConfig) => {
+  api.events.on('generation:build-payload', async (config: GenerationPayloadBuilderConfig) => {
     const settings = getSettings();
 
     if (!settings.enabled) return;
@@ -105,10 +100,5 @@ export function activate(api: ExtensionAPI<RandomizerSettings>) {
     }
   });
 
-  return () => {
-    unbindPayload();
-    if (settingsApp) {
-      settingsApp.unmount();
-    }
-  };
+  return () => {};
 }

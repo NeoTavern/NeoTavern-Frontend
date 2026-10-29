@@ -1,36 +1,31 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useStrictI18n } from '../../composables/useStrictI18n';
+import { useComponentRegistryStore } from '../../stores/component-registry.store';
 import { useExtensionStore, type Extension } from '../../stores/extension.store';
 import { useLayoutStore } from '../../stores/layout.store';
 import { useSettingsStore } from '../../stores/settings.store';
 import { EmptyState } from '../common';
 import PanelLayout from '../common/PanelLayout.vue';
-import { Button, FormItem, ListItem, Search, Toggle } from '../UI';
+import { Button, ListItem, Search, Toggle } from '../UI';
 
 const { t } = useStrictI18n();
 const props = defineProps<{
   mode?: 'full' | 'main-only' | 'side-only';
   title?: string;
 }>();
+const componentRegistryStore = useComponentRegistryStore();
 const extensionStore = useExtensionStore();
 const layoutStore = useLayoutStore();
 const settingsStore = useSettingsStore();
 
-const notifyOnUpdates = ref(false); // TODO: Connect this to settings
 const isBrowserCollapsed = computed({
   get: () => settingsStore.settings.account.extensionsBrowserExpanded,
   set: (value) => (settingsStore.settings.account.extensionsBrowserExpanded = value),
 });
 
-function manageExtensions() {
-  // TODO: Open manage extensions popup
-  alert(t('extensions.managePopupNotImplemented'));
-}
-
-function installExtension() {
-  // TODO: Open install extension popup
-  alert(t('extensions.installPopupNotImplemented'));
+function getSettingsPanel(extensionId: string) {
+  return componentRegistryStore.extensionSettingsPanelRegistry.get(extensionId);
 }
 
 function handleExtensionSelect(extension: Extension) {
@@ -60,18 +55,6 @@ function handleClose() {
     </template>
     <template #side>
       <div class="sidebar-controls extensions-panel-controls">
-        <div class="sidebar-controls-row extensions-panel-controls-row">
-          <Button variant="ghost" icon="fa-cubes" :title="t('extensions.manage')" @click="manageExtensions" />
-          <Button
-            variant="ghost"
-            icon="fa-cloud-arrow-down"
-            :title="t('extensions.install')"
-            @click="installExtension"
-          />
-          <FormItem>
-            <Toggle v-model="notifyOnUpdates" :title="t('extensions.notifyUpdates')" style="margin-left: auto" />
-          </FormItem>
-        </div>
         <div class="sidebar-controls-row extensions-panel-controls-row">
           <Search v-model="extensionStore.searchTerm" :placeholder="t('common.search')" />
         </div>
@@ -128,7 +111,11 @@ function handleClose() {
                 {{ extensionStore.getExtensionDescription(extension) }}
               </p>
 
-              <div :id="extension.containerId"></div>
+              <component
+                :is="getSettingsPanel(extension.id)!.component"
+                v-if="getSettingsPanel(extension.id)"
+                v-bind="getSettingsPanel(extension.id)!.props"
+              />
             </div>
           </div>
         </template>

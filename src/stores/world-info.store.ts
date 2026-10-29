@@ -8,7 +8,7 @@ import { DebounceTimeout } from '../constants';
 import { createDefaultEntry } from '../services/world-info';
 import { type WorldInfoBook, type WorldInfoEntry, type WorldInfoHeader } from '../types';
 import { downloadFile, uuidv4 } from '../utils/commons';
-import { eventEmitter } from '../utils/extensions';
+import { eventEmitter } from '../utils/event-emitter';
 import { useCharacterStore } from './character.store';
 import { useChatStore } from './chat.store';
 import { usePersonaStore } from './persona.store';

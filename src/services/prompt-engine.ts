@@ -20,7 +20,8 @@ import type {
   WorldInfoBook,
   WorldInfoSettings,
 } from '../types';
-import { countTokens, eventEmitter } from '../utils/extensions';
+import { eventEmitter } from '../utils/event-emitter';
+import { countTokens } from '../utils/token-count';
 import { compressImage, getImageTokenCost, getMediaDurationFromDataURL, isDataURL } from '../utils/media';
 import { normalizeSamplerSettings } from '../utils/sampler-settings';
 import { buildStructuredResponseSystemPrompt } from '../utils/structured-response';

@@ -174,9 +174,7 @@ class PhoneManager {
   constructor(private api: PhoneExtensionAPI) {}
 
   private getSettings(): PhoneSettings {
-    const settings = this.api.settings.get();
-    this.api.settings.set(undefined, settings);
-    return settings;
+    return this.api.settings.get();
   }
 
   public getChatExtra(): PhoneChatExtraData {
@@ -193,12 +191,12 @@ class PhoneManager {
   }
 
   public getMessageExtra(messageIndex: number): PhoneMessageExtraData {
-    const message = this.api.chat.getHistory()[messageIndex];
+    const message = this.api.chat.getMessage(messageIndex);
     return message ? getPhoneExtraFromMessage(message) : {};
   }
 
   private async setMessageExtra(messageIndex: number, data: PhoneMessageExtraData): Promise<void> {
-    const message = this.api.chat.getHistory()[messageIndex];
+    const message = this.api.chat.getMessage(messageIndex);
     if (!message) throw new Error('Selected chat message was not found.');
     await setMessageExtra<PhoneMessageExtra>(this.api, messageIndex, EXTENSION_ID, data);
     await this.api.events.emit(PHONE_UPDATED_EVENT);
@@ -592,8 +590,7 @@ class PhoneManager {
 }
 
 export function activate(api: PhoneExtensionAPI) {
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  const settingsApp = settingsContainer ? api.ui.mount(settingsContainer, SettingsPanel, { api }) : null;
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
   const manager = new PhoneManager(api);
 
   api.ui.registerSidebar(SIDEBAR_ID, PhonePanel, 'right', {
@@ -605,23 +602,17 @@ export function activate(api: PhoneExtensionAPI) {
     },
   });
 
-  const unbinds: Array<() => void> = [];
-  unbinds.push(api.events.on('chat:entered', () => manager.injectChatUi()));
-  unbinds.push(api.events.on('chat:cleared', () => manager.unmount()));
-  unbinds.push(api.events.on('chat:deleted', () => manager.unmount()));
-  unbinds.push(
-    api.events.on('prompt:history-message-processing', (payload, context) =>
-      manager.injectContext(payload.apiMessages, context.originalMessage, context.index, context.generationId),
-    ),
+  api.events.on('chat:entered', () => manager.injectChatUi());
+  api.events.on('chat:cleared', () => manager.unmount());
+  api.events.on('chat:deleted', () => manager.unmount());
+  api.events.on('prompt:history-message-processing', (payload, context) =>
+    manager.injectContext(payload.apiMessages, context.originalMessage, context.index, context.generationId),
   );
 
   if (api.chat.getChatInfo()) manager.injectChatUi();
 
   return () => {
-    unbinds.forEach((unbind) => unbind());
     manager.unmount();
-    settingsApp?.unmount();
-    api.ui.unregisterSidebar(SIDEBAR_ID, 'right');
   };
 }
 

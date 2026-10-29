@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   activate,
   persistPreparedInstalledGraphAgents,
@@ -11,7 +11,6 @@ import { createGraphPreset } from '../src/extensions/built-in/custom-agents/sett
 import { registerChatLifecycleHooks } from '../src/services/chat-lifecycle';
 
 const cleanups: Array<() => void> = [];
-beforeEach(() => vi.stubGlobal('document', { getElementById: vi.fn(() => null) }));
 afterEach(() => {
   while (cleanups.length) cleanups.pop()!();
   vi.unstubAllGlobals();
@@ -26,7 +25,6 @@ function hostApi(initial: unknown = { presets: [] }): CustomAgentsHostAPI {
       name: 'Custom Agents',
       version: '1',
       description: '',
-      containerId: 'custom-agents',
     },
     settings: {
       get: vi.fn(() => structuredClone(settings)),
@@ -44,7 +42,7 @@ function hostApi(initial: unknown = { presets: [] }): CustomAgentsHostAPI {
     ui: {
       registerSidebar: vi.fn(async () => undefined),
       unregisterSidebar: vi.fn(),
-      mount: vi.fn(() => ({ unmount: vi.fn() })),
+      registerSettingsPanel: vi.fn(() => vi.fn()),
     },
     i18n: { t: (key: string) => key },
   } as unknown as CustomAgentsHostAPI;
@@ -66,12 +64,11 @@ describe('Custom Agents extension activation', () => {
   it('reuses one prepared activation snapshot for management and all runtime reads', async () => {
     const preset = createGraphPreset('retained', 'Retained');
     const api = hostApi({ presets: [preset] });
-    vi.stubGlobal('document', { getElementById: vi.fn(() => ({})) });
     const dispose = await activate(api);
     cleanups.push(dispose);
 
     expect(api.settings.get).toHaveBeenCalledOnce();
-    const mountProps = vi.mocked(api.ui.mount).mock.calls[0]![2] as {
+    const mountProps = vi.mocked(api.ui.registerSettingsPanel).mock.calls[0]![1] as {
       prepared: PreparedInstalledGraphAgents;
       runtime: GraphCustomAgentsRuntime;
     };

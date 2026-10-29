@@ -24,10 +24,7 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
     return Number.isInteger(position) && position > 0 ? position - 1 : null;
   };
 
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  if (settingsContainer) {
-    api.ui.mount(settingsContainer, SettingsPanel, { api });
-  }
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
 
   // --- Helper to open Popup ---
   const handleRewrite = async (
@@ -161,7 +158,6 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
   ];
 
   const extensionPattern = /^extension\..+/;
-  const unbinds: Array<() => void> = [];
 
   const singleFieldTool: TextareaToolDefinition = {
     id: 'rewrite-wand',
@@ -201,61 +197,35 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
         );
       },
     };
-    unbinds.push(api.ui.registerTextareaTool(target as CodeMirrorTarget, tool));
+    api.ui.registerTextareaTool(target as CodeMirrorTarget, tool);
   });
 
   // Register Pattern for Extension settings
-  unbinds.push(api.ui.registerTextareaTool(extensionPattern, singleFieldTool));
+  api.ui.registerTextareaTool(extensionPattern, singleFieldTool);
 
-  // 2. Chat Message Toolbar Injection
-  const injectSingleButton = async (messageElement: HTMLElement, messageIndex: number) => {
-    const buttonsContainer = messageElement.querySelector('.message-buttons');
-    if (!buttonsContainer) return;
-    if (buttonsContainer.querySelector('.rewrite-button-wrapper')) return;
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'rewrite-button-wrapper';
-    wrapper.style.display = 'inline-flex';
-    buttonsContainer.appendChild(wrapper);
-
-    await api.ui.mountComponent(wrapper, MountableComponent.Button, {
-      icon: 'fa-wand-magic-sparkles',
-      title: t('extensionsBuiltin.rewrite.buttons.rewriteMessage'),
-      variant: 'ghost',
-      onClick: (e: MouseEvent) => {
-        e.stopPropagation();
-        const history = api.chat.getHistory();
-        const msg = history[messageIndex];
-        if (!msg) return;
-
-        const field: RewriteField = {
-          id: 'chat.message',
-          label: t('extensionsBuiltin.rewrite.fields.chatMessage'),
-          value: msg.mes,
-        };
-        handleRewrite(
-          {
-            fields: [field],
-            onApply: (changes) => {
-              if (changes.length > 0) api.chat.updateMessage(messageIndex, changes[0].newValue);
-            },
+  // 2. Chat Message Button
+  api.ui.registerMessageButton({
+    id: 'rewrite.message',
+    icon: 'fa-wand-magic-sparkles',
+    title: t('extensionsBuiltin.rewrite.buttons.rewriteMessage'),
+    onClick: (messageIndex, msg) => {
+      const field: RewriteField = {
+        id: 'chat.message',
+        label: t('extensionsBuiltin.rewrite.fields.chatMessage'),
+        value: msg.mes,
+      };
+      handleRewrite(
+        {
+          fields: [field],
+          onApply: (changes) => {
+            if (changes.length > 0) api.chat.updateMessage(messageIndex, changes[0].newValue);
           },
-          'chat.message',
-          messageIndex,
-        );
-      },
-    });
-  };
-
-  const injectButtons = () => {
-    const messageElements = document.querySelectorAll('.message');
-    messageElements.forEach((el) => {
-      const indexAttr = el.getAttribute('data-message-index');
-      if (indexAttr === null) return;
-      const messageIndex = parseInt(indexAttr, 10);
-      if (!isNaN(messageIndex)) injectSingleButton(el as HTMLElement, messageIndex);
-    });
-  };
+        },
+        'chat.message',
+        messageIndex,
+      );
+    },
+  });
 
   // 3. Input Options Injection
   const injectInputOption = () => {
@@ -342,33 +312,16 @@ export function activate(api: ExtensionAPI<RewriteSettings>) {
     subtree: true,
   });
   // Listeners
-  unbinds.push(
-    api.events.on('chat:entered', () => {
-      injectButtons();
-      injectInputOption();
-    }),
-  );
-
-  unbinds.push(
-    api.events.on('message:created', (message) => {
-      let messageIndex = api.chat.getHistory().indexOf(message);
-      messageIndex = messageIndex >= 0 ? messageIndex : api.chat.getHistory().length - 1;
-      const messageElement = document.querySelector(`.message[data-message-index="${messageIndex}"]`);
-      if (messageElement) injectSingleButton(messageElement as HTMLElement, messageIndex);
-    }),
-  );
+  api.events.on('chat:entered', () => {
+    injectInputOption();
+  });
 
   // Init
-  injectButtons();
   injectInputOption();
   injectCharacterButton();
 
   return () => {
-    unbinds.forEach((u) => u());
-    document.querySelectorAll('.rewrite-button-wrapper').forEach((el) => el.remove());
     document.querySelectorAll('.rewrite-character-global-wrapper').forEach((el) => el.remove());
-    api.ui.unregisterChatFormOptionsMenuItem('rewrite-input-option');
-    api.ui.unregisterChatQuickAction('core.input-message', 'rewrite-input-option');
     observer.disconnect();
   };
 }

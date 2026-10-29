@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, nextTick, ref } from 'vue';
 import type { Settings } from '../types';
-import { eventEmitter } from '../utils/extensions';
+import { eventEmitter } from '../utils/event-emitter';
 import { useSettingsStore } from './settings.store';
 
 export type QuickActionsLayout = Settings['chat']['quickActions']['layout'];

@@ -133,7 +133,7 @@ export class TextToSpeechService {
   }
 
   async speakMessage(messageIndex: number): Promise<void> {
-    const message = this.api.chat.getHistory()[messageIndex];
+    const message = this.api.chat.getMessage(messageIndex);
     const settings = this.getSettings();
 
     if (!settings.enabled || !message) return;

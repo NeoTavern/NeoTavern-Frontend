@@ -10,7 +10,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'track'): void;
+  (e: 'track', index: number): void;
 }>();
 
 const t = props.api.i18n.t;
@@ -73,7 +73,7 @@ const title = computed(() => {
 </script>
 
 <template>
-  <button class="menu-button menu-button--ghost tracker-icon" :title="title" @click.stop="emit('track')">
+  <button class="menu-button menu-button--ghost tracker-icon" :title="title" @click.stop="emit('track', props.index)">
     <i :class="iconClass"></i>
   </button>
 </template>

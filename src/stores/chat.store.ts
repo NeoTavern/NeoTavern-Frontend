@@ -21,7 +21,7 @@ import type { DeepPartial } from '../types/utils';
 import { getCharacterDifferences, getThumbnailUrl } from '../utils/character';
 import { extractMediaFromMarkdown, getFirstMessage } from '../utils/chat';
 import { downloadFile, formatFileSize, getMessageTimeStamp, mergeWithUndefined, uuidv4 } from '../utils/commons';
-import { eventEmitter } from '../utils/extensions';
+import { eventEmitter } from '../utils/event-emitter';
 import { useCharacterStore } from './character.store';
 import { useChatSelectionStore } from './chat-selection.store';
 import { useChatUiStore } from './chat-ui.store';

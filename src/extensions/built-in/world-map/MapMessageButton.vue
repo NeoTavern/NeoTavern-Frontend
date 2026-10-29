@@ -1,18 +1,23 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, type Ref } from 'vue';
 import type { ChatMessage } from '../../../types';
 import type { WorldMapMessageExtra } from './types';
 
 const props = defineProps<{
   message: ChatMessage;
-  title: string;
+  index: number;
+  hasMap: Ref<boolean>;
+  createTitle: string;
+  updateTitle: string;
   clearTitle: string;
 }>();
 
 const emit = defineEmits<{
-  (e: 'run'): void;
-  (e: 'clear'): void;
+  (e: 'run', index: number): void;
+  (e: 'clear', index: number): void;
 }>();
+
+const title = computed(() => (props.hasMap.value ? props.updateTitle : props.createTitle));
 
 const worldMapExtra = computed(() => (props.message.extra as WorldMapMessageExtra)?.['core.world-map']);
 const run = computed(() => worldMapExtra.value?.run);
@@ -32,7 +37,7 @@ const iconClass = computed(() => {
     <button
       class="menu-button menu-button--ghost world-map-message-button"
       :title="run?.error || title"
-      @click.stop="emit('run')"
+      @click.stop="emit('run', props.index)"
     >
       <i :class="iconClass"></i>
     </button>
@@ -40,7 +45,7 @@ const iconClass = computed(() => {
       v-if="hasWorldMapData"
       class="menu-button menu-button--ghost world-map-message-button world-map-message-button__clear"
       :title="clearTitle"
-      @click.stop="emit('clear')"
+      @click.stop="emit('clear', props.index)"
     >
       <i class="fa-solid fa-xmark"></i>
     </button>

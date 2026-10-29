@@ -13,7 +13,7 @@ import { usePopupStore } from '../../stores/popup.store';
 import { useWorldInfoStore } from '../../stores/world-info.store';
 import { POPUP_RESULT, POPUP_TYPE, type ChatInfo } from '../../types';
 import { formatTimeStamp, humanizedDateTime } from '../../utils/commons';
-import { eventEmitter } from '../../utils/extensions';
+import { eventEmitter } from '../../utils/event-emitter';
 import { ConnectionProfileSelector, EmptyState } from '../common';
 import { Button, FileInput, FormItem, ListItem, Search, Select, Tabs, Textarea } from '../UI';
 

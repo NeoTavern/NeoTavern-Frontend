@@ -11,7 +11,7 @@ import { useSettingsStore } from '../../stores/settings.store';
 import { POPUP_RESULT, POPUP_TYPE, type ChatInfo } from '../../types';
 import { getThumbnailUrl } from '../../utils/character';
 import { formatTimeStamp } from '../../utils/commons';
-import { eventEmitter } from '../../utils/extensions';
+import { eventEmitter } from '../../utils/event-emitter';
 import { EmptyState, Pagination, SidebarHeader, SmartAvatar } from '../common';
 import { Button, ListItem } from '../UI';
 

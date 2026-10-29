@@ -23,9 +23,7 @@ const roadwayExtra = props.message.extra['core.roadway'];
 const choices = roadwayExtra?.choices ?? [];
 
 function getSettings(): RoadwaySettings {
-  const settings = props.api.settings.get();
-  props.api.settings.set(undefined, settings);
-  return settings;
+  return props.api.settings.get();
 }
 
 async function markChoiceAsMade() {

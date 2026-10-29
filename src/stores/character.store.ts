@@ -9,7 +9,7 @@ import { chatService } from '../services/chat.service';
 import { type Character, type CropData } from '../types';
 import { getCharacterDifferences } from '../utils/character';
 import { mergeWithUndefinedMulti, onlyUnique, uuidv4 } from '../utils/commons';
-import { eventEmitter } from '../utils/extensions';
+import { eventEmitter } from '../utils/event-emitter';
 import { useSettingsStore } from './settings.store';
 
 export const useCharacterStore = defineStore('character', () => {

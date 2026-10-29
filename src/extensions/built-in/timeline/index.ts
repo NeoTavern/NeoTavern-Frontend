@@ -266,9 +266,7 @@ class TimelineManager {
   constructor(private api: TimelineExtensionAPI) {}
 
   private getSettings(): TimelineSettings {
-    const settings = this.api.settings.get();
-    this.api.settings.set(undefined, settings);
-    return settings;
+    return this.api.settings.get();
   }
 
   public async getCurrentStoryTime(): Promise<TimelineTimeRef | undefined> {
@@ -491,8 +489,7 @@ class TimelineManager {
 }
 
 export function activate(api: TimelineExtensionAPI) {
-  const settingsContainer = document.getElementById(api.meta.containerId);
-  const settingsApp = settingsContainer ? api.ui.mount(settingsContainer, SettingsPanel, { api }) : null;
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
   const manager = new TimelineManager(api);
 
   api.ui.registerSidebar(SIDEBAR_ID, TimelinePanel, 'right', {
@@ -505,29 +502,23 @@ export function activate(api: TimelineExtensionAPI) {
     },
   });
 
-  const unbinds: Array<() => void> = [];
-  unbinds.push(api.events.on('chat:entered', () => manager.injectChatUi()));
-  unbinds.push(api.events.on('chat:cleared', () => manager.unmount()));
-  unbinds.push(api.events.on('chat:deleted', () => manager.unmount()));
-  unbinds.push(
-    api.events.on(
-      'prompt:history-message-processing',
-      async (
-        payload: { apiMessages: ApiChatMessage[] },
-        context: { index: number; generationId: string; chatLength: number },
-      ) => {
-        await manager.injectContext(payload.apiMessages, context.index, context.chatLength, context.generationId);
-      },
-    ),
+  api.events.on('chat:entered', () => manager.injectChatUi());
+  api.events.on('chat:cleared', () => manager.unmount());
+  api.events.on('chat:deleted', () => manager.unmount());
+  api.events.on(
+    'prompt:history-message-processing',
+    async (
+      payload: { apiMessages: ApiChatMessage[] },
+      context: { index: number; generationId: string; chatLength: number },
+    ) => {
+      await manager.injectContext(payload.apiMessages, context.index, context.chatLength, context.generationId);
+    },
   );
 
   if (api.chat.getChatInfo()) manager.injectChatUi();
 
   return () => {
-    unbinds.forEach((unbind) => unbind());
     manager.unmount();
-    settingsApp?.unmount();
-    api.ui.unregisterSidebar(SIDEBAR_ID, 'right');
   };
 }
 

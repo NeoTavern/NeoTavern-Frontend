@@ -55,9 +55,7 @@ export class Commentator {
   constructor(private api: ExtensionAPI<LiveCommentarySettings>) {}
 
   private getSettings(): LiveCommentarySettings {
-    const settings = this.api.settings.get();
-    this.api.settings.set(undefined, settings);
-    return settings;
+    return this.api.settings.get();
   }
 
   public trigger(userInput: string): void {

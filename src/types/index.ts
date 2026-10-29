@@ -12,4 +12,11 @@ export * from './ui';
 export * from './world-info';
 
 export type { ExtensionEventMap, GenerationPayloadBuilderConfig } from './events';
-export type { ExtensionAPI, ExtensionMetadata, LlmGenerationOptions, MountableComponent } from './ExtensionAPI';
+export type {
+  ExtensionAPI,
+  ExtensionMetadata,
+  LlmGenerationOptions,
+  MessageButtonDefinition,
+  MessageDecorationDefinition,
+  MountableComponent,
+} from './ExtensionAPI';
