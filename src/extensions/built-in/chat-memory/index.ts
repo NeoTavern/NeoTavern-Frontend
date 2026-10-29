@@ -12,11 +12,11 @@ import {
   type ChatMemoryMetadata,
   type ExtensionSettings,
   type MemoryMessageExtra,
-  migrateChatMemorySettings,
   resolveChatMemoryPrompts,
 } from './types';
 
 export { manifest };
+export { migrateChatMemorySettings as migrateSettings } from './types';
 
 // @ts-expect-error 'i18n.global' is of type 'unknown'
 const t = i18n.global.t as StrictT;
@@ -74,7 +74,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
     const message = history[messageIndex];
     if (!message) return;
 
-    const settings = migrateChatMemorySettings(api.settings.get());
+    const settings = api.settings.get();
     api.settings.set(undefined, settings);
     const promptTemplate = resolveChatMemoryPrompts(settings).messageSummaryPrompt;
     const connectionProfile = resolveConnectionProfile(api, settings?.connectionProfile);

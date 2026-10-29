@@ -8,6 +8,7 @@ import SettingsPanel from './SettingsPanel.vue';
 import type { FieldChange, RewriteField, RewriteSettings } from './types';
 
 export { manifest };
+export { migrateRewriteSettings as migrateSettings } from './types';
 
 export function activate(api: ExtensionAPI<RewriteSettings>) {
   const t = api.i18n.t;

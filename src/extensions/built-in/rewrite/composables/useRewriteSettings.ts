@@ -1,11 +1,10 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import type { ExtensionAPI } from '../../../../types';
 import type { RewriteSettings, RewriteTemplate, RewriteTemplateOverride, StructuredResponseFormat } from '../types';
-import { migrateRewriteSettings } from '../types';
 import { getInitialRewriteTemplateId, resolveRewriteTemplateArgOverrides } from '../utils';
 
 export function useRewriteSettings(api: ExtensionAPI<RewriteSettings>, identifier: string) {
-  const settings = ref<RewriteSettings>(migrateRewriteSettings(api.settings.get()));
+  const settings = ref<RewriteSettings>(api.settings.get());
 
   const selectedTemplateId = ref<string>('');
   const selectedProfile = ref<string>('');

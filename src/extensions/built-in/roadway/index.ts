@@ -14,11 +14,11 @@ import {
   type RoadwayMessageExtra,
   type RoadwayMessageExtraData,
   type RoadwaySettings,
-  migrateRoadwaySettings,
   resolveRoadwayPrompts,
 } from './types';
 
 export { manifest };
+export { migrateRoadwaySettings as migrateSettings } from './types';
 
 type RoadwayExtensionAPI = ExtensionAPI<RoadwaySettings, RoadwayChatExtra, RoadwayMessageExtra>;
 
@@ -35,7 +35,7 @@ class RoadwayManager {
   constructor(private api: RoadwayExtensionAPI) {}
 
   private getSettings(): RoadwaySettings {
-    const settings = migrateRoadwaySettings(this.api.settings.get());
+    const settings = this.api.settings.get();
     this.api.settings.set(undefined, settings);
     return settings;
   }

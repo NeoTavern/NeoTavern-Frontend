@@ -2,12 +2,7 @@ import Handlebars from 'handlebars';
 import type { ApiChatMessage, ExtensionAPI } from '../../../types';
 import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
 import { setMessageExtra } from '../_shared/runtime/extension-extra';
-import {
-  type ChatTranslationMessageExtra,
-  type ChatTranslationSettings,
-  migrateChatTranslationSettings,
-  resolveChatTranslationPrompts,
-} from './types';
+import { type ChatTranslationMessageExtra, type ChatTranslationSettings, resolveChatTranslationPrompts } from './types';
 
 export class Translator {
   constructor(
@@ -15,7 +10,7 @@ export class Translator {
   ) {}
 
   private getSettings(): ChatTranslationSettings {
-    return migrateChatTranslationSettings(this.api.settings.get());
+    return this.api.settings.get();
   }
 
   async translateMessage(messageIndex: number): Promise<void> {

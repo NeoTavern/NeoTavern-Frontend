@@ -1,4 +1,4 @@
-import { set } from 'lodash-es';
+import { isPlainObject, set } from 'lodash-es';
 import { saveSamplerPreset, type Preset } from '../api/presets';
 import { type ParsedUserSettingsResponse } from '../api/settings';
 import {
@@ -32,7 +32,7 @@ import { mergeWithUndefinedMulti, uuidv4 } from '../utils/commons';
 import { runMigrations, type Migration } from '../utils/migration-runner';
 import { normalizeRegexScript } from './regex-scripts';
 
-export const LATEST_SETTINGS_VERSION = 1;
+export const LATEST_SETTINGS_VERSION = 2;
 
 // =============================================================================
 // Migration Registry
@@ -42,10 +42,26 @@ export const LATEST_SETTINGS_VERSION = 1;
  * Registry for settings migrations.
  * Add new migration steps here.
  */
-const settingsMigrations: Migration<Settings>[] = [
-  // Example:
-  // { version: 2, migrate: migrateV1ToV2 },
-];
+const settingsMigrations: Migration<Settings>[] = [{ version: 2, migrate: migrateV1ToV2 }];
+
+/**
+ * v2: Extension settings were written through lodash paths like `extensionSettings.core.tracker`,
+ * which nested them under `core`. They are now keyed by the full extension id (`extensionSettings['core.tracker']`).
+ */
+function migrateV1ToV2(settings: Settings): Settings {
+  const extensionSettings: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(settings.extensionSettings ?? {})) {
+    if (key === 'core' && isPlainObject(value)) {
+      for (const [name, scoped] of Object.entries(value)) {
+        extensionSettings[`core.${name}`] = scoped;
+      }
+    } else {
+      extensionSettings[key] = value;
+    }
+  }
+  settings.extensionSettings = extensionSettings as Settings['extensionSettings'];
+  return settings;
+}
 
 /**
  * Applies registered migrations to the main settings object.
@@ -283,7 +299,7 @@ function collectPromptsFromLegacyPresets(presets: LegacyOaiPresetSettings[]): Pr
 export function createDefaultSettings(): Settings {
   const defaultSettings: Settings = {
     version: LATEST_SETTINGS_VERSION,
-    account: defaultAccountSettings,
+    account: structuredClone(defaultAccountSettings),
     api: {
       provider: 'openai',
       formatter: 'chat',
@@ -338,7 +354,7 @@ export function createDefaultSettings(): Settings {
       personas: [],
       showNotifications: true,
     },
-    prompts: defaultPrompts,
+    prompts: structuredClone(defaultPrompts),
     proxies: [],
     ui: {
       background: {
@@ -378,10 +394,10 @@ export function createDefaultSettings(): Settings {
 // Settings Creation & Legacy Migration
 // =============================================================================
 
-export function migrateLegacyUserSettings(
+export async function migrateLegacyUserSettings(
   userSettingsResponse: ParsedUserSettingsResponse,
   neoSamplerPresets: Preset<SamplerSettings>[],
-): Settings {
+): Promise<Settings> {
   const legacy = userSettingsResponse.settings;
   const p = legacy.power_user || ({} as LegacySettings['power_user']);
   const oai = legacy.oai_settings || ({} as LegacySettings['oai_settings']);
@@ -392,14 +408,14 @@ export function migrateLegacyUserSettings(
     Array.isArray(userSettingsResponse.openai_setting_names) &&
     Array.isArray(userSettingsResponse.openai_settings)
   ) {
-    userSettingsResponse.openai_setting_names.forEach(async (name: string, i: number) => {
+    for (const [i, name] of userSettingsResponse.openai_setting_names.entries()) {
       try {
         await saveSamplerPreset(name, migrateLegacyOaiPreset(userSettingsResponse.openai_settings[i]));
       } catch (e: unknown) {
         console.error(`Failed to parse legacy preset "${name}":`, userSettingsResponse.openai_settings[i]);
         console.error(e);
       }
-    });
+    }
   }
 
   if (
@@ -407,7 +423,7 @@ export function migrateLegacyUserSettings(
     Array.isArray(userSettingsResponse.textgenerationwebui_preset_names) &&
     Array.isArray(userSettingsResponse.textgenerationwebui_presets)
   ) {
-    userSettingsResponse.textgenerationwebui_preset_names.forEach(async (name: string, i: number) => {
+    for (const [i, name] of userSettingsResponse.textgenerationwebui_preset_names.entries()) {
       try {
         await saveSamplerPreset(
           name,
@@ -420,7 +436,7 @@ export function migrateLegacyUserSettings(
         );
         console.error(e);
       }
-    });
+    }
   }
 
   // --- 2. Calculate Complex Values ---
@@ -640,13 +656,6 @@ export function migrateLegacyUserSettings(
   return settings;
 }
 
-export function mergeWithDefaults(
-  settings: Settings | Partial<Settings>,
-  legacySettings?: LegacySettings,
-): { settings: Settings; legacy: LegacySettings } {
-  const defaults = createDefaultSettings();
-  const mergedSettings = mergeWithUndefinedMulti({}, defaults, settings);
-  const legacy = legacySettings || ({} as LegacySettings);
-
-  return { settings: mergedSettings, legacy };
+export function mergeWithDefaults(settings: Settings | Partial<Settings>): Settings {
+  return mergeWithUndefinedMulti({}, createDefaultSettings(), settings);
 }

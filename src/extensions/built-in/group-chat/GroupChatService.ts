@@ -6,7 +6,6 @@ import {
   DEFAULT_SUMMARY_TEMPLATE,
   GroupGenerationHandlingMode,
   GroupReplyStrategy,
-  migrateGroupChatSettings,
   resolveGroupChatPrompts,
   type GroupChatConfig,
   type GroupExtensionSettings,
@@ -190,7 +189,7 @@ export class GroupChatService {
     const char = this.api.character.get(avatar);
     if (!char) return;
 
-    const extensionSettings = migrateGroupChatSettings(this.api.settings.get());
+    const extensionSettings = this.api.settings.get();
     const template =
       resolveGroupChatPrompts(extensionSettings).defaultSummaryPromptTemplate || DEFAULT_SUMMARY_TEMPLATE;
     const connectionProfile = resolveConnectionProfile(this.api, extensionSettings?.defaultConnectionProfile);
@@ -382,7 +381,7 @@ export class GroupChatService {
     const playerName = persona?.name || 'User';
 
     const config = this.groupConfig.value?.config;
-    const extensionSettings = migrateGroupChatSettings(this.api.settings.get());
+    const extensionSettings = this.api.settings.get();
     const template = resolveGroupChatPrompts(extensionSettings).defaultDecisionPromptTemplate;
     const contextSize = config?.decisionContextSize ?? 15;
     const connectionProfile = resolveConnectionProfile(this.api, extensionSettings?.defaultConnectionProfile);

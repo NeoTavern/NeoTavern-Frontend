@@ -33,4 +33,10 @@ export interface BuiltInExtensionModule {
    * @returns A cleanup function to run when disabled (remove DOM nodes, listeners).
    */
   activate: (api: ExtensionAPI) => void | (() => void) | Promise<void | (() => void)>;
+  /**
+   * Normalizes stored settings (fills defaults, upgrades old shapes). Runs before `activate`
+   * and its result is written back, so the extension can read its settings as-is afterwards.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  migrateSettings?: (settings: any) => Record<string, unknown>;
 }

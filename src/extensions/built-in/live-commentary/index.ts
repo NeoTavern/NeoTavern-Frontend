@@ -7,6 +7,7 @@ import SettingsPanel from './SettingsPanel.vue';
 import type { LiveCommentarySettings } from './types';
 
 export { manifest };
+export { migrateLiveCommentarySettings as migrateSettings } from './types';
 
 interface BubbleInstance {
   id: string;

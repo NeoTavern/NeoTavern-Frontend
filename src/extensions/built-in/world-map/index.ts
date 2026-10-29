@@ -34,12 +34,12 @@ import {
   type WorldMapRollbackSnapshot,
   type WorldMapRoute,
   type WorldMapSettings,
-  migrateWorldMapSettings,
   resolveWorldMapPrompts,
 } from './types';
 import WorldMapPanel from './WorldMapPanel.vue';
 
 export { manifest };
+export { migrateWorldMapSettings as migrateSettings } from './types';
 
 interface MountedComponent {
   unmount: () => void;
@@ -1199,7 +1199,7 @@ class WorldMapManager {
   constructor(private api: WorldMapExtensionAPI) {}
 
   private getSettings(): WorldMapSettings {
-    const settings = migrateWorldMapSettings(this.api.settings.get());
+    const settings = this.api.settings.get();
     this.api.settings.set(undefined, settings);
     return settings;
   }

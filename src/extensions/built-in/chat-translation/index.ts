@@ -7,6 +7,7 @@ import { Translator } from './translator';
 import { AutoTranslateMode, type ChatTranslationMessageExtra, type ChatTranslationSettings } from './types';
 
 export { manifest };
+export { migrateChatTranslationSettings as migrateSettings } from './types';
 
 export function activate(
   api: ExtensionAPI<ChatTranslationSettings, Record<string, unknown>, ChatTranslationMessageExtra>,

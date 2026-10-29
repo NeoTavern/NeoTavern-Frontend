@@ -148,7 +148,7 @@ const countSummarizedInRange = computed(() => {
 
 // Methods
 function loadSettings() {
-  const settings = migrateChatMemorySettings(props.api.settings.get());
+  const settings = props.api.settings.get();
   enableMessageSummarization.value = settings.enableMessageSummarization;
   autoMessageSummarize.value = settings.autoMessageSummarize;
   ignoreSummaryCount.value = settings.ignoreSummaryCount;
@@ -172,7 +172,7 @@ function loadSettings() {
 async function saveSettings() {
   // Save Global
   props.api.settings.set(undefined, {
-    ...migrateChatMemorySettings(props.api.settings.get()),
+    ...props.api.settings.get(),
     enableMessageSummarization: enableMessageSummarization.value,
     autoMessageSummarize: autoMessageSummarize.value,
     ignoreSummaryCount: ignoreSummaryCount.value,

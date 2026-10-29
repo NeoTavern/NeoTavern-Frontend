@@ -22,11 +22,11 @@ import {
   type PhoneMessageExtraData,
   type PhoneSettings,
   type PhoneSmsResponse,
-  migratePhoneSettings,
   resolvePhonePrompts,
 } from './types';
 
 export { manifest };
+export { migratePhoneSettings as migrateSettings } from './types';
 
 const SIDEBAR_ID = 'phone-panel';
 const QUICK_ACTION_GROUP_ID = 'core.context-ai';
@@ -174,7 +174,7 @@ class PhoneManager {
   constructor(private api: PhoneExtensionAPI) {}
 
   private getSettings(): PhoneSettings {
-    const settings = migratePhoneSettings(this.api.settings.get());
+    const settings = this.api.settings.get();
     this.api.settings.set(undefined, settings);
     return settings;
   }

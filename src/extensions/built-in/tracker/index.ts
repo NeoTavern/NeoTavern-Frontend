@@ -24,10 +24,10 @@ import {
   type TrackerMessageExtra,
   type TrackerService,
   type TrackerSettings,
-  migrateTrackerSettings,
 } from './types';
 
 export { manifest };
+export { migrateTrackerSettings as migrateSettings } from './types';
 
 type TrackerExtensionAPI = ExtensionAPI<TrackerSettings, TrackerChatExtra, TrackerMessageExtra>;
 
@@ -58,9 +58,7 @@ class TrackerManager {
   constructor(private api: TrackerExtensionAPI) {}
 
   public getSettings(): TrackerSettings {
-    const settings = migrateTrackerSettings(this.api.settings.get());
-    this.api.settings.set(undefined, settings);
-    return settings;
+    return this.api.settings.get();
   }
 
   public getLatestTrackerValue(schemaName: string, path: string): unknown {

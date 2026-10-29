@@ -144,6 +144,9 @@ export const useExtensionStore = defineStore('extension', () => {
       try {
         if (ext.type === 'builtin' && ext.moduleRef) {
           // Built-in activation
+          if (ext.moduleRef.migrateSettings) {
+            api.settings.set(undefined, ext.moduleRef.migrateSettings(api.settings.get()));
+          }
           const cleanup = await ext.moduleRef.activate(api);
           if (typeof cleanup === 'function') {
             cleanupFunctions.set(id, cleanup);

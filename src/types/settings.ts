@@ -537,7 +537,7 @@ export interface Settings {
   };
   disabledExtensions: string[];
   disabledTools: string[];
-  extensionSettings: Record<string, Record<string, never>>;
+  extensionSettings: Record<string, Record<string, unknown>>;
 }
 
 export interface LegacySettings {

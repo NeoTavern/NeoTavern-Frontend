@@ -3,17 +3,13 @@ import type { ApiChatMessage, ExtensionAPI, GenerationContext } from '../../../t
 import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
 import { manifest } from './manifest';
 import SettingsPanel from './SettingsPanel.vue';
-import {
-  type ExtensionSettings,
-  migrateGenerationToolsSettings,
-  type RerollSnapshot,
-  resolveGenerationToolsPrompts,
-} from './types';
+import { type ExtensionSettings, type RerollSnapshot, resolveGenerationToolsPrompts } from './types';
 
 export { manifest };
+export { migrateGenerationToolsSettings as migrateSettings } from './types';
 
 function getSettings(api: ExtensionAPI<ExtensionSettings>): ExtensionSettings {
-  const settings = migrateGenerationToolsSettings(api.settings.get());
+  const settings = api.settings.get();
   api.settings.set(undefined, settings);
   return settings;
 }

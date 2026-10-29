@@ -1100,6 +1100,12 @@ const baseExtensionAPI: ExtensionAPI = {
   },
 };
 
+/** Extension ids contain dots, so the id segment is bracket-quoted to keep it a single lodash path key. */
+function getScopedSettingsPath(extensionId: string, path?: string): string {
+  const scopePath = `extensionSettings["${extensionId}"]`;
+  return path ? `${scopePath}.${path}` : scopePath;
+}
+
 export function createScopedApiProxy(extensionId: string): ExtensionAPI {
   const settingsStore = useSettingsStore();
   const meta: ExtensionMetadata = { id: extensionId, containerId: getExtensionContainerId(extensionId) };
@@ -1107,12 +1113,12 @@ export function createScopedApiProxy(extensionId: string): ExtensionAPI {
   const scopedSettings = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     get: (path?: string): any => {
-      const fullPath = path ? `extensionSettings.${extensionId}.${path}` : `extensionSettings.${extensionId}`;
+      const fullPath = getScopedSettingsPath(extensionId, path);
       return deepClone(settingsStore.getSetting(fullPath as SettingsPath));
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     set: (path: string | undefined, value: any): void => {
-      const fullPath = path ? `extensionSettings.${extensionId}.${path}` : `extensionSettings.${extensionId}`;
+      const fullPath = getScopedSettingsPath(extensionId, path);
       settingsStore.setSetting(fullPath as SettingsPath, value);
     },
     getGlobal: baseExtensionAPI.settings.getGlobal,

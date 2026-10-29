@@ -8,12 +8,12 @@ import SettingsPanel from './SettingsPanel.vue';
 import {
   GroupGenerationHandlingMode,
   GroupReplyStrategy,
-  migrateGroupChatSettings,
   resolveGroupChatPrompts,
   type GroupExtensionSettings,
 } from './types';
 
 export { manifest };
+export { migrateGroupChatSettings as migrateSettings } from './types';
 
 export function activate(api: ExtensionAPI<GroupExtensionSettings>) {
   const service = new GroupChatService(api);
@@ -130,7 +130,7 @@ export function activate(api: ExtensionAPI<GroupExtensionSettings>) {
                 .map((m) => `${m.name}: ${m.summary || 'No summary available.'}`)
                 .join('\n');
 
-              const extensionSettings = migrateGroupChatSettings(api.settings.get());
+              const extensionSettings = api.settings.get();
               const injectionTemplate = resolveGroupChatPrompts(extensionSettings).summaryInjectionTemplate;
               const newDescription = api.macro.process(
                 injectionTemplate,

@@ -127,7 +127,7 @@ function refreshLorebooks() {
 
 function loadState() {
   // Load Global Settings
-  const settings = migrateChatMemorySettings(props.api.settings.get());
+  const settings = props.api.settings.get();
   activePromptPresetId.value = settings.activePromptPresetId ?? 'default';
   promptPresets.value = settings.promptPresets ?? [];
   autoHideMessages.value = settings.autoHideMessages;
@@ -171,7 +171,7 @@ function loadState() {
 function saveState() {
   // Save Global Settings
   props.api.settings.set(undefined, {
-    ...migrateChatMemorySettings(props.api.settings.get()),
+    ...props.api.settings.get(),
     activePromptPresetId: activePromptPresetId.value,
     promptPresets: promptPresets.value,
     autoHideMessages: autoHideMessages.value,

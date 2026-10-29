@@ -21,11 +21,11 @@ import {
   type TimelineRecurrenceUnit,
   type TimelineSettings,
   type TimelineTimeRef,
-  migrateTimelineSettings,
   resolveTimelinePrompts,
 } from './types';
 
 export { manifest };
+export { migrateTimelineSettings as migrateSettings } from './types';
 
 const SIDEBAR_ID = 'timeline-panel';
 const QUICK_ACTION_GROUP_ID = 'core.context-ai';
@@ -266,7 +266,7 @@ class TimelineManager {
   constructor(private api: TimelineExtensionAPI) {}
 
   private getSettings(): TimelineSettings {
-    const settings = migrateTimelineSettings(this.api.settings.get());
+    const settings = this.api.settings.get();
     this.api.settings.set(undefined, settings);
     return settings;
   }

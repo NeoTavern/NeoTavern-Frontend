@@ -5,13 +5,7 @@ import type { ChatMessage, ExtensionAPI } from '../../../types';
 import type { ApiChatMessage } from '../../../types/generation';
 import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
 import { mergeMessageExtra } from '../_shared/runtime/extension-extra';
-import {
-  type RoadwayChatExtra,
-  type RoadwayMessageExtra,
-  type RoadwaySettings,
-  migrateRoadwaySettings,
-  resolveRoadwayPrompts,
-} from './types';
+import { type RoadwayChatExtra, type RoadwayMessageExtra, type RoadwaySettings, resolveRoadwayPrompts } from './types';
 
 const props = defineProps<{
   api: ExtensionAPI<RoadwaySettings, RoadwayChatExtra, RoadwayMessageExtra>;
@@ -29,7 +23,7 @@ const roadwayExtra = props.message.extra['core.roadway'];
 const choices = roadwayExtra?.choices ?? [];
 
 function getSettings(): RoadwaySettings {
-  const settings = migrateRoadwaySettings(props.api.settings.get());
+  const settings = props.api.settings.get();
   props.api.settings.set(undefined, settings);
   return settings;
 }

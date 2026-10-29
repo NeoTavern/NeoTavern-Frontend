@@ -82,19 +82,19 @@ export const useSettingsStore = defineStore('settings', () => {
         // 1. Fetch existing Neo settings
         const neoSettings = await fetchNeoSettings();
 
+        let hasChanged = false;
         if (Object.keys(neoSettings).length > 0) {
-          // Case A: Existing NeoTavern User (Versioned or Unversioned)
-          // We merge with defaults to ensure missing fields (like 'version' for old users) are populated.
-          // This implicitly upgrades "v0" (unversioned) settings to "v1" (default version).
-          const { settings: merged } = mergeWithDefaults(neoSettings);
-          currentSettings = merged;
+          // Case A: Existing NeoTavern user. Migrate first so a missing 'version' is not filled in by defaults.
+          const result = migrateSettings(neoSettings);
+          hasChanged = result.hasChanged;
+          currentSettings = mergeWithDefaults(result.migrated);
         } else {
           // Case B: New User or First-time Migration
           console.warn('No Neo settings found, attempting migration from Legacy settings.');
           try {
             const userSettingsResponse = await fetchUserSettings();
             const neoSamplerPresets = await fetchAllSamplerPresets();
-            currentSettings = migrateLegacyUserSettings(userSettingsResponse, neoSamplerPresets);
+            currentSettings = await migrateLegacyUserSettings(userSettingsResponse, neoSamplerPresets);
             // Save immediately after migration so we have a base
             await saveNeoSettings(currentSettings);
           } catch (migrationError) {
@@ -104,10 +104,7 @@ export const useSettingsStore = defineStore('settings', () => {
           }
         }
 
-        // 2. Run Version-based Migrations
-        // This handles v1 -> v2, etc. in the future.
-        const { migrated, hasChanged } = migrateSettings(currentSettings);
-
+        const migrated = currentSettings;
         const normalizedSamplers = normalizeSamplerSettings(migrated.api.samplers);
         const samplerSettingsChanged =
           JSON.stringify(normalizedSamplers.stop) !== JSON.stringify(migrated.api.samplers.stop);

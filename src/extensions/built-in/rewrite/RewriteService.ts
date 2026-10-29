@@ -17,7 +17,6 @@ import type {
   RewriteTemplate,
   StructuredResponseFormat,
 } from './types';
-import { migrateRewriteSettings } from './types';
 import { createRewriteResponseSchema, extractCodeBlock } from './utils';
 
 export class RewriteService {
@@ -31,15 +30,7 @@ export class RewriteService {
   }
 
   private getSettings(): RewriteSettings {
-    const defaults: RewriteSettings = {
-      templates: [],
-      lastUsedTemplates: {},
-      templateOverrides: {},
-      defaultConnectionProfile: '',
-      disabledTools: [],
-    };
-    const current = this.api.settings.get() || defaults;
-    return migrateRewriteSettings(current);
+    return this.api.settings.get();
   }
 
   public getTemplates(): RewriteTemplate[] {

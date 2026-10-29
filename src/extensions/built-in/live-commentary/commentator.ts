@@ -1,12 +1,7 @@
 import Bowser from 'bowser';
 import type { ApiChatMessage, Character, ChatMessage, ExtensionAPI } from '../../../types';
 import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
-import {
-  type LiveCommentarySettings,
-  type RecentCommentary,
-  migrateLiveCommentarySettings,
-  resolveLiveCommentaryPrompts,
-} from './types';
+import { type LiveCommentarySettings, type RecentCommentary, resolveLiveCommentaryPrompts } from './types';
 
 function formatDuration(ms: number): string {
   if (ms < 0) ms = 0;
@@ -60,7 +55,7 @@ export class Commentator {
   constructor(private api: ExtensionAPI<LiveCommentarySettings>) {}
 
   private getSettings(): LiveCommentarySettings {
-    const settings = migrateLiveCommentarySettings(this.api.settings.get());
+    const settings = this.api.settings.get();
     this.api.settings.set(undefined, settings);
     return settings;
   }
