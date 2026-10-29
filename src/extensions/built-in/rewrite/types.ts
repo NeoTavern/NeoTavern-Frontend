@@ -1,5 +1,6 @@
 import type { MessageRole } from '../../../types';
 import { cloneJson } from '../_shared/data-utils';
+import type { StructuredRequestFormat } from '../_shared/runtime/structured-request-format';
 
 export interface RewriteField {
   id: string; // e.g., 'character.description' or 'world_info.entry.content'
@@ -61,7 +62,7 @@ export interface RewriteTemplate {
   builtIn?: boolean;
 }
 
-export type StructuredResponseFormat = 'native' | 'json' | 'xml' | 'text';
+export type StructuredResponseFormat = StructuredRequestFormat | 'text';
 
 export interface RewriteTemplateOverride {
   lastUsedProfile?: string;

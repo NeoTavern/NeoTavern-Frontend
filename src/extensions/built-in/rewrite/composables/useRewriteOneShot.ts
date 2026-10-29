@@ -4,6 +4,7 @@ import { resolveConnectionProfile } from '../../_shared/runtime/connection-profi
 import { RewriteService } from '../RewriteService';
 import type { RewriteSettings } from '../types';
 import { deepToRaw } from '../utils';
+import { collectResponseText } from '../../_shared/runtime/llm-text';
 
 export function useRewriteOneShot(api: ExtensionAPI<RewriteSettings>) {
   const service = new RewriteService(api);
@@ -62,15 +63,10 @@ export function useRewriteOneShot(api: ExtensionAPI<RewriteSettings>) {
         referenceMessageIndex,
       );
 
-      if (Symbol.asyncIterator in response) {
-        let rawAcc = lastAssistantMessage || '';
-        for await (const chunk of response) {
-          rawAcc += chunk.delta;
-          oneShotGeneratedText.value = service.extractCodeBlock(rawAcc);
-        }
-      } else {
-        oneShotGeneratedText.value = service.extractCodeBlock(response.content);
-      }
+      await collectResponseText(response, {
+        prefix: Symbol.asyncIterator in response ? lastAssistantMessage || '' : '',
+        onText: (text) => (oneShotGeneratedText.value = service.extractCodeBlock(text)),
+      });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error(error);

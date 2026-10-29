@@ -1,3 +1,5 @@
+import type { StructuredRequestFormat } from '../_shared/runtime/structured-request-format';
+
 export interface TrackerSchemaPreset {
   name: string;
   schema: string; // JSON schema as a string
@@ -10,7 +12,7 @@ export interface TrackerSettings {
   enabled: boolean;
   connectionProfile: string;
   autoMode: 'none' | 'responses' | 'inputs' | 'both';
-  promptEngineering: 'native' | 'json' | 'xml';
+  promptEngineering: StructuredRequestFormat;
   deltaMode: 'off' | 'auto' | 'always';
   schemaPresets: TrackerSchemaPreset[];
   activeSchemaPresetName: string;

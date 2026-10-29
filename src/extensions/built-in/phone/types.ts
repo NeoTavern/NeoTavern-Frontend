@@ -5,6 +5,7 @@ import {
   type PromptPreset,
   type PromptPresetState,
 } from '../_shared/prompt-presets';
+import type { StructuredRequestFormat } from '../_shared/runtime/structured-request-format';
 
 export interface PhoneChatExtraData {
   contacts?: PhoneContact[];
@@ -63,7 +64,7 @@ export type PhonePrompts = {
 export interface PhoneSettings extends PromptPresetState<PhonePrompts> {
   enabled: boolean;
   connectionProfile: string;
-  structuredRequestFormat: 'native' | 'json' | 'xml';
+  structuredRequestFormat: StructuredRequestFormat;
   includeLastXMessages: number;
   includeLastXSmsMessages: number;
   maxResponseTokens: number;

@@ -5,6 +5,7 @@ import {
   type PromptPreset,
   type PromptPresetState,
 } from '../_shared/prompt-presets';
+import type { StructuredRequestFormat } from '../_shared/runtime/structured-request-format';
 
 export type TimelineEventType = 'event' | 'resource' | 'npc_action' | 'travel' | 'deadline' | 'cooldown' | 'promise';
 export type TimelineEventStatus = 'pending' | 'resolved' | 'cancelled';
@@ -55,7 +56,7 @@ export type TimelinePrompts = {
 export interface TimelineSettings extends PromptPresetState<TimelinePrompts> {
   enabled: boolean;
   connectionProfile: string;
-  structuredRequestFormat: 'native' | 'json' | 'xml';
+  structuredRequestFormat: StructuredRequestFormat;
   includeLastXMessages: number;
   maxResponseTokens: number;
   maxDueInjected: number;

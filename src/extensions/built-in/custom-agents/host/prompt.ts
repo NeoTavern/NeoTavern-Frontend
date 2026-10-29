@@ -9,7 +9,10 @@ import type {
   StructuredResponsePrompted,
 } from '../../../../types';
 import { buildStructuredResponseSystemPrompt } from '../../../../utils/structured-response';
-import { createStructuredResponse } from '../../_shared/runtime/structured-request-format';
+import {
+  createStructuredResponse,
+  type StructuredRequestFormat,
+} from '../../_shared/runtime/structured-request-format';
 import type {
   GraphLlmRequest,
   LlmDispatcher,
@@ -68,7 +71,7 @@ function taskMessage(taskRole: 'SYSTEM' | 'USER' | 'ASSISTANT', content: string)
 }
 
 function responseFormat(request: GraphLlmRequest): StructuredResponseOptions {
-  return createStructuredResponse(request.structuredFormat.toLowerCase() as 'native' | 'json' | 'xml', {
+  return createStructuredResponse(request.structuredFormat.toLowerCase() as StructuredRequestFormat, {
     name: request.nodeId,
     value: request.outputSchema,
     strict: true,

@@ -5,6 +5,7 @@ import {
   type PromptPreset,
   type PromptPresetState,
 } from '../_shared/prompt-presets';
+import type { StructuredRequestFormat } from '../_shared/runtime/structured-request-format';
 
 export type WorldMapNodeKind =
   | 'world'
@@ -227,7 +228,7 @@ export interface WorldMapSettings extends PromptPresetState<WorldMapPrompts> {
   enabled: boolean;
   autoMode: 'none' | 'responses' | 'inputs' | 'both';
   connectionProfile: string;
-  structuredRequestFormat: 'native' | 'json' | 'xml';
+  structuredRequestFormat: StructuredRequestFormat;
   maxResponseTokens: number;
   includeLastXMessages: number;
   includeActiveLorebookEntriesOnCreate: boolean;

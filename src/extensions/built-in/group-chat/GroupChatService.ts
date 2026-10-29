@@ -11,6 +11,7 @@ import {
   type GroupExtensionSettings,
 } from './types';
 import { determineNextSpeaker } from './utils';
+import { collectResponseText, extractCodeBlock } from '../_shared/runtime/llm-text';
 
 export class GroupChatService {
   private api: ExtensionAPI<GroupExtensionSettings>;
@@ -214,15 +215,7 @@ export class GroupChatService {
         connectionProfile,
       });
 
-      let content = '';
-      if (Symbol.asyncIterator in response) {
-        for await (const chunk of response) {
-          content += chunk.delta;
-        }
-      } else {
-        content = response.content;
-      }
-
+      const content = await collectResponseText(response);
       this.updateMemberSummary(avatar, content.trim());
     } catch (e) {
       console.error('[GroupChat] Failed to generate summary', e);
@@ -417,19 +410,8 @@ export class GroupChatService {
         signal,
       });
 
-      let content = '';
-      if (Symbol.asyncIterator in response) {
-        for await (const chunk of response) {
-          content += chunk.delta;
-        }
-      } else {
-        content = response.content;
-      }
-
       // Extract Name from Code Block
-      const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
-      const match = content.match(codeBlockRegex);
-      const extractedName = match ? match[1].trim() : content.trim();
+      const extractedName = extractCodeBlock(await collectResponseText(response));
 
       // Check if it matches a character
       const character = activeChars.find((c) => c.name.trim().toLowerCase() === extractedName.toLowerCase());

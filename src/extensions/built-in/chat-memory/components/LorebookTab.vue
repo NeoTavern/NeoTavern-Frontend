@@ -18,6 +18,7 @@ import {
   resolveChatMemoryPrompts,
 } from '../types';
 import TimelineVisualizer, { type TimelineSegment } from './TimelineVisualizer.vue';
+import { collectResponseText, extractCodeBlock } from '../../_shared/runtime/llm-text';
 
 const props = defineProps<{
   api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata, MemoryMessageExtra>;
@@ -228,21 +229,13 @@ async function handleLorebookSummarize() {
       signal: abortController.value.signal,
     });
 
-    let fullContent = '';
-    if (Symbol.asyncIterator in response) {
-      for await (const chunk of response) {
-        if (!isGenerating.value) break;
-        fullContent += chunk.delta;
-        summaryResult.value = fullContent;
-      }
-    } else {
-      fullContent = response.content;
-    }
+    const fullContent = await collectResponseText(response, {
+      shouldStop: () => !isGenerating.value,
+      onText: (text) => (summaryResult.value = text),
+    });
 
     if (isGenerating.value) {
-      const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
-      const match = fullContent.match(codeBlockRegex);
-      summaryResult.value = match && match[1] ? match[1].trim() : fullContent.trim();
+      summaryResult.value = extractCodeBlock(fullContent);
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
@@ -293,17 +286,11 @@ async function handleContinue() {
       isContinuation: true,
     });
 
-    let fullContent = summaryResult.value;
-    if (Symbol.asyncIterator in response) {
-      for await (const chunk of response) {
-        if (!isGenerating.value) break;
-        fullContent += chunk.delta;
-        summaryResult.value = fullContent;
-      }
-    } else {
-      fullContent += response.content;
-      summaryResult.value = fullContent;
-    }
+    await collectResponseText(response, {
+      prefix: summaryResult.value,
+      shouldStop: () => !isGenerating.value,
+      onText: (text) => (summaryResult.value = text),
+    });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     if (error.name !== 'AbortError') {

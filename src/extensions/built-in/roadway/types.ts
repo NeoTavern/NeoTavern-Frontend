@@ -4,6 +4,7 @@ import {
   type PromptPreset,
   type PromptPresetState,
 } from '../_shared/prompt-presets';
+import type { StructuredRequestFormat } from '../_shared/runtime/structured-request-format';
 
 export type RoadwayPrompts = {
   choiceGenPrompt: string;
@@ -17,7 +18,7 @@ export interface RoadwaySettings extends PromptPresetState<RoadwayPrompts> {
   choiceGenConnectionProfile: string;
   choiceGenPrompt?: string;
   choiceCount: number;
-  structuredRequestFormat: 'native' | 'json' | 'xml';
+  structuredRequestFormat: StructuredRequestFormat;
 
   impersonateConnectionProfile: string;
   impersonatePrompt?: string;

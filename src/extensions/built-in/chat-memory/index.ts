@@ -13,6 +13,7 @@ import {
   type MemoryMessageExtra,
   resolveChatMemoryPrompts,
 } from './types';
+import { collectResponseText, extractCodeBlock } from '../_shared/runtime/llm-text';
 
 export { manifest };
 export { migrateChatMemorySettings as migrateSettings } from './types';
@@ -103,19 +104,7 @@ export function activate(api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata
         },
       );
 
-      let fullContent = '';
-      if (Symbol.asyncIterator in response) {
-        for await (const chunk of response) {
-          fullContent += chunk.delta;
-        }
-      } else {
-        fullContent = response.content;
-      }
-
-      // Extract from code block if present
-      const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
-      const match = fullContent.match(codeBlockRegex);
-      const summaryText = match && match[1] ? match[1].trim() : fullContent.trim();
+      const summaryText = extractCodeBlock(await collectResponseText(response));
 
       await mergeMessageExtra<MemoryMessageExtra>(api, messageIndex, EXTENSION_KEY, { summary: summaryText });
 

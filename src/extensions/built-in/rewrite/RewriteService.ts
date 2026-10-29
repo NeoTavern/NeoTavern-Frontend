@@ -18,6 +18,7 @@ import type {
   StructuredResponseFormat,
 } from './types';
 import { createRewriteResponseSchema, extractCodeBlock } from './utils';
+import { collectResponseText } from '../_shared/runtime/llm-text';
 
 export class RewriteService {
   private store: LocalForage;
@@ -258,17 +259,8 @@ export class RewriteService {
         captureMessageIndex,
       });
 
-      let content = '';
-      if (Symbol.asyncIterator in response) {
-        for await (const chunk of response) {
-          content += chunk.delta;
-        }
-      } else {
-        content = response.content;
-      }
-
       return {
-        justification: content,
+        justification: await collectResponseText(response),
         response: undefined,
       };
     }

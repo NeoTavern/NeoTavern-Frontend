@@ -15,6 +15,7 @@ import {
   resolveChatMemoryPrompts,
 } from '../types';
 import TimelineVisualizer, { type TimelineSegment } from './TimelineVisualizer.vue';
+import { collectResponseText, extractCodeBlock } from '../../_shared/runtime/llm-text';
 
 const props = defineProps<{
   api: ExtensionAPI<ExtensionSettings, ChatMemoryMetadata, MemoryMessageExtra>;
@@ -267,18 +268,7 @@ async function summarizeRange(mode: 'missing-only' | 'force-all') {
         captureMessageIndex: idx,
       });
 
-      let fullContent = '';
-      if (Symbol.asyncIterator in response) {
-        for await (const chunk of response) {
-          fullContent += chunk.delta;
-        }
-      } else {
-        fullContent = response.content;
-      }
-
-      const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
-      const match = fullContent.match(codeBlockRegex);
-      const text = match && match[1] ? match[1].trim() : fullContent.trim();
+      const text = extractCodeBlock(await collectResponseText(response));
 
       await mergeMessageExtra<MemoryMessageExtra>(props.api, idx, EXTENSION_KEY, { summary: text });
 

@@ -3,6 +3,7 @@ import type { ApiChatMessage, ExtensionAPI } from '../../../types';
 import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
 import { setMessageExtra } from '../_shared/runtime/extension-extra';
 import { type ChatTranslationMessageExtra, type ChatTranslationSettings, resolveChatTranslationPrompts } from './types';
+import { collectResponseText, extractCodeBlock } from '../_shared/runtime/llm-text';
 
 export class Translator {
   constructor(
@@ -59,22 +60,8 @@ export class Translator {
         captureMessageIndex: messageIndex,
       });
 
-      let translatedText = '';
-
-      if (Symbol.asyncIterator in response) {
-        for await (const chunk of response) {
-          translatedText += chunk.delta;
-        }
-      } else {
-        translatedText = response.content;
-      }
-
       // Extract code block if present (as per default prompt instructions)
-      const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
-      const match = translatedText.match(codeBlockRegex);
-      if (match && match[1]) {
-        translatedText = match[1].trim();
-      }
+      const translatedText = extractCodeBlock(await collectResponseText(response));
 
       // Update Message
       await setMessageExtra(this.api, messageIndex, 'display_text', translatedText);
@@ -131,21 +118,7 @@ export class Translator {
         connectionProfile,
       });
 
-      let translatedText = '';
-
-      if (Symbol.asyncIterator in response) {
-        for await (const chunk of response) {
-          translatedText += chunk.delta;
-        }
-      } else {
-        translatedText = response.content;
-      }
-
-      const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
-      const match = translatedText.match(codeBlockRegex);
-      if (match && match[1]) {
-        translatedText = match[1].trim();
-      }
+      const translatedText = extractCodeBlock(await collectResponseText(response));
 
       let newValue = '';
       if (hasSelection) {

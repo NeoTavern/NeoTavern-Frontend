@@ -2,6 +2,7 @@ import Bowser from 'bowser';
 import type { ApiChatMessage, Character, ChatMessage, ExtensionAPI } from '../../../types';
 import { resolveConnectionProfile } from '../_shared/runtime/connection-profile';
 import { type LiveCommentarySettings, type RecentCommentary, resolveLiveCommentaryPrompts } from './types';
+import { collectResponseText, extractCodeBlock } from '../_shared/runtime/llm-text';
 
 function formatDuration(ms: number): string {
   if (ms < 0) ms = 0;
@@ -18,12 +19,6 @@ function formatDuration(ms: number): string {
   if (minutes === 1) return '1 minute';
   if (seconds > 10) return `${seconds} seconds`;
   return 'just now';
-}
-
-function extractCodeBlockContent(text: string): string {
-  const codeBlockRegex = /```(?:[\w]*\n)?([\s\S]*?)```/i;
-  const match = text.match(codeBlockRegex);
-  return match && match[1] ? match[1].trim() : text.trim();
 }
 
 function formatHistoryMessage(message: ChatMessage, index: number): string {
@@ -266,17 +261,9 @@ export class Commentator {
         signal: controller.signal,
       });
 
-      let thought = '';
-      if (Symbol.asyncIterator in response) {
-        for await (const chunk of response) {
-          if (controller.signal.aborted) return;
-          thought += chunk.delta;
-        }
-      } else {
-        thought = response.content;
-      }
-
-      thought = extractCodeBlockContent(thought);
+      const rawThought = await collectResponseText(response, { shouldStop: () => controller.signal.aborted });
+      if (controller.signal.aborted) return;
+      const thought = extractCodeBlock(rawThought);
 
       if (thought.trim()) {
         this.lastGenerationTimes.set(character.avatar, Date.now());
@@ -479,18 +466,8 @@ export class Commentator {
       signal,
     });
 
-    let answer = '';
-    if (Symbol.asyncIterator in response) {
-      for await (const chunk of response) {
-        if (signal?.aborted) {
-          return '';
-        }
-        answer += chunk.delta;
-      }
-    } else {
-      answer = response.content;
-    }
-
-    return extractCodeBlockContent(answer);
+    const answer = await collectResponseText(response, { shouldStop: () => !!signal?.aborted });
+    if (signal?.aborted) return '';
+    return extractCodeBlock(answer);
   }
 }
