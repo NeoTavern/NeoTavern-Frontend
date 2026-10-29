@@ -1,4 +1,4 @@
-import { useUiStore } from '../stores/ui.store';
+import { usePersonaStore } from '../stores/persona.store';
 import type { Character, CropData } from '../types';
 import { getRequestHeaders } from '../utils/client';
 
@@ -47,14 +47,14 @@ export async function saveCharacter(character: Partial<Character> & { avatar: st
 }
 
 export async function importCharacter(file: File): Promise<{ file_name: string; name: string }> {
-  const uiStore = useUiStore();
+  const personaStore = usePersonaStore();
   const format = file.name.split('.').pop()?.toLowerCase() ?? '';
   const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '').toLowerCase();
   const formData = new FormData();
   formData.append('avatar', file);
   formData.append('preserved_name', fileNameWithoutExt);
   formData.append('file_type', format);
-  formData.append('user_name', uiStore.activePlayerName || '');
+  formData.append('user_name', personaStore.activePersona?.name || '');
 
   const response = await fetch(`${API_BASE}/import`, {
     method: 'POST',

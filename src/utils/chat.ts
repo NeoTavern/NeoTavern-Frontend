@@ -415,6 +415,30 @@ export function extractMediaFromMarkdown(text: string): ChatMediaItem[] {
   return mediaItems;
 }
 
+/** Writes text into the message's active swipe slot, if that slot exists. */
+export function setActiveSwipeText(message: ChatMessage, text: string): void {
+  if (message.swipes && typeof message.swipe_id === 'number' && message.swipes[message.swipe_id] !== undefined) {
+    message.swipes[message.swipe_id] = text;
+  }
+}
+
+/** Media items for images returned by the model. */
+export function toGeneratedImageMedia(urls: string[]): ChatMediaItem[] {
+  return urls.map((url) => ({ source: 'url', type: 'image', url, title: 'Generated Image' }));
+}
+
+/**
+ * Re-derives inline media from the message text, keeping non-inline media and appending `extraMedia`.
+ * Removes `extra.media` when nothing is left.
+ */
+export function refreshMessageMedia(message: ChatMessage, extraMedia: ChatMediaItem[] = []): void {
+  if (!message.extra) message.extra = {};
+  const nonInline = message.extra.media?.filter((item) => item.source !== 'inline') ?? [];
+  const media = [...nonInline, ...extraMedia, ...extractMediaFromMarkdown(message.mes)];
+  if (media.length > 0) message.extra.media = media;
+  else delete message.extra.media;
+}
+
 // --- Chat Initialization ---
 
 export function getFirstMessage(context: MacroContextData): ChatMessage | null {

@@ -57,13 +57,6 @@ export const useCharacterStore = defineStore('character', () => {
     { timeout: 1500 },
   );
 
-  useAutoSave(
-    async () => {
-      await refreshCharacters();
-    },
-    { timeout: 2000 },
-  );
-
   async function updateAndSaveCharacter(avatar: string, changes: Partial<Character>) {
     if (Object.keys(changes).length === 0) return;
 

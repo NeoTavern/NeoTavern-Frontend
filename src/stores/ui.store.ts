@@ -6,8 +6,6 @@ export const useUiStore = defineStore('ui', () => {
   const isChatSaving = ref(false);
   const isDeleteMode = ref(false);
   const isSendPress = ref(false);
-  const activePlayerName = ref<string | null>(null);
-  const activePlayerAvatar = ref<string | null>(null);
   const zoomedAvatars = ref<ZoomedAvatar[]>([]);
 
   function toggleZoomedAvatar(avatarData: Omit<ZoomedAvatar, 'id'>) {
@@ -31,8 +29,6 @@ export const useUiStore = defineStore('ui', () => {
     isChatSaving,
     isDeleteMode,
     isSendPress,
-    activePlayerName,
-    activePlayerAvatar,
     zoomedAvatars,
     toggleZoomedAvatar,
     removeZoomedAvatar,

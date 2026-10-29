@@ -10,6 +10,7 @@ import { useCharacterStore } from '../../stores/character.store';
 import { useChatSelectionStore } from '../../stores/chat-selection.store';
 import { useChatStore } from '../../stores/chat.store';
 import { useComponentRegistryStore } from '../../stores/component-registry.store';
+import { usePersonaStore } from '../../stores/persona.store';
 import { usePopupStore } from '../../stores/popup.store';
 import { usePromptStore } from '../../stores/prompt.store';
 import { useSettingsStore } from '../../stores/settings.store';
@@ -46,6 +47,7 @@ const uiStore = useUiStore();
 const chatStore = useChatStore();
 const chatSelectionStore = useChatSelectionStore();
 const settingsStore = useSettingsStore();
+const personaStore = usePersonaStore();
 const popupStore = usePopupStore();
 const promptStore = usePromptStore();
 const componentRegistryStore = useComponentRegistryStore();
@@ -140,13 +142,13 @@ const avatarUrls = computed(() => {
     file: resolvedCharacterAvatar.value,
     isUser: props.message.is_user || false,
     forceAvatar: props.message.force_avatar,
-    activePlayerAvatar: uiStore.activePlayerAvatar,
+    activePlayerAvatar: personaStore.activePersona?.avatarId,
   });
 });
 
 const charNameForAvatar = computed(() => {
   if (props.message.is_user) {
-    return uiStore.activePlayerName;
+    return personaStore.activePersona?.name ?? null;
   }
   return props.message.name;
 });

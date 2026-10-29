@@ -1,6 +1,6 @@
 import { cloneDeep } from 'lodash-es';
 import { defineStore } from 'pinia';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import { fetchChatCompletionStatus, fetchTextCompletionStatus } from '../api/connection';
 import {
   deleteInstructTemplate as apiDeleteInstructTemplate,
@@ -14,7 +14,7 @@ import {
   saveSamplerPreset,
   type Preset,
 } from '../api/presets';
-import { PROVIDER_CAPABILITIES } from '../api/provider-definitions';
+import { getUrlConfiguredProvider, resolveSupportedFormatter } from '../api/provider-definitions';
 import { useStrictI18n } from '../composables/useStrictI18n';
 import { toast } from '../composables/useToast';
 import { defaultPrompts, PROVIDER_SECRET_KEYS } from '../constants';
@@ -29,7 +29,7 @@ import type {
 } from '../types';
 import { api_providers, POPUP_RESULT, POPUP_TYPE } from '../types';
 import type { InstructTemplate } from '../types/instruct';
-import { downloadFile, readFileAsText, uuidv4 } from '../utils/commons';
+import { downloadFile, pickFile, readFileAsText, uuidv4 } from '../utils/commons';
 import { normalizeSamplerSettings } from '../utils/sampler-settings';
 import { usePopupStore } from './popup.store';
 import { useSecretStore } from './secret.store';
@@ -110,7 +110,10 @@ export const useApiStore = defineStore('api', () => {
       () => settingsStore.settings.api.provider,
       (newProvider, oldProvider) => {
         if (newProvider !== oldProvider) {
-          validateFormatterCapabilities(newProvider);
+          settingsStore.settings.api.formatter = resolveSupportedFormatter(
+            newProvider,
+            settingsStore.settings.api.formatter,
+          );
           connect();
         }
       },
@@ -203,16 +206,9 @@ export const useApiStore = defineStore('api', () => {
     ) {
       settingsStore.settings.api.customPromptPostProcessing = profile.customPromptPostProcessing;
     }
-    if (profile.apiUrl !== undefined) {
-      const provider = profile.provider ?? settingsStore.settings.api.provider;
-      // Set API URL based on provider type
-      if (provider === api_providers.CUSTOM) {
-        settingsStore.settings.api.providerSpecific.custom.url = profile.apiUrl;
-      } else if (provider === api_providers.KOBOLDCPP) {
-        settingsStore.settings.api.providerSpecific.koboldcpp.url = profile.apiUrl;
-      } else if (provider === api_providers.OLLAMA) {
-        settingsStore.settings.api.providerSpecific.ollama.url = profile.apiUrl;
-      }
+    const urlProvider = getUrlConfiguredProvider(profile.provider ?? settingsStore.settings.api.provider);
+    if (profile.apiUrl !== undefined && urlProvider) {
+      settingsStore.settings.api.providerSpecific[urlProvider].url = profile.apiUrl;
     }
     if (profile.secretId !== undefined) {
       // Rotate to the specified secret if it exists
@@ -226,19 +222,35 @@ export const useApiStore = defineStore('api', () => {
       }
     }
 
-    validateFormatterCapabilities(settingsStore.settings.api.provider);
+    settingsStore.settings.api.formatter = resolveSupportedFormatter(
+      settingsStore.settings.api.provider,
+      settingsStore.settings.api.formatter,
+    );
     connect();
   }
 
-  function validateFormatterCapabilities(provider: string) {
-    const caps = PROVIDER_CAPABILITIES[provider];
-    if (caps) {
-      if (!caps.supportsText && settingsStore.settings.api.formatter === 'text') {
-        settingsStore.settings.api.formatter = 'chat';
-      } else if (!caps.supportsChat && settingsStore.settings.api.formatter === 'chat') {
-        settingsStore.settings.api.formatter = 'text';
-      }
+  /** Fetches the provider's status (and model list) with the current connection settings. */
+  function fetchProviderStatus(provider: ApiProvider) {
+    const apiSettings = settingsStore.settings.api;
+    if (provider === api_providers.KOBOLDCPP) {
+      // We could use kobold CC models endpoint too. It's just a preference.
+      return fetchTextCompletionStatus({
+        api_type: 'koboldcpp',
+        api_server: apiSettings.providerSpecific.koboldcpp.url.replace(/\/v1(?:.*)?$/, ''),
+      });
     }
+    if (provider === api_providers.OLLAMA) {
+      return fetchChatCompletionStatus({
+        chat_completion_source: 'custom',
+        custom_url: apiSettings.providerSpecific.ollama.url,
+      });
+    }
+    return fetchChatCompletionStatus({
+      chat_completion_source: provider,
+      reverse_proxy: apiSettings.proxy?.url,
+      proxy_password: apiSettings.proxy?.password,
+      custom_url: provider === api_providers.CUSTOM ? apiSettings.providerSpecific.custom.url : undefined,
+    });
   }
 
   function getSecretKeyForProvider(provider: ApiProvider): string | null {
@@ -276,29 +288,7 @@ export const useApiStore = defineStore('api', () => {
     try {
       await processPendingSecrets();
 
-      let response;
-
-      if (apiSettings.provider === api_providers.KOBOLDCPP) {
-        // We could use kobold CC models endpoint too. It's just a preference.
-        const baseUrl = apiSettings.providerSpecific.koboldcpp.url.replace(/\/v1(?:.*)?$/, '');
-        response = await fetchTextCompletionStatus({
-          api_type: 'koboldcpp',
-          api_server: baseUrl,
-        });
-      } else if (apiSettings.provider === api_providers.OLLAMA) {
-        response = await fetchChatCompletionStatus({
-          chat_completion_source: 'custom',
-          custom_url: apiSettings.providerSpecific.ollama.url,
-        });
-      } else {
-        response = await fetchChatCompletionStatus({
-          chat_completion_source: apiSettings.provider,
-          reverse_proxy: apiSettings.proxy?.url,
-          proxy_password: apiSettings.proxy?.password,
-          custom_url:
-            apiSettings.provider === api_providers.CUSTOM ? apiSettings.providerSpecific.custom.url : undefined,
-        });
-      }
+      const response = await fetchProviderStatus(apiSettings.provider);
 
       if (response.error) {
         throw new Error(response.error);
@@ -454,13 +444,7 @@ export const useApiStore = defineStore('api', () => {
   }
 
   function importPreset() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
+    pickFile('.json', async (file) => {
       try {
         const content = await readFileAsText(file);
         let presetData = JSON.parse(content);
@@ -537,8 +521,7 @@ export const useApiStore = defineStore('api', () => {
         toast.error(t('aiConfig.presets.errors.importInvalid'));
         console.error(error);
       }
-    };
-    input.click();
+    });
   }
 
   function exportPreset(name?: string) {
@@ -642,17 +625,10 @@ export const useApiStore = defineStore('api', () => {
       }
     }
 
-    if (updatedProfile.apiUrl !== undefined) {
-      let newUrl;
-      if (currentProvider === api_providers.CUSTOM) {
-        newUrl = settingsStore.settings.api.providerSpecific.custom.url;
-      } else if (currentProvider === api_providers.KOBOLDCPP) {
-        newUrl = settingsStore.settings.api.providerSpecific.koboldcpp.url;
-      } else if (currentProvider === api_providers.OLLAMA) {
-        newUrl = settingsStore.settings.api.providerSpecific.ollama.url;
-      }
-
-      if (newUrl !== undefined && updatedProfile.apiUrl !== newUrl) {
+    const urlProvider = getUrlConfiguredProvider(currentProvider);
+    if (updatedProfile.apiUrl !== undefined && urlProvider) {
+      const newUrl = settingsStore.settings.api.providerSpecific[urlProvider].url;
+      if (updatedProfile.apiUrl !== newUrl) {
         changes.push(t('apiConnections.apiUrl'));
         updatedProfile.apiUrl = newUrl;
       }
@@ -748,136 +724,101 @@ export const useApiStore = defineStore('api', () => {
     settingsStore.settings.api.samplers.prompts = structuredClone(defaultPrompts);
   }
 
-  async function loadInstructTemplates() {
-    if (instructTemplatesLoaded.value) return;
+  /**
+   * Load/save/delete/import/export for a server-stored template list whose selection lives in `api[settingKey]`.
+   */
+  function createTemplateCollection<T extends { name: string }>(options: {
+    templates: Ref<T[]>;
+    loaded: Ref<boolean>;
+    fetchAll: () => Promise<T[]>;
+    save: (template: T) => Promise<unknown>;
+    remove: (name: string) => Promise<unknown>;
+    settingKey: 'instructTemplateName' | 'reasoningTemplateName';
+    /** Selection to fall back to when the selected template is deleted. */
+    fallbackName: string | undefined;
+    label: string;
+  }) {
+    const { templates, loaded, settingKey, label } = options;
 
-    try {
-      const fetchedTemplates = await fetchAllInstructTemplates();
-      instructTemplates.value = fetchedTemplates;
-    } catch (e) {
-      console.warn('Failed to load instruct templates, using default', e);
-      instructTemplates.value = [];
-    } finally {
-      instructTemplatesLoaded.value = true;
-    }
-  }
-
-  async function saveInstructTemplate(template: InstructTemplate) {
-    try {
-      await apiSaveInstructTemplate(template);
-      instructTemplatesLoaded.value = false;
-      await loadInstructTemplates();
-      settingsStore.settings.api.instructTemplateName = template.name;
-    } catch (e) {
-      toast.error('Error saving instruct template');
-      console.error(e);
-    }
-  }
-
-  async function deleteInstructTemplate(name: string) {
-    try {
-      await apiDeleteInstructTemplate(name);
-      instructTemplatesLoaded.value = false;
-      await loadInstructTemplates();
-      if (settingsStore.settings.api.instructTemplateName === name) {
-        settingsStore.settings.api.instructTemplateName = 'ChatML';
-      }
-    } catch {
-      toast.error('Error deleting instruct template');
-    }
-  }
-
-  function importInstructTemplate() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
+    async function load() {
+      if (loaded.value) return;
       try {
-        const content = await readFileAsText(file);
-        const data = JSON.parse(content);
-        await saveInstructTemplate(data);
-        toast.success('Template imported');
-      } catch {
-        toast.error('Invalid template file');
+        templates.value = await options.fetchAll();
+      } catch (e) {
+        console.warn(`Failed to load ${label}s`, e);
+        templates.value = [];
+      } finally {
+        loaded.value = true;
       }
-    };
-    input.click();
-  }
-
-  function exportInstructTemplate(name: string) {
-    const tpl = instructTemplates.value.find((t) => t.name === name);
-    if (tpl) {
-      downloadFile(JSON.stringify(tpl, null, 2), `${name}.json`, 'application/json');
     }
-  }
 
-  // Reasoning Templates
-  async function loadReasoningTemplates() {
-    if (reasoningTemplatesLoaded.value) return;
-
-    try {
-      const fetchedTemplates = await fetchAllReasoningTemplates();
-      reasoningTemplates.value = fetchedTemplates;
-    } catch (e) {
-      console.warn('Failed to load reasoning templates', e);
-      reasoningTemplates.value = [];
-    } finally {
-      reasoningTemplatesLoaded.value = true;
-    }
-  }
-
-  async function saveReasoningTemplate(template: ReasoningTemplate) {
-    try {
-      await apiSaveReasoningTemplate(template);
-      reasoningTemplatesLoaded.value = false;
-      await loadReasoningTemplates();
-      settingsStore.settings.api.reasoningTemplateName = template.name;
-    } catch (e) {
-      toast.error('Error saving reasoning template');
-      console.error(e);
-    }
-  }
-
-  async function deleteReasoningTemplate(name: string) {
-    try {
-      await apiDeleteReasoningTemplate(name);
-      reasoningTemplatesLoaded.value = false;
-      await loadReasoningTemplates();
-      if (settingsStore.settings.api.reasoningTemplateName === name) {
-        settingsStore.settings.api.reasoningTemplateName = undefined;
-      }
-    } catch {
-      toast.error('Error deleting reasoning template');
-    }
-  }
-
-  function importReasoningTemplate() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
+    async function save(template: T) {
       try {
-        const content = await readFileAsText(file);
-        const data = JSON.parse(content);
-        await saveReasoningTemplate(data);
-        toast.success('Template imported');
-      } catch {
-        toast.error('Invalid template file');
+        await options.save(template);
+        loaded.value = false;
+        await load();
+        settingsStore.settings.api[settingKey] = template.name;
+      } catch (e) {
+        toast.error(`Error saving ${label}`);
+        console.error(e);
       }
-    };
-    input.click();
+    }
+
+    async function remove(name: string) {
+      try {
+        await options.remove(name);
+        loaded.value = false;
+        await load();
+        if (settingsStore.settings.api[settingKey] === name) {
+          settingsStore.settings.api[settingKey] = options.fallbackName as string;
+        }
+      } catch {
+        toast.error(`Error deleting ${label}`);
+      }
+    }
+
+    function importFromFile() {
+      pickFile('.json', async (file) => {
+        try {
+          await save(JSON.parse(await readFileAsText(file)));
+          toast.success('Template imported');
+        } catch {
+          toast.error('Invalid template file');
+        }
+      });
+    }
+
+    function exportToFile(name: string) {
+      const template = templates.value.find((t) => t.name === name);
+      if (template) {
+        downloadFile(JSON.stringify(template, null, 2), `${name}.json`, 'application/json');
+      }
+    }
+
+    return { load, save, remove, importFromFile, exportToFile };
   }
 
-  function exportReasoningTemplate(name: string) {
-    const tpl = reasoningTemplates.value.find((t) => t.name === name);
-    if (tpl) {
-      downloadFile(JSON.stringify(tpl, null, 2), `${name}.json`, 'application/json');
-    }
-  }
+  const instructTemplateCollection = createTemplateCollection({
+    templates: instructTemplates,
+    loaded: instructTemplatesLoaded,
+    fetchAll: fetchAllInstructTemplates,
+    save: apiSaveInstructTemplate,
+    remove: apiDeleteInstructTemplate,
+    settingKey: 'instructTemplateName',
+    fallbackName: 'ChatML',
+    label: 'instruct template',
+  });
+
+  const reasoningTemplateCollection = createTemplateCollection({
+    templates: reasoningTemplates,
+    loaded: reasoningTemplatesLoaded,
+    fetchAll: fetchAllReasoningTemplates,
+    save: apiSaveReasoningTemplate,
+    remove: apiDeleteReasoningTemplate,
+    settingKey: 'reasoningTemplateName',
+    fallbackName: undefined,
+    label: 'reasoning template',
+  });
 
   async function getModelsForProvider(provider: ApiProvider): Promise<ApiModel[]> {
     const shouldSkipCache = provider === api_providers.KOBOLDCPP || provider === api_providers.OLLAMA;
@@ -887,28 +828,7 @@ export const useApiStore = defineStore('api', () => {
     }
 
     try {
-      let response;
-
-      if (provider === api_providers.KOBOLDCPP) {
-        const baseUrl = settingsStore.settings.api.providerSpecific.koboldcpp.url.replace(/\/v1(?:.*)?$/, '');
-        response = await fetchTextCompletionStatus({
-          api_type: 'koboldcpp',
-          api_server: baseUrl,
-        });
-      } else if (provider === api_providers.OLLAMA) {
-        response = await fetchChatCompletionStatus({
-          chat_completion_source: 'custom',
-          custom_url: settingsStore.settings.api.providerSpecific.ollama.url,
-        });
-      } else {
-        response = await fetchChatCompletionStatus({
-          chat_completion_source: provider,
-          reverse_proxy: settingsStore.settings.api.proxy?.url,
-          proxy_password: settingsStore.settings.api.proxy?.password,
-          custom_url:
-            provider === api_providers.CUSTOM ? settingsStore.settings.api.providerSpecific.custom.url : undefined,
-        });
-      }
+      const response = await fetchProviderStatus(provider);
 
       if (response.error) {
         console.error(`Failed to fetch models for ${provider}:`, response.error);
@@ -955,18 +875,18 @@ export const useApiStore = defineStore('api', () => {
     exportConnectionProfile,
     selectConnectionProfile,
     instructTemplates,
-    loadInstructTemplates,
-    saveInstructTemplate,
-    deleteInstructTemplate,
-    importInstructTemplate,
-    exportInstructTemplate,
+    loadInstructTemplates: instructTemplateCollection.load,
+    saveInstructTemplate: instructTemplateCollection.save,
+    deleteInstructTemplate: instructTemplateCollection.remove,
+    importInstructTemplate: instructTemplateCollection.importFromFile,
+    exportInstructTemplate: instructTemplateCollection.exportToFile,
     // Reasoning
     reasoningTemplates,
-    loadReasoningTemplates,
-    saveReasoningTemplate,
-    deleteReasoningTemplate,
-    importReasoningTemplate,
-    exportReasoningTemplate,
+    loadReasoningTemplates: reasoningTemplateCollection.load,
+    saveReasoningTemplate: reasoningTemplateCollection.save,
+    deleteReasoningTemplate: reasoningTemplateCollection.remove,
+    importReasoningTemplate: reasoningTemplateCollection.importFromFile,
+    exportReasoningTemplate: reasoningTemplateCollection.exportToFile,
     getModelsForProvider,
   };
 });

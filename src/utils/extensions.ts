@@ -13,7 +13,6 @@ import type {
   MessageButtonDefinition,
   MessageDecorationDefinition,
   MountableComponent,
-  PromptTokenBreakdown,
   SettingsPath,
   StreamedChunk,
   WorldInfoBook,
@@ -22,7 +21,7 @@ import { api_providers, type ApiProvider } from '../types';
 import { isDeviceMobile, isViewportMobile } from './client';
 import { getCharactersInMemberOrder } from './character';
 import { formatFileSize, getMessageTimeStamp, uuidv4 } from './commons';
-import { countTokens } from './token-count';
+import { computePromptTokenBreakdown, countTokens } from './token-count';
 
 // Internal Store Imports
 import {
@@ -41,7 +40,6 @@ import { usePersonaStore } from '../stores/persona.store';
 import { usePopupStore } from '../stores/popup.store';
 import { usePromptStore } from '../stores/prompt.store';
 import { useSettingsStore } from '../stores/settings.store';
-import { useUiStore } from '../stores/ui.store';
 import { useWorldInfoStore } from '../stores/world-info.store';
 
 // Service Imports
@@ -347,7 +345,6 @@ export function createExtensionApi(extensionId: string): ExtensionAPI {
       buildPayload: (messages, samplerOverrides) => {
         const settingsStore = useSettingsStore();
         const apiStore = useApiStore();
-        const uiStore = useUiStore();
         if (!apiStore.activeModel) throw new Error('No active model selected.');
 
         const samplerSettings = {
@@ -362,7 +359,7 @@ export function createExtensionApi(extensionId: string): ExtensionAPI {
           provider: settingsStore.settings.api.provider,
           providerSpecific: settingsStore.settings.api.providerSpecific,
           customPromptPostProcessing: settingsStore.settings.api.customPromptPostProcessing,
-          playerName: uiStore.activePlayerName || 'User',
+          playerName: usePersonaStore().activePersona?.name || 'User',
           modelList: apiStore.modelList,
         });
       },
@@ -457,61 +454,17 @@ export function createExtensionApi(extensionId: string): ExtensionAPI {
 
         const messages = await builder.build();
 
-        // Calculate token breakdown similar to core generation
-        const promptTotalText = await Promise.all(
-          messages.map(async (m) => await countTokens(m.content, tokenizer)),
-        ).then((counts) => counts.reduce((a, b) => a + b, 0));
-        const promptTotal = promptTotalText + builder.mediaTokenCost;
-
         const processedWorldInfo = builder.processedWorldInfo;
-        let wiTokens = 0;
-        if (processedWorldInfo) {
-          const parts = [
-            processedWorldInfo.worldInfoBefore,
-            processedWorldInfo.worldInfoAfter,
-            ...processedWorldInfo.anBefore,
-            ...processedWorldInfo.anAfter,
-            ...processedWorldInfo.emBefore,
-            ...processedWorldInfo.emAfter,
-            ...processedWorldInfo.depthEntries.flatMap((d) => d.entries),
-            ...Object.values(processedWorldInfo.outletEntries).flat(),
-          ];
-          const fullWiText = parts.filter(Boolean).join('\n');
-          if (fullWiText) wiTokens = await countTokens(fullWiText, tokenizer);
-        }
-
-        const charDesc =
-          contextCharacters.length > 0 ? await countTokens(contextCharacters[0].description || '', tokenizer) : 0;
-        const charPers =
-          contextCharacters.length > 0 ? await countTokens(contextCharacters[0].personality || '', tokenizer) : 0;
-        const charScen =
-          contextCharacters.length > 0 ? await countTokens(contextCharacters[0].scenario || '', tokenizer) : 0;
-        const charEx =
-          contextCharacters.length > 0 ? await countTokens(contextCharacters[0].mes_example || '', tokenizer) : 0;
-        const personaDesc = await countTokens(persona.description || '', tokenizer);
-
-        const breakdown: PromptTokenBreakdown = {
-          systemTotal: 0,
-          description: charDesc,
-          personality: charPers,
-          scenario: charScen,
-          examples: charEx,
-          persona: personaDesc,
-          worldInfo: wiTokens,
-          chatHistory: 0,
-          extensions: 0,
-          bias: 0,
-          promptTotal: promptTotal,
+        const breakdown = await computePromptTokenBreakdown({
+          messages,
+          tokenizer,
+          mediaTokenCost: builder.mediaTokenCost,
+          processedWorldInfo,
+          character: contextCharacters[0],
+          persona,
           maxContext: builder.maxContext,
-          padding: builder.maxContext - promptTotal - builder.samplerSettings.max_tokens,
-        };
-
-        for (const m of messages) {
-          const count = await countTokens(m.content, tokenizer);
-          if (m.role === 'system') breakdown.systemTotal += count;
-          else breakdown.chatHistory += count;
-        }
-        breakdown.chatHistory += builder.mediaTokenCost;
+          maxTokens: builder.samplerSettings.max_tokens,
+        });
 
         const itemizedPrompt: ItemizedPrompt = {
           generationId: builder.generationId,

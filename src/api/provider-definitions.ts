@@ -157,6 +157,27 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapability> = {
   [api_providers.OLLAMA]: { supportsChat: true, supportsText: true },
 };
 
+/** Falls back to the other formatter when the provider doesn't support the requested one. */
+export function resolveSupportedFormatter(provider: string, formatter: ApiFormatter): ApiFormatter {
+  const caps = PROVIDER_CAPABILITIES[provider];
+  if (!caps) return formatter;
+  if (!caps.supportsText && formatter === 'text') return 'chat';
+  if (!caps.supportsChat && formatter === 'chat') return 'text';
+  return formatter;
+}
+
+/** Providers whose endpoint URL is stored in `providerSpecific` and can be overridden by a connection profile. */
+export type UrlConfiguredProvider =
+  | typeof api_providers.CUSTOM
+  | typeof api_providers.KOBOLDCPP
+  | typeof api_providers.OLLAMA;
+
+export function getUrlConfiguredProvider(provider: string): UrlConfiguredProvider | null {
+  return provider === api_providers.CUSTOM || provider === api_providers.KOBOLDCPP || provider === api_providers.OLLAMA
+    ? provider
+    : null;
+}
+
 export const PROVIDER_CONFIG: Partial<Record<ApiProvider, ProviderConfig>> = {
   [api_providers.OLLAMA]: { textCompletionEndpoint: '/api/backends/text-completions/generate' },
   [api_providers.KOBOLDCPP]: { textCompletionEndpoint: '/api/backends/text-completions/generate' },

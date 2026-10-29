@@ -134,6 +134,18 @@ export function formatFileSize(value: number, decimals = 2): string {
   return `${formatted}${FILE_SIZE_UNITS[unitIndex]}`;
 }
 
+/** Opens the browser file picker and calls `onSelect` with the chosen file. */
+export function pickFile(accept: string, onSelect: (file: File) => void | Promise<void>) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = accept;
+  input.onchange = () => {
+    const file = input.files?.[0];
+    if (file) void onSelect(file);
+  };
+  input.click();
+}
+
 export function downloadFile(content: string, fileName: string, contentType: string) {
   const a = document.createElement('a');
   const file = new Blob([content], { type: contentType });

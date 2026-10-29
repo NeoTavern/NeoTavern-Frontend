@@ -18,7 +18,7 @@ import type {
   StreamedChunk,
 } from '../types';
 import { api_providers } from '../types';
-import type { BuildChatCompletionPayloadOptions } from '../types/generation';
+import type { BuildChatCompletionPayloadOptions, StructuredResponseOptions } from '../types/generation';
 import type { InstructTemplate } from '../types/instruct';
 import type { ApiFormatter, ReasoningTemplate, SamplerSettings, Settings, SettingsPath } from '../types/settings';
 import { getRequestHeaders } from '../utils/client';
@@ -31,7 +31,8 @@ import {
   getProviderHandler,
   MODEL_INJECTIONS,
   PARAMETER_DEFINITIONS,
-  PROVIDER_CAPABILITIES,
+  getUrlConfiguredProvider,
+  resolveSupportedFormatter,
   PROVIDER_CONFIG,
   PROVIDER_INJECTIONS,
   type ParamHandling,
@@ -134,15 +135,7 @@ export async function resolveConnectionProfileSettings(options: {
   // Determine formatter and instruct template
   let effectiveFormatter = profileSettings?.formatter || settingsStore.settings.api.formatter;
 
-  // Validate formatter support
-  const providerCaps = PROVIDER_CAPABILITIES[effectiveProvider];
-  if (providerCaps) {
-    if (!providerCaps.supportsText && effectiveFormatter === 'text') {
-      effectiveFormatter = 'chat';
-    } else if (!providerCaps.supportsChat && effectiveFormatter === 'chat') {
-      effectiveFormatter = 'text';
-    }
-  }
+  effectiveFormatter = resolveSupportedFormatter(effectiveProvider, effectiveFormatter);
 
   const effectiveTemplateName = profileSettings?.instructTemplate || settingsStore.settings.api.instructTemplateName;
   if (effectiveTemplateName && apiStore.instructTemplates.length === 0) {
@@ -162,14 +155,9 @@ export async function resolveConnectionProfileSettings(options: {
   const effectiveProviderSpecific = JSON.parse(
     JSON.stringify(settingsStore.settings.api.providerSpecific),
   ) as Settings['api']['providerSpecific'];
-  if (profileSettings?.apiUrl !== undefined) {
-    if (effectiveProvider === 'custom') {
-      effectiveProviderSpecific.custom.url = profileSettings.apiUrl;
-    } else if (effectiveProvider === 'koboldcpp') {
-      effectiveProviderSpecific.koboldcpp.url = profileSettings.apiUrl;
-    } else if (effectiveProvider === 'ollama') {
-      effectiveProviderSpecific.ollama.url = profileSettings.apiUrl;
-    }
+  const urlProvider = getUrlConfiguredProvider(effectiveProvider);
+  if (profileSettings?.apiUrl !== undefined && urlProvider) {
+    effectiveProviderSpecific[urlProvider].url = profileSettings.apiUrl;
   }
 
   // TODO: /generate endpoint should accept secretId directly, so rotation here is not needed.
@@ -229,11 +217,16 @@ export async function processMessagesWithPrefill(
   return processedMessages;
 }
 
+/** True when the message's last text ends with ':' (e.g. "Name:"), meaning the model should continue it. */
+export function endsWithPrefillColon(message: ApiChatMessage): boolean {
+  return getLastTextContent(message).trim().endsWith(':');
+}
+
 function isAssistantPrefillMessage(message: ApiChatMessage | null): boolean {
   if (!message || message.role !== 'assistant') return false;
 
   const contentStr = getLastTextContent(message);
-  if (contentStr.trim().endsWith(':')) return true;
+  if (endsWithPrefillColon(message)) return true;
 
   return !!message.name && contentStr.startsWith(`${message.name}: `);
 }
@@ -247,6 +240,22 @@ function getLastTextContent(message: ApiChatMessage): string {
   }
 
   return '';
+}
+
+/** Parses a structured response; non-object results are wrapped as `{ response }`. */
+function parseStructuredContent(
+  content: string,
+  structuredResponse: StructuredResponseOptions | undefined,
+): { structured_content?: object; parse_error?: Error } {
+  if (!structuredResponse) return {};
+  const parseAs = structuredResponse.format === 'xml' ? 'xml' : 'json';
+  try {
+    const parsed = parseResponse(content, parseAs, { schema: structuredResponse.schema.value });
+    return { structured_content: typeof parsed === 'object' && parsed !== null ? parsed : { response: parsed } };
+  } catch (e) {
+    console.error(`Failed to parse structured response as ${parseAs}:`, e);
+    return { parse_error: e as Error };
+  }
 }
 
 const PARAM_TO_GROUP_MAP: Record<string, string> = {};
@@ -422,19 +431,9 @@ export function buildChatCompletionPayload(options: BuildChatCompletionPayloadOp
     let isContinuation = options.mode === 'continue';
 
     // Also check for prefill (last message ending with ':')
-    if (!isContinuation) {
-      const lastMsg = finalMessages.length > 0 ? finalMessages[finalMessages.length - 1] : null;
-      if (lastMsg) {
-        const contentStr =
-          typeof lastMsg.content === 'string'
-            ? lastMsg.content
-            : Array.isArray(lastMsg.content) &&
-                lastMsg.content.length > 0 &&
-                lastMsg.content[lastMsg.content.length - 1].type === 'text'
-              ? lastMsg.content[lastMsg.content.length - 1].text || ''
-              : '';
-        isContinuation = contentStr.trim().endsWith(':');
-      }
+    const lastMsg = finalMessages.at(-1);
+    if (!isContinuation && lastMsg) {
+      isContinuation = endsWithPrefillColon(lastMsg);
     }
 
     const prompt = convertMessagesToInstructString(
@@ -894,27 +893,7 @@ export class ChatCompletionService {
         }
       }
 
-      let structured_content: object | undefined;
-      let parse_error: Error | undefined;
-
-      if (options.structuredResponse) {
-        const format = options.structuredResponse.format;
-        const parseAs = format === 'xml' ? 'xml' : 'json';
-
-        try {
-          const parsed = parseResponse(finalContent, parseAs, {
-            schema: options.structuredResponse.schema.value,
-          });
-          if (typeof parsed === 'object' && parsed !== null) {
-            structured_content = parsed;
-          } else {
-            structured_content = { response: parsed };
-          }
-        } catch (e) {
-          parse_error = e as Error;
-          console.error(`Failed to parse structured response as ${parseAs}:`, e);
-        }
-      }
+      const { structured_content, parse_error } = parseStructuredContent(finalContent, options.structuredResponse);
 
       const tokenCount = await finalizeUsage(finalContent, structured_content, parse_error);
 
@@ -1055,8 +1034,6 @@ export class ChatCompletionService {
 
     return (async function* () {
       let fullContent = '';
-      let structured_content: object | undefined;
-      let parse_error: Error | undefined;
 
       try {
         for await (const chunk of rawStreamGenerator()) {
@@ -1069,24 +1046,7 @@ export class ChatCompletionService {
         // 2. Consumer breaks the loop
         // 3. Error is thrown (including Abort)
 
-        if (options.structuredResponse) {
-          const format = options.structuredResponse.format;
-          const parseAs = format === 'xml' ? 'xml' : 'json';
-
-          try {
-            const parsed = parseResponse(fullContent, parseAs, {
-              schema: options.structuredResponse.schema.value,
-            });
-            if (typeof parsed === 'object' && parsed !== null) {
-              structured_content = parsed;
-            } else {
-              structured_content = { response: parsed };
-            }
-          } catch (e) {
-            parse_error = e as Error;
-            console.error(`Failed to parse structured response from stream as ${parseAs}:`, e);
-          }
-        }
+        const { structured_content, parse_error } = parseStructuredContent(fullContent, options.structuredResponse);
         await finalizeUsage(fullContent, structured_content, parse_error);
       }
     })();

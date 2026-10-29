@@ -3,6 +3,7 @@ import { computed, nextTick, ref, type Ref } from 'vue';
 import {
   buildChatCompletionPayload,
   ChatCompletionService,
+  endsWithPrefillColon,
   processMessagesWithPrefill,
   resolveConnectionProfileSettings,
 } from '../api/generation';
@@ -17,7 +18,6 @@ import { useCharacterStore } from '../stores/character.store';
 import { usePersonaStore } from '../stores/persona.store';
 import { usePromptStore } from '../stores/prompt.store';
 import { useSettingsStore } from '../stores/settings.store';
-import { useUiStore } from '../stores/ui.store';
 import { useWorldInfoStore } from '../stores/world-info.store';
 import {
   type ApiChatToolCall,
@@ -30,16 +30,20 @@ import {
   type GenerationResponse,
   type ItemizedPrompt,
   type PromptInjection,
-  type PromptTokenBreakdown,
   type StreamedChunk,
   type SwipeInfo,
   type WorldInfoBook,
 } from '../types';
 import { getCharactersInMemberOrder, getThumbnailUrl } from '../utils/character';
-import { extractMediaFromMarkdown } from '../utils/chat';
+import {
+  extractMediaFromMarkdown,
+  refreshMessageMedia,
+  setActiveSwipeText,
+  toGeneratedImageMedia,
+} from '../utils/chat';
 import { getMessageTimeStamp, uuidv4 } from '../utils/commons';
 import { eventEmitter } from '../utils/event-emitter';
-import { countTokens } from '../utils/token-count';
+import { computePromptTokenBreakdown, countTokens } from '../utils/token-count';
 import { trimInstructResponse } from '../utils/instruct';
 import { useStrictI18n } from './useStrictI18n';
 import { toast } from './useToast';
@@ -57,6 +61,7 @@ export interface ChatGenerationDependencies {
   findToolChainStart: (endIndex: number) => number;
   triggerSave: () => void;
   persistChat: (chatContext: ChatStateRef, chatFile: string) => Promise<void>;
+  updateMessageTokenCountLater: (messageIndex: number, contentSnapshot: string) => void;
 }
 
 interface GenerationStepResult {
@@ -72,10 +77,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
 
   // Internal state for actual generation
   const _isGenerating = ref(false);
-  // State for context resolution / group orchestration (LLM decisions, etc.)
-  const isPreparing = ref(false);
-
-  const isGenerating = computed(() => _isGenerating.value || isPreparing.value);
+  const isGenerating = computed(() => _isGenerating.value);
 
   const generationController = ref<AbortController | null>(null);
   const currentGenerationId = ref<string | null>(null);
@@ -86,12 +88,10 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
   const promptStore = usePromptStore();
   const personaStore = usePersonaStore();
   const worldInfoStore = useWorldInfoStore();
-  const uiStore = useUiStore();
 
   function abortGeneration() {
     generationController.value?.abort();
     _isGenerating.value = false;
-    isPreparing.value = false;
   }
 
   async function sendMessage(
@@ -119,11 +119,11 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     const trimmedMessage = messageText.trim();
 
     const userMessage: ChatMessage = {
-      name: uiStore.activePlayerName || 'User',
+      name: personaStore.activePersona.name || 'User',
       is_user: true,
       mes: trimmedMessage,
       send_date: getMessageTimeStamp(),
-      force_avatar: getThumbnailUrl('persona', uiStore.activePlayerAvatar || default_user_avatar),
+      force_avatar: getThumbnailUrl('persona', personaStore.activePersona.avatarId || default_user_avatar),
       original_avatar: personaStore.activePersona.avatarId,
       is_system: false,
       extra: {
@@ -163,37 +163,11 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     });
     await nextTick();
     await eventEmitter.emit('message:created', userMessage);
-    updateUserMessageTokenCountLater(currentChatContext, messageIndex, trimmedMessage);
+    deps.updateMessageTokenCountLater(messageIndex, trimmedMessage);
 
     if (triggerGeneration) {
       await generateResponse(GenerationMode.NEW, { generationId });
     }
-  }
-
-  function updateUserMessageTokenCountLater(chatContext: ChatStateRef, messageIndex: number, contentSnapshot: string) {
-    void (async () => {
-      const activeModel = apiStore.activeModel || '';
-      const tokenizer = new ApiTokenizer({ tokenizerType: settingsStore.settings.api.tokenizer, model: activeModel });
-      const tokenCount = await countTokens(contentSnapshot, tokenizer);
-
-      const message = chatContext.messages[messageIndex];
-      if (deps.activeChat.value !== chatContext || !message || message.mes !== contentSnapshot) {
-        return;
-      }
-
-      if (!message.extra) message.extra = {};
-      message.extra.token_count = tokenCount;
-
-      const swipeInfo = message.swipe_info?.[message.swipe_id ?? 0];
-      if (swipeInfo) {
-        if (!swipeInfo.extra) swipeInfo.extra = {};
-        swipeInfo.extra.token_count = tokenCount;
-      }
-
-      await nextTick();
-      await eventEmitter.emit('message:updated', messageIndex, message);
-      deps.triggerSave();
-    })();
   }
 
   async function generateResponse(
@@ -202,11 +176,6 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
   ) {
     // Prevent generation if already actively writing text.
     if (_isGenerating.value) return;
-
-    // If we are in the preparation phase (deciding speaker),
-    // we only allow proceed if a speaker is explicitly forced (handoff from extension).
-    // This allows the recursive call from the extension to proceed while the parent call is technically "preparing".
-    if (isPreparing.value && !forceSpeakerAvatar) return;
 
     if (!deps.activeChat.value) {
       console.error('Attempted to generate response without an active chat.');
@@ -248,7 +217,6 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       if (terminalEmitted) return;
       terminalEmitted = true;
       _isGenerating.value = false;
-      isPreparing.value = false;
       if (generationController.value === overallController) generationController.value = null;
       if (currentGenerationId.value === finalGenerationId) currentGenerationId.value = null;
       await nextTick();
@@ -348,15 +316,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       if (forceSpeakerAvatar) {
         activeCharacter = characterStore.activeCharacters.find((c) => c.avatar === forceSpeakerAvatar);
       } else {
-        // We are entering the "Who speaks?" phase. Lock it.
-        isPreparing.value = true;
-
-        try {
-          // If no force speaker and not handled by extension, we assume single chat (first char)
-          activeCharacter = characterStore.activeCharacters[0];
-        } finally {
-          isPreparing.value = false;
-        }
+        activeCharacter = characterStore.activeCharacters[0];
       }
 
       if (overallController.signal.aborted) return;
@@ -573,7 +533,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         instructTemplate: effectiveTemplate,
         reasoningTemplate: effectiveReasoningTemplate,
       },
-      playerName: uiStore.activePlayerName || 'User',
+      playerName: personaStore.activePersona?.name || 'User',
       controller: new AbortController(),
       tokenizer: tokenizer,
     };
@@ -625,6 +585,20 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     if (context.controller.signal.aborted) return null;
 
     const namePrefixRegex = new RegExp(`^\\s*${escapeRegExp(activeCharacter.name)}\\s*:\\s*`, 'i');
+
+    /** True when a line starts with "Name:" for a speaker other than the active character. */
+    const isHijackLine = (line: string): boolean => {
+      const match = line.match(/^\s*(.{1,50}?):\s/);
+      return !!match && stopNames.has(match[1].trim());
+    };
+
+    /** Strips the speaker's own name prefix and, for text completion, the instruct template wrapping. */
+    const finalizeAssistantText = (text: string): string => {
+      const trimmed = text.replace(namePrefixRegex, '');
+      return context.settings.formatter === 'text' && context.settings.instructTemplate
+        ? trimInstructResponse(trimmed, context.settings.instructTemplate)
+        : trimmed;
+    };
     if (assistantContent !== undefined) {
       const response: GenerationResponse = { content: assistantContent };
       await handleGenerationResult(assistantContent);
@@ -671,13 +645,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
     const lastPromptMsg = messages[messages.length - 1];
     let isLastMsgPrefill = false;
     if (lastPromptMsg && lastPromptMsg.role === 'assistant') {
-      const contentStr =
-        typeof lastPromptMsg.content === 'string'
-          ? lastPromptMsg.content
-          : Array.isArray(lastPromptMsg.content) && lastPromptMsg.content.length > 0
-            ? lastPromptMsg.content[lastPromptMsg.content.length - 1].text || ''
-            : '';
-      isLastMsgPrefill = contentStr.trim().endsWith(':');
+      isLastMsgPrefill = endsWithPrefillColon(lastPromptMsg);
     }
 
     if (
@@ -694,58 +662,16 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       });
     }
 
-    const promptTotalText = await Promise.all(messages.map(async (m) => await countTokens(m.content, tokenizer))).then(
-      (counts) => counts.reduce((a, b) => a + b, 0),
-    );
-
-    const promptTotal = promptTotalText + promptBuilder.mediaTokenCost;
-
-    const processedWorldInfo = promptBuilder.processedWorldInfo;
-    let wiTokens = 0;
-    if (processedWorldInfo) {
-      const parts = [
-        processedWorldInfo.worldInfoBefore,
-        processedWorldInfo.worldInfoAfter,
-        ...processedWorldInfo.anBefore,
-        ...processedWorldInfo.anAfter,
-        ...processedWorldInfo.emBefore,
-        ...processedWorldInfo.emAfter,
-        ...processedWorldInfo.depthEntries.flatMap((d) => d.entries),
-        ...Object.values(processedWorldInfo.outletEntries).flat(),
-      ];
-      const fullWiText = parts.filter(Boolean).join('\n');
-      if (fullWiText) wiTokens = await countTokens(fullWiText, tokenizer);
-    }
-
-    const charDesc = await countTokens(activeCharacter.description || '', tokenizer);
-    const charPers = await countTokens(activeCharacter.personality || '', tokenizer);
-    const charScen = await countTokens(activeCharacter.scenario || '', tokenizer);
-    const charEx = await countTokens(activeCharacter.mes_example || '', tokenizer);
-    const personaDesc = await countTokens(activePersona.description || '', tokenizer);
-
-    const breakdown: PromptTokenBreakdown = {
-      systemTotal: 0,
-      description: charDesc,
-      personality: charPers,
-      scenario: charScen,
-      examples: charEx,
-      persona: personaDesc,
-      worldInfo: wiTokens,
-      chatHistory: 0,
-      extensions: 0,
-      bias: 0,
-      promptTotal: promptTotal,
+    const breakdown = await computePromptTokenBreakdown({
+      messages,
+      tokenizer,
+      mediaTokenCost: promptBuilder.mediaTokenCost,
+      processedWorldInfo: promptBuilder.processedWorldInfo,
+      character: activeCharacter,
+      persona: activePersona,
       maxContext: context.settings.sampler.max_context,
-      padding: context.settings.sampler.max_context - promptTotal - context.settings.sampler.max_tokens,
-    };
-
-    for (const m of messages) {
-      const count = await countTokens(m.content, tokenizer);
-      if (m.role === 'system') breakdown.systemTotal += count;
-      else breakdown.chatHistory += count;
-    }
-    // TODO: Add media field
-    breakdown.chatHistory += promptBuilder.mediaTokenCost;
+      maxTokens: context.settings.sampler.max_tokens,
+    });
 
     let swipeId = 0;
     if (mode === GenerationMode.ADD_SWIPE) {
@@ -834,52 +760,22 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         return;
       }
 
-      // Apply trimming logic
-      let finalContent = content.replace(namePrefixRegex, '');
-
+      let finalContent = content;
       if (shouldCheckHijack) {
         const lines = finalContent.split('\n');
-        let cutoffIndex = -1;
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          const match = line.match(/^\s*(.{1,50}?):\s/);
-          if (match) {
-            const name = match[1].trim();
-            if (stopNames.has(name)) {
-              cutoffIndex = i;
-              break;
-            }
-          }
-        }
-        if (cutoffIndex !== -1) {
-          finalContent = lines.slice(0, cutoffIndex).join('\n');
-        }
+        const cutoffIndex = lines.findIndex(isHijackLine);
+        if (cutoffIndex !== -1) finalContent = lines.slice(0, cutoffIndex).join('\n');
       }
-
-      if (context.settings.formatter === 'text' && context.settings.instructTemplate) {
-        finalContent = trimInstructResponse(finalContent, context.settings.instructTemplate);
-      }
+      finalContent = finalizeAssistantText(finalContent);
 
       const genFinished = new Date().toISOString();
       const token_count = tokenCount ?? (await countTokens(finalContent, tokenizer));
 
       // Handle generated images from both payload and inline markdown
-      const mediaItems: ChatMediaItem[] = [];
-      if (images && images.length > 0) {
-        mediaItems.push(
-          ...images.map(
-            (url) =>
-              ({
-                source: 'url',
-                type: 'image',
-                url: url,
-                title: 'Generated Image',
-              }) as ChatMediaItem,
-          ),
-        );
-      }
-      const inlineMedia = extractMediaFromMarkdown(finalContent);
-      mediaItems.push(...inlineMedia);
+      const mediaItems: ChatMediaItem[] = [
+        ...toGeneratedImageMedia(images ?? []),
+        ...extractMediaFromMarkdown(finalContent),
+      ];
 
       const swipeInfo: SwipeInfo = {
         send_date: getMessageTimeStamp(),
@@ -894,19 +790,8 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         lastMessage.gen_finished = genFinished;
         if (!lastMessage.extra) lastMessage.extra = {};
         lastMessage.extra.token_count = await countTokens(lastMessage.mes, tokenizer);
-
-        const existingNonInline = lastMessage.extra.media?.filter((m) => m.source !== 'inline') ?? [];
-        const newInline = extractMediaFromMarkdown(lastMessage.mes);
-        lastMessage.extra.media = [...existingNonInline, ...newInline];
-        if (lastMessage.extra.media.length === 0) delete lastMessage.extra.media;
-
-        if (
-          lastMessage.swipes &&
-          lastMessage.swipe_id !== undefined &&
-          lastMessage.swipes[lastMessage.swipe_id] !== undefined
-        ) {
-          lastMessage.swipes[lastMessage.swipe_id] = lastMessage.mes;
-        }
+        refreshMessageMedia(lastMessage);
+        setActiveSwipeText(lastMessage, lastMessage.mes);
         generatedMessage = lastMessage;
         await nextTick();
         await eventEmitter.emit('message:updated', activeChatMessages.length - 1, lastMessage);
@@ -961,7 +846,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
       tracking: {
         source: 'core',
         model: context.settings.model,
-        inputTokens: promptTotal,
+        inputTokens: breakdown.promptTotal,
         context: activeCharacter.name,
       },
       reasoningTemplate: context.settings.reasoningTemplate,
@@ -1131,9 +1016,7 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
             targetMessage.mes = targetMessage.swipes[targetMessage.swipe_id];
           } else {
             targetMessage.mes += chunk.delta;
-            if (targetMessage.swipes[targetMessage.swipe_id] !== undefined) {
-              targetMessage.swipes[targetMessage.swipe_id] = targetMessage.mes;
-            }
+            setActiveSwipeText(targetMessage, targetMessage.mes);
           }
           if (chunk.reasoning && chunk.reasoning !== targetMessage.extra.reasoning)
             targetMessage.extra.reasoning = chunk.reasoning;
@@ -1142,26 +1025,13 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
           if (shouldCheckHijack) {
             const lastNewLine = targetMessage.mes.lastIndexOf('\n');
             const currentLine = lastNewLine === -1 ? targetMessage.mes : targetMessage.mes.slice(lastNewLine + 1);
-            // Look for "Name: " pattern at start of line
-            const match = currentLine.match(/^\s*(.{1,50}?):\s/);
-            if (match) {
-              const detectedName = match[1].trim();
-              if (stopNames.has(detectedName)) {
-                // This is a successful internal stop, not a user/extension cancellation. Breaking the
-                // async iteration closes the stream while preserving normal accepted-message finalization.
-
-                // Trim the unwanted line
-                const contentToKeep = lastNewLine === -1 ? '' : targetMessage.mes.slice(0, lastNewLine);
-                targetMessage.mes = contentToKeep;
-                if (
-                  targetMessage.swipes &&
-                  targetMessage.swipe_id !== undefined &&
-                  targetMessage.swipes[targetMessage.swipe_id] !== undefined
-                ) {
-                  targetMessage.swipes[targetMessage.swipe_id] = contentToKeep;
-                }
-                break;
-              }
+            if (isHijackLine(currentLine)) {
+              // This is a successful internal stop, not a user/extension cancellation. Breaking the
+              // async iteration closes the stream while preserving normal accepted-message finalization.
+              const contentToKeep = lastNewLine === -1 ? '' : targetMessage.mes.slice(0, lastNewLine);
+              targetMessage.mes = contentToKeep;
+              setActiveSwipeText(targetMessage, contentToKeep);
+              break;
             }
           }
         }
@@ -1182,44 +1052,12 @@ export function useChatGeneration(deps: ChatGenerationDependencies) {
         if (finalMessage) {
           generatedMessage = finalMessage;
 
-          // Trim character name prefix
-          let trimmed = finalMessage.mes.replace(namePrefixRegex, '');
-
-          if (context.settings.formatter === 'text' && context.settings.instructTemplate) {
-            trimmed = trimInstructResponse(trimmed, context.settings.instructTemplate);
-          }
+          const trimmed = finalizeAssistantText(finalMessage.mes);
           finalMessage.mes = trimmed;
-          if (
-            finalMessage.swipes &&
-            finalMessage.swipe_id !== undefined &&
-            finalMessage.swipes[finalMessage.swipe_id] !== undefined
-          ) {
-            finalMessage.swipes[finalMessage.swipe_id] = trimmed;
-          }
+          setActiveSwipeText(finalMessage, trimmed);
 
           finalMessage.gen_finished = new Date().toISOString();
-          if (!finalMessage.extra) finalMessage.extra = {};
-
-          const existingNonInline = finalMessage.extra.media?.filter((m) => m.source !== 'inline') ?? [];
-          const inlineMedia = extractMediaFromMarkdown(finalMessage.mes);
-
-          if (streamImages.length > 0) {
-            existingNonInline.push(
-              ...streamImages.map(
-                (url) =>
-                  ({
-                    source: 'url',
-                    type: 'image',
-                    url: url,
-                    title: 'Generated Image',
-                  }) satisfies ChatMediaItem,
-              ),
-            );
-          }
-
-          const allMedia = [...existingNonInline, ...inlineMedia];
-          finalMessage.extra.media = allMedia.length > 0 ? allMedia : undefined;
-          if (!finalMessage.extra.media) delete finalMessage.extra.media;
+          refreshMessageMedia(finalMessage, toGeneratedImageMedia(streamImages));
 
           if (finalMessage.extra.token_count === undefined) {
             finalMessage.extra.token_count = await countTokens(finalMessage.mes, tokenizer);

@@ -19,7 +19,7 @@ import {
 } from '../types';
 import type { DeepPartial } from '../types/utils';
 import { getCharacterDifferences, getThumbnailUrl } from '../utils/character';
-import { extractMediaFromMarkdown, getFirstMessage } from '../utils/chat';
+import { getFirstMessage, refreshMessageMedia, setActiveSwipeText } from '../utils/chat';
 import { downloadFile, formatFileSize, getMessageTimeStamp, mergeWithUndefined, uuidv4 } from '../utils/commons';
 import { eventEmitter } from '../utils/event-emitter';
 import { useCharacterStore } from './character.store';
@@ -136,10 +136,7 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   async function updateMessageTokenCount(message: ChatMessage) {
-    const apiSettings = settingsStore.settings.api;
-    const model = apiSettings.selectedProviderModels[apiSettings.provider] || '';
-    const tokenizer = new ApiTokenizer({ tokenizerType: apiSettings.tokenizer, model });
-    const tokenCount = await tokenizer.getTokenCount(message.mes);
+    const tokenCount = await ApiTokenizer.default.getTokenCount(message.mes);
 
     if (!message.extra) message.extra = {};
     message.extra.token_count = tokenCount;
@@ -166,6 +163,7 @@ export const useChatStore = defineStore('chat', () => {
     findToolChainStart,
     triggerSave,
     persistChat,
+    updateMessageTokenCountLater,
   });
 
   eventEmitter.on(
@@ -493,15 +491,7 @@ export const useChatStore = defineStore('chat', () => {
         delete message.extra.reasoning_display_text;
       }
 
-      const existingNonInlineMedia = message.extra.media?.filter((item) => item.source !== 'inline') ?? [];
-      const newInlineMedia = extractMediaFromMarkdown(newContent);
-      const allMedia = [...existingNonInlineMedia, ...newInlineMedia];
-
-      if (!message.extra) message.extra = {};
-      message.extra.media = allMedia.length > 0 ? allMedia : undefined;
-      if (message.extra.media === undefined) {
-        delete message.extra.media;
-      }
+      refreshMessageMedia(message);
 
       if (typeof newReasoning === 'string' && newReasoning.trim() !== '') {
         if (!message.extra) message.extra = {};
@@ -510,9 +500,7 @@ export const useChatStore = defineStore('chat', () => {
         delete message.extra.reasoning;
       }
 
-      if (message.swipes && typeof message.swipe_id === 'number' && message.swipes[message.swipe_id] !== undefined) {
-        message.swipes[message.swipe_id] = newContent;
-      }
+      setActiveSwipeText(message, newContent);
 
       const swipeInfo = message.swipe_info?.[message.swipe_id ?? 0];
       if (swipeInfo) {
@@ -539,9 +527,7 @@ export const useChatStore = defineStore('chat', () => {
     mergeWithUndefined(message, updates);
 
     if (updates.mes !== undefined) {
-      if (message.swipes && typeof message.swipe_id === 'number' && message.swipes[message.swipe_id] !== undefined) {
-        message.swipes[message.swipe_id] = updates.mes;
-      }
+      setActiveSwipeText(message, updates.mes);
       clearMessageTokenCount(message);
       updateMessageTokenCountLater(index, message.mes);
     } else if (updates.swipe_id !== undefined || updates.swipes !== undefined) {

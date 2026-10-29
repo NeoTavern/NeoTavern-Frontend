@@ -14,7 +14,6 @@ import { getThumbnailUrl } from '../utils/character';
 import { uuidv4 } from '../utils/commons';
 import { eventEmitter } from '../utils/event-emitter';
 import { useSettingsStore } from './settings.store';
-import { useUiStore } from './ui.store';
 
 // Helper to check if an object is a valid Persona object
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,7 +30,6 @@ function isSillyTavernExport(obj: any): boolean {
 export const usePersonaStore = defineStore('persona', () => {
   const { t } = useStrictI18n();
   const settingsStore = useSettingsStore();
-  const uiStore = useUiStore();
 
   const allPersonaAvatars = ref<string[]>([]);
   const lastAvatarUpdate = ref(Date.now());
@@ -114,12 +112,10 @@ export const usePersonaStore = defineStore('persona', () => {
     if (!avatarId) return;
     const persona = personas.value.find((p) => p.avatarId === avatarId);
 
-    if (activePersonaId.value === avatarId && uiStore.activePlayerAvatar === avatarId) return;
+    if (activePersonaId.value === avatarId) return;
 
     if (persona) {
       activePersonaId.value = avatarId;
-      uiStore.activePlayerName = persona.name;
-      uiStore.activePlayerAvatar = persona.avatarId;
 
       if (options.notify !== false && settingsStore.settings.persona.showNotifications) {
         toast.info(t('personaManagement.activated', { name: persona.name }));
@@ -146,10 +142,6 @@ export const usePersonaStore = defineStore('persona', () => {
     if (index > -1) {
       const updatedPersona = { ...personas.value[index], name: newName };
       personas.value.splice(index, 1, updatedPersona);
-
-      if (activePersonaId.value === avatarId) {
-        uiStore.activePlayerName = newName;
-      }
 
       await nextTick();
       await eventEmitter.emit('persona:updated', updatedPersona);

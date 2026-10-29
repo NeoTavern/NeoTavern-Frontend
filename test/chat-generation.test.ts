@@ -100,6 +100,7 @@ describe('chat generation persistence integration', () => {
       findToolChainStart: (index) => index,
       triggerSave: vi.fn(),
       persistChat: vi.fn(),
+      updateMessageTokenCountLater: vi.fn(),
     });
     try {
       await generation.sendMessage('hello', { triggerGeneration: false });
@@ -156,6 +157,7 @@ describe('chat generation persistence integration', () => {
         findToolChainStart: (index) => index,
         triggerSave: vi.fn(),
         persistChat: vi.fn(),
+        updateMessageTokenCountLater: vi.fn(),
       });
       try {
         await generation.generateResponse(mode, { generationId: `hook-${mode}` });
@@ -196,6 +198,7 @@ describe('chat generation persistence integration', () => {
       findToolChainStart: (index) => index,
       triggerSave: vi.fn(),
       persistChat: vi.fn(),
+      updateMessageTokenCountLater: vi.fn(),
     });
     try {
       await generation.generateResponse(GenerationMode.NEW, { generationId: 'normal-generation' });
@@ -204,6 +207,39 @@ describe('chat generation persistence integration', () => {
     }
     expect(acknowledged).toHaveBeenCalledWith(['included-injection']);
   });
+
+  it.each([false, true])(
+    'strips the speaker prefix and cuts the reply at another speaker line (stream: %s)',
+    async (stream) => {
+      useSettingsStore().settings.api.samplers.stream = stream;
+      const reply = 'Origin Character: Hello there.\nStill me.\nOrigin User: I would never say this.';
+      if (stream) {
+        vi.spyOn(ChatCompletionService, 'generate').mockResolvedValue(
+          (async function* () {
+            for (const piece of reply.match(/[\s\S]{1,7}/g)!) yield { delta: piece };
+          })(),
+        );
+      } else {
+        vi.spyOn(ChatCompletionService, 'generate').mockResolvedValue({ content: reply });
+      }
+      const chat: ChatStateRef = { metadata: { integrity: 'chat' }, messages: [], fileName: 'chat' };
+      const generation = useChatGeneration({
+        activeChat: ref(chat),
+        syncSwipeToMes: vi.fn(),
+        stopAutoModeTimer: vi.fn(),
+        findToolChainStart: (index) => index,
+        triggerSave: vi.fn(),
+        persistChat: vi.fn(),
+        updateMessageTokenCountLater: vi.fn(),
+      });
+
+      await generation.generateResponse(GenerationMode.NEW, { generationId: `hijack-${stream}` });
+
+      const message = chat.messages.at(-1)!;
+      expect(message.mes).toBe('Hello there.\nStill me.');
+      expect(message.swipes).toEqual(['Hello there.\nStill me.']);
+    },
+  );
 
   it('saves origin-bound variables and reloads them without leaking into a replacement chat', async () => {
     const originMetadata: ChatMetadata = { integrity: 'origin' };
@@ -234,6 +270,7 @@ describe('chat generation persistence integration', () => {
       findToolChainStart: vi.fn(() => 0),
       triggerSave: vi.fn(),
       persistChat,
+      updateMessageTokenCountLater: vi.fn(),
     });
 
     await generation.generateResponse(GenerationMode.NEW, { generationId: 'origin-generation' });
