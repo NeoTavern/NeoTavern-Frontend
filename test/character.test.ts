@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Character } from '../src/types';
-import { getCharacterDifferences } from '../src/utils/character';
+import { getCharacterDifferences, withMappedDataFields } from '../src/utils/character';
 
 describe('getCharacterDifferences', () => {
   it('should detect top-level changes', () => {
@@ -113,5 +113,28 @@ describe('getCharacterDifferences', () => {
     expect(diff).toEqual({
       data: { character_book: null },
     });
+  });
+});
+
+describe('withMappedDataFields', () => {
+  it('copies a top-level card field to its spec v2 path', () => {
+    expect(withMappedDataFields({ first_mes: 'Hi' })).toEqual({ first_mes: 'Hi', data: { first_mes: 'Hi' } });
+  });
+
+  it('lets the top-level value win over a stale data copy and keeps other data fields', () => {
+    const changes = {
+      first_mes: 'New',
+      data: { first_mes: 'Old', alternate_greetings: ['A'] },
+    } as unknown as Partial<Character>;
+
+    expect(withMappedDataFields(changes)).toEqual({
+      first_mes: 'New',
+      data: { first_mes: 'New', alternate_greetings: ['A'] },
+    });
+    expect(changes.data?.first_mes).toBe('Old');
+  });
+
+  it('leaves unmapped fields alone', () => {
+    expect(withMappedDataFields({ chat: 'branch.jsonl' })).toEqual({ chat: 'branch.jsonl' });
   });
 });

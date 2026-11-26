@@ -145,6 +145,13 @@ export function createPanelState(api: ExtensionAPI<AssistantSettings>, store = n
     }
   }
 
+  /** Adds a reference chip to the draft, unless it's already there. */
+  function mention(ref: AssistantRef) {
+    if (!state.refs.some((existing) => existing.kind === ref.kind && existing.label === ref.label)) {
+      state.refs = [...state.refs, ref];
+    }
+  }
+
   function stop() {
     controller?.abort();
   }
@@ -173,7 +180,7 @@ export function createPanelState(api: ExtensionAPI<AssistantSettings>, store = n
     if (!result.ok) api.ui.showToast(t('extensionsBuiltin.assistant.panel.undoConflict'), 'warning');
   }
 
-  return { state, refreshList, newConversation, open, remove, send, retry, stop, accept, reject, undoLast };
+  return { state, refreshList, newConversation, open, remove, send, retry, mention, stop, accept, reject, undoLast };
 }
 
 export type PanelState = ReturnType<typeof createPanelState>;

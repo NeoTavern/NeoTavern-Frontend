@@ -1,4 +1,4 @@
-import { get, set } from 'lodash-es';
+import { cloneDeep, get, set } from 'lodash-es';
 import {
   CHARACTER_FIELD_MAPPINGS,
   default_avatar,
@@ -20,6 +20,20 @@ export function getCharactersInMemberOrder(characters: Character[], members?: st
 }
 
 // --- Manipulation & Form Data ---
+
+/**
+ * Copies each top-level field in `changes` that has a spec v2 path (`CHARACTER_FIELD_MAPPINGS`) to that
+ * path, so a partial save keeps both in sync. The top-level value wins: callers may pass a whole `data`
+ * object copied from the old character next to a new top-level value.
+ */
+export function withMappedDataFields(changes: Partial<Character>): Partial<Character> {
+  const result = cloneDeep(changes);
+  for (const [frontendKey, backendPath] of Object.entries(CHARACTER_FIELD_MAPPINGS)) {
+    const value = get(changes, frontendKey);
+    if (value !== undefined) set(result, backendPath, cloneDeep(value));
+  }
+  return result;
+}
 
 export function getCharacterDifferences(oldChar: Character, newChar: Character): Partial<Character> | null {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

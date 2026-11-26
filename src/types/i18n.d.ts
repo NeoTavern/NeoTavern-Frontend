@@ -1574,6 +1574,7 @@ export interface MessageSchema {
       panel: {
         title: string;
         open: string;
+        editWithAssistant: string;
         conversations: string;
         newConversation: string;
         noConversations: string;

@@ -30,9 +30,14 @@ export type ResolvedQuickEditContext =
   | { kind: 'persona'; name: string }
   | { kind: 'none' };
 
-/** One earlier popover turn: the instruction sent and the code-block text the model returned. */
-export interface QuickEditTurn {
+/** One popover instruction, with the `[Referenced]` block of its mentions ('' when none). */
+export interface QuickEditRequest {
   instruction: string;
+  referenced?: string;
+}
+
+/** One earlier popover turn: the request sent and the code-block text the model returned. */
+export interface QuickEditTurn extends QuickEditRequest {
   output: string;
 }
 
@@ -138,18 +143,21 @@ function fence(text: string): string {
 
 /**
  * Builds the request for a quick edit. The first user message carries the first instruction;
- * each later instruction (earlier turns in `history`, then `instruction`) is a follow-up revision.
+ * each later instruction (earlier turns in `history`, then `request`) is a follow-up revision.
+ * An instruction's referenced block goes right before it, after the context block.
  */
 export function buildQuickEditMessages(
   target: Pick<QuickEditTarget, 'label' | 'text'>,
   context: ResolvedQuickEditContext,
-  instruction: string,
+  request: string | QuickEditRequest,
   history: QuickEditTurn[] = [],
 ): ApiChatMessage[] {
-  const firstInstruction = history.length > 0 ? history[0].instruction : instruction;
+  const current = typeof request === 'string' ? { instruction: request } : request;
+  const first = history.length > 0 ? history[0] : current;
   const firstUser = [
     formatContextBlock(context),
-    `Instruction: ${firstInstruction}`,
+    first.referenced ?? '',
+    `Instruction: ${first.instruction}`,
     target.text
       ? `Text (${target.label}):\n${fence(target.text)}`
       : `The field "${target.label}" is empty. Write new text for this field.`,
@@ -163,16 +171,17 @@ export function buildQuickEditMessages(
   ];
 
   history.forEach((turn, index) => {
-    if (index > 0) messages.push(revision(turn.instruction));
+    if (index > 0) messages.push(revision(turn));
     messages.push({ role: 'assistant', name: 'Assistant', content: fence(turn.output) });
   });
-  if (history.length > 0) messages.push(revision(instruction));
+  if (history.length > 0) messages.push(revision(current));
 
   return messages;
 }
 
-function revision(instruction: string): ApiChatMessage {
-  return { role: 'user', name: 'User', content: `Revise your latest version: ${instruction}` };
+function revision(request: QuickEditRequest): ApiChatMessage {
+  const content = `Revise your latest version: ${request.instruction}`;
+  return { role: 'user', name: 'User', content: request.referenced ? `${request.referenced}\n\n${content}` : content };
 }
 
 /** The command's profile, else the extension default, else the global selected profile. */

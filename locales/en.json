@@ -1571,6 +1571,7 @@
       "panel": {
         "title": "Assistant",
         "open": "Open assistant",
+        "editWithAssistant": "Edit with assistant",
         "conversations": "Conversations",
         "newConversation": "New conversation",
         "noConversations": "No saved conversations yet.",

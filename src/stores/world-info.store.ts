@@ -211,14 +211,16 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     }
   }
 
-  async function deleteEntry(filename: string, entryUid: number) {
-    const book = worldInfoCache.value[filename];
+  /** `identifier` is the book's file id or its name. */
+  async function deleteEntry(identifier: string, entryUid: number) {
+    const cacheKey = resolveBookFileId(identifier) ?? identifier;
+    const book = await getBookFromCache(cacheKey, true);
     if (!book) return;
 
     const index = book.entries.findIndex((e) => e.uid === entryUid);
     if (index !== -1) {
       book.entries.splice(index, 1);
-      saveBookDebounced(book, filename);
+      saveBookDebounced(book, cacheKey);
       await nextTick();
       await eventEmitter.emit('world-info:entry-deleted', book.name, entryUid);
     }

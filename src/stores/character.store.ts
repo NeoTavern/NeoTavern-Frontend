@@ -7,7 +7,7 @@ import { useCharacterTokens } from '../composables/useCharacterTokens';
 import { characterService } from '../services/character.service';
 import { chatService } from '../services/chat.service';
 import { type Character, type CropData } from '../types';
-import { getCharacterDifferences } from '../utils/character';
+import { getCharacterDifferences, withMappedDataFields } from '../utils/character';
 import { mergeWithUndefinedMulti, onlyUnique, uuidv4 } from '../utils/commons';
 import { eventEmitter } from '../utils/event-emitter';
 import { useSettingsStore } from './settings.store';
@@ -57,8 +57,10 @@ export const useCharacterStore = defineStore('character', () => {
     { timeout: 1500 },
   );
 
-  async function updateAndSaveCharacter(avatar: string, changes: Partial<Character>) {
-    if (Object.keys(changes).length === 0) return;
+  async function updateAndSaveCharacter(avatar: string, partialChanges: Partial<Character>) {
+    if (Object.keys(partialChanges).length === 0) return;
+    // The backend keeps v1 (top-level) and v2 (`data.*`) copies; saving only one leaves them out of sync.
+    const changes = withMappedDataFields(partialChanges);
 
     // Optimistic Update
     const index = characters.value.findIndex((c) => c.avatar === avatar);

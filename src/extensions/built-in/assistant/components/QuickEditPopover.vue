@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { Button, Textarea } from '../../../../components/UI';
+import { Button } from '../../../../components/UI';
 import type { ExtensionAPI } from '../../../../types';
 import TextDiff from '../../_shared/components/TextDiff.vue';
 import {
@@ -9,10 +9,13 @@ import {
   resolveQuickEditProfile,
   runQuickEdit,
   recordLastCommand,
+  type QuickEditRequest,
   type QuickEditTarget,
   type QuickEditTurn,
 } from '../quick-edit';
+import { renderReferencedBlock, type AssistantRef } from '../references';
 import type { AssistantCommand, AssistantSettings } from '../types';
+import MentionInput from './MentionInput.vue';
 
 const props = defineProps<{
   api: ExtensionAPI<AssistantSettings>;
@@ -33,6 +36,8 @@ const commands = computed<AssistantCommand[]>(() => {
 });
 
 const instruction = ref('');
+/** Mentions for the next request; cleared once it succeeds. */
+const refs = ref<AssistantRef[]>([]);
 const turns = ref<QuickEditTurn[]>([]);
 const streamedText = ref('');
 const isGenerating = ref(false);
@@ -57,20 +62,23 @@ async function run(text: string, followUp: boolean) {
   isGenerating.value = true;
   abortController = new AbortController();
   const history = followUp ? turns.value : [];
+  const request: QuickEditRequest = { instruction: text };
   try {
     const context = await resolveContext(props.api, props.target.context, settings.contextMessageCount);
-    const messages = buildQuickEditMessages(props.target, context, text, history);
+    request.referenced = await renderReferencedBlock(props.api, refs.value);
+    const messages = buildQuickEditMessages(props.target, context, request, history);
     const result = await runQuickEdit(props.api, {
       messages,
       profile,
       signal: abortController.signal,
       onText: (partial) => (streamedText.value = partial),
     });
-    turns.value = [...history, { instruction: text, output: result }];
+    turns.value = [...history, { ...request, output: result }];
     instruction.value = '';
+    refs.value = [];
   } catch (error) {
     if (abortController?.signal.aborted) {
-      if (streamedText.value) turns.value = [...history, { instruction: text, output: streamedText.value }];
+      if (streamedText.value) turns.value = [...history, { ...request, output: streamedText.value }];
       props.api.ui.showToast(t('extensionsBuiltin.assistant.quickEdit.stopped'), 'info');
     } else {
       console.error(error);
@@ -95,13 +103,6 @@ function runCommand(command: AssistantCommand) {
 function submitInstruction() {
   if (!hasResult.value) activeCommand.value = undefined;
   run(instruction.value, hasResult.value);
-}
-
-function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
-    event.preventDefault();
-    submitInstruction();
-  }
 }
 
 function stop() {
@@ -155,17 +156,19 @@ onUnmounted(stop);
       </button>
     </div>
 
-    <Textarea
+    <MentionInput
       v-model="instruction"
+      v-model:refs="refs"
+      :api="api"
+      :commands="false"
       :rows="2"
-      :resizable="false"
       :disabled="isGenerating"
       :placeholder="
         hasResult
           ? t('extensionsBuiltin.assistant.quickEdit.followUpPlaceholder')
           : t('extensionsBuiltin.assistant.quickEdit.instructionPlaceholder')
       "
-      @keydown="handleKeydown"
+      @submit="submitInstruction"
     />
 
     <div v-if="errorMessage" class="quick-edit-error">

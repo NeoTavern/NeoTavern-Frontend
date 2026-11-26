@@ -7,6 +7,8 @@ import {
   type QuickEditTarget,
   type ResolvedQuickEditContext,
 } from '../quick-edit';
+import { renderReferencedBlock } from '../references';
+import { fakeDataApi } from '../test-support/fake-data-api';
 import {
   createDefaultSettings,
   migrateAssistantSettings,
@@ -78,6 +80,39 @@ describe('buildQuickEditMessages', () => {
 
     expect(user).toContain('Write new text for this field');
     expect(user).not.toContain('```');
+  });
+
+  test('mentioned content comes after the context block and ahead of the instruction', async () => {
+    const data = fakeDataApi({
+      characters: [{ avatar: 'hazel.png', name: 'Hazel', first_mes: 'HAZEL_GREETING' }],
+      history: [{ name: 'Bot', mes: 'RECENT_MESSAGE' }],
+    });
+    const referenced = await renderReferencedBlock(data, [{ kind: 'character', avatar: 'hazel.png', label: 'Hazel' }]);
+    const context = await resolveContext(
+      fakeApi({ history: [{ name: 'Bot', mes: 'RECENT_MESSAGE' }] }),
+      {
+        kind: 'chat',
+        beforeIndex: 1,
+      },
+      5,
+    );
+
+    const [first] = userContents(
+      buildQuickEditMessages({ label: 'message', text: 'Hi' }, context, { instruction: 'Match her tone', referenced }),
+    );
+    const followUp = buildQuickEditMessages(
+      { label: 'message', text: 'Hi' },
+      context,
+      {
+        instruction: 'Shorter',
+        referenced,
+      },
+      [{ instruction: 'Fix typos', output: 'Hi!' }],
+    ).at(-1)!.content as string;
+
+    expect(first.indexOf('RECENT_MESSAGE')).toBeLessThan(first.indexOf('HAZEL_GREETING'));
+    expect(first.indexOf('HAZEL_GREETING')).toBeLessThan(first.indexOf('Instruction: Match her tone'));
+    expect(followUp.indexOf('HAZEL_GREETING')).toBeLessThan(followUp.indexOf('Shorter'));
   });
 
   test('a follow-up appends after the earlier turns', () => {

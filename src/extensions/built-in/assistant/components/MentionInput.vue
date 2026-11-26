@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { autoUpdate, flip, offset, size, useFloating } from '@floating-ui/vue';
 import { computed, nextTick, ref, watch } from 'vue';
 import type { ExtensionAPI } from '../../../../types';
 import { suggestAt, suggestCommands, suggestMessages, type AssistantRef, type AtSources } from '../references';
@@ -137,6 +138,25 @@ watch(suggestions, (list) => {
 });
 
 const listElement = ref<HTMLElement>();
+// The list lives in <body>, so a host with overflow (the quick-edit popup, the sidebar) can't clip it.
+const { floatingStyles } = useFloating(textarea, listElement, {
+  placement: 'top-start',
+  open: computed(() => suggestions.value.length > 0),
+  whileElementsMounted: autoUpdate,
+  middleware: [
+    offset(4),
+    flip({ padding: 8 }),
+    size({
+      padding: 8,
+      apply({ rects, elements, availableHeight }) {
+        Object.assign(elements.floating.style, {
+          width: `${rects.reference.width}px`,
+          maxHeight: `${Math.min(240, availableHeight)}px`,
+        });
+      },
+    }),
+  ],
+});
 watch(highlighted, async (index) => {
   await nextTick();
   listElement.value?.children[index]?.scrollIntoView({ block: 'nearest' });
@@ -205,22 +225,30 @@ defineExpose({ focus });
     </div>
 
     <div class="mention-input-field">
-      <ul v-if="suggestions.length > 0" ref="listElement" class="mention-suggestions" role="listbox">
-        <li
-          v-for="(suggestion, index) in suggestions"
-          :key="suggestion.key"
-          class="mention-suggestion"
-          :class="{ highlighted: index === highlighted }"
-          role="option"
-          :aria-selected="index === highlighted"
-          @mousedown.prevent="suggestion.pick()"
-          @mouseenter="highlighted = index"
+      <Teleport to="body">
+        <ul
+          v-if="suggestions.length > 0"
+          ref="listElement"
+          class="mention-suggestions"
+          :style="floatingStyles"
+          role="listbox"
         >
-          <i class="fa-solid" :class="suggestion.icon"></i>
-          <span class="mention-suggestion-label">{{ suggestion.label }}</span>
-          <span class="mention-suggestion-hint">{{ suggestion.hint }}</span>
-        </li>
-      </ul>
+          <li
+            v-for="(suggestion, index) in suggestions"
+            :key="suggestion.key"
+            class="mention-suggestion"
+            :class="{ highlighted: index === highlighted }"
+            role="option"
+            :aria-selected="index === highlighted"
+            @mousedown.prevent="suggestion.pick()"
+            @mouseenter="highlighted = index"
+          >
+            <i class="fa-solid" :class="suggestion.icon"></i>
+            <span class="mention-suggestion-label">{{ suggestion.label }}</span>
+            <span class="mention-suggestion-hint">{{ suggestion.hint }}</span>
+          </li>
+        </ul>
+      </Teleport>
       <textarea
         ref="textarea"
         class="text-pole mention-input-textarea"
@@ -283,23 +311,15 @@ defineExpose({ focus });
   }
 }
 
-.mention-input-field {
-  position: relative;
-}
-
 .mention-input-textarea {
   width: 100%;
   resize: vertical;
 }
 
 .mention-suggestions {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  max-height: 240px;
-  margin: 0 0 4px;
+  // Popups sit at --z-toast - 1, and the quick-edit popup hosts this input.
+  z-index: var(--z-toast);
+  margin: 0;
   padding: 4px 0;
   overflow-y: auto;
   list-style: none;
