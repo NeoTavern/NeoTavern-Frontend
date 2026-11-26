@@ -42,8 +42,11 @@ function tool(
 export function createAssistantTools(api: ToolsAPI, changeset: Changeset): ToolDefinition[] {
   const findCharacter = (avatar: unknown) => api.character.get(String(avatar));
 
+  /** Only listed books: `getBook` on an unknown name returns an empty book from the backend, not null. */
   async function findBook(name: unknown) {
-    return api.worldInfo.getBook(String(name));
+    const wanted = String(name);
+    const listed = api.worldInfo.getAllBookNames().some((book) => book.name === wanted || book.file_id === wanted);
+    return listed ? api.worldInfo.getBook(wanted) : null;
   }
 
   /** The entry as the conversation sees it: a pending create or update wins over the book. */

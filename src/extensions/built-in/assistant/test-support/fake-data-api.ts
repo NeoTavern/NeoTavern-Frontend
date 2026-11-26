@@ -48,7 +48,8 @@ export function fakeDataApi(
     },
     worldInfo: {
       getAllBookNames: () => books.map((candidate) => ({ file_id: candidate.name, name: candidate.name })),
-      getBook: async (name: string) => structuredClone(book(name) ?? null),
+      // Like the real backend: an unknown name gives an empty book, not null.
+      getBook: async (name: string) => structuredClone(book(name) ?? { name, entries: [] }),
       createDefaultEntry: (uid: number) => entry(uid, { order: 100 }),
       createEntry: vi.fn(async (name: string, created: WorldInfoEntry) => {
         book(name)!.entries.push(structuredClone(created));
