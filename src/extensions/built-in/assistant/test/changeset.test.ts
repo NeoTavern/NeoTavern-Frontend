@@ -125,4 +125,27 @@ describe('changeset', () => {
     await changeset.undoLast(api);
     expect(api.store.characters[0].data?.alternate_greetings).toEqual(['Hi.']);
   });
+
+  test('an empty greeting removes it, alongside an edit staged with the old numbering, and undo restores both', async () => {
+    const greetings = ['G1', 'G2', 'G3', 'G4'];
+    const { api, changeset, tools } = setup({ characters: [{ ...hazel, data: { alternate_greetings: greetings } }] });
+    await tools.edit_character_field({ avatar: 'hazel.png', field: 'alternate_greetings.2', value: '' });
+    await tools.edit_character_field({ avatar: 'hazel.png', field: 'alternate_greetings.4', value: 'G4 edited' });
+
+    const applied = await changeset.apply(api);
+    expect(applied).toHaveLength(2);
+    expect(api.store.characters[0].data?.alternate_greetings).toEqual(['G1', 'G3', 'G4 edited']);
+
+    expect((await changeset.undoLast(api)).ok).toBe(true);
+    expect(api.store.characters[0].data?.alternate_greetings).toEqual(greetings);
+  });
+
+  test('removing a greeting that is not saved yet is a tool error', async () => {
+    const { changes, tools } = setup({ characters: [hazel] });
+
+    expect(
+      await tools.edit_character_field({ avatar: 'hazel.png', field: 'alternate_greetings.2', value: '' }),
+    ).toHaveProperty('error');
+    expect(changes).toHaveLength(0);
+  });
 });

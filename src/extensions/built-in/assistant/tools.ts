@@ -104,7 +104,7 @@ export function createAssistantTools(api: ToolsAPI, changeset: Changeset): ToolD
 
     tool(
       'edit_character_field',
-      'Propose a new value for a character field. field: description, personality, scenario, first_mes, mes_example or alternate_greetings.<n> (1-based; n = count + 1 adds one).',
+      'Propose a new value for a character field. field: description, personality, scenario, first_mes, mes_example or alternate_greetings.<n> (1-based; n = count + 1 adds one; an empty value removes that greeting and later ones shift up). Use the numbers from the card as it is now, also when removing several.',
       objectSchema({ avatar: str(), field: str(), value: str() }, ['avatar', 'field', 'value']),
       ({ avatar, field, value }) => {
         const character = findCharacter(avatar);
@@ -124,6 +124,9 @@ export function createAssistantTools(api: ToolsAPI, changeset: Changeset): ToolD
           const known = Math.max(greetings.length, highestPendingGreeting(changeset, character.avatar));
           if (greetingIndex < 0 || greetingIndex > known) {
             return error(`Bad field: ${fieldName} (the character has ${greetings.length} alternate greetings)`);
+          }
+          if (String(value) === '' && greetingIndex >= greetings.length) {
+            return error(`${fieldName} isn't saved yet, so there is nothing to remove`);
           }
           oldValue = greetings[greetingIndex] ?? '';
           label = `${character.name}: alternate greeting ${greetingIndex + 1}`;

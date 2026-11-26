@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { Button } from '../../../../components/UI';
 import type { ExtensionAPI } from '../../../../types';
 import TextDiff from '../../_shared/components/TextDiff.vue';
-import { Changeset, type ChangeTarget, type StagedChange } from '../changeset';
+import { Changeset, isGreetingRemoval, type ChangeTarget, type StagedChange } from '../changeset';
 import type { AssistantSettings } from '../types';
 
 const props = defineProps<{
@@ -84,6 +84,7 @@ function toggle(change: StagedChange) {
 }
 
 function opLabel(change: StagedChange): string {
+  if (isGreetingRemoval(change)) return t('extensionsBuiltin.assistant.panel.opRemoveGreeting');
   if (change.target.kind !== 'entry' || change.target.op === 'update') return '';
   return change.target.op === 'create'
     ? t('extensionsBuiltin.assistant.panel.opCreate')

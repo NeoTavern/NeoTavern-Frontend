@@ -1597,6 +1597,7 @@
         "proposed": "Proposed",
         "opCreate": "new entry",
         "opDelete": "delete entry",
+        "opRemoveGreeting": "remove greeting",
         "groupMessages": "Chat messages",
         "conflictHint": "The target changed after this was proposed, so nothing was written.",
         "applyConflict": "Some changes weren't applied because their target changed.",

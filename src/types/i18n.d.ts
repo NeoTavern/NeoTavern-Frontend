@@ -1600,6 +1600,7 @@ export interface MessageSchema {
         proposed: string;
         opCreate: string;
         opDelete: string;
+        opRemoveGreeting: string;
         groupMessages: string;
         conflictHint: string;
         applyConflict: string;

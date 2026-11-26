@@ -43,6 +43,27 @@ export function alternateGreetingIndex(field: string): number | null {
   return match ? Number(match[1]) - 1 : null;
 }
 
+/** 0-based alternate greeting index of a change, or null when it isn't a greeting change. */
+function greetingIndexOf(change: StagedChange): number | null {
+  return change.target.kind === 'character-field' ? alternateGreetingIndex(change.target.field) : null;
+}
+
+/** An empty value on an existing alternate greeting removes the greeting; later ones shift up. */
+export function isGreetingRemoval(change: Pick<StagedChange, 'target' | 'oldValue' | 'newValue'>): boolean {
+  return (
+    change.target.kind === 'character-field' &&
+    alternateGreetingIndex(change.target.field) !== null &&
+    change.oldValue !== '' &&
+    change.newValue === ''
+  );
+}
+
+/** Removals after everything else, highest index first, so every staged greeting index stays valid. */
+function applyOrder(changes: StagedChange[]): StagedChange[] {
+  const removals = changes.filter(isGreetingRemoval).sort((a, b) => greetingIndexOf(b)! - greetingIndexOf(a)!);
+  return [...changes.filter((change) => !isGreetingRemoval(change)), ...removals];
+}
+
 /** The readable form of an entry shown in diffs and compared for conflicts. */
 export function renderEntry(entry: Pick<WorldInfoEntry, 'comment' | 'key' | 'content'>): string {
   return `Title: ${entry.comment}\nKeys: ${entry.key.join(', ')}\n\n${entry.content}`;
@@ -62,7 +83,7 @@ function sameTarget(a: ChangeTarget, b: ChangeTarget): boolean {
 }
 
 /** The target's current state; null when the target itself is gone (character, message, book or persona). */
-type Current = { value: string; entry?: WorldInfoEntry; greetings?: string[] } | null;
+type Current = { value: string; entry?: WorldInfoEntry } | null;
 
 async function readCurrent(api: ChangesetAPI, target: ChangeTarget): Promise<Current> {
   switch (target.kind) {
@@ -75,7 +96,7 @@ async function readCurrent(api: ChangesetAPI, target: ChangeTarget): Promise<Cur
       }
       const greetings = character.data?.alternate_greetings ?? [];
       if (index > greetings.length) return null;
-      return { value: greetings[index] ?? '', greetings };
+      return { value: greetings[index] ?? '' };
     }
     case 'message': {
       const message = api.chat.getMessage(target.index);
@@ -162,7 +183,7 @@ export class Changeset {
     const batch = String(this.lastBatch() + 1);
     const applied: StagedChange[] = [];
 
-    for (const change of selected) {
+    for (const change of applyOrder(selected)) {
       const current = await readCurrent(api, change.target);
       if (!current || current.value !== change.oldValue || !this.entryStateMatches(change, current, 'before')) {
         change.status = 'conflict';
@@ -185,22 +206,40 @@ export class Changeset {
     const changes = this.changes.filter((change) => change.status === 'applied' && change.applyBatch === batch);
     if (changes.length === 0) return { ok: true, undone: [] };
 
-    const currents: Current[] = [];
+    // Removed greetings go back first (lowest index first), so the other greeting changes of the
+    // batch are checked and reverted at the indexes they were staged with.
+    const removals = changes.filter(isGreetingRemoval).sort((a, b) => greetingIndexOf(a)! - greetingIndexOf(b)!);
+    const others = changes.filter((change) => !isGreetingRemoval(change));
+    const restored = new Map<string, string[]>();
     const conflicts: StagedChange[] = [];
-    for (const change of changes) {
+    for (const change of removals) {
+      const avatar = (change.target as { avatar: string }).avatar;
+      const greetings = restored.get(avatar) ?? [...(api.character.get(avatar)?.data?.alternate_greetings ?? [])];
+      const index = greetingIndexOf(change)!;
+      if (!api.character.get(avatar) || index > greetings.length) conflicts.push(change);
+      else greetings.splice(index, 0, change.oldValue);
+      restored.set(avatar, greetings);
+    }
+
+    const currents = new Map<StagedChange, Current>();
+    for (const change of others) {
       const current = await readCurrent(api, change.target);
-      if (!current || current.value !== change.newValue || !this.entryStateMatches(change, current, 'after')) {
+      const index = greetingIndexOf(change);
+      const greetings = change.target.kind === 'character-field' ? restored.get(change.target.avatar) : undefined;
+      const value = index !== null && greetings ? (greetings[index] ?? '') : current?.value;
+      if (!current || value !== change.newValue || !this.entryStateMatches(change, current, 'after')) {
         conflicts.push(change);
       }
-      currents.push(current);
+      currents.set(change, current);
     }
     if (conflicts.length > 0) return { ok: false, conflicts };
 
+    for (const change of removals) await this.write(api, change, { value: '' }, 'undo');
     // Reverse order, so an earlier write in the batch is restored last.
-    for (let index = changes.length - 1; index >= 0; index--) {
-      await this.write(api, changes[index], currents[index]!, 'undo');
-      changes[index].status = 'pending';
-      delete changes[index].applyBatch;
+    for (const change of [...others].reverse()) await this.write(api, change, currents.get(change)!, 'undo');
+    for (const change of changes) {
+      change.status = 'pending';
+      delete change.applyBatch;
     }
     return { ok: true, undone: changes };
   }
@@ -240,10 +279,14 @@ export class Changeset {
           await api.character.update(target.avatar, { [target.field]: value });
           return;
         }
-        const greetings = [...(current.greetings ?? [])];
-        // Undoing an append removes the slot instead of leaving an empty greeting.
-        if (direction === 'undo' && change.oldValue === '' && index === greetings.length - 1) {
-          greetings.pop();
+        // Read fresh: an earlier write in the same apply or undo may have shifted the greetings.
+        const greetings = [...(api.character.get(target.avatar)?.data?.alternate_greetings ?? [])];
+        if (isGreetingRemoval(change)) {
+          if (direction === 'apply') greetings.splice(index, 1);
+          else greetings.splice(index, 0, change.oldValue);
+        } else if (direction === 'undo' && change.oldValue === '') {
+          // Undoing an added greeting removes its slot instead of leaving an empty greeting.
+          greetings.splice(index, 1);
         } else {
           greetings[index] = value;
         }
