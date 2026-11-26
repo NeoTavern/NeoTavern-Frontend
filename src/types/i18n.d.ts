@@ -1601,6 +1601,16 @@ export interface MessageSchema {
         opCreate: string;
         opDelete: string;
         opRemoveGreeting: string;
+        opCreateLorebook: string;
+        opDeleteLorebook: string;
+        opCreateCharacter: string;
+        opDeleteCharacter: string;
+        opInsertMessage: string;
+        opDeleteMessage: string;
+        noUndo: string;
+        noUndoHint: string;
+        deleteCharacterTitle: string;
+        deleteCharacterContent: string;
         groupMessages: string;
         conflictHint: string;
         applyConflict: string;

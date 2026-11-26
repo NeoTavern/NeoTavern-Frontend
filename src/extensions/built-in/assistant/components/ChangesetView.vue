@@ -2,8 +2,9 @@
 import { computed, ref } from 'vue';
 import { Button } from '../../../../components/UI';
 import type { ExtensionAPI } from '../../../../types';
+import { POPUP_RESULT, POPUP_TYPE } from '../../../../types/popup';
 import TextDiff from '../../_shared/components/TextDiff.vue';
-import { Changeset, isGreetingRemoval, type StagedChange } from '../changeset';
+import { Changeset, isCharacterDelete, isGreetingRemoval, type StagedChange } from '../changeset';
 import type { AssistantSettings } from '../types';
 
 const props = defineProps<{
@@ -70,6 +71,10 @@ const groups = computed<Group[]>(() => {
 const pendingIds = computed(() =>
   props.changes.filter((change) => change.status === 'pending').map((change) => change.id),
 );
+/** Accept all leaves character deletes out: they have no undo, so each needs its own Accept. */
+const acceptAllCount = computed(
+  () => props.changes.filter((change) => change.status === 'pending' && !isCharacterDelete(change)).length,
+);
 const canUndo = computed(() => new Changeset(props.changes).hasUndo());
 
 const STATUS_LABELS: Record<StagedChange['status'], string> = {
@@ -92,10 +97,42 @@ function toggle(change: StagedChange) {
 
 function opLabel(change: StagedChange): string {
   if (isGreetingRemoval(change)) return t('extensionsBuiltin.assistant.panel.opRemoveGreeting');
-  if (change.target.kind !== 'entry' || change.target.op === 'update') return '';
-  return change.target.op === 'create'
-    ? t('extensionsBuiltin.assistant.panel.opCreate')
-    : t('extensionsBuiltin.assistant.panel.opDelete');
+  const target = change.target;
+  switch (target.kind) {
+    case 'entry':
+      if (target.op === 'update') return '';
+      return target.op === 'create'
+        ? t('extensionsBuiltin.assistant.panel.opCreate')
+        : t('extensionsBuiltin.assistant.panel.opDelete');
+    case 'lorebook':
+      return target.op === 'create'
+        ? t('extensionsBuiltin.assistant.panel.opCreateLorebook')
+        : t('extensionsBuiltin.assistant.panel.opDeleteLorebook');
+    case 'character':
+      return target.op === 'create'
+        ? t('extensionsBuiltin.assistant.panel.opCreateCharacter')
+        : t('extensionsBuiltin.assistant.panel.opDeleteCharacter');
+    case 'message-insert':
+      return t('extensionsBuiltin.assistant.panel.opInsertMessage');
+    case 'message-delete':
+      return t('extensionsBuiltin.assistant.panel.opDeleteMessage');
+    default:
+      return '';
+  }
+}
+
+async function acceptOne(change: StagedChange) {
+  if (isCharacterDelete(change)) {
+    const { result } = await props.api.ui.showPopup({
+      title: t('extensionsBuiltin.assistant.panel.deleteCharacterTitle'),
+      content: t('extensionsBuiltin.assistant.panel.deleteCharacterContent', { name: change.label }),
+      type: POPUP_TYPE.CONFIRM,
+      okButton: 'common.delete',
+      cancelButton: 'common.cancel',
+    });
+    if (result !== POPUP_RESULT.AFFIRMATIVE) return;
+  }
+  emit('accept', [change.id]);
 }
 </script>
 
@@ -110,22 +147,22 @@ function opLabel(change: StagedChange): string {
         :disabled="busy"
         @click="emit('undo')"
       />
-      <template v-if="pendingIds.length > 1">
-        <Button
-          variant="danger"
-          icon="fa-xmark"
-          :label="t('extensionsBuiltin.assistant.panel.rejectAll')"
-          :disabled="busy"
-          @click="emit('reject', pendingIds)"
-        />
-        <Button
-          variant="confirm"
-          icon="fa-check-double"
-          :label="t('extensionsBuiltin.assistant.panel.acceptAll')"
-          :disabled="busy"
-          @click="emit('accept')"
-        />
-      </template>
+      <Button
+        v-if="pendingIds.length > 1"
+        variant="danger"
+        icon="fa-xmark"
+        :label="t('extensionsBuiltin.assistant.panel.rejectAll')"
+        :disabled="busy"
+        @click="emit('reject', pendingIds)"
+      />
+      <Button
+        v-if="acceptAllCount > 1"
+        variant="confirm"
+        icon="fa-check-double"
+        :label="t('extensionsBuiltin.assistant.panel.acceptAll')"
+        :disabled="busy"
+        @click="emit('accept')"
+      />
     </div>
 
     <div v-for="group in groups" :key="group.key" class="changeset-group">
@@ -141,6 +178,14 @@ function opLabel(change: StagedChange): string {
         >
           <span class="change-card-label">{{ change.label }}</span>
           <span v-if="opLabel(change)" class="change-card-op">{{ opLabel(change) }}</span>
+          <span
+            v-if="isCharacterDelete(change) && change.status === 'pending'"
+            class="change-card-op no-undo"
+            :title="t('extensionsBuiltin.assistant.panel.noUndoHint')"
+          >
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            {{ t('extensionsBuiltin.assistant.panel.noUndo') }}
+          </span>
           <span class="change-card-status">{{ STATUS_LABELS[change.status] }}</span>
         </div>
 
@@ -172,7 +217,7 @@ function opLabel(change: StagedChange): string {
             icon="fa-check"
             :label="t('extensionsBuiltin.assistant.quickEdit.accept')"
             :disabled="busy"
-            @click="emit('accept', [change.id])"
+            @click="acceptOne(change)"
           />
         </div>
         <div v-else-if="change.status === 'conflict'" class="change-card-actions">
@@ -265,6 +310,10 @@ function opLabel(change: StagedChange): string {
   border-radius: 999px;
   background-color: var(--white-20a);
   font-size: 0.8em;
+}
+
+.no-undo {
+  color: var(--color-accent-crimson);
 }
 
 .change-card-conflict {

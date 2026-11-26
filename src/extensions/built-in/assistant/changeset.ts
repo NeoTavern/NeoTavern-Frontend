@@ -1,3 +1,4 @@
+import { cloneDeep } from 'lodash-es';
 import { DEFAULT_CHARACTER } from '../../../constants';
 import type { Character, ChatMessage, ExtensionAPI, WorldInfoBook, WorldInfoEntry } from '../../../types';
 import { uuidv4 } from '../../../utils/commons';
@@ -218,12 +219,12 @@ function sameMessage(a: Pick<ChatMessage, 'name' | 'mes'> | undefined, b: Pick<C
   return Boolean(a) && a!.name === b.name && a!.mes === b.mes;
 }
 
-function cardToCharacter(card: Partial<Character>): Character {
-  const base = structuredClone(DEFAULT_CHARACTER);
+export function cardToCharacter(card: Partial<Character>): Character {
+  const base = cloneDeep(DEFAULT_CHARACTER);
   return {
     ...base,
-    ...structuredClone(card),
-    data: { ...base.data, ...structuredClone(card.data) } as Character['data'],
+    ...cloneDeep(card),
+    data: { ...base.data, ...cloneDeep(card.data) } as Character['data'],
   };
 }
 
@@ -277,6 +278,12 @@ export class Changeset {
     existing.entryAfter = input.entryAfter;
     existing.card = input.card;
     return existing.id;
+  }
+
+  /** Removes a pending change without a trace, for a change that a later staged one makes moot. */
+  discard(id: string) {
+    const index = this.changes.findIndex((change) => change.id === id && change.status === 'pending');
+    if (index !== -1) this.changes.splice(index, 1);
   }
 
   reject(ids: string[]) {
@@ -459,18 +466,18 @@ export class Changeset {
     const target = change.target;
     switch (target.kind) {
       case 'message-insert':
-        if (direction === 'apply') await api.chat.insertMessage(structuredClone(change.message!), target.index);
+        if (direction === 'apply') await api.chat.insertMessage(cloneDeep(change.message!), target.index);
         else await api.chat.deleteMessage(target.index);
         return;
       case 'message-delete':
         if (direction === 'apply') await api.chat.deleteMessage(target.index);
-        else await api.chat.insertMessage(structuredClone(change.message!), target.index);
+        else await api.chat.insertMessage(cloneDeep(change.message!), target.index);
         return;
       case 'lorebook': {
         const creates = (direction === 'apply') === (target.op === 'create');
         if (!creates) await api.worldInfo.deleteBook(target.book);
         else if (target.op === 'create') await api.worldInfo.createBook(target.book);
-        else await api.worldInfo.createBook(target.book, structuredClone(change.bookBefore!));
+        else await api.worldInfo.createBook(target.book, cloneDeep(change.bookBefore!));
         return;
       }
       case 'character': {

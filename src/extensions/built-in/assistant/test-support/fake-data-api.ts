@@ -1,7 +1,9 @@
 import { vi } from 'vitest';
 import type {
   Character,
+  ChatInfo,
   ChatMessage,
+  ExtensionAPI,
   Persona,
   PersonaDescription,
   WorldInfoBook,
@@ -19,6 +21,9 @@ export function fakeDataApi(
     history?: Partial<ChatMessage>[];
     books?: WorldInfoBook[];
     persona?: Persona;
+    /** No open chat when false. Default true. */
+    chatOpen?: boolean;
+    mergeToolMessages?: boolean;
   } = {},
 ) {
   const characters = (options.characters ?? []).map((character) => structuredClone(character)) as Character[];
@@ -32,6 +37,7 @@ export function fakeDataApi(
     character: {
       getAll: () => characters,
       get: (avatar: string) => characters.find((character) => character.avatar === avatar) ?? null,
+      getActives: () => characters.slice(0, 1),
       update: vi.fn(async (avatar: string, data: Partial<Character>) => {
         const character = characters.find((candidate) => candidate.avatar === avatar)!;
         const { data: nested, ...top } = data;
@@ -53,6 +59,7 @@ export function fakeDataApi(
     chat: {
       getHistory: () => history,
       getMessage: (index: number) => history[index],
+      getChatInfo: () => (options.chatOpen === false ? null : ({ file_id: 'chat' } as ChatInfo)),
       updateMessage: vi.fn(async (index: number, content: string) => {
         history[index].mes = content;
       }),
@@ -92,6 +99,12 @@ export function fakeDataApi(
           1,
         );
       }),
+    },
+    settings: {
+      getGlobal: ((path: string) =>
+        path === 'chat.mergeToolMessages'
+          ? (options.mergeToolMessages ?? false)
+          : undefined) as ExtensionAPI['settings']['getGlobal'],
     },
     persona: {
       getActive: () => persona,
