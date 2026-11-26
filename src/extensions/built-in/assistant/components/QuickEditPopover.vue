@@ -8,6 +8,7 @@ import {
   resolveContext,
   resolveQuickEditProfile,
   runQuickEdit,
+  recordLastCommand,
   type QuickEditTarget,
   type QuickEditTurn,
 } from '../quick-edit';
@@ -115,13 +116,7 @@ async function accept() {
     showError(error instanceof Error ? error.message : String(error));
     return;
   }
-  if (activeCommand.value) {
-    props.api.settings.set('lastCommandByTarget', {
-      ...settings.lastCommandByTarget,
-      [props.target.identifier]: activeCommand.value.id,
-    });
-    props.api.settings.save();
-  }
+  if (activeCommand.value) recordLastCommand(props.api, props.target.identifier, activeCommand.value.id);
   emit('close');
 }
 

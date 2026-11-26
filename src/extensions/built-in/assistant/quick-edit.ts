@@ -198,3 +198,64 @@ export async function runQuickEdit(
   });
   return extractCodeBlock(text);
 }
+
+/** Remembers `commandId` as the last command applied to `identifier`, so it's offered first next time. */
+export function recordLastCommand(api: ExtensionAPI<AssistantSettings>, identifier: string, commandId: string) {
+  api.settings.set('lastCommandByTarget', { ...api.settings.get('lastCommandByTarget'), [identifier]: commandId });
+  api.settings.save();
+}
+
+export function commandIcon(command: Pick<AssistantCommand, 'autoAccept'>): string {
+  return command.autoAccept ? 'fa-bolt' : 'fa-wand-magic-sparkles';
+}
+
+/**
+ * Runs `command` on `target` and applies the result without review (a pinned auto-accept click).
+ * A chat change while it runs cancels it, so a message index from the old chat is never applied to the new one.
+ */
+export async function runCommandAndApply(
+  api: ExtensionAPI<AssistantSettings>,
+  target: QuickEditTarget,
+  command: AssistantCommand,
+): Promise<void> {
+  const t = api.i18n.t;
+  const settings = api.settings.get();
+  const profile = resolveQuickEditProfile(api, settings, command);
+  if (!profile) {
+    api.ui.showToast(t('extensionsBuiltin.assistant.quickEdit.noProfile'), 'error');
+    return;
+  }
+
+  const controller = new AbortController();
+  const offChatEntered = api.events.on('chat:entered', () => controller.abort());
+  const cancelled = () =>
+    api.ui.showToast(t('extensionsBuiltin.assistant.pinned.cancelled', { name: command.name }), 'info');
+  try {
+    const context = await resolveContext(api, target.context, settings.contextMessageCount);
+    const result = await runQuickEdit(api, {
+      messages: buildQuickEditMessages(target, context, command.prompt),
+      profile,
+      signal: controller.signal,
+    });
+    if (controller.signal.aborted) {
+      cancelled();
+      return;
+    }
+    if (!result.trim()) {
+      api.ui.showToast(t('extensionsBuiltin.assistant.pinned.emptyResult', { name: command.name }), 'error');
+      return;
+    }
+    await target.apply(result);
+    recordLastCommand(api, target.identifier, command.id);
+    api.ui.showToast(t('extensionsBuiltin.assistant.pinned.applied', { name: command.name }), 'success');
+  } catch (error) {
+    if (controller.signal.aborted) {
+      cancelled();
+      return;
+    }
+    console.error(error);
+    api.ui.showToast(error instanceof Error ? error.message : String(error), 'error');
+  } finally {
+    offChatEntered();
+  }
+}

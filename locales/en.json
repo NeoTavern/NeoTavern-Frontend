@@ -1529,6 +1529,33 @@
           "promptContent": "Prompt content",
           "extension": "Extension setting"
         }
+      },
+      "pinned": {
+        "running": "Running {name}…",
+        "applied": "{name} applied.",
+        "cancelled": "{name} was cancelled because the chat changed.",
+        "emptyResult": "{name} returned no text, so nothing was changed."
+      },
+      "settings": {
+        "connectionProfile": "Default connection profile",
+        "connectionProfileHint": "Used by commands without their own profile. Empty uses the globally selected profile.",
+        "contextMessageCount": "Context messages",
+        "contextMessageCountHint": "How many earlier chat messages a message or input edit sees.",
+        "commands": "Commands",
+        "commandsHint": "Saved instructions. Pinned commands get their own button on messages and the input box.",
+        "addCommand": "Add command",
+        "deleteCommand": "Delete command",
+        "dragToReorder": "Drag to reorder",
+        "name": "Name",
+        "prompt": "Instruction",
+        "commandProfile": "Connection profile",
+        "commandProfileDefault": "Assistant default",
+        "pinned": "Pinned",
+        "pinnedHint": "Show a button for this command on messages and the input box.",
+        "autoAccept": "Auto-accept",
+        "autoAcceptHint": "A click applies the result without review. There is no undo.",
+        "nameInvalid": "Use lowercase letters, digits and dashes, starting with a letter or digit.",
+        "nameTaken": "Another command already uses this name."
       }
     },
     "chatTranslation": {

@@ -1533,6 +1533,33 @@ export interface MessageSchema {
           extension: string;
         };
       };
+      pinned: {
+        running: string;
+        applied: string;
+        cancelled: string;
+        emptyResult: string;
+      };
+      settings: {
+        connectionProfile: string;
+        connectionProfileHint: string;
+        contextMessageCount: string;
+        contextMessageCountHint: string;
+        commands: string;
+        commandsHint: string;
+        addCommand: string;
+        deleteCommand: string;
+        dragToReorder: string;
+        name: string;
+        prompt: string;
+        commandProfile: string;
+        commandProfileDefault: string;
+        pinned: string;
+        pinnedHint: string;
+        autoAccept: string;
+        autoAcceptHint: string;
+        nameInvalid: string;
+        nameTaken: string;
+      };
     };
     chatTranslation: {
       connectionProfile: string;

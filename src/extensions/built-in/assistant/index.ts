@@ -1,7 +1,9 @@
 import { markRaw } from 'vue';
 import type { CodeMirrorTarget, ExtensionAPI } from '../../../types';
 import MessageQuickEditButton from './components/MessageQuickEditButton.vue';
+import SettingsPanel from './components/SettingsPanel.vue';
 import { manifest } from './manifest';
+import { setupPinnedCommands } from './pinned-commands';
 import {
   createFieldTarget,
   createInputTarget,
@@ -18,9 +20,10 @@ export { migrateAssistantSettings as migrateSettings } from './types';
 
 const QUICK_EDIT_ID = 'assistant.quick-edit';
 
-// Pinned commands are registered in M1 session 4.
 export function activate(api: ExtensionAPI<AssistantSettings>) {
   const t = api.i18n.t;
+
+  api.ui.registerSettingsPanel(SettingsPanel, { api });
 
   const registerWand = (match: CodeMirrorTarget | RegExp, identifier: string, label: string) => {
     api.ui.registerTextareaTool(match, {
@@ -71,4 +74,6 @@ export function activate(api: ExtensionAPI<AssistantSettings>) {
 
   api.events.on('chat:entered', registerInputEntries);
   registerInputEntries();
+
+  setupPinnedCommands(api, manifest.name);
 }

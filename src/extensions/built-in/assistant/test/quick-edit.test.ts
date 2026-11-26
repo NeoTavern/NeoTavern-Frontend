@@ -1,7 +1,18 @@
 import { describe, expect, test } from 'vitest';
-import type { Character, ChatMessage, Persona, WorldInfoBook } from '../../../../types';
-import { buildQuickEditMessages, resolveContext, type ResolvedQuickEditContext } from '../quick-edit';
-import { createDefaultSettings, migrateAssistantSettings, type AssistantCommand } from '../types';
+import type { Character, ChatMessage, ExtensionAPI, Persona, WorldInfoBook } from '../../../../types';
+import {
+  buildQuickEditMessages,
+  resolveContext,
+  runCommandAndApply,
+  type QuickEditTarget,
+  type ResolvedQuickEditContext,
+} from '../quick-edit';
+import {
+  createDefaultSettings,
+  migrateAssistantSettings,
+  type AssistantCommand,
+  type AssistantSettings,
+} from '../types';
 
 function fakeApi(options: { history?: Pick<ChatMessage, 'name' | 'mes'>[]; characters?: Partial<Character>[] } = {}) {
   const characters = (options.characters ?? []) as Character[];
@@ -108,5 +119,96 @@ describe('migrateAssistantSettings', () => {
     expect(migrated.commands).toEqual(commands);
     expect(migrated.contextMessageCount).toBe(7);
     expect(migrated.lastCommandByTarget).toEqual({});
+  });
+});
+
+describe('runCommandAndApply', () => {
+  const command: AssistantCommand = {
+    id: 'translate',
+    name: 'translate',
+    prompt: 'Translate to English.',
+    connectionProfile: 'profile-1',
+    pinned: true,
+    autoAccept: true,
+  };
+
+  function autoApplyApi(generate: () => Promise<{ content: string }>) {
+    const listeners: Record<string, (() => void)[]> = {};
+    const settings = createDefaultSettings();
+    const toasts: string[] = [];
+    const api = {
+      ...fakeApi({ history: [{ name: 'Bot', mes: 'hola' }] }),
+      i18n: { t: (key: string) => key },
+      settings: {
+        get: (path?: keyof typeof settings) => (path ? settings[path] : settings),
+        getGlobal: () => '',
+        set: (path: keyof typeof settings, value: never) => (settings[path] = value),
+        save: () => {},
+      },
+      events: {
+        on: (event: string, listener: () => void) => {
+          (listeners[event] ??= []).push(listener);
+          return () => (listeners[event] = listeners[event].filter((other) => other !== listener));
+        },
+      },
+      ui: { showToast: (message: string) => toasts.push(message) },
+      llm: { generate },
+    };
+    const emit = (event: string) => listeners[event]?.forEach((listener) => listener());
+    return { api: api as unknown as ExtensionAPI<AssistantSettings>, emit, settings, toasts };
+  }
+
+  function messageTarget(apply: (text: string) => void): QuickEditTarget {
+    return {
+      identifier: 'chat.message',
+      label: 'Message',
+      text: 'hola',
+      context: { kind: 'chat', beforeIndex: 0 },
+      apply,
+    };
+  }
+
+  test('applies the result and records the command', async () => {
+    const { api, settings } = autoApplyApi(async () => ({ content: '```\nhello\n```' }));
+    const applied: string[] = [];
+
+    await runCommandAndApply(
+      api,
+      messageTarget((text) => applied.push(text)),
+      command,
+    );
+
+    expect(applied).toEqual(['hello']);
+    expect(settings.lastCommandByTarget['chat.message']).toBe('translate');
+  });
+
+  test('a chat change during the run cancels the apply', async () => {
+    const { api, emit, settings } = autoApplyApi(async () => {
+      emit('chat:entered');
+      return { content: '```\nhello\n```' };
+    });
+    const applied: string[] = [];
+
+    await runCommandAndApply(
+      api,
+      messageTarget((text) => applied.push(text)),
+      command,
+    );
+
+    expect(applied).toEqual([]);
+    expect(settings.lastCommandByTarget).toEqual({});
+  });
+
+  test('an empty result is not applied', async () => {
+    const { api } = autoApplyApi(async () => ({ content: '```\n\n```' }));
+    const applied: string[] = [];
+
+    await runCommandAndApply(
+      api,
+      messageTarget((text) => applied.push(text)),
+      command,
+    );
+
+    expect(applied).toEqual([]);
   });
 });
