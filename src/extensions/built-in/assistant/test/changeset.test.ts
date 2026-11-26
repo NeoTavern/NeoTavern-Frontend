@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { Changeset, type StagedChange } from '../changeset';
+import type { Character, ChatMessage } from '../../../../types';
+import { Changeset, renderBook, renderCard, renderEntry, type StagedChange } from '../changeset';
 import { createAssistantTools } from '../tools';
-import { entry, fakeDataApi } from '../test-support/fake-data-api';
+import { entry, fakeDataApi, type FakeDataApi } from '../test-support/fake-data-api';
 
 function setup(options: Parameters<typeof fakeDataApi>[0]) {
   const api = fakeDataApi(options);
@@ -147,5 +148,174 @@ describe('changeset', () => {
       await tools.edit_character_field({ avatar: 'hazel.png', field: 'alternate_greetings.2', value: '' }),
     ).toHaveProperty('error');
     expect(changes).toHaveLength(0);
+  });
+});
+
+function chatOf(...texts: string[]) {
+  return texts.map((mes, index) => ({ name: index % 2 ? 'User' : 'Hazel', is_user: index % 2 === 1, mes }));
+}
+
+function message(name: string, mes: string) {
+  return { name, mes, is_user: false, is_system: false } as ChatMessage;
+}
+
+function stageMessageDelete(changeset: Changeset, api: FakeDataApi, index: number) {
+  const removed = api.store.history[index];
+  return changeset.stage({
+    target: { kind: 'message-delete', index },
+    label: `#${index}`,
+    oldValue: removed.mes,
+    newValue: '',
+    message: structuredClone(removed),
+  });
+}
+
+function stageMessageInsert(changeset: Changeset, index: number, inserted: ChatMessage) {
+  return changeset.stage({
+    target: { kind: 'message-insert', index },
+    label: `#${index}`,
+    oldValue: '',
+    newValue: inserted.mes,
+    message: inserted,
+  });
+}
+
+describe('changeset create and delete', () => {
+  test('two message deletes staged together remove the right messages, and undo puts both back', async () => {
+    const { api, changeset } = setup({ history: chatOf('m0', 'm1', 'm2', 'm3', 'm4', 'm5') });
+    stageMessageDelete(changeset, api, 3);
+    stageMessageDelete(changeset, api, 4);
+
+    await changeset.apply(api);
+    expect(api.store.history.map((m) => m.mes)).toEqual(['m0', 'm1', 'm2', 'm5']);
+
+    expect((await changeset.undoLast(api)).ok).toBe(true);
+    expect(api.store.history.map((m) => m.mes)).toEqual(['m0', 'm1', 'm2', 'm3', 'm4', 'm5']);
+  });
+
+  test('inserts and a delete staged in one batch land at the staged positions, and undo restores the chat', async () => {
+    const { api, changeset } = setup({ history: chatOf('m0', 'm1', 'm2', 'm3') });
+    stageMessageInsert(changeset, 3, message('Hazel', 'x'));
+    stageMessageInsert(changeset, 3, message('Hazel', 'y'));
+    stageMessageDelete(changeset, api, 1);
+    stageMessageInsert(changeset, 1, message('Hazel', 'z'));
+
+    await changeset.apply(api);
+    expect(api.store.history.map((m) => m.mes)).toEqual(['m0', 'z', 'm2', 'x', 'y', 'm3']);
+
+    expect((await changeset.undoLast(api)).ok).toBe(true);
+    expect(api.store.history.map((m) => m.mes)).toEqual(['m0', 'm1', 'm2', 'm3']);
+  });
+
+  test('a message edit staged with a later delete is checked and undone at its own index', async () => {
+    const { api, changeset, tools } = setup({ history: chatOf('m0', 'm1', 'm2', 'm3') });
+    await tools.edit_message({ index: 3, value: 'M3' });
+    stageMessageDelete(changeset, api, 1);
+
+    await changeset.apply(api);
+    expect(api.store.history.map((m) => m.mes)).toEqual(['m0', 'm2', 'M3']);
+
+    expect((await changeset.undoLast(api)).ok).toBe(true);
+    expect(api.store.history.map((m) => m.mes)).toEqual(['m0', 'm1', 'm2', 'm3']);
+  });
+
+  test('a message delete whose message changed after staging becomes a conflict with no write', async () => {
+    const { api, changes, changeset } = setup({ history: chatOf('m0', 'm1') });
+    stageMessageDelete(changeset, api, 1);
+    api.store.history[1].mes = 'edited by the user';
+
+    await changeset.apply(api);
+
+    expect(changes[0].status).toBe('conflict');
+    expect(api.chat.deleteMessage).not.toHaveBeenCalled();
+    expect(api.store.history).toHaveLength(2);
+  });
+
+  test('a lorebook created with two entries applies book first, and undo removes all three', async () => {
+    const { api, changeset } = setup({});
+    changeset.stage({
+      target: { kind: 'lorebook', book: 'Town', op: 'create' },
+      label: 'Town',
+      oldValue: '',
+      newValue: '',
+    });
+    for (const uid of [1, 2]) {
+      const created = entry(uid, { comment: `E${uid}`, content: `Entry ${uid}` });
+      changeset.stage({
+        target: { kind: 'entry', book: 'Town', uid, op: 'create' },
+        label: `E${uid}`,
+        oldValue: '',
+        newValue: renderEntry(created),
+        entryAfter: created,
+      });
+    }
+
+    expect(await changeset.apply(api)).toHaveLength(3);
+    expect(api.store.books).toHaveLength(1);
+    expect(api.store.books[0].entries.map((e) => e.uid)).toEqual([1, 2]);
+
+    expect((await changeset.undoLast(api)).ok).toBe(true);
+    expect(api.store.books).toEqual([]);
+  });
+
+  test('a lorebook delete undoes by recreating the book with its entries', async () => {
+    const original = { name: 'Eldoria', entries: [entry(1, { comment: 'Castle', content: 'A ruin.' })] };
+    const { api, changeset } = setup({ books: [original] });
+    changeset.stage({
+      target: { kind: 'lorebook', book: 'Eldoria', op: 'delete' },
+      label: 'Eldoria',
+      oldValue: renderBook(original),
+      newValue: '',
+      bookBefore: structuredClone(original),
+    });
+
+    await changeset.apply(api);
+    expect(api.store.books).toEqual([]);
+
+    expect((await changeset.undoLast(api)).ok).toBe(true);
+    expect(api.store.books).toEqual([original]);
+  });
+
+  test('a character create applies, records the avatar, and undo deletes it', async () => {
+    const { api, changes, changeset } = setup({});
+    const card = { name: 'Twin', description: 'A baker.', data: { alternate_greetings: ['Hi!', 'Hello!'] } };
+    const id = changeset.stage({
+      target: { kind: 'character', avatar: '', op: 'create' },
+      label: 'Twin',
+      oldValue: '',
+      newValue: renderCard(card as Partial<Character>),
+      card: card as Partial<Character>,
+    });
+    expect(changes[0].target).toMatchObject({ avatar: `new:${id}` });
+
+    await changeset.apply(api);
+    const avatar = (changes[0].target as { avatar: string }).avatar;
+    expect(api.character.get(avatar)).toMatchObject({
+      name: 'Twin',
+      description: 'A baker.',
+      data: { alternate_greetings: ['Hi!', 'Hello!'] },
+    });
+
+    expect((await changeset.undoLast(api)).ok).toBe(true);
+    expect(api.store.characters).toEqual([]);
+    expect(changes[0].target).toMatchObject({ avatar: `new:${id}` });
+  });
+
+  test('Accept all skips a character delete, which applies only by its id and leaves no undo', async () => {
+    const { api, changes, changeset } = setup({ characters: [hazel] });
+    const id = changeset.stage({
+      target: { kind: 'character', avatar: 'hazel.png', op: 'delete' },
+      label: 'Hazel',
+      oldValue: renderCard(hazel as Partial<Character>),
+      newValue: '',
+    });
+
+    expect(await changeset.apply(api)).toEqual([]);
+    expect(changes[0].status).toBe('pending');
+
+    await changeset.apply(api, [id]);
+    expect(changes[0].status).toBe('applied');
+    expect(api.store.characters).toEqual([]);
+    expect(changeset.hasUndo()).toBe(false);
   });
 });

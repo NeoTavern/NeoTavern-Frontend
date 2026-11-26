@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { Button } from '../../../../components/UI';
 import type { ExtensionAPI } from '../../../../types';
 import TextDiff from '../../_shared/components/TextDiff.vue';
-import { Changeset, isGreetingRemoval, type ChangeTarget, type StagedChange } from '../changeset';
+import { Changeset, isGreetingRemoval, type StagedChange } from '../changeset';
 import type { AssistantSettings } from '../types';
 
 const props = defineProps<{
@@ -30,17 +30,24 @@ interface Group {
   changes: StagedChange[];
 }
 
-function groupOf(target: ChangeTarget): Omit<Group, 'changes'> {
+function groupOf(change: StagedChange): Omit<Group, 'changes'> {
+  const target = change.target;
   switch (target.kind) {
     case 'character-field':
+    case 'character':
       return {
         key: `character:${target.avatar}`,
         icon: 'fa-user',
-        title: props.api.character.get(target.avatar)?.name ?? target.avatar,
+        // A pending create has no character yet; its card label is the name.
+        title:
+          props.api.character.get(target.avatar)?.name ?? (target.kind === 'character' ? change.label : target.avatar),
       };
     case 'message':
+    case 'message-insert':
+    case 'message-delete':
       return { key: 'messages', icon: 'fa-comment', title: t('extensionsBuiltin.assistant.panel.groupMessages') };
     case 'entry':
+    case 'lorebook':
       return { key: `book:${target.book}`, icon: 'fa-book', title: target.book };
     case 'persona-description': {
       const persona = props.api.persona.getAll().find((candidate) => candidate.avatarId === target.avatarId);
@@ -53,7 +60,7 @@ function groupOf(target: ChangeTarget): Omit<Group, 'changes'> {
 const groups = computed<Group[]>(() => {
   const byKey = new Map<string, Group>();
   for (const change of props.changes) {
-    const group = groupOf(change.target);
+    const group = groupOf(change);
     if (!byKey.has(group.key)) byKey.set(group.key, { ...group, changes: [] });
     byKey.get(group.key)!.changes.push(change);
   }

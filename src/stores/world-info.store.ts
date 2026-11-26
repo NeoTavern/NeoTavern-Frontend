@@ -286,6 +286,7 @@ export const useWorldInfoStore = defineStore('world-info', () => {
     worldInfoCache,
     loadingBooks,
     initialize,
+    resolveBookFileId,
     updateEntry,
     createBook,
     createEntry,

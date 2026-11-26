@@ -38,6 +38,17 @@ export function fakeDataApi(
         Object.assign(character, top);
         if (nested) character.data = { ...character.data, ...nested } as Character['data'];
       }),
+      create: vi.fn(async (character: Character) => {
+        const avatar = `${character.name}-${characters.length}.png`;
+        characters.push(structuredClone({ ...character, avatar }));
+        return avatar;
+      }),
+      delete: vi.fn(async (avatar: string) => {
+        characters.splice(
+          characters.findIndex((candidate) => candidate.avatar === avatar),
+          1,
+        );
+      }),
     },
     chat: {
       getHistory: () => history,
@@ -45,11 +56,27 @@ export function fakeDataApi(
       updateMessage: vi.fn(async (index: number, content: string) => {
         history[index].mes = content;
       }),
+      insertMessage: vi.fn(async (message: Omit<ChatMessage, 'send_date'>, index?: number) => {
+        history.splice(index ?? history.length, 0, structuredClone(message) as ChatMessage);
+      }),
+      deleteMessage: vi.fn(async (index: number) => {
+        history.splice(index, 1);
+      }),
     },
     worldInfo: {
       getAllBookNames: () => books.map((candidate) => ({ file_id: candidate.name, name: candidate.name })),
       // Like the real backend: an unknown name gives an empty book, not null.
       getBook: async (name: string) => structuredClone(book(name) ?? { name, entries: [] }),
+      createBook: vi.fn(async (name: string, content?: WorldInfoBook) => {
+        books.push(structuredClone(content ?? { name, entries: [] }));
+        return name;
+      }),
+      deleteBook: vi.fn(async (name: string) => {
+        books.splice(
+          books.findIndex((candidate) => candidate.name === name),
+          1,
+        );
+      }),
       createDefaultEntry: (uid: number) => entry(uid, { order: 100 }),
       createEntry: vi.fn(async (name: string, created: WorldInfoEntry) => {
         book(name)!.entries.push(structuredClone(created));
@@ -81,7 +108,13 @@ export type FakeDataApi = ReturnType<typeof fakeDataApi>;
 export function writeSpies(api: FakeDataApi) {
   return [
     api.character.update,
+    api.character.create,
+    api.character.delete,
     api.chat.updateMessage,
+    api.chat.insertMessage,
+    api.chat.deleteMessage,
+    api.worldInfo.createBook,
+    api.worldInfo.deleteBook,
     api.worldInfo.createEntry,
     api.worldInfo.updateEntry,
     api.worldInfo.deleteEntry,

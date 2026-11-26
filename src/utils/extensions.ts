@@ -566,7 +566,7 @@ export function createExtensionApi(extensionId: string): ExtensionAPI {
           const blob = await res.blob();
           avatarImage = new File([blob], 'avatar.png', { type: 'image/png' });
         }
-        await store.createNewCharacter(character, avatarImage);
+        return await store.createNewCharacter(character, avatarImage);
       },
       delete: async (avatar, deleteChats) => useCharacterStore().deleteCharacter(avatar, deleteChats ?? false),
       update: async (avatar, data) => useCharacterStore().updateAndSaveCharacter(avatar, data),
@@ -594,6 +594,15 @@ export function createExtensionApi(extensionId: string): ExtensionAPI {
       getBook: async (name) => {
         const book = await useWorldInfoStore().getBookFromCache(name, true);
         return book ? deepClone(book) : null;
+      },
+      createBook: async (name, content) => {
+        const fileId = await useWorldInfoStore().createBook(name, content);
+        if (!fileId) throw new Error(`Lorebook "${name}" could not be created.`);
+        return fileId;
+      },
+      deleteBook: async (nameOrFileId) => {
+        const store = useWorldInfoStore();
+        await store.deleteBook(store.resolveBookFileId(nameOrFileId) ?? nameOrFileId);
       },
       getActiveBookNames: () => deepClone(useWorldInfoStore().activeBookNames),
       setGlobalBookNames: (names) => {

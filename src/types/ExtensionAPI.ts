@@ -557,7 +557,8 @@ export interface ExtensionAPI<
     getAll: () => Character[];
     get: (avatar: string) => Character | null;
     getEditing: () => Character | null;
-    create: (character: Character, avatarImage?: File) => Promise<void>;
+    /** Returns the new character's avatar, or undefined when the backend didn't create it. */
+    create: (character: Character, avatarImage?: File) => Promise<string | undefined>;
     delete: (avatar: string, deleteChats?: boolean) => Promise<void>;
     update: (avatar: string, data: Partial<Character>) => Promise<void>;
   };
@@ -575,6 +576,10 @@ export interface ExtensionAPI<
     updateSettings: (settings: Partial<WorldInfoSettings>) => void;
     getAllBookNames: () => WorldInfoHeader[];
     getBook: (name: string) => Promise<WorldInfoBook | null>;
+    /** Creates a book and returns its file id. Throws when it couldn't be created. */
+    createBook: (name: string, content?: WorldInfoBook) => Promise<string>;
+    /** `nameOrFileId` is the book's name or its file id. */
+    deleteBook: (nameOrFileId: string) => Promise<void>;
     getActiveBookNames: () => string[];
     setGlobalBookNames: (names: string[]) => void;
     createEntry: (bookName: string, entry: WorldInfoEntry) => Promise<void>;
