@@ -156,7 +156,7 @@ export function createAssistantTools(api: ToolsAPI, changeset: Changeset): ToolD
 
     tool(
       'upsert_entry',
-      'Propose a lorebook entry change. Without uid, creates an entry. With uid, changes only the given fields.',
+      'Propose a lorebook entry change. Without uid, creates an entry and returns its uid. With uid, changes only the given fields.',
       objectSchema(
         { book: str(), uid: int(), comment: str('Title'), key: { type: 'array', items: str() }, content: str() },
         ['book'],
@@ -176,7 +176,7 @@ export function createAssistantTools(api: ToolsAPI, changeset: Changeset): ToolD
             newValue: renderEntry(entryAfter),
             entryAfter,
           });
-          return { staged: id };
+          return { staged: id, uid };
         }
 
         const uid = Number(args.uid);

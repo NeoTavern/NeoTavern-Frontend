@@ -1,3 +1,8 @@
+import type { StructuredRequestFormat } from '../_shared/runtime/structured-request-format';
+
+/** How the panel talks to the model: native tool calling, or `{ reply, calls }` as structured output. */
+export type AssistantRequestFormat = 'tools' | StructuredRequestFormat;
+
 export interface AssistantCommand {
   id: string;
   /** Slash name used by M2. Unique, matches `COMMAND_NAME_PATTERN`. */
@@ -18,6 +23,7 @@ export interface AssistantSettings {
   commands: AssistantCommand[];
   /** Target identifier → command id. */
   lastCommandByTarget: Record<string, string>;
+  requestFormat: AssistantRequestFormat;
 }
 
 export const COMMAND_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
@@ -47,6 +53,7 @@ export function createDefaultSettings(): AssistantSettings {
     contextMessageCount: 3,
     commands: DEFAULT_COMMANDS.map((command) => ({ ...command })),
     lastCommandByTarget: {},
+    requestFormat: 'tools',
   };
 }
 

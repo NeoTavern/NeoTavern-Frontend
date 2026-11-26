@@ -56,8 +56,11 @@ describe('assistant tools', () => {
   test('upsert_entry without uid stages a create with uid = max + 1', async () => {
     const { changes, tools } = setup();
 
-    await tools.upsert_entry({ book: 'Eldoria', comment: 'Town', key: ['town'], content: 'Busy.' });
-    await tools.upsert_entry({ book: 'Eldoria', comment: 'Mill' });
+    const town = await tools.upsert_entry({ book: 'Eldoria', comment: 'Town', key: ['town'], content: 'Busy.' });
+    const mill = await tools.upsert_entry({ book: 'Eldoria', comment: 'Mill' });
+
+    // The model learns the new uid, so it can update or delete its own create.
+    expect([town.uid, mill.uid]).toEqual([10, 11]);
 
     expect(changes.map((change) => change.target)).toEqual([
       { kind: 'entry', book: 'Eldoria', uid: 10, op: 'create' },
