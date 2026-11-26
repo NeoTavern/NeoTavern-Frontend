@@ -556,7 +556,6 @@
     "tokens": "Tokens",
     "confirm": "Confirm",
     "delete": "Delete",
-    "deleted": "Deleted",
     "of": "of",
     "continue": "Continue",
     "search": "Search",
@@ -600,7 +599,6 @@
     "preview": "Preview",
     "login": "Login",
     "copy": "Copy",
-    "regenerate": "Regenerate",
     "expand": "Expand",
     "collapse": "Collapse",
     "model": "Model",
@@ -1403,10 +1401,6 @@
         "name": "Phone",
         "description": "Adds message-scoped SMS conversations for roleplay chats."
       },
-      "rewrite": {
-        "name": "Magic Rewrite",
-        "description": "Rewrite and enhance text in input, chat, and other fields using LLM."
-      },
       "roadway": {
         "name": "Roadway",
         "description": "Provides AI-generated choices for user replies, creating a CYOA experience."
@@ -1707,133 +1701,6 @@
       "branchCreationFailed": "Failed to create branch",
       "branchName": "Branch",
       "loadChatFailed": "Failed to load selected chat"
-    },
-    "rewrite": {
-      "popupTitle": "Magic Rewrite",
-      "popupTitleCharacter": "Rewrite Character: {name}",
-      "popupTitleField": "Rewrite {field}",
-      "popupTitleMessage": "Rewrite Message",
-      "popupTitleInput": "Rewrite Input",
-      "popupTitleExtension": "Rewrite Extension Field",
-      "settings": {
-        "defaultConnectionProfile": "Default Connection Profile",
-        "templates": "Templates",
-        "renameTemplate": "Rename Template",
-        "duplicateTemplate": "Duplicate Template",
-        "deleteTemplate": "Delete Template",
-        "name": "Name",
-        "ignoreInput": "Ignore Input",
-        "ignoreInputHint": "If enabled, this template doesn't use {'{{input}}'} and the UI will hide input-related controls",
-        "instruction": "Default Instruction",
-        "customArgs": "Custom Flags / Arguments",
-        "noCustomArgs": "No custom arguments defined.",
-        "argKeyPlaceholder": "Key (e.g. includeChar)",
-        "argLabelPlaceholder": "Label",
-        "argDefaultPlaceholder": "Default",
-        "newArgument": "New Argument",
-        "argTypes": {
-          "boolean": "Boolean",
-          "string": "String",
-          "number": "Number"
-        },
-        "addArgument": "Add Argument",
-        "templateMacro": "Template Macro",
-        "none": "None",
-        "selectTemplate": "Select a template to edit",
-        "resetToDefault": "Reset to default",
-        "sessionPreamble": "Session Preamble",
-        "sessionPreambleHint": "The system prompt used for the chat session context.",
-        "deleteAllSessions": "Delete All Sessions",
-        "resetTemplatesTitle": "Reset Built-in Rewrite Templates?",
-        "resetTemplatesContent": "This restores the built-in Magic Rewrite templates from the latest app defaults. Your custom templates will be kept.",
-        "deleteAllSessionsTitle": "Delete All Rewrite Sessions?",
-        "deleteAllSessionsContent": "This permanently deletes every saved Magic Rewrite session. Templates and settings will not be changed."
-      },
-      "popup": {
-        "template": "Template",
-        "connectionProfile": "Connection Profile",
-        "contextPrompt": "Context & Prompt",
-        "escapeMacros": "Escape Macros",
-        "escapeMacrosHint": "Prevents {'{{macros}}'} in input text from being processed",
-        "contextMessages": "Context Messages:",
-        "instruction": "Instruction",
-        "original": "Original",
-        "new": "New",
-        "output": "Output",
-        "generate": "Generate",
-        "abort": "Abort",
-        "apply": "Apply",
-        "continue": "Continue",
-        "generating": "Generating...",
-        "oneShot": "One-Shot",
-        "sessions": "Sessions",
-        "diff": "Diff",
-        "showDiff": "Show Diff",
-        "generalDiff": "Compare Original vs Latest",
-        "relatedCharacters": "Related Characters",
-        "contextCharacters": "Context Characters",
-        "contextCharactersDesc": "Select additional characters to include in the context.",
-        "worldInfoContext": "World Info Context",
-        "currentEntry": "Current Entry",
-        "contextLorebooks": "Context Lorebooks",
-        "contextLorebooksDesc": "Select additional lorebooks to include in the context.",
-        "allEntries": "All entries (select to restrict)",
-        "structuredResponseFormat": "Structured Response Format",
-        "structuredFormats": {
-          "native": "Native (Structured)",
-          "json": "JSON (Structured)",
-          "xml": "XML (Structured)",
-          "text": "Raw Text (Readonly/Chat)"
-        }
-      },
-      "fields": {
-        "description": "Description",
-        "personality": "Personality",
-        "scenario": "Scenario",
-        "firstMessage": "First Message",
-        "alternateGreeting": "Alternate Greeting {index}",
-        "exampleMessages": "Example Messages",
-        "extension": "Extension Field",
-        "chatMessage": "Chat Message",
-        "chatInput": "Chat Input"
-      },
-      "args": {
-        "includeChar": "Include Active Character",
-        "includePersona": "Include Active Persona",
-        "includeSelectedLorebooks": "Include Selected Lorebooks",
-        "includeSelectedCharacters": "Include Selected Characters"
-      },
-      "session": {
-        "sessions": "Sessions",
-        "noSessions": "No active sessions. Create a new one to start.",
-        "sessionItem": "Session {date}",
-        "deleteFromHere": "Delete this and subsequent messages",
-        "typeMessage": "Type your message...",
-        "createFailed": "Failed to create session",
-        "selectSession": "Select or create a session to start.",
-        "newSession": "New Session",
-        "systemInstruction": "System Instruction",
-        "toolResult": "Tool Result",
-        "toolCalls": "Tool Calls",
-        "deleteConfirm": "Are you sure you want to delete this message? This will also delete all subsequent messages in this session."
-      },
-      "buttons": {
-        "rewriteMessage": "Rewrite Message",
-        "rewriteInput": "Rewrite Input",
-        "rewriteCharacter": "Rewrite Character"
-      },
-      "errors": {
-        "templateNotFound": "Template not found",
-        "selectProfile": "Please select a connection profile",
-        "noConnectionProfile": "No connection profile selected"
-      },
-      "messages": {
-        "generationAborted": "Generation aborted",
-        "generationFailed": "Generation failed",
-        "copiedToClipboard": "Copied to clipboard",
-        "copyFailed": "Failed to copy",
-        "textUpdated": "Text updated"
-      }
     },
     "groupChat": {
       "settings": {

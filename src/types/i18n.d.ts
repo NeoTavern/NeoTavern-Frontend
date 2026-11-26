@@ -559,7 +559,6 @@ export interface MessageSchema {
     tokens: string;
     confirm: string;
     delete: string;
-    deleted: string;
     of: string;
     continue: string;
     search: string;
@@ -603,7 +602,6 @@ export interface MessageSchema {
     preview: string;
     login: string;
     copy: string;
-    regenerate: string;
     expand: string;
     collapse: string;
     model: string;
@@ -1406,10 +1404,6 @@ export interface MessageSchema {
         name: string;
         description: string;
       };
-      rewrite: {
-        name: string;
-        description: string;
-      };
       roadway: {
         name: string;
         description: string;
@@ -1710,133 +1704,6 @@ export interface MessageSchema {
       branchCreationFailed: string;
       branchName: string;
       loadChatFailed: string;
-    };
-    rewrite: {
-      popupTitle: string;
-      popupTitleCharacter: string;
-      popupTitleField: string;
-      popupTitleMessage: string;
-      popupTitleInput: string;
-      popupTitleExtension: string;
-      settings: {
-        defaultConnectionProfile: string;
-        templates: string;
-        renameTemplate: string;
-        duplicateTemplate: string;
-        deleteTemplate: string;
-        name: string;
-        ignoreInput: string;
-        ignoreInputHint: string;
-        instruction: string;
-        customArgs: string;
-        noCustomArgs: string;
-        argKeyPlaceholder: string;
-        argLabelPlaceholder: string;
-        argDefaultPlaceholder: string;
-        newArgument: string;
-        argTypes: {
-          boolean: string;
-          string: string;
-          number: string;
-        };
-        addArgument: string;
-        templateMacro: string;
-        none: string;
-        selectTemplate: string;
-        resetToDefault: string;
-        sessionPreamble: string;
-        sessionPreambleHint: string;
-        deleteAllSessions: string;
-        resetTemplatesTitle: string;
-        resetTemplatesContent: string;
-        deleteAllSessionsTitle: string;
-        deleteAllSessionsContent: string;
-      };
-      popup: {
-        template: string;
-        connectionProfile: string;
-        contextPrompt: string;
-        escapeMacros: string;
-        escapeMacrosHint: string;
-        contextMessages: string;
-        instruction: string;
-        original: string;
-        new: string;
-        output: string;
-        generate: string;
-        abort: string;
-        apply: string;
-        continue: string;
-        generating: string;
-        oneShot: string;
-        sessions: string;
-        diff: string;
-        showDiff: string;
-        generalDiff: string;
-        relatedCharacters: string;
-        contextCharacters: string;
-        contextCharactersDesc: string;
-        worldInfoContext: string;
-        currentEntry: string;
-        contextLorebooks: string;
-        contextLorebooksDesc: string;
-        allEntries: string;
-        structuredResponseFormat: string;
-        structuredFormats: {
-          native: string;
-          json: string;
-          xml: string;
-          text: string;
-        };
-      };
-      fields: {
-        description: string;
-        personality: string;
-        scenario: string;
-        firstMessage: string;
-        alternateGreeting: string;
-        exampleMessages: string;
-        extension: string;
-        chatMessage: string;
-        chatInput: string;
-      };
-      args: {
-        includeChar: string;
-        includePersona: string;
-        includeSelectedLorebooks: string;
-        includeSelectedCharacters: string;
-      };
-      session: {
-        sessions: string;
-        noSessions: string;
-        sessionItem: string;
-        deleteFromHere: string;
-        typeMessage: string;
-        createFailed: string;
-        selectSession: string;
-        newSession: string;
-        systemInstruction: string;
-        toolResult: string;
-        toolCalls: string;
-        deleteConfirm: string;
-      };
-      buttons: {
-        rewriteMessage: string;
-        rewriteInput: string;
-        rewriteCharacter: string;
-      };
-      errors: {
-        templateNotFound: string;
-        selectProfile: string;
-        noConnectionProfile: string;
-      };
-      messages: {
-        generationAborted: string;
-        generationFailed: string;
-        copiedToClipboard: string;
-        copyFailed: string;
-        textUpdated: string;
-      };
     };
     groupChat: {
       settings: {

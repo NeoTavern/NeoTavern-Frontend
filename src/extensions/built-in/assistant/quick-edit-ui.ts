@@ -67,7 +67,7 @@ export function findChatInputAnchor(): HTMLElement | null {
   return document.getElementById('chat-form');
 }
 
-/** The field textareas Rewrite puts a wand on, with their label keys. `extension.*` fields come from `EXTENSION_FIELD_PATTERN`. */
+/** The field textareas that get a quick-edit wand, with their label keys. `extension.*` fields come from `EXTENSION_FIELD_PATTERN`. */
 export const FIELD_TARGETS = {
   'character.description': 'extensionsBuiltin.assistant.quickEdit.fields.characterDescription',
   'character.first_mes': 'extensionsBuiltin.assistant.quickEdit.fields.characterFirstMes',

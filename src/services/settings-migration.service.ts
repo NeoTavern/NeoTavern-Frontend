@@ -1,3 +1,4 @@
+import localforage from 'localforage';
 import { isPlainObject, set } from 'lodash-es';
 import { saveSamplerPreset, type Preset } from '../api/presets';
 import { type ParsedUserSettingsResponse } from '../api/settings';
@@ -32,7 +33,7 @@ import { mergeWithUndefinedMulti, uuidv4 } from '../utils/commons';
 import { runMigrations, type Migration } from '../utils/migration-runner';
 import { normalizeRegexScript } from './regex-scripts';
 
-export const LATEST_SETTINGS_VERSION = 2;
+export const LATEST_SETTINGS_VERSION = 3;
 
 // =============================================================================
 // Migration Registry
@@ -42,7 +43,10 @@ export const LATEST_SETTINGS_VERSION = 2;
  * Registry for settings migrations.
  * Add new migration steps here.
  */
-const settingsMigrations: Migration<Settings>[] = [{ version: 2, migrate: migrateV1ToV2 }];
+const settingsMigrations: Migration<Settings>[] = [
+  { version: 2, migrate: migrateV1ToV2 },
+  { version: 3, migrate: migrateV2ToV3 },
+];
 
 /**
  * v2: Extension settings were written through lodash paths like `extensionSettings.core.tracker`,
@@ -60,6 +64,23 @@ function migrateV1ToV2(settings: Settings): Settings {
     }
   }
   settings.extensionSettings = extensionSettings as Settings['extensionSettings'];
+  return settings;
+}
+
+/**
+ * v3: The Rewrite extension (`core.rewrite`) was removed in favor of the assistant.
+ * Its settings and its saved sessions store are deleted, not converted.
+ */
+function migrateV2ToV3(settings: Settings): Settings {
+  const extensionSettings = { ...settings.extensionSettings } as Record<string, unknown>;
+  delete extensionSettings['core.rewrite'];
+  settings.extensionSettings = extensionSettings as Settings['extensionSettings'];
+  if (settings.disabledExtensions) {
+    settings.disabledExtensions = settings.disabledExtensions.filter((id) => id !== 'core.rewrite');
+  }
+  localforage.dropInstance({ name: 'neotavern', storeName: 'rewrite-sessions' }).catch((error) => {
+    console.error('Failed to drop the rewrite-sessions store:', error);
+  });
   return settings;
 }
 

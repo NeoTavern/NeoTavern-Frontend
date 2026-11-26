@@ -1,5 +1,9 @@
+import localforage from 'localforage';
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Migrating to the latest version runs v3, which drops a localforage store.
+vi.spyOn(localforage, 'dropInstance').mockResolvedValue();
 import { LATEST_SETTINGS_VERSION, migrateSettings } from '../src/services/settings-migration.service';
 import { useSettingsStore } from '../src/stores/settings.store';
 import type { Settings } from '../src/types';

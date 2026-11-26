@@ -43,7 +43,7 @@ export function activate(api: ExtensionAPI<AssistantSettings>) {
   for (const [identifier, labelKey] of Object.entries(FIELD_TARGETS)) {
     registerWand(identifier as CodeMirrorTarget, identifier, t(labelKey));
   }
-  // Pattern matches don't tell the tool which field was clicked, so they share one identifier, as in Rewrite.
+  // Pattern matches don't tell the tool which field was clicked, so they share one identifier.
   registerWand(
     EXTENSION_FIELD_PATTERN,
     'extension.generic',
