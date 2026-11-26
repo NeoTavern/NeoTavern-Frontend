@@ -1363,6 +1363,10 @@
   },
   "extensionsBuiltin": {
     "manifests": {
+      "assistant": {
+        "name": "Assistant",
+        "description": "Edit or write messages, the input box and fields with saved commands or plain instructions, reviewed as a diff."
+      },
       "chatBranching": {
         "name": "Chat Branching",
         "description": "Adds an option to branch the chat from a specific message."

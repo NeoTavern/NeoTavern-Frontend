@@ -1366,6 +1366,10 @@ export interface MessageSchema {
   };
   extensionsBuiltin: {
     manifests: {
+      assistant: {
+        name: string;
+        description: string;
+      };
       chatBranching: {
         name: string;
         description: string;
