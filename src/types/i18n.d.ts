@@ -1498,6 +1498,27 @@ export interface MessageSchema {
       stopPlayback: string;
       playbackFailed: string;
     };
+    assistant: {
+      quickEdit: {
+        open: string;
+        openInput: string;
+        messageLabel: string;
+        inputLabel: string;
+        instructionPlaceholder: string;
+        followUpPlaceholder: string;
+        original: string;
+        result: string;
+        run: string;
+        stop: string;
+        accept: string;
+        reject: string;
+        copy: string;
+        copied: string;
+        copyFailed: string;
+        stopped: string;
+        noProfile: string;
+      };
+    };
     chatTranslation: {
       connectionProfile: string;
       connectionProfileHint: string;

@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import * as Diff from 'diff';
-import type { Change } from 'diff';
-import { ref, watch } from 'vue';
+import { computed } from 'vue';
 import { useStrictI18n } from '../../../../composables/useStrictI18n';
+import TextDiff from '../../_shared/components/TextDiff.vue';
 import type { FieldChange } from '../types';
 
 const props = defineProps<{
@@ -19,8 +18,20 @@ const emit = defineEmits<{
 
 const { t } = useStrictI18n();
 
-// Diff State
-const diffHtmls = ref<Array<{ fieldLabel: string; leftHtml: string; rightHtml: string }>>([]);
+const fieldChanges = computed<FieldChange[]>(() => {
+  if (props.changes) return props.changes;
+  if (props.originalText !== undefined && props.generatedText !== undefined) {
+    return [
+      {
+        fieldId: 'text',
+        label: t('extensionsBuiltin.rewrite.popup.output'),
+        oldValue: props.originalText,
+        newValue: props.generatedText,
+      },
+    ];
+  }
+  return [];
+});
 
 function escapeHtml(text: string): string {
   return text
@@ -30,100 +41,25 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
-
-function updateDiff() {
-  let changesToUse: FieldChange[];
-  if (props.changes) {
-    changesToUse = props.changes;
-  } else if (props.originalText !== undefined && props.generatedText !== undefined) {
-    changesToUse = [
-      {
-        fieldId: 'text',
-        label: t('extensionsBuiltin.rewrite.popup.output'),
-        oldValue: props.originalText,
-        newValue: props.generatedText,
-      },
-    ];
-  } else {
-    changesToUse = [];
-  }
-
-  diffHtmls.value = changesToUse.map((change) => {
-    const { label, oldValue, newValue } = change;
-    if (!newValue) {
-      return {
-        fieldLabel: label,
-        leftHtml: escapeHtml(oldValue),
-        rightHtml: '',
-      };
-    }
-
-    if (props.ignoreInput) {
-      return {
-        fieldLabel: label,
-        leftHtml: '',
-        rightHtml: escapeHtml(newValue),
-      };
-    }
-
-    const diff = Diff.diffWords(oldValue, newValue);
-    let lHtml = '';
-    let rHtml = '';
-
-    diff.forEach((part: Change) => {
-      const escapedVal = escapeHtml(part.value);
-      if (part.removed) {
-        lHtml += `<span class="diff-del">${escapedVal}</span>`;
-      } else if (part.added) {
-        rHtml += `<span class="diff-ins">${escapedVal}</span>`;
-      } else {
-        lHtml += escapedVal;
-        rHtml += escapedVal;
-      }
-    });
-
-    return {
-      fieldLabel: label,
-      leftHtml: lHtml,
-      rightHtml: rHtml,
-    };
-  });
-}
-
-watch(() => [props.changes, props.originalText, props.generatedText], updateDiff, { immediate: true, deep: true });
-
-// Scroll Sync
-// For multiple fields, scroll sync might be complex, skip for now
 </script>
 <template>
   <div class="multi-diff-view">
-    <div v-for="(diff, index) in diffHtmls" :key="index" class="field-diff">
-      <div class="field-header">{{ diff.fieldLabel }}</div>
-      <div v-if="!ignoreInput" class="split-view">
-        <!-- Original / Left Pane -->
-        <div class="pane">
-          <div class="pane-header">{{ t('extensionsBuiltin.rewrite.popup.original') }}</div>
-          <!-- eslint-disable-next-line vue/no-v-html -->
-          <div class="pane-content diff-content" v-html="diff.leftHtml"></div>
-        </div>
-
-        <!-- Generated / Right Pane -->
-        <div class="pane">
-          <div class="pane-header">
-            <span>
-              {{ t('extensionsBuiltin.rewrite.popup.new') }}
-              <span v-if="isGenerating" class="generating-indicator">
-                <i class="fa-solid fa-circle-notch fa-spin"></i>
-              </span>
+    <div v-for="(change, index) in fieldChanges" :key="index" class="field-diff">
+      <div class="field-header">{{ change.label }}</div>
+      <TextDiff v-if="!ignoreInput" :old-value="change.oldValue" :new-value="change.newValue">
+        <template #old-header>{{ t('extensionsBuiltin.rewrite.popup.original') }}</template>
+        <template #new-header="{ hasOutput }">
+          <span>
+            {{ t('extensionsBuiltin.rewrite.popup.new') }}
+            <span v-if="isGenerating" class="generating-indicator">
+              <i class="fa-solid fa-circle-notch fa-spin"></i>
             </span>
-            <button v-if="diff.rightHtml" class="copy-btn" :title="t('common.copy')" @click="emit('copy-output')">
-              <i class="fa-solid fa-copy"></i>
-            </button>
-          </div>
-          <!-- eslint-disable-next-line vue/no-v-html -->
-          <div class="pane-content diff-content" v-html="diff.rightHtml"></div>
-        </div>
-      </div>
+          </span>
+          <button v-if="hasOutput" class="copy-btn" :title="t('common.copy')" @click="emit('copy-output')">
+            <i class="fa-solid fa-copy"></i>
+          </button>
+        </template>
+      </TextDiff>
 
       <!-- Single output view for templates that ignore input -->
       <div v-else class="single-view">
@@ -135,12 +71,12 @@ watch(() => [props.changes, props.originalText, props.generatedText], updateDiff
                 <i class="fa-solid fa-circle-notch fa-spin"></i>
               </span>
             </span>
-            <button v-if="diff.rightHtml" class="copy-btn" :title="t('common.copy')" @click="emit('copy-output')">
+            <button v-if="change.newValue" class="copy-btn" :title="t('common.copy')" @click="emit('copy-output')">
               <i class="fa-solid fa-copy"></i>
             </button>
           </div>
           <!-- eslint-disable-next-line vue/no-v-html -->
-          <div class="pane-content" v-html="diff.rightHtml"></div>
+          <div class="pane-content" v-html="escapeHtml(change.newValue)"></div>
         </div>
       </div>
     </div>
@@ -170,7 +106,6 @@ watch(() => [props.changes, props.originalText, props.generatedText], updateDiff
   border-bottom: 1px solid var(--theme-border-color);
 }
 
-.split-view,
 .single-view {
   display: flex;
   gap: 10px;
@@ -226,18 +161,6 @@ watch(() => [props.changes, props.originalText, props.generatedText], updateDiff
   font-family: var(--font-family-mono);
   font-size: 0.9em;
   line-height: 1.5;
-}
-
-:deep(.diff-del) {
-  background-color: var(--color-accent-crimson-70a);
-  text-decoration: line-through;
-  opacity: 0.8;
-  border-radius: 2px;
-}
-
-:deep(.diff-ins) {
-  background-color: var(--color-accent-green-70a);
-  border-radius: 2px;
 }
 
 .generating-indicator {

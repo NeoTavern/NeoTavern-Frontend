@@ -1495,6 +1495,27 @@
       "stopPlayback": "Stop TTS playback",
       "playbackFailed": "TTS playback failed"
     },
+    "assistant": {
+      "quickEdit": {
+        "open": "Quick edit",
+        "openInput": "Quick edit input",
+        "messageLabel": "Message from {name}",
+        "inputLabel": "Chat input",
+        "instructionPlaceholder": "Type an instruction, then press Enter",
+        "followUpPlaceholder": "Refine the result, then press Enter",
+        "original": "Original",
+        "result": "Result",
+        "run": "Run",
+        "stop": "Stop",
+        "accept": "Accept",
+        "reject": "Reject",
+        "copy": "Copy",
+        "copied": "Copied to clipboard.",
+        "copyFailed": "Couldn't copy to clipboard.",
+        "stopped": "Quick edit stopped.",
+        "noProfile": "No connection profile is selected. Pick one in the assistant settings or select a global profile."
+      }
+    },
     "chatTranslation": {
       "connectionProfile": "Connection Profile",
       "connectionProfileHint": "Select the API connection profile to use for generating translations.",
