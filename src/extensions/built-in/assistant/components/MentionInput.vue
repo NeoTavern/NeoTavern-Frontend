@@ -93,7 +93,8 @@ function addRef(ref: AssistantRef) {
   if (!refs.value.some((existing) => existing.kind === ref.kind && existing.label === ref.label)) {
     refs.value = [...refs.value, ref];
   }
-  replaceTrigger('');
+  // Keep the mention in the text, so the request reads naturally and points at its [Referenced] section.
+  replaceTrigger(`${ref.kind === 'messages' ? ref.label : `@${ref.label}`} `);
 }
 
 function removeRef(index: number) {
