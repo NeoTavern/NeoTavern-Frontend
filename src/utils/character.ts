@@ -118,6 +118,9 @@ export function createCharacterFormData(character: Character, fileToSend: File |
 
   formData.append('talkativeness', String(character.talkativeness ?? talkativeness_default));
   formData.append('mes_example', character.mes_example || '');
+  for (const greeting of character.data?.alternate_greetings ?? []) {
+    formData.append('alternate_greetings', greeting);
+  }
   formData.append('extensions', JSON.stringify({}));
 
   return formData;

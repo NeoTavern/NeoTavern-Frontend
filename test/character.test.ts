@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { type Character } from '../src/types';
-import { getCharacterDifferences, withMappedDataFields } from '../src/utils/character';
+import { createCharacterFormData, getCharacterDifferences, withMappedDataFields } from '../src/utils/character';
+
+describe('createCharacterFormData', () => {
+  it('sends each alternate greeting', () => {
+    const character = {
+      name: 'Twin',
+      avatar: '',
+      data: { alternate_greetings: ['Hello!', 'Welcome back.'] },
+    } as unknown as Character;
+    const formData = createCharacterFormData(character, null, 'uuid');
+    expect(formData.getAll('alternate_greetings')).toEqual(['Hello!', 'Welcome back.']);
+  });
+});
 
 describe('getCharacterDifferences', () => {
   it('should detect top-level changes', () => {

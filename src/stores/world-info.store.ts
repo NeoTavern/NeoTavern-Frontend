@@ -178,6 +178,8 @@ export const useWorldInfoStore = defineStore('world-info', () => {
 
   async function deleteBook(filename: string) {
     try {
+      // A save still waiting in the debounce would write the book back after the delete.
+      await saveBookDebounced.flush();
       await api.deleteWorldInfoBook(filename);
       delete worldInfoCache.value[filename];
       bookInfos.value = bookInfos.value.filter((b) => b.file_id !== filename);
