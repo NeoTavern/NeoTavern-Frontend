@@ -1,8 +1,10 @@
 import { markRaw } from 'vue';
 import type { CodeMirrorTarget, ExtensionAPI } from '../../../types';
+import AssistantPanel from './components/AssistantPanel.vue';
 import MessageQuickEditButton from './components/MessageQuickEditButton.vue';
 import SettingsPanel from './components/SettingsPanel.vue';
 import { manifest } from './manifest';
+import { createPanelState } from './panel-state';
 import { setupPinnedCommands } from './pinned-commands';
 import {
   createFieldTarget,
@@ -19,6 +21,7 @@ export { manifest };
 export { migrateAssistantSettings as migrateSettings } from './types';
 
 const QUICK_EDIT_ID = 'assistant.quick-edit';
+const PANEL_ID = 'assistant-panel';
 
 export function activate(api: ExtensionAPI<AssistantSettings>) {
   const t = api.i18n.t;
@@ -76,4 +79,17 @@ export function activate(api: ExtensionAPI<AssistantSettings>) {
   registerInputEntries();
 
   setupPinnedCommands(api, manifest.name);
+
+  const panel = createPanelState(api);
+  api.ui.registerSidebar(PANEL_ID, markRaw(AssistantPanel), 'right', {
+    title: t('extensionsBuiltin.assistant.panel.title'),
+    icon: 'fa-solid fa-wand-magic-sparkles',
+    props: { api, panel },
+  });
+  api.ui.registerChatFormOptionsMenuItem({
+    id: 'assistant.open-panel',
+    icon: 'fa-solid fa-wand-magic-sparkles',
+    label: t('extensionsBuiltin.assistant.panel.open'),
+    onClick: () => api.ui.openSidebar(PANEL_ID),
+  });
 }

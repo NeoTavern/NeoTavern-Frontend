@@ -1555,7 +1555,64 @@
         "autoAccept": "Auto-accept",
         "autoAcceptHint": "A click applies the result without review. There is no undo.",
         "nameInvalid": "Use lowercase letters, digits and dashes, starting with a letter or digit.",
-        "nameTaken": "Another command already uses this name."
+        "nameTaken": "Another command already uses this name.",
+        "requestFormat": "Panel request format",
+        "requestFormatHint": "How the assistant panel calls tools. Use a structured format when the model has no native tool calling.",
+        "requestFormats": {
+          "tools": "Native tool calling",
+          "native": "Structured: native JSON schema",
+          "json": "Structured: prompted JSON",
+          "xml": "Structured: prompted XML"
+        }
+      },
+      "errors": {
+        "toolsUnsupported": "This connection profile's model doesn't support native tool calling. Switch the panel request format to a structured format in the assistant settings."
+      },
+      "panel": {
+        "title": "Assistant",
+        "open": "Open assistant",
+        "conversations": "Conversations",
+        "newConversation": "New conversation",
+        "noConversations": "No saved conversations yet.",
+        "untitled": "Untitled",
+        "deleteTitle": "Delete conversation",
+        "deleteContent": "Delete \"{title}\"? This can't be undone.",
+        "emptyHint": "Ask for an edit. Type {'@'} to mention a character, persona or lorebook, # for messages and / for a saved command.",
+        "inputPlaceholder": "Ask the assistant ({'@'} mention, # messages, / command)",
+        "send": "Send",
+        "stopped": "Assistant stopped.",
+        "thinking": "Working…",
+        "retry": "Retry",
+        "rawOutput": "Raw output",
+        "removeRef": "Remove",
+        "callRead": "Read",
+        "callStaged": "Staged",
+        "callUsed": "Used",
+        "changes": "Changes",
+        "acceptAll": "Accept all",
+        "rejectAll": "Reject all",
+        "undoLast": "Undo last apply",
+        "dismiss": "Dismiss",
+        "proposed": "Proposed",
+        "opCreate": "new entry",
+        "opDelete": "delete entry",
+        "groupMessages": "Chat messages",
+        "conflictHint": "The target changed after this was proposed, so nothing was written.",
+        "applyConflict": "Some changes weren't applied because their target changed.",
+        "undoConflict": "Can't undo: something changed after the last apply.",
+        "status": {
+          "pending": "pending",
+          "applied": "applied",
+          "rejected": "rejected",
+          "conflict": "conflict"
+        },
+        "refKinds": {
+          "character": "character",
+          "persona": "persona",
+          "lorebook": "lorebook",
+          "entry": "lorebook entry",
+          "messages": "messages"
+        }
       }
     },
     "chatTranslation": {

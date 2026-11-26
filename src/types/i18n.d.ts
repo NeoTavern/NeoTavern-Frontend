@@ -1559,6 +1559,63 @@ export interface MessageSchema {
         autoAcceptHint: string;
         nameInvalid: string;
         nameTaken: string;
+        requestFormat: string;
+        requestFormatHint: string;
+        requestFormats: {
+          tools: string;
+          native: string;
+          json: string;
+          xml: string;
+        };
+      };
+      errors: {
+        toolsUnsupported: string;
+      };
+      panel: {
+        title: string;
+        open: string;
+        conversations: string;
+        newConversation: string;
+        noConversations: string;
+        untitled: string;
+        deleteTitle: string;
+        deleteContent: string;
+        emptyHint: string;
+        inputPlaceholder: string;
+        send: string;
+        stopped: string;
+        thinking: string;
+        retry: string;
+        rawOutput: string;
+        removeRef: string;
+        callRead: string;
+        callStaged: string;
+        callUsed: string;
+        changes: string;
+        acceptAll: string;
+        rejectAll: string;
+        undoLast: string;
+        dismiss: string;
+        proposed: string;
+        opCreate: string;
+        opDelete: string;
+        groupMessages: string;
+        conflictHint: string;
+        applyConflict: string;
+        undoConflict: string;
+        status: {
+          pending: string;
+          applied: string;
+          rejected: string;
+          conflict: string;
+        };
+        refKinds: {
+          character: string;
+          persona: string;
+          lorebook: string;
+          entry: string;
+          messages: string;
+        };
       };
     };
     chatTranslation: {

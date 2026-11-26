@@ -1,6 +1,14 @@
 import { describe, expect, test } from 'vitest';
 import { Changeset } from '../changeset';
-import { ConversationStore, createConversation, toApiMessages, type AssistantConversation } from '../conversations';
+import {
+  composeUserContent,
+  ConversationStore,
+  createConversation,
+  renderChangeStatusBlock,
+  toApiMessages,
+  userRequestText,
+  type AssistantConversation,
+} from '../conversations';
 import { entry, fakeDataApi } from '../test-support/fake-data-api';
 
 /** An in-memory stand-in for the localforage instance, storing what IndexedDB would: a copy. */
@@ -81,6 +89,23 @@ describe('conversations', () => {
     });
     expect(json[2].content).toBe('Tool results:\n\n[get_messages]\n[]\n\n[get_persona]\n{"name":"Alex"}');
     expect(JSON.parse(json[3].content as string)).toEqual({ reply: 'Done.', calls: [] });
+  });
+
+  test('a request carries the change statuses and references ahead of the text, which the panel strips', () => {
+    const changeStatus = renderChangeStatusBlock([
+      { label: 'Hazel: first_mes', status: 'applied' },
+      { label: 'Eldoria/Castle', status: 'rejected' },
+    ]);
+    const content = composeUserContent({
+      changeStatus,
+      referenced: '[Referenced]\n\nHazel (character):\n{"name":"Hazel"}',
+      text: 'Shorter.\n\nKeep the tone.',
+    });
+
+    expect(content.startsWith('[Change status]\n- Hazel: first_mes: applied\n- Eldoria/Castle: rejected')).toBe(true);
+    expect(userRequestText(content)).toBe('Shorter.\n\nKeep the tone.');
+    expect(composeUserContent({ changeStatus: '', referenced: '', text: 'Hi.' })).toBe('Hi.');
+    expect(userRequestText('Hi.\n\nThere.')).toBe('Hi.\n\nThere.');
   });
 
   test('undo after a reload reverts the last apply batch', async () => {

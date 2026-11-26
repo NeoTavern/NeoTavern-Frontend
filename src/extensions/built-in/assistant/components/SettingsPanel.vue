@@ -6,8 +6,10 @@ import type { ExtensionAPI } from '../../../../types';
 import { uuidv4 } from '../../../../utils/commons';
 import ConnectionProfileField from '../../_shared/components/ConnectionProfileField.vue';
 import { useExtensionSettings } from '../../_shared/composables/use-extension-settings';
+import { createStructuredRequestFormatOptions } from '../../_shared/runtime/structured-request-format';
 import {
   type AssistantCommand,
+  type AssistantRequestFormat,
   type AssistantSettings,
   COMMAND_NAME_PATTERN,
   createDefaultSettings,
@@ -73,6 +75,15 @@ const commandProfileOptions = computed(() => [
     .sort((a, b) => a.label.localeCompare(b.label)),
 ]);
 
+const requestFormatOptions: { label: string; value: AssistantRequestFormat }[] = [
+  { label: t('extensionsBuiltin.assistant.settings.requestFormats.tools'), value: 'tools' },
+  ...createStructuredRequestFormatOptions({
+    native: t('extensionsBuiltin.assistant.settings.requestFormats.native'),
+    json: t('extensionsBuiltin.assistant.settings.requestFormats.json'),
+    xml: t('extensionsBuiltin.assistant.settings.requestFormats.xml'),
+  }),
+];
+
 function setPinned(command: AssistantCommand, pinned: boolean) {
   command.pinned = pinned;
   if (!pinned) command.autoAccept = false;
@@ -86,6 +97,13 @@ function setPinned(command: AssistantCommand, pinned: boolean) {
       :label="t('extensionsBuiltin.assistant.settings.connectionProfile')"
       :description="t('extensionsBuiltin.assistant.settings.connectionProfileHint')"
     />
+
+    <FormItem
+      :label="t('extensionsBuiltin.assistant.settings.requestFormat')"
+      :description="t('extensionsBuiltin.assistant.settings.requestFormatHint')"
+    >
+      <Select v-model="settings.requestFormat" :options="requestFormatOptions" />
+    </FormItem>
 
     <FormItem
       :label="t('extensionsBuiltin.assistant.settings.contextMessageCount')"

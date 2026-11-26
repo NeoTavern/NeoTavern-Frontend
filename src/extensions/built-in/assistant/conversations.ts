@@ -46,6 +46,29 @@ export function appendUserMessage(
   conversation.messages.push({ role: 'user', content: message.content, refs: message.refs });
 }
 
+const REQUEST_MARKER = '[Request]\n';
+
+/**
+ * The `[Change status]` block: every change of the conversation with its status, so the model knows
+ * what the user accepted, rejected or undid since it staged them. Empty when there are no changes.
+ */
+export function renderChangeStatusBlock(changes: Pick<StagedChange, 'label' | 'status'>[]): string {
+  if (changes.length === 0) return '';
+  return ['[Change status]', ...changes.map((change) => `- ${change.label}: ${change.status}`)].join('\n');
+}
+
+/** A user message's content: the status and `[Referenced]` blocks (when present), then the request text. */
+export function composeUserContent(parts: { changeStatus: string; referenced: string; text: string }): string {
+  const blocks = [parts.changeStatus, parts.referenced].filter(Boolean);
+  return blocks.length === 0 ? parts.text : [...blocks, `${REQUEST_MARKER}${parts.text}`].join('\n\n');
+}
+
+/** The request text of a user message, without the blocks `composeUserContent` put ahead of it. */
+export function userRequestText(content: string): string {
+  const at = content.indexOf(`\n\n${REQUEST_MARKER}`);
+  return at === -1 ? content : content.slice(at + 2 + REQUEST_MARKER.length);
+}
+
 /** Conversations in localforage, one record each. Global, not tied to a chat. */
 export class ConversationStore {
   constructor(
