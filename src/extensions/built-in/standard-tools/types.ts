@@ -11,7 +11,7 @@ export interface StandardToolsSettings {
 }
 
 export const DEFAULT_SETTINGS: StandardToolsSettings = {
-  corsProxy: 'https://corsproxy.io/?',
+  corsProxy: '',
   webSearchMaxResults: 5,
   urlInspectorMaxContentLength: 20000,
   useFandomApi: true,

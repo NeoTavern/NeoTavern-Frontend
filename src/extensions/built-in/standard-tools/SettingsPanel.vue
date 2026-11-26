@@ -33,11 +33,7 @@ const getResetTool = (field: keyof StandardToolsSettings) => ({
         :label="t('extensionsBuiltin.standardTools.corsProxy')"
         :description="t('extensionsBuiltin.standardTools.corsProxyHint')"
       >
-        <Input
-          v-model="settings.corsProxy"
-          placeholder="e.g. https://corsproxy.io/?"
-          :tools="[getResetTool('corsProxy')]"
-        />
+        <Input v-model="settings.corsProxy" :tools="[getResetTool('corsProxy')]" />
       </FormItem>
     </div>
 
