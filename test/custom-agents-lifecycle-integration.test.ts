@@ -29,7 +29,11 @@ vi.mock('../src/composables/useStrictI18n', () => ({
 }));
 
 vi.mock('../src/api/tokenizer', () => ({
-  ApiTokenizer: class {
+  ApiTokenizer: class ApiTokenizer {
+    static get default() {
+      return new ApiTokenizer();
+    }
+
     async getTokenCount(content: string): Promise<number> {
       return content.length;
     }
