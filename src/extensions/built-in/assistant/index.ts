@@ -1,8 +1,16 @@
 import { markRaw } from 'vue';
-import type { ExtensionAPI } from '../../../types';
+import type { CodeMirrorTarget, ExtensionAPI } from '../../../types';
 import MessageQuickEditButton from './components/MessageQuickEditButton.vue';
 import { manifest } from './manifest';
-import { createInputTarget, findChatInputAnchor, openQuickEditPopover } from './quick-edit-ui';
+import {
+  createFieldTarget,
+  createInputTarget,
+  EXTENSION_FIELD_PATTERN,
+  FIELD_TARGETS,
+  findChatInputAnchor,
+  openQuickEditPopover,
+  openQuickEditPopup,
+} from './quick-edit-ui';
 import type { AssistantSettings } from './types';
 
 export { manifest };
@@ -10,9 +18,27 @@ export { migrateAssistantSettings as migrateSettings } from './types';
 
 const QUICK_EDIT_ID = 'assistant.quick-edit';
 
-// Textarea wands and pinned commands are registered in later M1 sessions.
+// Pinned commands are registered in M1 session 4.
 export function activate(api: ExtensionAPI<AssistantSettings>) {
   const t = api.i18n.t;
+
+  const registerWand = (match: CodeMirrorTarget | RegExp, identifier: string, label: string) => {
+    api.ui.registerTextareaTool(match, {
+      id: QUICK_EDIT_ID,
+      icon: 'fa-solid fa-wand-magic-sparkles',
+      title: t('extensionsBuiltin.assistant.quickEdit.open'),
+      onClick: (payload) => openQuickEditPopup(api, createFieldTarget(api, identifier, label, payload)),
+    });
+  };
+  for (const [identifier, labelKey] of Object.entries(FIELD_TARGETS)) {
+    registerWand(identifier as CodeMirrorTarget, identifier, t(labelKey));
+  }
+  // Pattern matches don't tell the tool which field was clicked, so they share one identifier, as in Rewrite.
+  registerWand(
+    EXTENSION_FIELD_PATTERN,
+    'extension.generic',
+    t('extensionsBuiltin.assistant.quickEdit.fields.extension'),
+  );
 
   api.ui.registerMessageButton({
     id: QUICK_EDIT_ID,

@@ -1513,7 +1513,22 @@
         "copied": "Copied to clipboard.",
         "copyFailed": "Couldn't copy to clipboard.",
         "stopped": "Quick edit stopped.",
-        "noProfile": "No connection profile is selected. Pick one in the assistant settings or select a global profile."
+        "noProfile": "No connection profile is selected. Pick one in the assistant settings or select a global profile.",
+        "fields": {
+          "characterDescription": "Character description",
+          "characterFirstMes": "Character first message",
+          "characterPersonality": "Character personality",
+          "characterScenario": "Character scenario",
+          "characterNote": "Character's note",
+          "characterMesExample": "Example dialogue",
+          "characterPostHistoryInstructions": "Post-history instructions",
+          "characterCreatorNotes": "Creator's notes",
+          "characterAlternateGreeting": "Alternate greeting",
+          "personaDescription": "Persona description",
+          "worldInfoContent": "Lorebook entry content",
+          "promptContent": "Prompt content",
+          "extension": "Extension setting"
+        }
       }
     },
     "chatTranslation": {

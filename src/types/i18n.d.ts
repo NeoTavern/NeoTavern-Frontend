@@ -1517,6 +1517,21 @@ export interface MessageSchema {
         copyFailed: string;
         stopped: string;
         noProfile: string;
+        fields: {
+          characterDescription: string;
+          characterFirstMes: string;
+          characterPersonality: string;
+          characterScenario: string;
+          characterNote: string;
+          characterMesExample: string;
+          characterPostHistoryInstructions: string;
+          characterCreatorNotes: string;
+          characterAlternateGreeting: string;
+          personaDescription: string;
+          worldInfoContent: string;
+          promptContent: string;
+          extension: string;
+        };
       };
     };
     chatTranslation: {
