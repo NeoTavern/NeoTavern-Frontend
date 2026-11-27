@@ -411,6 +411,12 @@ onMounted(() => props.panel.refreshList());
     }
   }
 
+  /* The dialogue renderer keeps the literal quote characters inside <q>; drop the browser's own marks. */
+  :deep(q::before),
+  :deep(q::after) {
+    content: '';
+  }
+
   :deep(pre) {
     overflow-x: auto;
     padding: 6px 8px;
