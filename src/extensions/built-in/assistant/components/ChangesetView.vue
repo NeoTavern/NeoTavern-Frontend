@@ -21,8 +21,8 @@ const emit = defineEmits<{
 }>();
 
 const t = props.api.i18n.t;
-/** Applied and rejected cards start collapsed; these are the ones the user opened. */
-const expanded = ref(new Set<string>());
+/** Cards the user opened or closed by hand. Without an entry, pending and conflict cards are open and the rest closed. */
+const overrides = ref(new Map<string, boolean>());
 
 interface Group {
   key: string;
@@ -85,14 +85,17 @@ const STATUS_LABELS: Record<StagedChange['status'], string> = {
 };
 
 function isOpen(change: StagedChange): boolean {
-  return change.status === 'pending' || change.status === 'conflict' || expanded.value.has(change.id);
+  return overrides.value.get(change.id) ?? (change.status === 'pending' || change.status === 'conflict');
 }
 
 function toggle(change: StagedChange) {
-  const next = new Set(expanded.value);
-  if (next.has(change.id)) next.delete(change.id);
-  else next.add(change.id);
-  expanded.value = next;
+  const next = new Map(overrides.value);
+  next.set(change.id, !isOpen(change));
+  overrides.value = next;
+}
+
+function setAll(open: boolean) {
+  overrides.value = new Map(props.changes.map((change) => [change.id, open]));
 }
 
 function opLabel(change: StagedChange): string {
@@ -139,7 +142,14 @@ async function acceptOne(change: StagedChange) {
 <template>
   <div class="changeset">
     <div class="changeset-toolbar">
-      <span class="changeset-title">{{ t('extensionsBuiltin.assistant.panel.changes') }}</span>
+      <span
+        class="changeset-title"
+        :title="t('extensionsBuiltin.assistant.panel.toggleAll')"
+        @click="setAll(!props.changes.some(isOpen))"
+      >
+        <i class="fa-solid" :class="props.changes.some(isOpen) ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+        {{ t('extensionsBuiltin.assistant.panel.changes') }}
+      </span>
       <Button
         v-if="canUndo"
         icon="fa-rotate-left"
@@ -172,10 +182,8 @@ async function acceptOne(change: StagedChange) {
       </div>
 
       <div v-for="change in group.changes" :key="change.id" class="change-card" :class="`status-${change.status}`">
-        <div
-          class="change-card-header"
-          @click="change.status === 'applied' || change.status === 'rejected' ? toggle(change) : undefined"
-        >
+        <div class="change-card-header" @click="toggle(change)">
+          <i class="fa-solid" :class="isOpen(change) ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
           <span class="change-card-label">{{ change.label }}</span>
           <span v-if="opLabel(change)" class="change-card-op">{{ opLabel(change) }}</span>
           <span
@@ -249,6 +257,7 @@ async function acceptOne(change: StagedChange) {
 
 .changeset-title {
   flex: 1;
+  cursor: pointer;
   font-weight: bold;
 }
 
@@ -282,14 +291,11 @@ async function acceptOne(change: StagedChange) {
   &.status-applied,
   &.status-rejected {
     opacity: 0.75;
-
-    .change-card-header {
-      cursor: pointer;
-    }
   }
 }
 
 .change-card-header {
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;

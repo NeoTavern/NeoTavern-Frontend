@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { EmptyState } from '../../../../components/common';
 import { Button } from '../../../../components/UI';
 import type { ExtensionAPI } from '../../../../types';
+import { formatText } from '../../../../utils/chat';
 import { POPUP_RESULT, POPUP_TYPE } from '../../../../types/popup';
 import { userRequestText, type ConversationMessage, type ConversationToolCall } from '../conversations';
 import type { PanelState } from '../panel-state';
@@ -105,6 +106,13 @@ watch(
   },
 );
 
+function copyMessage(text: string) {
+  navigator.clipboard.writeText(text).then(
+    () => props.api.ui.showToast(t('extensionsBuiltin.assistant.quickEdit.copied'), 'success'),
+    () => props.api.ui.showToast(t('extensionsBuiltin.assistant.quickEdit.copyFailed'), 'error'),
+  );
+}
+
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleString();
 }
@@ -203,7 +211,15 @@ onMounted(() => props.panel.refreshList());
             <div class="assistant-message-text">{{ item.text }}</div>
           </div>
           <div v-else-if="item.kind === 'assistant'" class="assistant-message assistant">
-            <div class="assistant-message-text">{{ item.text }}</div>
+            <!-- eslint-disable-next-line vue/no-v-html -->
+            <div class="markdown" v-html="formatText(item.text, true)"></div>
+            <Button
+              class="assistant-message-copy"
+              variant="ghost"
+              icon="fa-copy"
+              :title="t('extensionsBuiltin.assistant.panel.copyMessage')"
+              @click="copyMessage(item.text)"
+            />
           </div>
           <div v-else class="assistant-call" :class="{ failed: item.error }">
             <i class="fa-solid" :class="item.error ? 'fa-triangle-exclamation' : item.icon"></i>
@@ -362,7 +378,49 @@ onMounted(() => props.panel.refreshList());
   }
 
   &.assistant {
+    position: relative;
     background-color: var(--black-30a);
+
+    &:hover .assistant-message-copy {
+      opacity: 1;
+    }
+  }
+}
+
+.assistant-message-copy {
+  align-self: flex-end;
+  opacity: 0.4;
+}
+
+.markdown {
+  word-break: break-word;
+
+  :deep(> :first-child) {
+    margin-top: 0;
+  }
+
+  :deep(> :last-child) {
+    margin-bottom: 0;
+  }
+
+  :deep(p) {
+    margin: 0 0 0.5em;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  :deep(pre) {
+    overflow-x: auto;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background-color: var(--black-30a);
+  }
+
+  :deep(ul),
+  :deep(ol) {
+    padding-left: 1.4em;
   }
 }
 

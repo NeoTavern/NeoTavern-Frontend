@@ -1589,6 +1589,8 @@ export interface MessageSchema {
         changes: string;
         acceptAll: string;
         rejectAll: string;
+        toggleAll: string;
+        copyMessage: string;
         undoLast: string;
         dismiss: string;
         proposed: string;

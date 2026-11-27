@@ -1586,6 +1586,8 @@
         "changes": "Changes",
         "acceptAll": "Accept all",
         "rejectAll": "Reject all",
+        "toggleAll": "Expand or collapse all changes",
+        "copyMessage": "Copy message",
         "undoLast": "Undo last apply",
         "dismiss": "Dismiss",
         "proposed": "Proposed",
